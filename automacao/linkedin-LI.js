@@ -1,0 +1,18 @@
+// LinkedIn Easy Apply helper (out/2026). Cole no javascript_tool na página /jobs/view/<id>/.
+// O modal fica no document (não no shadow root); LI.m() acha o container pelo botão Avançar/Revisar.
+await new Promise(r=>setTimeout(r,2500));
+window.LI={sl:ms=>new Promise(r=>setTimeout(r,ms)),
+m(){const b=[...document.querySelectorAll('button')].find(b=>/^(Avançar|Revisar|Avaliar|Enviar candidatura|Voltar)/.test(b.innerText.trim()));if(!b)return null;let p=b;while(p&&!/Candidate-se/.test(p.innerText.slice(0,200)))p=p.parentElement;return p},
+show(){const m=this.m();if(!m)return 'nomodal';const c=m.cloneNode(true);c.querySelectorAll('option').forEach(o=>o.remove());return c.innerText.replace(/\n+/g,' | ').slice(0,1500)},
+lt(e){return (this.m().querySelector('label[for="'+e.id+'"]')?.innerText||e.parentElement.parentElement.innerText||'').trim()},
+q(e){const m=this.m();let p=e.parentElement;while(p&&p!==m&&!/\*|\?/.test(p.innerText))p=p.parentElement;return (p?.innerText||'').split('\n')[0].slice(0,90)},
+fields(){const g={};for(const e of this.m().querySelectorAll('input,select,textarea')){const k=this.q(e);(g[k]=g[k]||[]).push(e.type+(e.type==='radio'||e.type==='checkbox'?':'+this.lt(e).slice(0,20):'')+(e.value&&e.type!=='radio'&&e.type!=='checkbox'?'='+e.value.slice(0,20):''))}return Object.entries(g).map(([k,v])=>k+' => '+v.slice(0,6).join(', ')).join('\n')},
+el(qt,i=0){return [...this.m().querySelectorAll('input,select,textarea')].filter(e=>this.q(e).includes(qt))[i]},
+tset(qt,v){const el=this.el(qt);const p=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(p,'value').set.call(el,v);['input','change','blur'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true})));return el.value},
+sel(qt,v){const s=this.el(qt);const o=[...s.options].find(o=>o.text.trim().startsWith(v));s.value=o.value;s.dispatchEvent(new Event('change',{bubbles:true}));return o.text},
+pick(qt,v){const e=[...this.m().querySelectorAll('input[type=radio],input[type=checkbox]')].find(e=>this.q(e).includes(qt)&&this.lt(e)===v);if(!e)return 'nf';if(!e.checked)e.click();return v},
+async next(){const b=[...this.m().querySelectorAll('button')].find(b=>/^(Avançar|Revisar|Avaliar|Next|Review)/.test(b.innerText.trim()));if(!b)return 'nobtn';b.click();await this.sl(1800);return this.show()},
+// Captura o input de arquivo criado no clique de "Carregar currículo" (evita abrir o seletor nativo); depois use find + file_upload.
+async capFile(){const oc=HTMLInputElement.prototype.click;HTMLInputElement.prototype.click=function(){if(this.type==='file'){if(!this.isConnected){this.style.display='none';document.body.appendChild(this)}window.__cap=this;HTMLInputElement.prototype.click=oc;return}return oc.call(this)};[...this.m().querySelectorAll('button')].find(b=>/Carregar currículo/.test(b.innerText+b.getAttribute('aria-label'))).click();await this.sl(800);return !!window.__cap},
+async send(id){const m=this.m();const f=[...m.querySelectorAll('input[type=checkbox]')].find(e=>/Seguir|Follow/i.test(this.lt(e)));if(f&&f.checked)f.click();[...m.querySelectorAll('button')].find(b=>/Enviar candidatura/.test(b.innerText)).click();await this.sl(4000);const csrf=document.cookie.match(/JSESSIONID="?([^";]+)/)[1];const r=await fetch('/voyager/api/jobs/jobPostings/'+id+'?decorationId=com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-65',{headers:{'csrf-token':csrf}}).then(r=>r.json());return 'applied '+r.applyingInfo?.applied}};
+const ea=[...document.querySelectorAll('button,a')].find(b=>/Candidatura simplificada|Easy Apply/.test(b.innerText));if(ea)ea.click();await LI.sl(3000);LI.show()

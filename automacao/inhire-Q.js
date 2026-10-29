@@ -1,0 +1,13 @@
+await new Promise(r=>setTimeout(r,3000));const st=[...document.querySelectorAll('button')].find(b=>/Iniciar/.test(b.innerText));if(st){st.click();await new Promise(r=>setTimeout(r,1500))}
+window.Q={sl:ms=>new Promise(r=>setTimeout(r,ms)),
+blk(n){const q=[...document.querySelectorAll('span')].find(s=>s.children.length===0&&s.innerText.trim()===String(n));let b=q;while(b&&!b.querySelector('button'))b=b.parentElement;return b},
+pct(){return (document.body.innerText.match(/\d+% concluído/)||[''])[0]},
+async text(n,v){const b=this.blk(n);const el=b.querySelector('input,textarea');const p=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;el.focus();Object.getOwnPropertyDescriptor(p,'value').set.call(el,v);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));await this.sl(400);return el.value},
+async opt(n,t){const b=this.blk(n);const el=[...b.querySelectorAll('div[role=presentation]')].filter(d=>!d.querySelector('div[role=presentation]')&&d.innerText.includes(t)).pop();if(!el)return 'nf';el.click();await this.sl(1200);return 'ok '+this.pct()},
+async ok(n){const b=this.blk(n);const k=[...b.querySelectorAll('button')].filter(x=>/^OK/.test(x.innerText.trim())).shift();if(k)k.click();await this.sl(1800);return this.pct()},
+show(n){const b=this.blk(n);if(!b)return '(no '+n+') '+document.body.innerText.replace(/\n+/g,' | ').slice(-200);const t=b.querySelector('p')?.innerText||'';const os=[...b.querySelectorAll('div[role=presentation]')].filter(d=>!d.querySelector('div[role=presentation]')).map((d,i)=>i+')'+d.innerText.trim().replace(/\n.*$/,'').slice(0,110));const inp=b.querySelector('input,textarea');return n+'. '+t.slice(0,260)+'\n'+os.join('\n')+(inp?'\n[TEXT type='+inp.type+' ph='+inp.placeholder+']':'')},
+async step(n,t){const r=await this.opt(n,t);if(!this.blk(n+1))await this.ok(n);await this.sl(500);if(!this.blk(n+1))await this.sl(1500);return r+' '+this.pct()+'\n'+this.show(n+1)},
+async multi(n,ts){for(const t of ts)await this.opt(n,t);if(!this.blk(n+1))await this.ok(n);await this.sl(800);return this.pct()+'\n'+this.show(n+1)},
+async tstep(n,v){const r=await this.text(n,v);await this.ok(n);await this.sl(500);return 'val['+r+'] '+this.pct()+'\n'+this.show(n+1)},
+async send(){const e=[...document.querySelectorAll('button')].find(b=>b.innerText.trim().startsWith('Enviar'));if(!e)return 'noenviar';e.click();await this.sl(4000);return document.body.innerText.replace(/\n+/g,' | ').slice(-150)}};
+Q.show(1)

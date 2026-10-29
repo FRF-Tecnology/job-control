@@ -110,3 +110,26 @@ test('primeira vez: copia plataformas do modelo só se ainda não existirem', as
   assert.ok(criarArmazem(dir).carregar().plataformas.some(p => p.id === 'linkedin'));
   assert.equal(prepararPrimeiraVez(dir, join(raiz, 'modelo-dados')), false);
 });
+
+test('cli script preenche marcadores com perfil, chave e lista de empresas', () => {
+  const dir = novoDir();
+  writeFileSync(join(dir, 'perfil.json'), JSON.stringify({ nome: 'Fulano', email: 'f@x.com', telefone: '(11) 98888-7777', linkedin: 'https://l/in/f', pretensaoCLT: 5000, pretensaoPJ: 7000 }));
+  writeFileSync(join(dir, '.chave'), 'abc123');
+  const ih = cli(dir, 'script', 'inhire-IH');
+  assert.equal(ih.status, 0, ih.stderr);
+  assert.match(ih.stdout, /name:'Fulano'/);
+  assert.match(ih.stdout, /phone:'11988887777'/);
+  assert.doesNotMatch(ih.stdout, /\{\{/);
+  const bi = cli(dir, 'script', 'busca-inhire', '--dias', '3');
+  assert.match(bi.stdout, /CHAVE = 'abc123'/);
+  assert.match(bi.stdout, /DESDE = '2026-10-26'/);
+  assert.match(bi.stdout, /"db1"/);
+  const bl = cli(dir, 'script', 'busca-linkedin', '--palavras', '["java","spring"]');
+  assert.match(bl.stdout, /PALAVRAS = \["java","spring"\]/);
+});
+
+test('cli add --uri aceita lista codificada (plano B dos scripts de busca)', () => {
+  const dir = novoDir();
+  const r = cli(dir, 'add', '--uri', encodeURIComponent(JSON.stringify([{ id: 'u1', empresa: 'Uri', titulo: 'Java' }])));
+  assert.match(r.stdout, /adicionadas: 1/);
+});

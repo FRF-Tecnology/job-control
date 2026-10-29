@@ -87,3 +87,34 @@ test('exporta CSV com cabeçalho', async () => {
   assert.match(t.split('\n')[0], /empresa/);
   assert.match(t, /Acme/);
 });
+
+test('importar sem a chave local responde 403', async () => {
+  const r = await fetch(url + '/api/importar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '[]' });
+  assert.equal(r.status, 403);
+});
+
+test('importar com a chave adiciona em lote e libera CORS', async () => {
+  const chave = (await (await api('/api/chave')).json()).chave;
+  const pre = await fetch(url + '/api/importar', { method: 'OPTIONS', headers: { origin: 'https://www.linkedin.com', 'access-control-request-method': 'POST', 'access-control-request-private-network': 'true' } });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get('access-control-allow-private-network'), 'true');
+  const r = await fetch(url + '/api/importar', { method: 'POST', headers: { 'content-type': 'application/json', 'x-central-chave': chave, origin: 'https://www.linkedin.com' }, body: JSON.stringify([{ id: 'imp-1', empresa: 'Nova', titulo: 'Java Jr' }, { id: 'x1', empresa: 'Acme', titulo: 'Java Pleno' }]) });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('access-control-allow-origin'), '*');
+  const res = await r.json();
+  assert.deepEqual([res.adicionadas.length, res.duplicadas.length], [1, 1]);
+});
+
+test('a chave só é entregue para a própria central (sem CORS)', async () => {
+  const r = await api('/api/chave');
+  assert.equal(r.headers.get('access-control-allow-origin'), null);
+});
+
+test('recusa requisições com Host de fora (proteção contra DNS rebinding)', async () => {
+  const { request } = await import('node:http');
+  const status = await new Promise(ok => {
+    const req = request({ host: '127.0.0.1', port: srv.address().port, path: '/api/chave', headers: { host: 'atacante.exemplo:80' } }, res => { res.resume(); ok(res.statusCode); });
+    req.end();
+  });
+  assert.equal(status, 403);
+});

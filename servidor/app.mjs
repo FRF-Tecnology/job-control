@@ -1,6 +1,7 @@
 // Servidor HTTP da Central: API JSON + arquivos da interface. Sem dependências.
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join, resolve, extname, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { criarArmazem } from '../nucleo/armazenamento.mjs';
@@ -40,6 +41,12 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
 
   const ctx = extra => ({ autor: 'eu', agora: hoje(), diasFollowUp: Number(armazem.carregar().perfil?.diasFollowUp) || 7, ...extra });
   const gravar = fn => { const r = armazem.transacao(fn); gravacoes++; return r; };
+  // Chave local: só quem lê dados/.chave (o Claude, nesta máquina) consegue importar de outros sites.
+  const arqChave = join(dir, '.chave');
+  if (!existsSync(arqChave)) writeFileSync(arqChave, randomBytes(18).toString('hex'));
+  const chave = readFileSync(arqChave, 'utf8').trim();
+  const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type, x-central-chave', 'access-control-allow-private-network': 'true' };
+
   const versao = () => `${gravacoes}-${ARQ_DADOS.map(a => { const p = join(dir, a); return existsSync(p) ? `${statSync(p).mtimeMs}:${statSync(p).size}` : '0'; }).join('|')}`;
 
   function servirArquivo(res, caminho) {
@@ -65,6 +72,33 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
     const url = new URL(req.url, 'http://local');
     const p = url.pathname;
     const m = req.method;
+
+    // Só atende quem chama pelo próprio computador (evita DNS rebinding).
+    const host = String(req.headers.host ?? '').replace(/:\d+$/, '');
+    if (!['localhost', '127.0.0.1', '[::1]'].includes(host)) return enviar(res, 403, { erro: 'acesso só pelo próprio computador' });
+
+    if (p === '/api/importar') {
+      if (m === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+      for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
+      if (m !== 'POST') return enviar(res, 405, { erro: 'use POST' });
+      if (req.headers['x-central-chave'] !== chave) return enviar(res, 403, { erro: 'chave inválida' });
+      const lista = [].concat(await lerCorpo(req));
+      const r = { adicionadas: [], duplicadas: [], erros: [] };
+      gravar(estado => {
+        for (const dados of lista) {
+          try {
+            ({ estado } = adicionarVaga(estado, dados, ctx({ autor: 'claude' })));
+            r.adicionadas.push(dados.id);
+          } catch (e) {
+            if (e instanceof ErroDuplicata) r.duplicadas.push({ id: dados.id, existente: e.existente.id, etapa: e.existente.etapa });
+            else r.erros.push({ id: dados.id ?? null, erro: e.message });
+          }
+        }
+        return { estado };
+      });
+      return enviar(res, 200, r);
+    }
+    if (m === 'GET' && p === '/api/chave') return enviar(res, 200, { chave });
 
     if (!p.startsWith('/api/')) return m === 'GET' ? servirArquivo(res, p) : enviar(res, 405, { erro: 'método não permitido' });
 

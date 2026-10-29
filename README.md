@@ -1,0 +1,55 @@
+# Central de Candidaturas
+
+Um painel local para organizar a busca de emprego: o que foi encontrado, o que você decidiu, o que foi enviado, o que travou e quando fazer follow-up.
+O Claude Code busca e aplica. Você decide e acompanha na tela.
+
+Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. Nada sai da máquina.
+
+## Abrir
+1. Instale o [Node.js](https://nodejs.org) 18 ou mais novo (só uma vez).
+2. Dê dois cliques em **`iniciar.bat`** (Windows) ou rode `./iniciar.sh` (Mac/Linux).
+3. O navegador abre em http://localhost:4321. Para desligar, feche a janela preta.
+
+## Primeira vez (computador novo)
+1. Abra a Central. Ela cria a pasta `dados/` com as plataformas conhecidas.
+2. Em **Perfil e regras**, preencha nome, contato, pretensões, inglês, formação, filtros e respostas padrão, e clique em **Salvar perfil**.
+3. Coloque seus currículos em `dados/curriculos/` (`curriculo-pt.pdf` e, se tiver, `resume-en.pdf`).
+4. Abra o Claude Code **nesta pasta** e peça `/rodada`.
+
+## As telas
+| Tela | Para quê |
+|---|---|
+| **Hoje** | O que fazer agora: o que travou esperando você, follow-ups do dia, processos andando, quantas vagas esperam triagem |
+| **Triagem** | Uma vaga por vez: `A` aplica, `P` pula (com motivo), `→` deixa para depois |
+| **Quadro** | Todas as vagas por etapa; arraste os cartões entre colunas |
+| **Vagas** | Tabela com busca e filtros. Clique para ver o detalhe: respostas dadas, linha do tempo, notas |
+| **Números** | Funil, envios por semana, retorno por plataforma e por aderência, motivos de pulo |
+| **Plataformas** | Onde procurar, como aplicar e as limitações de cada site |
+| **Rodadas** | O histórico de cada rodada do Claude |
+| **Perfil e regras** | Seus dados e as regras que o Claude segue |
+
+## Comandos do Claude Code (nesta pasta)
+| Comando | O que faz |
+|---|---|
+| `/buscar [plataforma] [dias]` | Procura vagas novas e coloca na Triagem |
+| `/triagem` | Resume o que espera decisão |
+| `/aplicar [máx]` | Aplica as vagas aprovadas; o que travar vira "Precisa de você" |
+| `/status` | Confere retornos e encerramentos |
+| `/followup` | Lista os follow-ups vencidos com mensagem sugerida (só envia com seu ok) |
+| `/rodada [máx]` | Tudo acima, em ordem, e atualiza o histórico |
+
+## Regras de segurança
+- CPF, RG, senhas e dados bancários nunca são preenchidos pelo Claude nem guardados na Central.
+- O Claude não inventa experiência e não envia mensagens em seu nome sem um "pode mandar".
+- A Central só atende o próprio computador. Os scripts de busca usam uma chave local (`dados/.chave`).
+- Na primeira busca, o Chrome pode perguntar se o LinkedIn, a Gupy ou a InHire podem **acessar dispositivos da rede local**. Permitir deixa as vagas irem direto para a Central. Se você negar, o Claude copia as vagas em partes (mais lento, mas funciona).
+
+## Para quem mexe no código
+- `nucleo/`: regras (validação, deduplicação, funil, follow-up, armazenamento). Puro e testado.
+- `servidor/`: API local (`node:http`, sem dependências).
+- `web/`: interface (HTML/CSS/JS puros, módulos ES).
+- `ferramentas/cli.mjs`: o que o Claude usa para gravar.
+- `automacao/`: scripts de navegador e notas por plataforma.
+- `dados/`: **seus dados, fora do git**. Backup diário automático em `dados/backups/`.
+
+Testes: `npm test`.

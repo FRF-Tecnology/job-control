@@ -11,10 +11,12 @@ import { acharDuplicata } from '../nucleo/dedupe.mjs';
 import { validarVaga } from '../nucleo/validacao.mjs';
 import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
-import { hojeISO } from '../nucleo/modelo.mjs';
+import { hojeISO, somarDias } from '../nucleo/modelo.mjs';
+import { existsSync } from 'node:fs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
-const armazem = criarArmazem(process.env.CENTRAL_DADOS || join(raiz, 'dados'));
+const dirDados = process.env.CENTRAL_DADOS || join(raiz, 'dados');
+const armazem = criarArmazem(dirDados);
 const hoje = process.env.CENTRAL_HOJE || hojeISO();
 
 const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
@@ -23,7 +25,8 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   listar [--etapa e] [--plataforma p]      uma vaga por linha
   ver <id>                                 vaga completa + eventos (JSON)
   dup <empresa> <título>                   avisa se a vaga já existe
-  add --json '{...}' | --arquivo x.json    adiciona uma vaga ou uma lista
+  add --json '{...}' | --arquivo x.json | --uri <lista codificada>
+                                           adiciona uma vaga ou uma lista
       [--forcar]                           aceita mesmo empresa+título se o id for outro (vaga republicada)
   mover <id> <etapa> [--motivo t] [--pendencia t] [--sub s]
         [--rodada n] [--curriculo PT|EN] [--pretensao n] [--respostas t] [--data AAAA-MM-DD]
@@ -35,7 +38,11 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   plataforma --json '{"id":"..."}'         cria/atualiza uma plataforma
   validar                                  confere todos os dados
   exportar-md [arquivo]                    histórico em Markdown (stdout ou arquivo)
-  backup                                   cópia de hoje em dados/backups/`;
+  backup                                   cópia de hoje em dados/backups/
+  chave                                    chave local usada pelos scripts de busca
+  script <nome> [--palavras '["java"]'] [--dias 7] [--geo 106057199] [--central url]
+                                           imprime automacao/<nome>.js com os marcadores preenchidos
+                                           (busca-linkedin, busca-gupy, busca-inhire, inhire-IH, inhire-Q, linkedin-LI)`;
 
 function opcoes(args) {
   const o = { _: [] };
@@ -73,7 +80,7 @@ function comandos(cmd, o) {
     }
 
     case 'add': {
-      const bruto = o.arquivo ? readFileSync(o.arquivo, 'utf8') : o.json;
+      const bruto = o.arquivo ? readFileSync(o.arquivo, 'utf8') : o.uri ? decodeURIComponent(o.uri) : o.json;
       if (!bruto) sair('informe --json ou --arquivo');
       const lista = [].concat(JSON.parse(bruto));
       const r = { adicionadas: [], duplicadas: [], erros: [] };
@@ -180,6 +187,34 @@ function comandos(cmd, o) {
       const md = gerarHistoricoMd(armazem.carregar(), hoje);
       if (o._[0]) { writeFileSync(o._[0], md, 'utf8'); return console.log(`ok: ${o._[0]}`); }
       return console.log(md);
+    }
+
+    case 'chave': {
+      const arq = join(dirDados, '.chave');
+      return console.log(existsSync(arq) ? readFileSync(arq, 'utf8').trim() : 'ainda não existe: abra a Central uma vez (iniciar.bat)');
+    }
+
+    case 'script': {
+      const nome = String(o._[0] ?? '').replace(/\.js$/, '');
+      const arq = join(raiz, 'automacao', `${nome}.js`);
+      if (!/^[a-z-]+$/i.test(nome) || !existsSync(arq)) sair(`script não encontrado: ${nome}`);
+      const perfil = armazem.carregar().perfil ?? {};
+      const arqChave = join(dirDados, '.chave');
+      const empresas = readFileSync(join(raiz, 'automacao', 'inhire-empresas.txt'), 'utf8').split(/\r?\n/).filter(l => !l.startsWith('#')).join(' ').split(/\s+/).filter(Boolean);
+      const valores = {
+        central: o.central || `http://localhost:${process.env.PORT || 4321}`,
+        chave: existsSync(arqChave) ? readFileSync(arqChave, 'utf8').trim() : '',
+        palavras: o.palavras || JSON.stringify(['java', 'spring boot', 'desenvolvedor java', 'backend java', 'full stack java', 'desenvolvedor full stack', 'desenvolvedor backend', 'react node']),
+        dias: String(o.dias || 7),
+        geo: String(o.geo || '106057199'),
+        desde: somarDias(hoje, -(Number(o.dias) || 7)),
+        empresas: JSON.stringify(empresas),
+        nome: perfil.nome ?? '', email: perfil.email ?? '', linkedin: perfil.linkedin ?? '',
+        telefoneSoNumeros: String(perfil.telefone ?? '').replace(/\D/g, ''),
+        pretensaoCLT: String(perfil.pretensaoCLT ?? ''), pretensaoPJ: String(perfil.pretensaoPJ ?? ''),
+      };
+      const js = readFileSync(arq, 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => (k in valores ? valores[k] : m));
+      return console.log(js);
     }
 
     case 'backup':
