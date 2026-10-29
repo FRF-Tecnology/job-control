@@ -1,1 +1,35 @@
-<!doctype html><title>Central</title>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Central de Candidaturas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E6E6A'/%3E%3Cpath d='M7 20h18M7 14h12M7 8h6' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/web/estilo.css">
+  <script>
+    try { const t = localStorage.getItem('tema'); if (t) document.documentElement.dataset.tema = t; } catch {}
+  </script>
+</head>
+<body>
+  <a class="pular-link" href="#conteudo">Ir para o conteúdo</a>
+  <div class="moldura">
+    <nav class="lateral" aria-label="Seções">
+      <a class="marca" href="#/hoje" aria-label="Central de Candidaturas — início">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 22h18M7 16h12M7 10h6" /></svg>
+        <span>Central</span>
+      </a>
+      <ul class="menu" id="menu"></ul>
+      <div class="lateral-pe">
+        <button class="botao-fantasma" id="alternar-tema" type="button">Tema</button>
+        <span class="status-conexao" id="conexao" role="status"></span>
+      </div>
+    </nav>
+    <main id="conteudo" tabindex="-1"></main>
+  </div>
+  <aside class="gaveta" id="gaveta" aria-label="Detalhe da vaga" hidden></aside>
+  <div class="veu" id="veu" hidden></div>
+  <dialog id="dialogo"></dialog>
+  <div class="avisos" id="avisos" aria-live="polite"></div>
+  <script type="module" src="/web/app.mjs"></script>
+</body>
+</html>

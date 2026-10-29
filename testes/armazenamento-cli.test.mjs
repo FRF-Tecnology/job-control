@@ -102,3 +102,11 @@ test('cli add --forcar inclui vaga com mesmo título e id diferente', () => {
   const r = cli(dir, 'add', '--forcar', '--json', JSON.stringify({ id: 'b', empresa: 'DB1', titulo: 'Java Pleno' }));
   assert.match(r.stdout, /adicionadas: 1/);
 });
+
+test('primeira vez: copia plataformas do modelo só se ainda não existirem', async () => {
+  const { prepararPrimeiraVez } = await import('../nucleo/armazenamento.mjs');
+  const dir = novoDir();
+  assert.equal(prepararPrimeiraVez(dir, join(raiz, 'modelo-dados')), true);
+  assert.ok(criarArmazem(dir).carregar().plataformas.some(p => p.id === 'linkedin'));
+  assert.equal(prepararPrimeiraVez(dir, join(raiz, 'modelo-dados')), false);
+});

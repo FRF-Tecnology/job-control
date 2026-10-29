@@ -2,13 +2,14 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { criarServidor } from './app.mjs';
-import { criarArmazem } from '../nucleo/armazenamento.mjs';
+import { criarArmazem, prepararPrimeiraVez } from '../nucleo/armazenamento.mjs';
 import { hojeISO } from '../nucleo/modelo.mjs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = process.env.CENTRAL_DADOS || join(raiz, 'dados');
 const inicial = Number(process.env.PORT) || 4321;
 
+if (prepararPrimeiraVez(dir, join(raiz, 'modelo-dados'))) console.log('Primeira vez: plataformas iniciais copiadas para dados/. Preencha seu perfil na tela "Perfil e regras".');
 criarArmazem(dir).backupDiario(hojeISO());
 
 function tentar(porta, restantes) {

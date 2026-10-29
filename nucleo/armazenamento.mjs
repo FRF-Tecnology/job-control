@@ -57,3 +57,12 @@ export function criarArmazem(dir) {
 
   return { dir, carregar, salvar, transacao, backupDiario };
 }
+
+// Computador novo: começa com as plataformas conhecidas. Devolve true se preparou algo.
+export function prepararPrimeiraVez(dir, modeloDir) {
+  mkdirSync(join(dir, 'curriculos'), { recursive: true });
+  const destino = join(dir, 'plataformas.json');
+  if (existsSync(destino) || !existsSync(join(modeloDir, 'plataformas.json'))) return false;
+  copyFileSync(join(modeloDir, 'plataformas.json'), destino);
+  return true;
+}

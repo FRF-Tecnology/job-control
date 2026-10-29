@@ -52,7 +52,7 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
     else return enviar(res, 404, { erro: 'não encontrado' });
     const alvo = resolve(base, rel);
     if (!alvo.startsWith(base + sep) || !existsSync(alvo) || !statSync(alvo).isFile()) return enviar(res, 404, { erro: 'não encontrado' });
-    res.writeHead(200, { 'content-type': TIPOS[extname(alvo)] ?? 'application/octet-stream', 'cache-control': 'no-cache' });
+    res.writeHead(200, { 'content-type': TIPOS[extname(alvo)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
     res.end(readFileSync(alvo));
   }
 
