@@ -9,7 +9,7 @@ Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação
 - A pessoa acompanha tudo ao vivo em http://localhost:4321 (aberto com `iniciar.bat` / `iniciar.sh`).
   Os scripts de busca precisam da Central aberta.
 - Antes de aplicar qualquer vaga, rode `cli.mjs dup "<empresa>" "<título>"`. Se der "JÁ EXISTE", não aplique de novo.
-- Fim de cada rodada: `cli.mjs rodada --json '{...}'` e `cli.mjs exportar-md ../historico-candidaturas.md`
+- Fim de cada rodada: `cli.mjs rodada --json '{...}'` e `cli.mjs exportar-md ../historico-central.md`
   (ou outro caminho que a pessoa preferir).
 
 ## Regras que não mudam

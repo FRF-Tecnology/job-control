@@ -10,6 +10,6 @@ Faça uma rodada completa, nesta ordem:
 5. `/followup` (só listar).
 6. Feche a rodada:
    - `cli.mjs rodada --json '{"n":<próximo número>,"fontes":[...],"encontradas":N,"enviadas":N,"puladas":N,"bloqueadas":N,"resumo":"<uma frase>"}'`
-   - `cli.mjs exportar-md ../historico-candidaturas.md`
+   - `cli.mjs exportar-md ../historico-central.md`
    - `cli.mjs backup`
 7. Responda em poucas linhas: enviadas, o que precisa da pessoa e quantas esperam triagem.
