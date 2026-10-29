@@ -45,7 +45,7 @@ export function telaHoje(app) {
 
     h('nav.esteira', { 'aria-label': 'Etapas' }, ESTEIRA.map(s => {
       const n = conta(s.etapa);
-      return h(`a.e-${s.etapa}`, { href: `#/${s.rota}`, style: { '--peso': String(0.6 + n / maior), borderTopColor: `var(--e-${s.etapa})` } },
+      return h(`a.e-${s.etapa}`, { href: `#/${s.rota}`, style: { '--peso': String(0.6 + n / maior) } },
         h('span.n', String(n)), h('span.r', s.rotulo));
     })),
 

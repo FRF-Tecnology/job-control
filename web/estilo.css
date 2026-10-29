@@ -120,10 +120,10 @@ label.campo > span { font-weight: 600; }
 
 /* ---------- esteira (o elemento marcante do Hoje) ---------- */
 .esteira { display: flex; gap: 3px; margin: 6px 0 30px; }
-.esteira a { flex: var(--peso) 1 0; min-width: 92px; display: grid; gap: 2px; padding: 14px 14px 12px; background: var(--superficie); color: var(--tinta); text-decoration: none; border-top: 5px solid var(--cor); box-shadow: var(--sombra); }
+.esteira a { flex: var(--peso) 1 0; min-width: 92px; display: grid; gap: 2px; padding: 14px 14px 12px; background: linear-gradient(var(--cor), var(--cor)) top / 100% 5px no-repeat, var(--superficie); color: var(--tinta); text-decoration: none; box-shadow: var(--sombra); }
 .esteira a:first-child { border-radius: var(--raio) 0 0 var(--raio); }
 .esteira a:last-child { border-radius: 0 var(--raio) var(--raio) 0; }
-.esteira a:hover { background: var(--superficie-2); }
+.esteira a:hover { background: linear-gradient(var(--cor), var(--cor)) top / 100% 5px no-repeat, var(--superficie-2); }
 .esteira .n { font: 600 2.6rem/1 var(--fonte-display); font-variant-numeric: tabular-nums; }
 .esteira .r { font-size: .82rem; color: var(--tinta-2); }
 
@@ -151,7 +151,7 @@ label.campo > span { font-weight: 600; }
 .coluna { background: var(--superficie-2); border-radius: var(--raio); padding: 10px; min-height: 240px; display: flex; flex-direction: column; gap: 8px; }
 .coluna > header { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 6px; }
 .coluna.sobre { outline: 2px dashed var(--destaque); outline-offset: -4px; }
-.cartao { background: var(--superficie); border-radius: var(--raio-p); padding: 10px 12px; border-left: 4px solid var(--cor, var(--linha)); box-shadow: 0 1px 2px rgb(16 48 46 / .08); cursor: grab; display: grid; gap: 4px; }
+.cartao { background: var(--superficie); border-radius: var(--raio-p); padding: 10px 12px; box-shadow: 0 1px 2px rgb(16 48 46 / .08); cursor: grab; display: grid; gap: 4px; }
 .cartao:active { cursor: grabbing; }
 .cartao .t { font-weight: 600; font-size: .9rem; line-height: 1.3; }
 .cartao .m { font-size: .8rem; color: var(--tinta-2); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
@@ -161,7 +161,7 @@ label.campo > span { font-weight: 600; }
 /* ---------- triagem ---------- */
 .triagem { max-width: 760px; margin: 0 auto; }
 .progresso { height: 6px; border-radius: 99px; background: var(--superficie-2); overflow: hidden; margin: 8px 0 20px; }
-.progresso > i { display: block; height: 100%; background: var(--destaque); transition: width .25s; }
+.progresso > i { display: block; height: 100%; width: 100%; background: var(--destaque); transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform .25s; }
 .ficha { background: var(--superficie); border-radius: 14px; box-shadow: var(--sombra); padding: clamp(18px, 4vw, 34px); display: grid; gap: 16px; }
 .ficha .empresa { font: 600 1rem var(--fonte-display); color: var(--tinta-2); }
 .ficha h2 { font-size: 1.8rem; line-height: 1.15; }
@@ -192,9 +192,10 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 .gaveta dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: .9rem; }
 .gaveta dt { color: var(--tinta-2); }
 .gaveta dd { margin: 0; overflow-wrap: anywhere; }
-.linha-tempo { list-style: none; margin: 0; padding: 0 0 0 16px; border-left: 2px solid var(--linha); display: grid; gap: 12px; }
+.linha-tempo { position: relative; list-style: none; margin: 0; padding: 0 0 0 18px; display: grid; gap: 12px; }
+.linha-tempo::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; border-radius: 1px; background: var(--linha); }
 .linha-tempo li { position: relative; font-size: .88rem; }
-.linha-tempo li::before { content: ""; position: absolute; left: -22px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--cor, var(--tinta-3)); border: 2px solid var(--superficie); }
+.linha-tempo li::before { content: ""; position: absolute; left: -24px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--cor, var(--tinta-3)); border: 2px solid var(--superficie); }
 .linha-tempo .q { color: var(--tinta-3); font-size: .8rem; }
 
 /* ---------- números ---------- */
@@ -213,7 +214,7 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 
 /* ---------- plataformas / perfil ---------- */
 .plataformas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-.plataforma { background: var(--superficie); border-radius: var(--raio); padding: 16px 18px; box-shadow: var(--sombra); display: grid; gap: 8px; border-top: 4px solid var(--cor); }
+.plataforma { border-radius: var(--raio); padding: 16px 18px; box-shadow: var(--sombra); display: grid; gap: 8px; background: linear-gradient(var(--cor), var(--cor)) top / 100% 4px no-repeat, var(--superficie); }
 .plataforma.s-automatizada { --cor: var(--destaque); } .plataforma.s-manual { --cor: var(--e-em-processo); }
 .plataforma.s-a-testar { --cor: var(--ambar); } .plataforma.s-descartada { --cor: var(--e-pulada); }
 .formulario { display: grid; gap: 14px; max-width: 860px; }

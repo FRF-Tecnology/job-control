@@ -53,7 +53,7 @@ export function telaTriagem(app) {
   const feitosPct = total ? Math.round(((total - fila.length) / total) * 100) : 0;
 
   return h('div.triagem', cab,
-    h('div.progresso', { role: 'progressbar', 'aria-valuenow': feitosPct, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': 'Progresso da triagem' }, h('i', { style: { width: `${feitosPct}%` } })),
+    h('div.progresso', { role: 'progressbar', 'aria-valuenow': feitosPct, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': 'Progresso da triagem' }, h('i', { style: { '--p': String(feitosPct / 100) } })),
     h('article.ficha', { 'aria-live': 'polite' },
       h('div.acoes', { style: { justifyContent: 'space-between', alignItems: 'center' } },
         h('span.empresa', v.empresa),
