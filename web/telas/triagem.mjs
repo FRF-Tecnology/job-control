@@ -5,6 +5,7 @@ import { MOTIVOS_PULO } from '../../nucleo/modelo.mjs';
 const ordem = v => ({ A: 0, B: 1, C: 2 }[v.aderencia] ?? 3);
 let puladasNestaSessao = new Set();
 let ouvinte = null;
+let ocupado = false; // evita agir duas vezes na mesma vaga se a pessoa apertar teclas rápido
 
 export function telaTriagem(app) {
   const fila = app.estado.vagas
@@ -31,11 +32,12 @@ export function telaTriagem(app) {
       puladasNestaSessao.size ? h('button.botao-fantasma', { type: 'button', on: { click: () => { puladasNestaSessao = new Set(); app.renderizar(); } } }, 'Rever as adiadas') : h('a.botao', { href: '#/quadro' }, 'Ver o quadro')));
   }
 
-  const aplicar = () => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a fila do Claude`);
-  const pular = async () => {
+  const umaVez = fn => async () => { if (ocupado) return; ocupado = true; try { await fn(); } finally { ocupado = false; } };
+  const aplicar = umaVez(() => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a fila do Claude`));
+  const pular = umaVez(async () => {
     const motivo = await app.perguntar({ titulo: 'Por que pular?', texto: `${v.empresa} — ${v.titulo}`, opcoes: MOTIVOS_PULO });
-    if (motivo) app.mover(v.id, 'pulada', { motivo }, 'Pulada');
-  };
+    if (motivo) await app.mover(v.id, 'pulada', { motivo }, 'Pulada');
+  });
   const depois = () => { puladasNestaSessao.add(v.id); app.renderizar(); };
 
   ouvinte = ev => {

@@ -7,8 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { criarArmazem } from '../nucleo/armazenamento.mjs';
 import { adicionarVaga, moverVaga, registrarEvento, followUpFeito, adiarFollowUp, atualizarVaga, ErroDuplicata, ErroValidacao } from '../nucleo/servico.mjs';
 import { resumo } from '../nucleo/funil.mjs';
-import { acharDuplicata } from '../nucleo/dedupe.mjs';
-import { validarVaga } from '../nucleo/validacao.mjs';
+import { duplicatasPorTitulo } from '../nucleo/dedupe.mjs';
+import { validarVaga, contemDocumentoEm } from '../nucleo/validacao.mjs';
+import { randomBytes } from 'node:crypto';
 import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
 import { hojeISO, somarDias } from '../nucleo/modelo.mjs';
@@ -75,8 +76,11 @@ function comandos(cmd, o) {
     }
 
     case 'dup': {
-      const d = acharDuplicata(armazem.carregar().vagas, { id: '\0', empresa: o._[0], titulo: o._[1] });
-      return console.log(d ? `JÁ EXISTE: ${d.id} | ${d.etapa} | ${d.empresa} | ${d.titulo}` : 'nova');
+      // Lista todas as vagas com a mesma empresa+título, menos a indicada em --excluir (a própria vaga).
+      const ds = duplicatasPorTitulo(armazem.carregar().vagas, { empresa: o._[0], titulo: o._[1] }, o.excluir);
+      if (!ds.length) return console.log('nova');
+      for (const d of ds) console.log(`JÁ EXISTE: ${d.id} | ${d.etapa} | ${d.empresa} | ${d.titulo}${d.envio?.data ? ` | enviada ${d.envio.data}` : ''}`);
+      return;
     }
 
     case 'add': {
@@ -151,6 +155,7 @@ function comandos(cmd, o) {
     case 'rodada': {
       const r = JSON.parse(o.json);
       if (r.n == null) sair('a rodada precisa de "n"');
+      if (contemDocumentoEm(r)) sair('recusado: parece conter CPF/RG');
       armazem.transacao(e => {
         const rodadas = e.rodadas.filter(x => x.n !== r.n);
         rodadas.push({ data: hoje, ...e.rodadas.find(x => x.n === r.n), ...r });
@@ -163,6 +168,8 @@ function comandos(cmd, o) {
     case 'plataforma': {
       const p = JSON.parse(o.json);
       if (!p.id) sair('a plataforma precisa de "id"');
+      if (contemDocumentoEm(p)) sair('recusado: parece conter CPF/RG');
+      if (!p.nome && !armazem.carregar().plataformas.some(x => x.id === p.id)) p.nome = p.id;
       armazem.transacao(e => {
         const atual = e.plataformas.find(x => x.id === p.id) ?? {};
         return { estado: { ...e, plataformas: [...e.plataformas.filter(x => x.id !== p.id), { ...atual, ...p }] } };
@@ -191,6 +198,7 @@ function comandos(cmd, o) {
 
     case 'chave': {
       const arq = join(dirDados, '.chave');
+      if (o.nova) { writeFileSync(arq, randomBytes(18).toString('hex')); return console.log('chave trocada — reinicie a Central (iniciar.bat) para valer'); }
       return console.log(existsSync(arq) ? readFileSync(arq, 'utf8').trim() : 'ainda não existe: abra a Central uma vez (iniciar.bat)');
     }
 
@@ -202,7 +210,7 @@ function comandos(cmd, o) {
       const arqChave = join(dirDados, '.chave');
       const empresas = readFileSync(join(raiz, 'automacao', 'inhire-empresas.txt'), 'utf8').split(/\r?\n/).filter(l => !l.startsWith('#')).join(' ').split(/\s+/).filter(Boolean);
       const valores = {
-        central: o.central || `http://localhost:${process.env.PORT || 4321}`,
+        central: o.central || `http://localhost:${process.env.PORT || (existsSync(join(dirDados, '.porta')) ? readFileSync(join(dirDados, '.porta'), 'utf8').trim() : 4321)}`,
         chave: existsSync(arqChave) ? readFileSync(arqChave, 'utf8').trim() : '',
         palavras: o.palavras || JSON.stringify(['java', 'spring boot', 'desenvolvedor java', 'backend java', 'full stack java', 'desenvolvedor full stack', 'desenvolvedor backend', 'react node']),
         dias: String(o.dias || 7),
@@ -213,7 +221,10 @@ function comandos(cmd, o) {
         telefoneSoNumeros: String(perfil.telefone ?? '').replace(/\D/g, ''),
         pretensaoCLT: String(perfil.pretensaoCLT ?? ''), pretensaoPJ: String(perfil.pretensaoPJ ?? ''),
       };
-      const js = readFileSync(arq, 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => (k in valores ? valores[k] : m));
+      // Valores de texto entram como literais JSON (aspas e apóstrofos não quebram o script);
+      // palavras e empresas já são listas JSON.
+      const literal = k => (['palavras', 'empresas'].includes(k) ? valores[k] : JSON.stringify(valores[k]));
+      const js = readFileSync(arq, 'utf8').replace(/'?\{\{(\w+)\}\}'?/g, (m, k) => (k in valores ? literal(k) : m));
       return console.log(js);
     }
 

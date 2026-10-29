@@ -43,9 +43,23 @@ export function abrirDetalhe(app, id) {
 
   const notas = h('textarea#notas-vaga', { placeholder: 'Anotações: recrutador, dúvidas, próximos passos…' });
   notas.value = v.notas ?? '';
-  const salvarNotas = () => {
-    if ((v.notas ?? '') === notas.value) return;
-    app.agir(() => app.api(`/api/vagas/${encodeURIComponent(id)}`, 'PATCH', { notas: notas.value }), 'Notas salvas');
+  const salvarNotas = async () => {
+    const minha = notas.value;
+    if ((v.notas ?? '') === minha) return;
+    const caminho = `/api/vagas/${encodeURIComponent(id)}`;
+    try {
+      await app.api(caminho, 'PATCH', { notas: minha, notasAntes: v.notas ?? '' });
+      app.aviso('Notas salvas');
+      app.sujo = false;
+      return app.recarregar();
+    } catch (e) {
+      if (!/mudaram/.test(e.message)) return app.aviso(e.message, true);
+    }
+    // Alguém (ex.: o Claude) mudou as notas enquanto você digitava: junte as duas versões.
+    const atual = (await app.api('/api/estado')).vagas.find(x => x.id === id)?.notas ?? '';
+    const juntas = await app.perguntar({ titulo: 'As notas mudaram enquanto você editava', texto: 'Juntei as duas versões. Ajuste e salve.', campo: 'Notas', valor: `${atual}\n\n${minha}`.trim(), multilinha: true, confirmar: 'Salvar notas' });
+    if (juntas == null) { app.aviso('Suas notas não foram salvas', true); return; }
+    await app.agir(() => app.api(caminho, 'PATCH', { notas: juntas, notasAntes: atual }), 'Notas salvas');
   };
   notas.addEventListener('blur', salvarNotas);
 

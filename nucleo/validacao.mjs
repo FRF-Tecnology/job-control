@@ -16,7 +16,7 @@ function cpfValido(digitos) {
 export function contemDocumento(texto) {
   const s = String(texto ?? '');
   if (/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/.test(s)) return true;
-  if (/\b(cpf|rg)\b\s*(n[ºo°.]*)?\s*[:\-]?\s*[\d.\-]{6,}/i.test(s)) return true;
+  if (/\b(cpf|rg)\b[^\d\n]{0,15}\d[\d.\-\s]{5,}/i.test(s)) return true;
   // 11 dígitos soltos: só conta se o dígito verificador de CPF bater
   // (um celular qualquer passa nessa conta em ~1% dos casos; preferimos recusar a guardar um CPF).
   for (const m of s.matchAll(/(?<!\d)\d{11}(?!\d)/g)) {
@@ -43,6 +43,25 @@ export function validarVaga(v) {
   if (v.etapa === 'bloqueada' && !String(v.pendencia ?? '').trim()) erros.push('informe a pendência (o que falta você fazer)');
   if (v.envio?.data && !ehDataISO(v.envio.data)) erros.push('data de envio deve ser AAAA-MM-DD');
   if (v.followUp?.proximo && !ehDataISO(v.followUp.proximo)) erros.push('data de follow-up deve ser AAAA-MM-DD');
+  if (v.link && !/^https?:\/\//i.test(String(v.link))) erros.push('link deve começar com http:// ou https://');
   if (textos(v).some(contemDocumento)) erros.push('parece conter CPF/RG — documentos não são guardados na central');
   return erros;
+}
+
+// Perfil: além de CPF/RG nos textos, recusa respostas padrão sobre documentos/senha e campos de senha.
+const PALAVRAS_PROIBIDAS = /\b(cpf|rg|senha|password|passwd)\b/i;
+export function perfilSensivel(perfil) {
+  const chaves = [];
+  const varrer = o => {
+    if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { chaves.push(k); varrer(v); }
+  };
+  varrer(perfil);
+  if (chaves.some(k => PALAVRAS_PROIBIDAS.test(k))) return true;
+  if ((perfil?.respostasPadrao ?? []).some(r => PALAVRAS_PROIBIDAS.test(String(r?.pergunta ?? '')) && String(r?.resposta ?? '').trim() && !/^n[aã]o\b/i.test(String(r.resposta).trim()))) return true;
+  return textos(perfil).some(contemDocumento);
+}
+
+// Qualquer objeto livre (plataforma, rodada, evento): só checa CPF/RG nos textos.
+export function contemDocumentoEm(obj) {
+  return textos(obj).some(contemDocumento);
 }

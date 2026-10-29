@@ -45,10 +45,14 @@ function novoEvento(estado, vagaId, tipo, texto, { autor, agora }) {
   return { id: `ev-${agora}-${n}-${Math.random().toString(36).slice(2, 6)}`, vagaId, tipo, data: agora, autor, texto: texto ?? '' };
 }
 
-export function adicionarVaga(estado, dados, ctx, { forcar = false } = {}) {
+export function adicionarVaga(estado, dados, ctx, { forcar: forcarLote = false } = {}) {
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) throw new ErroValidacao(['vaga vazia ou inválida']);
+  // "forcar" pode vir no próprio item (vaga republicada) ou valer para o lote inteiro.
+  const { forcar: forcarItem, ...resto } = dados;
+  const forcar = Boolean(forcarLote || forcarItem);
   const vaga = {
     plataforma: 'outra', etapa: 'descoberta', descobertaEm: ctx.agora, atualizadoEm: ctx.agora,
-    ...dados,
+    ...resto,
   };
   exigirValida(vaga);
   const mesmoId = estado.vagas.find(v => v.id === vaga.id);
@@ -65,13 +69,21 @@ export function moverVaga(estado, id, etapa, extras = {}, ctx) {
   if (!ETAPAS.includes(etapa)) throw new ErroValidacao([`etapa desconhecida: ${etapa}`]);
   const novo = clonar(estado);
   const i = acharIndice(novo, id);
-  const v = { ...novo.vagas[i], ...extras, etapa, atualizadoEm: ctx.agora };
+  const antes = novo.vagas[i];
+  // Só estes campos podem vir junto de uma mudança de etapa.
+  const v = { ...antes, etapa, atualizadoEm: ctx.agora };
+  if (extras.motivo !== undefined) v.motivo = extras.motivo;
+  if (extras.pendencia !== undefined) v.pendencia = extras.pendencia;
+  if (extras.subEtapa !== undefined) v.subEtapa = extras.subEtapa;
   if (etapa !== 'bloqueada') v.pendencia = extras.pendencia ?? null;
   if (etapa !== 'pulada' && etapa !== 'encerrada' && !extras.motivo) v.motivo = null;
-  if (etapa === 'enviada' && !novo.vagas[i].envio?.data) {
-    v.envio = { ...(extras.envio ?? {}), data: extras.envio?.data ?? ctx.agora };
+  if (etapa !== 'em-processo' && etapa !== 'oferta' && extras.subEtapa === undefined) v.subEtapa = null;
+  if (extras.envio && typeof extras.envio === 'object') v.envio = { ...(antes.envio ?? {}), ...extras.envio };
+  if (etapa === 'enviada' && !antes.envio?.data) {
+    v.envio = { ...(v.envio ?? {}), data: extras.envio?.data ?? ctx.agora };
     v.followUp = { proximo: somarDias(v.envio.data, ctx.diasFollowUp ?? 7), feitos: 0 };
   }
+  if (contemDocumento(extras.texto)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
   exigirValida(v);
   novo.vagas[i] = v;
   const texto = extras.motivo || extras.pendencia || extras.texto || '';
@@ -82,7 +94,11 @@ export function moverVaga(estado, id, etapa, extras = {}, ctx) {
 export function atualizarVaga(estado, id, patch, ctx) {
   const novo = clonar(estado);
   const i = acharIndice(novo, id);
-  const permitido = Object.fromEntries(Object.entries(patch).filter(([k]) => EDITAVEIS.includes(k)));
+  // Notas: se a tela mandou a versão que tinha, recusa quando alguém (ex.: o Claude) mudou no meio.
+  if ('notasAntes' in patch && (novo.vagas[i].notas ?? '') !== (patch.notasAntes ?? '')) {
+    throw new ErroValidacao(['as notas mudaram enquanto você editava — recarregue a vaga e junte as duas versões']);
+  }
+  const permitido = Object.fromEntries(Object.entries(patch ?? {}).filter(([k]) => EDITAVEIS.includes(k)));
   const v = { ...novo.vagas[i], ...permitido, atualizadoEm: ctx.agora };
   exigirValida(v);
   novo.vagas[i] = v;
@@ -99,6 +115,7 @@ export function registrarEvento(estado, id, tipo, texto, ctx) {
 }
 
 export function followUpFeito(estado, id, ctx) {
+  if (contemDocumento(ctx.texto)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
   const novo = clonar(estado);
   const i = acharIndice(novo, id);
   const v = novo.vagas[i];

@@ -1,5 +1,6 @@
 // Sobe a Central em http://localhost:4321 (ou a próxima porta livre).
 import { join, dirname } from 'node:path';
+import { writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { criarServidor } from './app.mjs';
 import { criarArmazem, prepararPrimeiraVez } from '../nucleo/armazenamento.mjs';
@@ -20,6 +21,11 @@ function tentar(porta, restantes) {
     process.exit(1);
   });
   srv.listen(porta, '127.0.0.1', () => {
+    // Os scripts de busca e a CLI leem a porta real daqui.
+    writeFileSync(join(dir, '.porta'), String(porta));
+    const limpar = () => { rmSync(join(dir, '.porta'), { force: true }); process.exit(0); };
+    process.on('SIGINT', limpar);
+    process.on('SIGTERM', limpar);
     console.log(`Central de Candidaturas aberta em http://localhost:${porta}`);
     console.log(`Dados em ${dir}. Feche esta janela para desligar.`);
     if (process.env.CENTRAL_ABRIR) import('node:child_process').then(({ exec }) => exec(process.platform === 'win32' ? `start "" http://localhost:${porta}` : `${process.platform === 'darwin' ? 'open' : 'xdg-open'} http://localhost:${porta}`));

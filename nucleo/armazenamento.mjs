@@ -1,13 +1,36 @@
 // Guarda o estado em arquivos JSON dentro de dados/. Cada leitura vai ao disco
 // (a tela e o Claude gravam nos mesmos arquivos) e cada gravação é atômica.
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, copyFileSync, openSync, closeSync, unlinkSync, statSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { estadoVazio } from './servico.mjs';
 
 const ARQUIVOS = { vagas: 'vagas.json', eventos: 'eventos.json', plataformas: 'plataformas.json', rodadas: 'rodadas.json', perfil: 'perfil.json' };
 
-export function criarArmazem(dir) {
+// Espera síncrona curta (usada só enquanto outro processo grava).
+const dormir = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+export function criarArmazem(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000 } = {}) {
   mkdirSync(dir, { recursive: true });
+  const arqTrava = join(dir, '.trava');
+
+  // Uma gravação por vez entre a tela (servidor) e o Claude (CLI).
+  function travar() {
+    const limite = Date.now() + esperaTravaMs;
+    for (;;) {
+      try {
+        closeSync(openSync(arqTrava, 'wx'));
+        return;
+      } catch (e) {
+        if (e.code !== 'EEXIST') throw e;
+        try {
+          if (Date.now() - statSync(arqTrava).mtimeMs > travaVelhaMs) { rmSync(arqTrava, { force: true }); continue; }
+        } catch {}
+        if (Date.now() > limite) throw new Error('dados ocupados por outra gravação (Central ou Claude). Tente de novo em alguns segundos.');
+        dormir(40);
+      }
+    }
+  }
+  const destravar = () => { try { unlinkSync(arqTrava); } catch {} };
 
   function lerArquivo(nome, padrao) {
     const caminho = join(dir, nome);
@@ -39,10 +62,15 @@ export function criarArmazem(dir) {
 
   // fn recebe o estado atual e devolve { estado, ...resto }. Se lançar, nada é gravado.
   function transacao(fn) {
-    const antes = carregar();
-    const resultado = fn(antes);
-    salvar(resultado.estado, antes);
-    return resultado;
+    travar();
+    try {
+      const antes = carregar();
+      const resultado = fn(antes);
+      salvar(resultado.estado, antes);
+      return resultado;
+    } finally {
+      destravar();
+    }
   }
 
   function backupDiario(hoje) {

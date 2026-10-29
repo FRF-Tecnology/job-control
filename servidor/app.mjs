@@ -6,7 +6,7 @@ import { join, resolve, extname, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { criarArmazem } from '../nucleo/armazenamento.mjs';
 import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
-import { contemDocumento } from '../nucleo/validacao.mjs';
+import { perfilSensivel, contemDocumentoEm } from '../nucleo/validacao.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
 import { hojeISO } from '../nucleo/modelo.mjs';
 
@@ -77,17 +77,27 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
     const host = String(req.headers.host ?? '').replace(/:\d+$/, '');
     if (!['localhost', '127.0.0.1', '[::1]'].includes(host)) return enviar(res, 403, { erro: 'acesso só pelo próprio computador' });
 
+    // Gravações só da própria Central: JSON obrigatório (força preflight) e nada vindo de outro site.
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(m) && p !== '/api/importar') {
+      const origem = req.headers['sec-fetch-site'];
+      if (origem && !['same-origin', 'none'].includes(origem)) return enviar(res, 403, { erro: 'gravação recusada: pedido veio de outro site' });
+      if (!String(req.headers['content-type'] ?? '').includes('application/json')) return enviar(res, 415, { erro: 'envie JSON (content-type: application/json)' });
+    }
+
     if (p === '/api/importar') {
       if (m === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
       for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
       if (m !== 'POST') return enviar(res, 405, { erro: 'use POST' });
       if (req.headers['x-central-chave'] !== chave) return enviar(res, 403, { erro: 'chave inválida' });
-      const lista = [].concat(await lerCorpo(req));
+      // Importação só cria vagas novas em Descoberta: etapa, envio e datas vindos de fora são ignorados.
+      const lista = [].concat(await lerCorpo(req)).filter(x => x && typeof x === 'object' && !Array.isArray(x));
       const r = { adicionadas: [], duplicadas: [], erros: [] };
       gravar(estado => {
-        for (const dados of lista) {
+        const c = ctx({ autor: 'claude' });
+        for (const item of lista) {
+          const { etapa, envio, followUp, descobertaEm, atualizadoEm, motivo, pendencia, subEtapa, ...dados } = item;
           try {
-            ({ estado } = adicionarVaga(estado, dados, ctx({ autor: 'claude' })));
+            ({ estado } = adicionarVaga(estado, { ...dados, etapa: 'descoberta' }, c));
             r.adicionadas.push(dados.id);
           } catch (e) {
             if (e instanceof ErroDuplicata) r.duplicadas.push({ id: dados.id, existente: e.existente.id, etapa: e.existente.etapa });
@@ -111,6 +121,7 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
     if (m === 'GET' && p === '/api/historico.md') return enviar(res, 200, gerarHistoricoMd(armazem.carregar(), hoje()), 'text/markdown; charset=utf-8');
 
     const corpo = m === 'GET' ? {} : await lerCorpo(req);
+    if (corpo === null || typeof corpo !== 'object' || Array.isArray(corpo)) return enviar(res, 400, { erro: 'envie um objeto JSON' });
 
     if (m === 'POST' && p === '/api/vagas') {
       const { forcar, ...dados } = corpo;
@@ -118,13 +129,14 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
       return enviar(res, 201, vaga);
     }
     if (m === 'PUT' && p === '/api/perfil') {
-      if (JSON.stringify(corpo).split('"').some(contemDocumento)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
+      if (perfilSensivel(corpo)) throw new ErroValidacao(['o perfil não pode guardar CPF, RG ou senha (nem respostas padrão sobre eles)']);
       gravar(e => ({ estado: { ...e, perfil: corpo } }));
       return enviar(res, 200, corpo);
     }
     let r = p.match(/^\/api\/plataformas\/([^/]+)$/);
     if (m === 'PUT' && r) {
       const id = decodeURIComponent(r[1]);
+      if (contemDocumentoEm(corpo)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
       gravar(e => ({ estado: { ...e, plataformas: e.plataformas.some(x => x.id === id) ? e.plataformas.map(x => (x.id === id ? { ...x, ...corpo, id } : x)) : [...e.plataformas, { ...corpo, id }] } }));
       return enviar(res, 200, { ok: true });
     }

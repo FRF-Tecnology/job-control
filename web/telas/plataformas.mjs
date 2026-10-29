@@ -7,7 +7,7 @@ export function telaPlataformas(app) {
   const { plataformas, vagas } = app.estado;
   const nums = new Map(porPlataforma(vagas).map(p => [p.plataforma, p]));
   const ordem = Object.keys(STATUS);
-  const lista = [...plataformas].sort((a, b) => ordem.indexOf(a.status) - ordem.indexOf(b.status) || a.nome.localeCompare(b.nome));
+  const lista = [...plataformas].sort((a, b) => ordem.indexOf(a.status) - ordem.indexOf(b.status) || String(a.nome ?? a.id).localeCompare(String(b.nome ?? b.id)));
 
   const salvar = (p, patch, msg) => app.agir(() => app.api(`/api/plataformas/${encodeURIComponent(p.id)}`, 'PUT', patch), msg);
 
@@ -25,7 +25,7 @@ export function telaPlataformas(app) {
       const n = nums.get(p.id);
       return h(`article.plataforma.s-${p.status}`,
         h('div.acoes', { style: { justifyContent: 'space-between', alignItems: 'baseline' } },
-          h('h2', p.url ? h('a', { href: p.url, target: '_blank', rel: 'noopener' }, p.nome) : p.nome),
+          h('h2', /^https?:\/\//.test(p.url ?? '') ? h('a', { href: p.url, target: '_blank', rel: 'noopener' }, p.nome ?? p.id) : (p.nome ?? p.id)),
           h('select', { 'aria-label': `Situação de ${p.nome}`, style: { width: 'auto', minHeight: '30px', padding: '2px 8px' }, on: { change: ev => salvar(p, { status: ev.target.value }, `${p.nome}: ${STATUS[ev.target.value]}`) } },
             Object.entries(STATUS).map(([k, t]) => h('option', { value: k, selected: p.status === k }, t)))),
         n ? h('p.num', { style: { margin: 0 } }, `${n.achadas} achadas · ${n.enviadas} enviadas · ${n.retornos} retornos`) : h('p.pequeno.mudo', { style: { margin: 0 } }, 'Nenhuma vaga daqui ainda.'),

@@ -62,6 +62,7 @@ const app = {
   aviso: (...a) => aviso(...a),
   perguntar: (...a) => perguntar(...a),
   renderizar: () => renderizar(),
+  recarregar: () => carregar(true),
 };
 
 // ---------- avisos ----------
@@ -137,29 +138,48 @@ function renderizar() {
 }
 
 // ---------- dados ----------
+// Há texto digitado e ainda não salvo na tela? (perfil, nota nova, notas da vaga…)
+// Enquanto houver, a atualização automática não redesenha nada.
+app.sujo = false;
+document.addEventListener('input', ev => { if (ev.target.matches('input:not([type=search]), textarea')) app.sujo = true; });
+
 async function carregar(forcar = false) {
   const conexao = document.getElementById('conexao');
+  let estado;
   try {
     if (!forcar && app.estado) {
       const { versao } = await app.api('/api/versao');
       if (versao === app.versao) { conexao.textContent = 'Conectado'; conexao.classList.remove('off'); return; }
     }
-    app.estado = await app.api('/api/estado');
-    app.versao = app.estado.versao;
-    conexao.textContent = 'Conectado';
-    conexao.classList.remove('off');
-    // Não redesenha enquanto a pessoa digita em um campo (evita perder o texto).
-    const digitando = document.activeElement?.matches?.('input:not([type=search]), textarea, select');
-    if (!digitando || forcar) renderizar();
-  } catch {
-    conexao.textContent = 'Desconectado — rode iniciar.bat';
+    if (app.sujo && !forcar) { conexao.textContent = 'Há mudanças novas — salve o que está editando para ver'; return; }
+    estado = await app.api('/api/estado');
+  } catch (e) {
     conexao.classList.add('off');
-    if (!app.estado) {
-      document.getElementById('conteudo').replaceChildren(h('div.convite', h('div',
-        h('strong', 'A Central não está rodando'),
-        h('p', 'Abra o arquivo iniciar.bat (Windows) ou iniciar.sh na pasta do projeto e recarregue esta página.'))));
+    if (e.status) {
+      // O servidor respondeu, mas com erro (ex.: arquivo de dados corrompido).
+      conexao.textContent = 'Erro nos dados';
+      mostrarFalha('A Central encontrou um problema nos dados', e.message);
+    } else {
+      conexao.textContent = 'Desconectado — rode iniciar.bat';
+      if (!app.estado) mostrarFalha('A Central não está rodando', 'Abra o arquivo iniciar.bat (Windows) ou iniciar.sh na pasta do projeto e recarregue esta página.');
     }
+    return;
   }
+  app.estado = estado;
+  conexao.textContent = 'Conectado';
+  conexao.classList.remove('off');
+  try {
+    renderizar();
+    app.versao = estado.versao;
+    app.sujo = false;
+  } catch (e) {
+    console.error(e);
+    mostrarFalha('Esta tela não conseguiu ser desenhada', `${e.message}. Os dados estão salvos; tente outra seção ou peça ao Claude para conferir.`);
+  }
+}
+
+function mostrarFalha(titulo, texto) {
+  document.getElementById('conteudo').replaceChildren(h('div.convite', h('div', h('strong', titulo), h('p', texto))));
 }
 
 // ---------- início ----------
@@ -173,7 +193,7 @@ document.getElementById('veu').addEventListener('click', () => { location.hash =
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape' && detalheAberto() && !document.getElementById('dialogo').open) location.hash = `#/${rotaAtual().rota}`;
 });
-window.addEventListener('hashchange', renderizar);
+window.addEventListener('hashchange', () => { app.sujo = false; carregar(true); });
 window.addEventListener('focus', () => carregar());
 setInterval(() => { if (document.visibilityState === 'visible') carregar(); }, 5000);
 carregar(true);

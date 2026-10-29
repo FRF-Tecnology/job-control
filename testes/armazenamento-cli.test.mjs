@@ -117,12 +117,12 @@ test('cli script preenche marcadores com perfil, chave e lista de empresas', () 
   writeFileSync(join(dir, '.chave'), 'abc123');
   const ih = cli(dir, 'script', 'inhire-IH');
   assert.equal(ih.status, 0, ih.stderr);
-  assert.match(ih.stdout, /name:'Fulano'/);
-  assert.match(ih.stdout, /phone:'11988887777'/);
+  assert.match(ih.stdout, /name:"Fulano"/);
+  assert.match(ih.stdout, /phone:"11988887777"/);
   assert.doesNotMatch(ih.stdout, /\{\{/);
   const bi = cli(dir, 'script', 'busca-inhire', '--dias', '3');
-  assert.match(bi.stdout, /CHAVE = 'abc123'/);
-  assert.match(bi.stdout, /DESDE = '2026-10-26'/);
+  assert.match(bi.stdout, /CHAVE = "abc123"/);
+  assert.match(bi.stdout, /DESDE = "2026-10-26"/);
   assert.match(bi.stdout, /"db1"/);
   const bl = cli(dir, 'script', 'busca-linkedin', '--palavras', '["java","spring"]');
   assert.match(bl.stdout, /PALAVRAS = \["java","spring"\]/);

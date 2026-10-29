@@ -4,7 +4,7 @@ argument-hint: "[linkedin|gupy|inhire|todas] [dias]"
 ---
 Busque vagas novas e grave na Central. Argumentos: $ARGUMENTS (padrão: todas, 3 dias).
 
-1. Leia `dados/perfil.json` (filtros, stack, inglês) e confirme que a Central está aberta (`curl -s localhost:4321/api/versao`). Se não estiver, peça para a pessoa abrir `iniciar.bat`.
+1. Leia `dados/perfil.json` (filtros, stack, inglês) e confirme que a Central está aberta (`curl -s localhost:$(cat dados/.porta 2>/dev/null || echo 4321)/api/versao`). Se não estiver, peça para a pessoa abrir `iniciar.bat`.
 2. Para cada plataforma pedida (status `automatizada` em `dados/plataformas.json`):
    - **LinkedIn**: aba logada em linkedin.com → `node ferramentas/cli.mjs script busca-linkedin --dias N --palavras '<termos do perfil>'` → injete com javascript_tool.
    - **Gupy**: aba em portal.gupy.io → `script busca-gupy --dias N`.

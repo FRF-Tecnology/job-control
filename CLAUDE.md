@@ -8,7 +8,8 @@ Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação
   `node ferramentas/cli.mjs <comando>`. Rode `node ferramentas/cli.mjs` sem argumentos para ver a ajuda.
 - A pessoa acompanha tudo ao vivo em http://localhost:4321 (aberto com `iniciar.bat` / `iniciar.sh`).
   Os scripts de busca precisam da Central aberta.
-- Antes de aplicar qualquer vaga, rode `cli.mjs dup "<empresa>" "<título>"`. Se der "JÁ EXISTE", não aplique de novo.
+- Antes de aplicar uma vaga, rode `cli.mjs dup "<empresa>" "<título>" --excluir <id da vaga>`. Se listar outra vaga **já enviada** (mostra "enviada <data>"), não aplique de novo: mova esta para `pulada --motivo Duplicada`.
+- A porta real da Central fica em `dados/.porta` (padrão 4321). Os scripts gerados pela CLI já usam essa porta.
 - Fim de cada rodada: `cli.mjs rodada --json '{...}'` e `cli.mjs exportar-md ../historico-central.md`
   (ou outro caminho que a pessoa preferir).
 
