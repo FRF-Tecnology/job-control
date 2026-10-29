@@ -1,0 +1,12 @@
+{
+  "name": "central-candidaturas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Central local para organizar busca, triagem, envio e follow-up de candidaturas.",
+  "scripts": {
+    "start": "node servidor/index.mjs",
+    "test": "node --test testes/*.test.mjs"
+  },
+  "engines": { "node": ">=18" }
+}
