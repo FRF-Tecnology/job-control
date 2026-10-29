@@ -1,0 +1,18 @@
+[
+  { "id": "linkedin", "nome": "LinkedIn", "url": "https://www.linkedin.com/jobs/", "status": "automatizada", "comoAplicar": "Busca pela API interna (voyager) com filtros Brasil + remoto + 7 dias. Easy Apply via automacao/linkedin-LI.js; vagas externas abrem o site da empresa.", "limitacoes": "Precisa estar logado no Chrome. Muitas vagas externas levam a portais com conta." },
+  { "id": "gupy", "nome": "Gupy", "url": "https://portal.gupy.io/", "status": "automatizada", "comoAplicar": "Busca em portal.gupy.io/api/job-search/jobs (workplaceType=remote). Candidatura pelo site, logado.", "limitacoes": "Sessão expira; algumas vagas pedem RG; testes (Mindsight, fit cultural, WhatsApp IA) são pessoais." },
+  { "id": "inhire", "nome": "InHire", "url": "https://inhire.app/", "status": "automatizada", "comoAplicar": "Sem busca global: varrer as empresas de automacao/inhire-empresas.txt pela API pública. Formulário com automacao/inhire-IH.js e questionário com inhire-Q.js.", "limitacoes": "Algumas empresas pedem CPF no formulário ou questionário." },
+  { "id": "externo", "nome": "Sites próprios (Quickin, Notion, Lever, Greenhouse, Workable...)", "url": "", "status": "manual", "comoAplicar": "Abertos a partir do LinkedIn. Preencher manualmente com o perfil.", "limitacoes": "Portais com conta (Senior, BairesDev) ficam para a pessoa." },
+  { "id": "indeed", "nome": "Indeed", "url": "https://br.indeed.com/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "solides", "nome": "Solides Vagas", "url": "https://vagas.solides.com.br/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "programathor", "nome": "Programathor", "url": "https://programathor.com.br/jobs", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "remotar", "nome": "Remotar", "url": "https://remotar.com.br/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "coodesh", "nome": "Coodesh", "url": "https://coodesh.com/vagas", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "geekhunter", "nome": "GeekHunter", "url": "https://www.geekhunter.com.br/vagas", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "trampos", "nome": "Trampos", "url": "https://trampos.co/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "revelo", "nome": "Revelo", "url": "https://www.revelo.com.br/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "wellfound", "nome": "Wellfound", "url": "https://wellfound.com/jobs", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "glassdoor", "nome": "Glassdoor", "url": "https://www.glassdoor.com.br/Vagas/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "recrutei", "nome": "Recrutei", "url": "https://recrutei.com.br/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" },
+  { "id": "kenoby", "nome": "Kenoby", "url": "https://jobs.kenoby.com/", "status": "a-testar", "comoAplicar": "", "limitacoes": "" }
+]

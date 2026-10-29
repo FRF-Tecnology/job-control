@@ -95,3 +95,10 @@ test('cli exportar-md gera histórico com as enviadas', () => {
   assert.match(r.stdout, /Acme/);
   assert.match(r.stdout, /Rodada 1/);
 });
+
+test('cli add --forcar inclui vaga com mesmo título e id diferente', () => {
+  const dir = novoDir();
+  cli(dir, 'add', '--json', JSON.stringify({ id: 'a', empresa: 'DB1', titulo: 'Java Pleno' }));
+  const r = cli(dir, 'add', '--forcar', '--json', JSON.stringify({ id: 'b', empresa: 'DB1', titulo: 'Java Pleno' }));
+  assert.match(r.stdout, /adicionadas: 1/);
+});

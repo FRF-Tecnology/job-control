@@ -45,17 +45,19 @@ function novoEvento(estado, vagaId, tipo, texto, { autor, agora }) {
   return { id: `ev-${agora}-${n}-${Math.random().toString(36).slice(2, 6)}`, vagaId, tipo, data: agora, autor, texto: texto ?? '' };
 }
 
-export function adicionarVaga(estado, dados, ctx) {
+export function adicionarVaga(estado, dados, ctx, { forcar = false } = {}) {
   const vaga = {
     plataforma: 'outra', etapa: 'descoberta', descobertaEm: ctx.agora, atualizadoEm: ctx.agora,
     ...dados,
   };
   exigirValida(vaga);
-  const dup = acharDuplicata(estado.vagas, vaga);
+  const mesmoId = estado.vagas.find(v => v.id === vaga.id);
+  const dup = mesmoId ?? (forcar ? null : acharDuplicata(estado.vagas, vaga));
   if (dup) throw new ErroDuplicata(dup);
   const novo = clonar(estado);
   novo.vagas.push(vaga);
-  novo.eventos.push(novoEvento(novo, vaga.id, vaga.etapa === 'descoberta' ? 'descoberta' : vaga.etapa, dados.motivoClaude, ctx));
+  const dataEvento = vaga.envio?.data ?? vaga.descobertaEm ?? ctx.agora;
+  novo.eventos.push(novoEvento(novo, vaga.id, vaga.etapa, dados.motivoClaude ?? dados.notas, { ...ctx, agora: dataEvento }));
   return { estado: novo, vaga };
 }
 

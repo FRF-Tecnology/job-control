@@ -1,0 +1,29 @@
+{
+  "nome": "Seu Nome",
+  "email": "voce@exemplo.com",
+  "telefone": "(00) 00000-0000",
+  "linkedin": "https://www.linkedin.com/in/seu-perfil",
+  "github": "https://github.com/seu-usuario",
+  "cidade": "Cidade/UF – Brasil",
+  "cargo": "Desenvolvedor backend Java",
+  "experienciaAnos": 3,
+  "stackPrincipal": ["Java", "Spring Boot"],
+  "stackSecundaria": ["React", "Node.js"],
+  "ingles": "Conversacional",
+  "formacao": "Bacharelado em ... (cursando, conclusão prevista em ...)",
+  "pretensaoCLT": 5000,
+  "pretensaoPJ": 6500,
+  "salarioAtual": "",
+  "contratos": ["CLT", "PJ"],
+  "inicio": "Imediato (aviso de até 7 dias)",
+  "filtros": { "niveis": ["Júnior", "Pleno"], "modelo": ["Remoto"], "pularSe": ["Sênior/Staff/Lead", "graduação concluída obrigatória", "presencial/híbrido"] },
+  "modo": "revisar",
+  "diasFollowUp": 7,
+  "respostasPadrao": [
+    { "pergunta": "Pessoa com deficiência?", "resposta": "Não" },
+    { "pergunta": "Diversidade (gênero, raça, orientação)", "resposta": "Prefiro não responder" },
+    { "pergunta": "Como soube da vaga?", "resposta": "LinkedIn" }
+  ],
+  "curriculos": { "PT": "curriculos/curriculo-pt.pdf", "EN": "curriculos/resume-en.pdf" },
+  "nuncaPreencher": ["CPF", "RG", "senhas", "dados bancários"]
+}

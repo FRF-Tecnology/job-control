@@ -168,3 +168,19 @@ test('mensagem de follow-up cita empresa e vaga, em inglês quando pedido', () =
   assert.match(sugerirMensagem(v, { nome: 'Aldenor' }), /Compass UOL/);
   assert.match(sugerirMensagem({ ...v, idioma: 'en' }, { nome: 'Aldenor' }), /Hi|Hello/);
 });
+
+test('forçar aceita mesmo empresa+título quando o id é outro (vaga republicada)', () => {
+  const { estado } = adicionarVaga(estadoVazio(), base(), ctx());
+  const { estado: e2 } = adicionarVaga(estado, base({ id: 'inhire-novo' }), ctx(), { forcar: true });
+  assert.equal(e2.vagas.length, 2);
+});
+test('forçar nunca aceita o mesmo id', () => {
+  const { estado } = adicionarVaga(estadoVazio(), base(), ctx());
+  assert.throws(() => adicionarVaga(estado, base(), ctx(), { forcar: true }), ErroDuplicata);
+});
+
+test('evento inicial usa a data real do envio ou da descoberta', () => {
+  const { estado } = adicionarVaga(estadoVazio(), base({ etapa: 'enviada', descobertaEm: '2026-10-20', envio: { data: '2026-10-26' } }), ctx());
+  assert.equal(estado.eventos[0].data, '2026-10-26');
+  assert.equal(estado.eventos[0].tipo, 'enviada');
+});

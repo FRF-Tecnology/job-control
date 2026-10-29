@@ -24,6 +24,7 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   ver <id>                                 vaga completa + eventos (JSON)
   dup <empresa> <título>                   avisa se a vaga já existe
   add --json '{...}' | --arquivo x.json    adiciona uma vaga ou uma lista
+      [--forcar]                           aceita mesmo empresa+título se o id for outro (vaga republicada)
   mover <id> <etapa> [--motivo t] [--pendencia t] [--sub s]
         [--rodada n] [--curriculo PT|EN] [--pretensao n] [--respostas t] [--data AAAA-MM-DD]
   editar <id> --json '{campo: valor}'      campos livres (notas, aderência, link...)
@@ -79,7 +80,7 @@ function comandos(cmd, o) {
       armazem.transacao(estado => {
         for (const dados of lista) {
           try {
-            ({ estado } = adicionarVaga(estado, dados, ctx()));
+            ({ estado } = adicionarVaga(estado, dados, ctx(), { forcar: Boolean(o.forcar) }));
             r.adicionadas.push(dados.id);
           } catch (e) {
             if (e instanceof ErroDuplicata) r.duplicadas.push(`${dados.id} → ${e.existente.id}`);
