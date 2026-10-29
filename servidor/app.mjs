@@ -1,0 +1,129 @@
+// Servidor HTTP da Central: API JSON + arquivos da interface. Sem dependências.
+import { createServer } from 'node:http';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, resolve, extname, sep, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { criarArmazem } from '../nucleo/armazenamento.mjs';
+import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
+import { contemDocumento } from '../nucleo/validacao.mjs';
+import { gerarHistoricoMd } from '../nucleo/historico.mjs';
+import { hojeISO } from '../nucleo/modelo.mjs';
+
+const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PASTAS = { web: join(raiz, 'web'), nucleo: join(raiz, 'nucleo') };
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.ico': 'image/x-icon' };
+const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json'];
+
+class ErroHttp extends Error { constructor(status, corpo) { super(corpo.erro); this.status = status; this.corpo = corpo; } }
+
+function lerCorpo(req) {
+  return new Promise((ok, falha) => {
+    let dados = '';
+    req.on('data', c => { dados += c; if (dados.length > 2e6) falha(new ErroHttp(413, { erro: 'corpo grande demais' })); });
+    req.on('end', () => {
+      if (!dados) return ok({});
+      try { ok(JSON.parse(dados)); } catch { falha(new ErroHttp(400, { erro: 'JSON inválido' })); }
+    });
+  });
+}
+
+function csv(vagas) {
+  const cols = ['id', 'empresa', 'titulo', 'plataforma', 'etapa', 'subEtapa', 'aderencia', 'contrato', 'motivo', 'pendencia', 'dataEnvio', 'rodada', 'pretensao', 'proximoFollowUp', 'link', 'notas'];
+  const valor = (v, c) => ({ dataEnvio: v.envio?.data, rodada: v.envio?.rodada, pretensao: v.envio?.pretensao, proximoFollowUp: v.followUp?.proximo }[c] ?? v[c] ?? '');
+  const esc = x => `"${String(x).replace(/"/g, '""')}"`;
+  return '﻿' + [cols.join(';'), ...vagas.map(v => cols.map(c => esc(valor(v, c))).join(';'))].join('\n');
+}
+
+export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
+  const armazem = criarArmazem(dir);
+  let gravacoes = 0;
+
+  const ctx = extra => ({ autor: 'eu', agora: hoje(), diasFollowUp: Number(armazem.carregar().perfil?.diasFollowUp) || 7, ...extra });
+  const gravar = fn => { const r = armazem.transacao(fn); gravacoes++; return r; };
+  const versao = () => `${gravacoes}-${ARQ_DADOS.map(a => { const p = join(dir, a); return existsSync(p) ? `${statSync(p).mtimeMs}:${statSync(p).size}` : '0'; }).join('|')}`;
+
+  function servirArquivo(res, caminho) {
+    let decodificado;
+    try { decodificado = decodeURIComponent(caminho); } catch { return enviar(res, 404, { erro: 'não encontrado' }); }
+    let base, rel;
+    if (decodificado === '/' || decodificado === '/index.html') [base, rel] = [PASTAS.web, 'index.html'];
+    else if (decodificado.startsWith('/web/')) [base, rel] = [PASTAS.web, decodificado.slice(5)];
+    else if (decodificado.startsWith('/nucleo/') && decodificado.endsWith('.mjs') && !decodificado.includes('armazenamento')) [base, rel] = [PASTAS.nucleo, decodificado.slice(8)];
+    else return enviar(res, 404, { erro: 'não encontrado' });
+    const alvo = resolve(base, rel);
+    if (!alvo.startsWith(base + sep) || !existsSync(alvo) || !statSync(alvo).isFile()) return enviar(res, 404, { erro: 'não encontrado' });
+    res.writeHead(200, { 'content-type': TIPOS[extname(alvo)] ?? 'application/octet-stream', 'cache-control': 'no-cache' });
+    res.end(readFileSync(alvo));
+  }
+
+  function enviar(res, status, corpo, tipo = 'application/json; charset=utf-8') {
+    res.writeHead(status, { 'content-type': tipo, 'cache-control': 'no-store' });
+    res.end(typeof corpo === 'string' ? corpo : JSON.stringify(corpo));
+  }
+
+  async function rotear(req, res) {
+    const url = new URL(req.url, 'http://local');
+    const p = url.pathname;
+    const m = req.method;
+
+    if (!p.startsWith('/api/')) return m === 'GET' ? servirArquivo(res, p) : enviar(res, 405, { erro: 'método não permitido' });
+
+    if (m === 'GET' && p === '/api/estado') return enviar(res, 200, { ...armazem.carregar(), hoje: hoje(), versao: versao() });
+    if (m === 'GET' && p === '/api/versao') return enviar(res, 200, { versao: versao() });
+    if (m === 'GET' && p === '/api/exportar.csv') {
+      res.setHeader('content-disposition', `attachment; filename="candidaturas-${hoje()}.csv"`);
+      return enviar(res, 200, csv(armazem.carregar().vagas), 'text/csv; charset=utf-8');
+    }
+    if (m === 'GET' && p === '/api/historico.md') return enviar(res, 200, gerarHistoricoMd(armazem.carregar(), hoje()), 'text/markdown; charset=utf-8');
+
+    const corpo = m === 'GET' ? {} : await lerCorpo(req);
+
+    if (m === 'POST' && p === '/api/vagas') {
+      const { forcar, ...dados } = corpo;
+      const { vaga } = gravar(e => adicionarVaga(e, dados, ctx(), { forcar: Boolean(forcar) }));
+      return enviar(res, 201, vaga);
+    }
+    if (m === 'PUT' && p === '/api/perfil') {
+      if (JSON.stringify(corpo).split('"').some(contemDocumento)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
+      gravar(e => ({ estado: { ...e, perfil: corpo } }));
+      return enviar(res, 200, corpo);
+    }
+    let r = p.match(/^\/api\/plataformas\/([^/]+)$/);
+    if (m === 'PUT' && r) {
+      const id = decodeURIComponent(r[1]);
+      gravar(e => ({ estado: { ...e, plataformas: e.plataformas.some(x => x.id === id) ? e.plataformas.map(x => (x.id === id ? { ...x, ...corpo, id } : x)) : [...e.plataformas, { ...corpo, id }] } }));
+      return enviar(res, 200, { ok: true });
+    }
+
+    r = p.match(/^\/api\/vagas\/([^/]+)(\/[a-z]+)?$/);
+    if (r) {
+      const id = decodeURIComponent(r[1]);
+      const acao = r[2];
+      if (m === 'PATCH' && !acao) return enviar(res, 200, gravar(e => atualizarVaga(e, id, corpo, ctx())).vaga);
+      if (m === 'POST' && acao === '/mover') {
+        const { etapa, ...extras } = corpo;
+        return enviar(res, 200, gravar(e => moverVaga(e, id, etapa, extras, ctx())).vaga);
+      }
+      if (m === 'POST' && acao === '/eventos') return enviar(res, 201, gravar(e => registrarEvento(e, id, corpo.tipo || 'nota', corpo.texto, ctx())).evento);
+      if (m === 'POST' && acao === '/followup') {
+        if (corpo.acao === 'feito') return enviar(res, 200, gravar(e => followUpFeito(e, id, ctx({ texto: corpo.texto }))).vaga);
+        if (corpo.acao === 'adiar') return enviar(res, 200, gravar(e => adiarFollowUp(e, id, Number(corpo.dias) || 3, ctx())).vaga);
+        return enviar(res, 400, { erro: 'acao deve ser "feito" ou "adiar"' });
+      }
+    }
+    return enviar(res, 404, { erro: 'rota não encontrada' });
+  }
+
+  return createServer(async (req, res) => {
+    try {
+      await rotear(req, res);
+    } catch (e) {
+      if (e instanceof ErroHttp) return enviar(res, e.status, e.corpo);
+      if (e instanceof ErroValidacao) return enviar(res, 400, { erro: e.message, erros: e.erros });
+      if (e instanceof ErroDuplicata) return enviar(res, 409, { erro: e.message, existente: e.existente });
+      if (/não encontrada/.test(e.message)) return enviar(res, 404, { erro: e.message });
+      console.error(e);
+      enviar(res, 500, { erro: e.message });
+    }
+  });
+}
