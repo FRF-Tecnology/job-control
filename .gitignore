@@ -1,3 +1,15 @@
+# Banco de dados pessoal: cada pessoa tem o seu, só no próprio computador.
+# Perfil, vagas, eventos, currículos (PDF), backups, chave local e porta.
 dados/
+
+# Por garantia, mesmo fora de dados/
+*.pdf
+*.tmp
+.trava
+.chave
+.porta
+
+# Ferramentas locais
 .superpowers/
+.impeccable/
 node_modules/
