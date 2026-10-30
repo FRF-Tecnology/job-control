@@ -141,7 +141,7 @@ function renderizar() {
 // Há texto digitado e ainda não salvo na tela? (perfil, nota nova, notas da vaga…)
 // Enquanto houver, a atualização automática não redesenha nada.
 app.sujo = false;
-document.addEventListener('input', ev => { if (ev.target.matches('input:not([type=search]), textarea')) app.sujo = true; });
+document.addEventListener('input', ev => { if (ev.target.matches('input:not([type=search]), textarea, form select')) app.sujo = true; });
 
 async function carregar(forcar = false) {
   const conexao = document.getElementById('conexao');

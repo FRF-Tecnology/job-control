@@ -3,14 +3,17 @@
 // Roda em segundo plano: consulte window.__CENTRAL_RESULTADO. Resultado completo na tela Triagem.
 window.__CENTRAL_RESULTADO = 'rodando';
 (async () => {
+  // Resposta HTTP com erro vira mensagem clara (ex.: 403 = sessão expirada ou chave trocada).
+  const lerJson = async (r, onde) => { if (!r.ok) throw new Error(onde + ' respondeu HTTP ' + r.status + (r.status === 401 || r.status === 403 ? ' (faça login de novo ou gere o script outra vez)' : '')); return r.json(); };
   const CENTRAL = '{{central}}', CHAVE = '{{chave}}', PALAVRAS = {{palavras}}, DIAS = Number('{{dias}}') || 7, GEO = '{{geo}}' || '106057199';
-  const csrf = document.cookie.match(/JSESSIONID="?([^";]+)/)[1];
+  const csrf = document.cookie.match(/JSESSIONID="?([^";]+)/)?.[1];
+  if (!csrf) return 'erro: não achei a sessão do LinkedIn. Abra linkedin.com logado e rode de novo.';
   const H = { 'csrf-token': csrf, 'x-restli-protocol-version': '2.0.0' };
   const cartoes = new Map();
   for (const kw of PALAVRAS) {
     for (let start = 0; start < 200; start += 100) {
       const u = '/voyager/api/voyagerJobsDashJobCards?decorationId=com.linkedin.voyager.dash.deco.jobs.search.JobSearchCardsCollection-220&count=100&q=jobSearch&query=(origin:JOB_SEARCH_PAGE_JOB_FILTER,keywords:' + encodeURIComponent(kw) + ',locationUnion:(geoId:' + GEO + '),selectedFilters:(workplaceType:List(2),timePostedRange:List(r' + DIAS * 86400 + ')),spellCorrectionEnabled:true)&start=' + start;
-      const j = await (await fetch(u, { headers: H })).json();
+      const j = await lerJson(await fetch(u, { headers: H }), 'LinkedIn (busca)');
       for (const el of j.elements ?? []) {
         const c = el.jobCardUnion?.jobPostingCard;
         if (!c) continue;
@@ -26,7 +29,7 @@ window.__CENTRAL_RESULTADO = 'rodando';
   const candidatas = [...cartoes].filter(([, c]) => DEV.test(c.titulo) && !FORA.test(c.titulo));
   const vagas = [];
   for (const [id, c] of candidatas) {
-    const r = await (await fetch('/voyager/api/jobs/jobPostings/' + id + '?decorationId=com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-65', { headers: { 'csrf-token': csrf } })).json();
+    const r = await lerJson(await fetch('/voyager/api/jobs/jobPostings/' + id + '?decorationId=com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-65', { headers: { 'csrf-token': csrf } }), 'LinkedIn (vaga ' + id + ')');
     if (r.applyingInfo?.applied || r.jobState !== 'LISTED') continue;
     const d = r.description?.text ?? '';
     const anos = Math.max(0, ...(d.match(/(\d+)\s*\+?\s*(anos|years)/gi) ?? []).map(m => parseInt(m)).filter(n => n < 15));
@@ -51,7 +54,9 @@ window.__CENTRAL_RESULTADO = 'rodando';
   const limite = setTimeout(() => ctl.abort(), 6000);
   let res;
   try {
-    res = await (await fetch(CENTRAL + '/api/importar', { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', 'x-central-chave': CHAVE }, body: JSON.stringify(vagas) })).json();
+    const resp = await fetch(CENTRAL + '/api/importar', { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', 'x-central-chave': CHAVE }, body: JSON.stringify(vagas) });
+    res = await resp.json().catch(() => ({}));
+    if (!resp.ok) return 'erro: a Central recusou a importação (HTTP ' + resp.status + ': ' + (res.erro || '?') + '). Gere o script de novo com cli.mjs script busca-linkedin.';
   } catch {
     return `PENDENTE: ${vagas.length} vagas guardadas em window.__CENTRAL_VAGAS (a Central não respondeu — o Chrome pode estar pedindo permissão de rede local). Leia window.__CENTRAL_PARTE(0), (1)… e grave cada parte com cli.mjs add --uri "<parte>".`;
   } finally { clearTimeout(limite); }

@@ -2,13 +2,15 @@
 // Rodar numa aba de https://portal.gupy.io/ — gere com: node ferramentas/cli.mjs script busca-gupy [--dias 7]
 window.__CENTRAL_RESULTADO = 'rodando';
 (async () => {
+  // Resposta HTTP com erro vira mensagem clara (ex.: 403 = sessão expirada ou chave trocada).
+  const lerJson = async (r, onde) => { if (!r.ok) throw new Error(onde + ' respondeu HTTP ' + r.status + (r.status === 401 || r.status === 403 ? ' (faça login de novo ou gere o script outra vez)' : '')); return r.json(); };
   const CENTRAL = '{{central}}', CHAVE = '{{chave}}', PALAVRAS = {{palavras}}, DESDE = '{{desde}}';
   const vistas = new Map();
   for (const k of PALAVRAS) {
     for (let off = 0; off < 500; off += 100) {
       let r;
       for (let t = 0; t < 3; t++) {
-        r = await fetch('/api/job-search/jobs?jobName=' + encodeURIComponent(k) + '&workplaceType=remote&limit=100&offset=' + off).then(x => x.json()).catch(() => null);
+        r = await fetch('/api/job-search/jobs?jobName=' + encodeURIComponent(k) + '&workplaceType=remote&limit=100&offset=' + off).then(x => lerJson(x, 'Gupy')).catch(() => null);
         if (r) break;
         await new Promise(s => setTimeout(s, 1500));
       }
@@ -30,7 +32,9 @@ window.__CENTRAL_RESULTADO = 'rodando';
   const limite = setTimeout(() => ctl.abort(), 6000);
   let res;
   try {
-    res = await (await fetch(CENTRAL + '/api/importar', { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', 'x-central-chave': CHAVE }, body: JSON.stringify(vagas) })).json();
+    const resp = await fetch(CENTRAL + '/api/importar', { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', 'x-central-chave': CHAVE }, body: JSON.stringify(vagas) });
+    res = await resp.json().catch(() => ({}));
+    if (!resp.ok) return 'erro: a Central recusou a importação (HTTP ' + resp.status + ': ' + (res.erro || '?') + '). Gere o script de novo com cli.mjs script busca-gupy.';
   } catch {
     return `PENDENTE: ${vagas.length} vagas guardadas em window.__CENTRAL_VAGAS (a Central não respondeu — o Chrome pode estar pedindo permissão de rede local). Leia window.__CENTRAL_PARTE(0), (1)… e grave cada parte com cli.mjs add --uri "<parte>".`;
   } finally { clearTimeout(limite); }

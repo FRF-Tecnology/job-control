@@ -42,7 +42,7 @@ function acharIndice(estado, id) {
 
 function novoEvento(estado, vagaId, tipo, texto, { autor, agora }) {
   const n = estado.eventos.length + 1;
-  return { id: `ev-${agora}-${n}-${Math.random().toString(36).slice(2, 6)}`, vagaId, tipo, data: agora, autor, texto: texto ?? '' };
+  return { id: `ev-${agora}-${String(n).padStart(6, '0')}-${Math.random().toString(36).slice(2, 6)}`, vagaId, tipo, data: agora, autor, texto: texto ?? '' };
 }
 
 export function adicionarVaga(estado, dados, ctx, { forcar: forcarLote = false } = {}) {
@@ -83,6 +83,10 @@ export function moverVaga(estado, id, etapa, extras = {}, ctx) {
     v.envio = { ...(v.envio ?? {}), data: extras.envio?.data ?? ctx.agora };
     v.followUp = { proximo: somarDias(v.envio.data, ctx.diasFollowUp ?? 7), feitos: 0 };
   }
+  // Entrar num processo sem envio registrado (ex.: recrutador chamou) conta como candidatura nesse dia.
+  if ((etapa === 'em-processo' || etapa === 'oferta') && !v.envio?.data) {
+    v.envio = { ...(v.envio ?? {}), data: extras.envio?.data ?? ctx.agora };
+  }
   if (contemDocumento(extras.texto)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
   exigirValida(v);
   novo.vagas[i] = v;
@@ -106,6 +110,8 @@ export function atualizarVaga(estado, id, patch, ctx) {
 }
 
 export function registrarEvento(estado, id, tipo, texto, ctx) {
+  if (typeof tipo !== 'string' || !tipo.trim()) throw new ErroValidacao(['tipo do evento deve ser texto']);
+  if (texto != null && typeof texto !== 'string') throw new ErroValidacao(['texto do evento deve ser texto']);
   if (contemDocumento(texto)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
   const novo = clonar(estado);
   acharIndice(novo, id);

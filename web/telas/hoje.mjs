@@ -32,16 +32,21 @@ export function telaHoje(app) {
   const emProcesso = vagas.filter(v => v.etapa === 'em-processo' || v.etapa === 'oferta');
   const recentes = [...eventos].sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0, 10);
   const porId = new Map(vagas.map(v => [v.id, v]));
-  const semPerfil = !perfil?.nome;
+  const passos = app.estado.primeirosPassos ?? [];
+  const faltam = passos.filter(p => !p.feito).length;
 
   return h('div',
     h('header.cabecalho',
       h('div', h('h1', dataLonga(hoje).replace(/^./, c => c.toUpperCase())),
         h('p', `${plural(r.enviadasHoje, 'candidatura enviada', 'candidaturas enviadas')} hoje, ${r.enviadasSemana} na semana. ${r.enviadas} no total, ${r.taxaRetorno}% com retorno.`))),
 
-    semPerfil && h('div.convite', { style: { marginBottom: '24px' } },
-      h('div', h('strong', 'Comece pelo seu perfil'), h('p', { style: { margin: '4px 0 0' } }, 'Nome, pretensões, inglês e filtros. O Claude usa esses dados em todas as candidaturas.')),
-      h('a.botao', { href: '#/perfil' }, 'Preencher perfil')),
+    faltam > 0 && h('section.primeiros', { 'aria-labelledby': 'primeiros-titulo' },
+      h('div', h('h2#primeiros-titulo', 'Primeiros passos'),
+        h('p.pequeno', `${passos.length - faltam} de ${passos.length} prontos. Some daqui quando terminar.`)),
+      h('ol', passos.map(p => h(`li.${p.feito ? 'feito' : 'falta'}`,
+        h('span.marca-passo', { 'aria-hidden': 'true' }, p.feito ? '✓' : ''),
+        h('div', h('strong', p.titulo), h('span.estado-passo', p.feito ? ' — pronto' : ' — falta'), !p.feito && h('p.pequeno', p.texto)),
+        !p.feito && h('a.botao-fantasma.p', { href: p.rota }, p.botao ?? 'Abrir'))))),
 
     h('nav.esteira', { 'aria-label': 'Etapas' }, ESTEIRA.map(s => {
       const n = conta(s.etapa);

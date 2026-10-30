@@ -3,13 +3,14 @@
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, copyFileSync, openSync, closeSync, unlinkSync, statSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { estadoVazio } from './servico.mjs';
+import { hojeISO } from './modelo.mjs';
 
 const ARQUIVOS = { vagas: 'vagas.json', eventos: 'eventos.json', plataformas: 'plataformas.json', rodadas: 'rodadas.json', perfil: 'perfil.json' };
 
 // Espera síncrona curta (usada só enquanto outro processo grava).
 const dormir = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
-export function criarArmazem(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000 } = {}) {
+export function criarArmazem(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000, hoje = () => hojeISO() } = {}) {
   mkdirSync(dir, { recursive: true });
   const arqTrava = join(dir, '.trava');
 
@@ -66,6 +67,7 @@ export function criarArmazem(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000 }
     try {
       const antes = carregar();
       const resultado = fn(antes);
+      backupDiario(hoje()); // guarda o estado de antes da primeira gravação do dia
       salvar(resultado.estado, antes);
       return resultado;
     } finally {

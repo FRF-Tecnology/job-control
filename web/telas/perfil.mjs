@@ -11,6 +11,25 @@ export function telaPerfil(app) {
   const perfil = structuredClone(app.estado.perfil ?? {});
   perfil.filtros ??= {};
   perfil.respostasPadrao ??= [];
+  const pdfs = app.estado.curriculos ?? [];
+  perfil.curriculos = { ...(perfil.curriculos ?? {}) };
+  const caminho = nome => `curriculos/${nome}`;
+  const escolhaCurriculo = (idioma, rotulo) => {
+    const atual = perfil.curriculos[idioma];
+    const existe = pdfs.some(p => caminho(p.nome) === atual);
+    // Sem escolha válida: sugere o primeiro PDF para PT e nenhum para EN.
+    if (!existe) { if (idioma === 'PT' && pdfs[0]) perfil.curriculos.PT = caminho(pdfs[0].nome); else delete perfil.curriculos[idioma]; }
+    const sel = h('select', { id: `perfil-cv-${idioma}` },
+      idioma === 'EN' && h('option', { value: '' }, 'Nenhum (usar o de português)'),
+      pdfs.map(p => h('option', { value: caminho(p.nome), selected: perfil.curriculos[idioma] === caminho(p.nome) }, p.nome)));
+    sel.addEventListener('change', () => { if (sel.value) perfil.curriculos[idioma] = sel.value; else delete perfil.curriculos[idioma]; });
+    return h('label.campo', h('span', rotulo), sel);
+  };
+  const secaoCurriculos = h('fieldset', h('legend', 'Currículos'),
+    pdfs.length
+      ? [h('p.pequeno.mudo', { style: { margin: 0 } }, `${pdfs.length === 1 ? 'Encontrei 1 PDF' : `Encontrei ${pdfs.length} PDFs`} na pasta dados/curriculos. O Claude escolhe pelo idioma da vaga.`),
+         h('div.duas', escolhaCurriculo('PT', 'Vagas em português'), escolhaCurriculo('EN', 'Vagas em inglês'))]
+      : h('p.aviso-cv', h('strong', 'Nenhum currículo ainda. '), 'Copie seu PDF para a pasta ', h('code', 'dados/curriculos'), ' do projeto. Esta página atualiza sozinha quando ele aparecer.'));
 
   const campo = (k, rotulo, tipo, dica) => {
     const i = h('input', { id: `perfil-${k}`, type: tipo, placeholder: dica ?? '' });
@@ -49,6 +68,7 @@ export function telaPerfil(app) {
   h('header.cabecalho', h('div', h('h1', 'Perfil e regras'), h('p', 'O Claude lê esta página antes de cada rodada. CPF, RG e senhas nunca ficam aqui.')),
     h('button.botao', { type: 'submit' }, 'Salvar perfil')),
   CAMPOS.map(([grupo, campos]) => h('fieldset', h('legend', grupo), h('div.duas', campos.map(c => campo(...c))))),
+  secaoCurriculos,
   h('fieldset', h('legend', 'Busca e filtros'),
     h('div.duas',
       lista('Níveis aceitos', perfil.filtros.niveis, v => { perfil.filtros.niveis = v; }, 'Júnior\nPleno'),

@@ -47,3 +47,12 @@ export function ehDataISO(v) {
 export function foiEnviada(vaga) {
   return Boolean(vaga?.envio?.data);
 }
+
+// Valor em dinheiro digitado à brasileira: "8.500", "8.500,50", "R$ 8.500" ou "8500.5".
+export function lerValor(texto) {
+  const s = String(texto ?? '').replace(/[R$\s]/g, '');
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) return Number(s.replace(/\./g, '').replace(',', '.'));
+  if (/^\d+(,\d+)?$/.test(s)) return Number(s.replace(',', '.'));
+  if (/^\d+(\.\d+)?$/.test(s)) return Number(s);
+  return NaN;
+}

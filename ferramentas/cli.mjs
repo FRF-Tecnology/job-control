@@ -12,13 +12,13 @@ import { validarVaga, contemDocumentoEm } from '../nucleo/validacao.mjs';
 import { randomBytes } from 'node:crypto';
 import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
-import { hojeISO, somarDias } from '../nucleo/modelo.mjs';
+import { hojeISO, somarDias, lerValor } from '../nucleo/modelo.mjs';
 import { existsSync } from 'node:fs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dirDados = process.env.CENTRAL_DADOS || join(raiz, 'dados');
-const armazem = criarArmazem(dirDados);
 const hoje = process.env.CENTRAL_HOJE || hojeISO();
+const armazem = criarArmazem(dirDados, { hoje: () => hoje });
 
 const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
 
@@ -29,6 +29,7 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   add --json '{...}' | --arquivo x.json | --uri <lista codificada>
                                            adiciona uma vaga ou uma lista
       [--forcar]                           aceita mesmo empresa+título se o id for outro (vaga republicada)
+  (qualquer opção também aceita --opcao=valor, útil quando o valor começa com "--")
   mover <id> <etapa> [--motivo t] [--pendencia t] [--sub s]
         [--rodada n] [--curriculo PT|EN] [--pretensao n] [--respostas t] [--data AAAA-MM-DD]
   editar <id> --json '{campo: valor}'      campos livres (notas, aderência, link...)
@@ -48,7 +49,9 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
 function opcoes(args) {
   const o = { _: [] };
   for (let i = 0; i < args.length; i++) {
-    if (args[i].startsWith('--')) o[args[i].slice(2)] = args[i + 1]?.startsWith('--') || args[i + 1] === undefined ? true : args[++i];
+    const igual = args[i].match(/^--([\w-]+)=(.*)$/s);
+    if (igual) o[igual[1]] = igual[2];
+    else if (args[i].startsWith('--')) o[args[i].slice(2)] = args[i + 1]?.startsWith('--') || args[i + 1] === undefined ? true : args[++i];
     else o._.push(args[i]);
   }
   return o;
@@ -118,10 +121,11 @@ function comandos(cmd, o) {
           ...(o.data ? { data: o.data } : {}),
           ...(o.rodada ? { rodada: Number(o.rodada) } : {}),
           ...(o.curriculo ? { curriculo: o.curriculo } : {}),
-          ...(o.pretensao ? { pretensao: Number(o.pretensao) } : {}),
+          ...(o.pretensao ? { pretensao: lerValor(o.pretensao) } : {}),
           ...(o.respostas ? { respostas: o.respostas } : {}),
         };
       }
+      if (Number.isNaN(extras.envio?.pretensao)) sair(`pretensão inválida: ${o.pretensao} (use 8500 ou 8.500)`);
       const { vaga } = armazem.transacao(e => moverVaga(e, id, etapa, extras, ctx()));
       return console.log(`ok: ${vaga.empresa} · ${vaga.titulo} → ${vaga.etapa}${vaga.followUp?.proximo ? ` (follow-up ${vaga.followUp.proximo})` : ''}`);
     }

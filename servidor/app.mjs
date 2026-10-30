@@ -1,12 +1,12 @@
 // Servidor HTTP da Central: API JSON + arquivos da interface. Sem dependências.
 import { createServer } from 'node:http';
-import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { join, resolve, extname, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { criarArmazem } from '../nucleo/armazenamento.mjs';
 import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
-import { perfilSensivel, contemDocumentoEm } from '../nucleo/validacao.mjs';
+import { perfilSensivel, contemDocumentoEm, validarPerfil } from '../nucleo/validacao.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
 import { hojeISO } from '../nucleo/modelo.mjs';
 
@@ -14,6 +14,11 @@ const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PASTAS = { web: join(raiz, 'web'), nucleo: join(raiz, 'nucleo') };
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.ico': 'image/x-icon' };
 const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json'];
+
+// Id na URL com codificação quebrada não é uma vaga que existe.
+function decodificar(s) {
+  try { return decodeURIComponent(s); } catch { throw new ErroHttp(404, { erro: 'vaga não encontrada' }); }
+}
 
 class ErroHttp extends Error { constructor(status, corpo) { super(corpo.erro); this.status = status; this.corpo = corpo; } }
 
@@ -31,12 +36,13 @@ function lerCorpo(req) {
 function csv(vagas) {
   const cols = ['id', 'empresa', 'titulo', 'plataforma', 'etapa', 'subEtapa', 'aderencia', 'contrato', 'motivo', 'pendencia', 'dataEnvio', 'rodada', 'pretensao', 'proximoFollowUp', 'link', 'notas'];
   const valor = (v, c) => ({ dataEnvio: v.envio?.data, rodada: v.envio?.rodada, pretensao: v.envio?.pretensao, proximoFollowUp: v.followUp?.proximo }[c] ?? v[c] ?? '');
-  const esc = x => `"${String(x).replace(/"/g, '""')}"`;
+  // Apóstrofo na frente de =, +, -, @ impede o Excel de tratar o texto como fórmula.
+  const esc = x => `"${String(x).replace(/^[=+\-@\t\r]/, "'$&").replace(/"/g, '""')}"`;
   return '﻿' + [cols.join(';'), ...vagas.map(v => cols.map(c => esc(valor(v, c))).join(';'))].join('\n');
 }
 
 export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
-  const armazem = criarArmazem(dir);
+  const armazem = criarArmazem(dir, { hoje });
   let gravacoes = 0;
 
   const ctx = extra => ({ autor: 'eu', agora: hoje(), diasFollowUp: Number(armazem.carregar().perfil?.diasFollowUp) || 7, ...extra });
@@ -47,7 +53,7 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
   const chave = readFileSync(arqChave, 'utf8').trim();
   const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type, x-central-chave', 'access-control-allow-private-network': 'true' };
 
-  const versao = () => `${gravacoes}-${ARQ_DADOS.map(a => { const p = join(dir, a); return existsSync(p) ? `${statSync(p).mtimeMs}:${statSync(p).size}` : '0'; }).join('|')}`;
+  const versao = () => `${gravacoes}-${ARQ_DADOS.map(a => { const p = join(dir, a); return existsSync(p) ? `${statSync(p).mtimeMs}:${statSync(p).size}` : '0'; }).join('|')}|${curriculos().map(c => c.nome).join(',')}`;
 
   function servirArquivo(res, caminho) {
     let decodificado;
@@ -61,6 +67,21 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
     if (!alvo.startsWith(base + sep) || !existsSync(alvo) || !statSync(alvo).isFile()) return enviar(res, 404, { erro: 'não encontrado' });
     res.writeHead(200, { 'content-type': TIPOS[extname(alvo)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
     res.end(readFileSync(alvo));
+  }
+
+  function curriculos() {
+    const pasta = join(dir, 'curriculos');
+    if (!existsSync(pasta)) return [];
+    return readdirSync(pasta).filter(n => /\.pdf$/i.test(n)).sort().map(nome => ({ nome, tamanho: statSync(join(pasta, nome)).size }));
+  }
+
+  // Checklist da primeira vez (mostrada na tela Hoje até tudo estar feito).
+  function primeirosPassos(e) {
+    return [
+      { id: 'perfil', feito: Boolean(String(e.perfil?.nome ?? '').trim()), titulo: 'Preencher o perfil', texto: 'Nome, pretensões, inglês e filtros. O Claude usa em todas as candidaturas.', rota: '#/perfil' },
+      { id: 'curriculo', feito: curriculos().length > 0, titulo: 'Colocar o currículo', texto: `Copie o PDF (em português e, se tiver, em inglês) para ${join(dir, 'curriculos')}.`, rota: '#/perfil' },
+      { id: 'rodada', feito: e.rodadas.length > 0 || e.vagas.length > 0, titulo: 'Fazer a primeira rodada', texto: 'Abra o Claude Code nesta pasta e digite /rodada. Ele busca, filtra e mostra as vagas aqui para você decidir.', rota: '#/plataformas', botao: 'Ver plataformas' },
+    ];
   }
 
   function enviar(res, status, corpo, tipo = 'application/json; charset=utf-8') {
@@ -112,12 +133,14 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
 
     if (!p.startsWith('/api/')) return m === 'GET' ? servirArquivo(res, p) : enviar(res, 405, { erro: 'método não permitido' });
 
-    if (m === 'GET' && p === '/api/estado') return enviar(res, 200, { ...armazem.carregar(), hoje: hoje(), versao: versao() });
+    if (m === 'GET' && p === '/api/estado') { const e = armazem.carregar(); return enviar(res, 200, { ...e, hoje: hoje(), versao: versao(), curriculos: curriculos(), primeirosPassos: primeirosPassos(e) }); }
     if (m === 'GET' && p === '/api/versao') return enviar(res, 200, { versao: versao() });
     if (m === 'GET' && p === '/api/exportar.csv') {
       res.setHeader('content-disposition', `attachment; filename="candidaturas-${hoje()}.csv"`);
       return enviar(res, 200, csv(armazem.carregar().vagas), 'text/csv; charset=utf-8');
     }
+    if (m === 'GET' && p === '/api/curriculos') return enviar(res, 200, { pasta: join(dir, 'curriculos'), arquivos: curriculos() });
+    if (m === 'GET' && p === '/api/primeiros-passos') return enviar(res, 200, { passos: primeirosPassos(armazem.carregar()) });
     if (m === 'GET' && p === '/api/historico.md') return enviar(res, 200, gerarHistoricoMd(armazem.carregar(), hoje()), 'text/markdown; charset=utf-8');
 
     const corpo = m === 'GET' ? {} : await lerCorpo(req);
@@ -129,13 +152,17 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
       return enviar(res, 201, vaga);
     }
     if (m === 'PUT' && p === '/api/perfil') {
+      const errosPerfil = validarPerfil(corpo);
+      if (errosPerfil.length) throw new ErroValidacao(errosPerfil);
       if (perfilSensivel(corpo)) throw new ErroValidacao(['o perfil não pode guardar CPF, RG ou senha (nem respostas padrão sobre eles)']);
       gravar(e => ({ estado: { ...e, perfil: corpo } }));
       return enviar(res, 200, corpo);
     }
     let r = p.match(/^\/api\/plataformas\/([^/]+)$/);
     if (m === 'PUT' && r) {
-      const id = decodeURIComponent(r[1]);
+      const id = decodificar(r[1]);
+      const errosPlat = ['nome', 'url', 'status', 'comoAplicar', 'limitacoes', 'ultimaVarredura'].filter(k => corpo[k] != null && typeof corpo[k] !== 'string');
+      if (errosPlat.length) throw new ErroValidacao(errosPlat.map(k => `${k} deve ser texto`));
       if (contemDocumentoEm(corpo)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
       gravar(e => ({ estado: { ...e, plataformas: e.plataformas.some(x => x.id === id) ? e.plataformas.map(x => (x.id === id ? { ...x, ...corpo, id } : x)) : [...e.plataformas, { ...corpo, id }] } }));
       return enviar(res, 200, { ok: true });
@@ -143,7 +170,7 @@ export function criarServidor({ dir, hoje = () => hojeISO() } = {}) {
 
     r = p.match(/^\/api\/vagas\/([^/]+)(\/[a-z]+)?$/);
     if (r) {
-      const id = decodeURIComponent(r[1]);
+      const id = decodificar(r[1]);
       const acao = r[2];
       if (m === 'PATCH' && !acao) return enviar(res, 200, gravar(e => atualizarVaga(e, id, corpo, ctx())).vaga);
       if (m === 'POST' && acao === '/mover') {
