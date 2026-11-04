@@ -8,7 +8,7 @@ import { criarArmazem } from '../nucleo/armazenamento.mjs';
 import { adicionarVaga, moverVaga, registrarEvento, followUpFeito, adiarFollowUp, atualizarVaga, ErroDuplicata, ErroValidacao } from '../nucleo/servico.mjs';
 import { resumo } from '../nucleo/funil.mjs';
 import { duplicatasPorTitulo } from '../nucleo/dedupe.mjs';
-import { validarVaga, contemDocumentoEm } from '../nucleo/validacao.mjs';
+import { validarVaga, contemDocumentoEm, validarPerfil, perfilSensivel } from '../nucleo/validacao.mjs';
 import { randomBytes } from 'node:crypto';
 import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
@@ -38,13 +38,16 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   followup <id> feito | adiar <dias>
   rodada --json '{"n":16,"fontes":[...],"resumo":"..."}'   registra/atualiza uma rodada
   plataforma --json '{"id":"..."}'         cria/atualiza uma plataforma
+  perfil                                   mostra o perfil (JSON)
+  perfil --json '{campo: valor}'           atualiza só os campos enviados (filtros mesclados;
+                                           respostasPadrao mescladas pela pergunta)
   validar                                  confere todos os dados
   exportar-md [arquivo]                    histórico em Markdown (stdout ou arquivo)
   backup                                   cópia de hoje em dados/backups/
   chave                                    chave local usada pelos scripts de busca
   script <nome> [--palavras '["java"]'] [--dias 7] [--geo 106057199] [--central url]
                                            imprime automacao/<nome>.js com os marcadores preenchidos
-                                           (busca-linkedin, busca-gupy, busca-inhire, inhire-IH, inhire-Q, linkedin-LI)`;
+                                           (busca-linkedin, busca-gupy, busca-inhire, inhire-IH, inhire-Q, linkedin-LI, linkedin-auto)`;
 
 function opcoes(args) {
   const o = { _: [] };
@@ -181,6 +184,25 @@ function comandos(cmd, o) {
       return console.log(`ok: ${p.id}`);
     }
 
+    case 'perfil': {
+      if (!o.json || o.json === true) return console.log(JSON.stringify(armazem.carregar().perfil ?? {}, null, 2));
+      let p;
+      try { p = JSON.parse(o.json); } catch { sair('JSON inválido em --json'); }
+      if (!p || typeof p !== 'object' || Array.isArray(p)) sair('--json deve ser um objeto');
+      const atual = armazem.carregar().perfil ?? {};
+      const respostas = [...(atual.respostasPadrao ?? [])];
+      for (const r of p.respostasPadrao ?? []) {
+        const i = respostas.findIndex(x => String(x.pergunta).toLowerCase() === String(r.pergunta).toLowerCase());
+        if (i >= 0) respostas[i] = r; else respostas.push(r);
+      }
+      const novo = { ...atual, ...p, filtros: { ...(atual.filtros ?? {}), ...(p.filtros ?? {}) }, respostasPadrao: respostas };
+      const erros = validarPerfil(novo);
+      if (erros.length) sair(erros.join('; '));
+      if (perfilSensivel(novo)) sair('recusado: o perfil não pode guardar CPF, RG, senha ou dados bancários');
+      armazem.transacao(e => ({ estado: { ...e, perfil: novo } }));
+      return console.log(`ok: perfil atualizado (${Object.keys(p).join(', ')})`);
+    }
+
     case 'validar': {
       const e = armazem.carregar();
       const problemas = [];
@@ -224,6 +246,8 @@ function comandos(cmd, o) {
         nome: perfil.nome ?? '', email: perfil.email ?? '', linkedin: perfil.linkedin ?? '',
         telefoneSoNumeros: String(perfil.telefone ?? '').replace(/\D/g, ''),
         pretensaoCLT: String(perfil.pretensaoCLT ?? ''), pretensaoPJ: String(perfil.pretensaoPJ ?? ''),
+        // Início do nome do arquivo de currículo como aparece no LinkedIn (perfil.curriculosLinkedin).
+        cvPT: perfil.curriculosLinkedin?.PT ?? '', cvEN: perfil.curriculosLinkedin?.EN ?? '',
       };
       // Valores de texto entram como literais JSON (aspas e apóstrofos não quebram o script);
       // palavras e empresas já são listas JSON.

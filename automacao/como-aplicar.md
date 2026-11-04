@@ -7,6 +7,7 @@
 ## LinkedIn
 - Buscar com filtro "Candidatura simplificada" + Remoto + últimos 7–14 dias.
 - Palavras de busca: Java, Spring, Backend, Full Stack, Desenvolvedor Júnior.
+- Easy Apply automático: `cli.mjs script linkedin-auto` (instruções no topo do arquivo). Usa `perfil.curriculosLinkedin` para escolher o currículo PT ou EN.
 
 ## Gupy
 - Buscar vagas remotas em portal.gupy.io. Pular as que pedem RG.
