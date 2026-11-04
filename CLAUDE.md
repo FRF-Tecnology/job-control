@@ -48,3 +48,5 @@ Nunca clique em prompts de permissão do navegador por ela.
 
 ## Comandos
 `/buscar`, `/triagem`, `/aplicar`, `/status`, `/followup` e `/rodada` estão em `.claude/commands/`.
+`/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
+O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.
