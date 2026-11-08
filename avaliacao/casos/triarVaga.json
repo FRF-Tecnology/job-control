@@ -1,0 +1,807 @@
+[
+  {
+    "id": "triagem-li-4485531740",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Inviso",
+        "titulo": "Backend / Platform Engineer - Brazil",
+        "idioma": "en",
+        "stack": [
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486764354",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Jobgether",
+        "titulo": "Software Developer (Market Setup)",
+        "idioma": "en",
+        "stack": [
+          "AWS",
+          "Python"
+        ],
+        "resumoDescricao": "Menciona trabalho presencial ou híbrido. A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack",
+        "Presencial/Local"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4487523234",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Mouts IT",
+        "titulo": "Senior Backend Developer",
+        "idioma": "pt",
+        "stack": [
+          "Kafka",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4485841003",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "GeorgiaTEK Systems Inc.",
+        "titulo": "Senior Network Automation AI Engineer",
+        "idioma": "en",
+        "stack": [
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 5+ anos de experiência. A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4487571186",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "FCamara",
+        "titulo": "Forward Deployed Engineer AI - Sênior",
+        "idioma": "pt",
+        "stack": [
+          "Node",
+          "TypeScript",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 5+ anos de experiência. A descrição não cita Java nem Kotlin."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4485503930",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Domo Inovação",
+        "titulo": "Desenvolvedor Backend Sênior",
+        "idioma": "pt",
+        "stack": [
+          ".NET"
+        ],
+        "resumoDescricao": "A descrição não cita Java nem Kotlin. Cita .NET."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486550434",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Empresa Confidencial",
+        "titulo": "Senior Backend Developer (XML schemas)",
+        "idioma": "en",
+        "stack": [
+          "AWS",
+          "React",
+          "TypeScript",
+          "Python"
+        ],
+        "resumoDescricao": "Pede 5+ anos de experiência. A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4478470653",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Avenue Code",
+        "titulo": "Back End Engineer",
+        "idioma": "en",
+        "stack": [
+          "AWS",
+          "React",
+          "Node",
+          "TypeScript"
+        ],
+        "resumoDescricao": "Pede 8+ anos de experiência. A descrição não cita Java nem Kotlin."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack",
+        "Sênior"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4487746717",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "OneClick Code",
+        "titulo": "Copy of Sr Software Engineer",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "AWS",
+          "React",
+          "Node",
+          "Angular"
+        ],
+        "resumoDescricao": "Pede 6+ anos de experiência. Pede 4+ anos de React Native/Expo + Node"
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4487560233",
+    "origem": "pulada: Stack",
+    "entrada": {
+      "vaga": {
+        "empresa": "Tivita",
+        "titulo": "Pessoa Engenheira de Software Backend",
+        "idioma": "pt",
+        "stack": [
+          "Python"
+        ],
+        "resumoDescricao": "A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4488165491",
+    "origem": "pulada: Sênior",
+    "entrada": {
+      "vaga": {
+        "empresa": "Affinity",
+        "titulo": "GenAI Developer",
+        "idioma": "en",
+        "stack": [
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 12+ anos de experiência. A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Sênior",
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486987683",
+    "origem": "pulada: Sênior",
+    "entrada": {
+      "vaga": {
+        "empresa": "Mappa",
+        "titulo": "Staff Software Engineer",
+        "idioma": "en",
+        "stack": [
+          "React",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 10+ anos de experiência. A descrição não cita Java nem Kotlin."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Sênior",
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4480107948",
+    "origem": "pulada: Sênior",
+    "entrada": {
+      "vaga": {
+        "empresa": "CIT",
+        "titulo": "AI Engineer Master",
+        "idioma": "en",
+        "stack": [
+          "AWS",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Nível Master (acima de Sênior), arquitetura de IA enterprise."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Sênior"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486928775",
+    "origem": "pulada: Sênior",
+    "entrada": {
+      "vaga": {
+        "empresa": "Jobgether",
+        "titulo": "Staff Software Engineer - Frameworks",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "Kotlin",
+          "AWS",
+          "React",
+          "Node",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 10+ anos de experiência. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Sênior"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4488009919",
+    "origem": "pulada: Sênior",
+    "entrada": {
+      "vaga": {
+        "empresa": "VariaCode",
+        "titulo": "Staff AI Engineer (Knowledge Graphs Agentic Systems)",
+        "idioma": "en",
+        "stack": [
+          "AWS",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 8+ anos de experiência. Menciona trabalho presencial ou híbrido. A descrição não cita Java nem Kotlin. Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Sênior",
+        "Presencial/Local",
+        "Stack"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4487764682",
+    "origem": "pulada: Presencial/Local",
+    "entrada": {
+      "vaga": {
+        "empresa": "BillingPlatform",
+        "titulo": "Full Stack Developer (Java/React)",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "Spring",
+          "React",
+          "TypeScript"
+        ],
+        "resumoDescricao": "Pede 4+ anos de experiência. Remota, mas exige morar em São Paulo"
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Presencial/Local"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486707057",
+    "origem": "pulada: Presencial/Local",
+    "entrada": {
+      "vaga": {
+        "empresa": "EPAM Systems",
+        "titulo": "Senior Software Engineer, Java + AI/Python + Cloud",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "Spring",
+          "AWS",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 3+ anos de experiência. Menciona trabalho presencial ou híbrido. Cita Python. Vaga em escritório em Montenegro"
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Presencial/Local"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4431556865",
+    "origem": "pulada: Presencial/Local",
+    "entrada": {
+      "vaga": {
+        "empresa": "Accenture Brasil",
+        "titulo": "Desenvolvedor (a) Java | Spring - Pleno | Sênior | Especialista – CLT – Híbrido/Remoto",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Spring",
+          "Kafka",
+          "AWS",
+          "Angular"
+        ],
+        "resumoDescricao": "Menciona trabalho presencial ou híbrido."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Presencial/Local"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4451900130",
+    "origem": "pulada: Presencial/Local",
+    "entrada": {
+      "vaga": {
+        "empresa": "Feedzai",
+        "titulo": "Advanced Software Engineer - Customer Success",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "AWS"
+        ],
+        "resumoDescricao": "Pede 7+ anos de experiência. Menciona trabalho presencial ou híbrido."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Presencial/Local"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486789646",
+    "origem": "pulada: Presencial/Local",
+    "entrada": {
+      "vaga": {
+        "empresa": "Exadel",
+        "titulo": "Senior Software Engineer (Java)",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "Spring",
+          "Kafka",
+          "AWS"
+        ],
+        "resumoDescricao": "Menciona trabalho presencial ou híbrido."
+      }
+    },
+    "espera": {
+      "decisao": "pular",
+      "motivoPulo": [
+        "Presencial/Local"
+      ]
+    }
+  },
+  {
+    "id": "triagem-li-4486599573",
+    "origem": "pulada: Outro",
+    "entrada": {
+      "vaga": {
+        "empresa": "Crossing Hurdles",
+        "titulo": "Java Developer | Remote | $25/hr",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "LLM"
+        ],
+        "resumoDescricao": "Freelance US$25/h (treinamento de IA), abaixo da pretensão"
+      }
+    },
+    "espera": {
+      "decisao": "pular"
+    }
+  },
+  {
+    "id": "triagem-li-4340746061",
+    "origem": "pulada: Outro",
+    "entrada": {
+      "vaga": {
+        "empresa": "Sezzle",
+        "titulo": "Software Engineer II with Accounting Experience (Brazil)",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "AWS",
+          "React",
+          "TypeScript",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 7+ anos de experiência. Cita Python. Exige experiência com contabilidade"
+      }
+    },
+    "espera": {
+      "decisao": "pular"
+    }
+  },
+  {
+    "id": "triagem-li-4487705025",
+    "origem": "pulada: Outro",
+    "entrada": {
+      "vaga": {
+        "empresa": "Alignerr",
+        "titulo": "Senior Software Engineer — Agentic Coding",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "TypeScript",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 5+ anos de experiência. Cita Python. Alignerr: trabalho de avaliação/treinamento de IA, não é vaga de engenharia"
+      }
+    },
+    "espera": {
+      "decisao": "pular"
+    }
+  },
+  {
+    "id": "triagem-li-4487200749",
+    "origem": "pulada: Outro",
+    "entrada": {
+      "vaga": {
+        "empresa": "Alignerr",
+        "titulo": "Senior Software Engineer — AI Evaluation Benchmarks",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Pede 4+ anos de experiência. Cita Python. Alignerr: trabalho de avaliação/treinamento de IA, não é vaga de engenharia"
+      }
+    },
+    "espera": {
+      "decisao": "pular"
+    }
+  },
+  {
+    "id": "triagem-li-4479790788",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "CI&T",
+        "titulo": "Senior Java Developer - AWS, Brazil",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Spring",
+          "AWS",
+          "Angular",
+          "Python"
+        ],
+        "resumoDescricao": "Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4487288911",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "INDI Staffing Services",
+        "titulo": "Senior Java + Scala Developer - Remote Work",
+        "idioma": "en",
+        "stack": [
+          "Java"
+        ],
+        "resumoDescricao": "Pede 5+ anos de experiência."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4486534057",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "HUMATECH",
+        "titulo": "Senior Java Full Stack",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Spring",
+          "Kafka",
+          "AWS",
+          "React"
+        ],
+        "resumoDescricao": "Pede 5+ anos de experiência."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4487557345",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Verve",
+        "titulo": "Senior software Engineer (contract)",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "Kafka",
+          "AWS",
+          "Node",
+          "TypeScript",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4480488025",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Zup Innovation",
+        "titulo": "Pessoa Desenvolvedor Back-end Senior (AI Advocate)",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Spring",
+          "Kafka",
+          "AWS"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4487551861",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "AI/R",
+        "titulo": "Java Back-End Developer Pleno | Remote",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Angular"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4487507439",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "CWI Software",
+        "titulo": "Desenvolvedor (a) Full Stack Java/Angular Sênior",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Spring",
+          "Angular",
+          "TypeScript"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4485098485",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Verx Tecnologia e Inovação",
+        "titulo": "Desenvolvedor Full Stack",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Spring",
+          "Angular",
+          "TypeScript"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4487753964",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Stefanini Brasil",
+        "titulo": "Desenvolvedor Mobile Sr - Android",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Kotlin",
+          "Spring",
+          "React"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4486560432",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Jobgether",
+        "titulo": "Java Back-End Developer Pleno",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "AWS",
+          "Angular"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4487768419",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Dry Ground AI",
+        "titulo": "AI Engineer",
+        "idioma": "en",
+        "stack": [
+          "Java",
+          "AWS",
+          "React",
+          "Node",
+          "TypeScript",
+          "Python",
+          "LLM"
+        ],
+        "resumoDescricao": "Cita Python."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  },
+  {
+    "id": "triagem-li-4486999377",
+    "origem": "aprovada (enviada)",
+    "entrada": {
+      "vaga": {
+        "empresa": "Compass UOL",
+        "titulo": "Java Backend Developer - Pl/Sr",
+        "idioma": "pt",
+        "stack": [
+          "Java",
+          "Angular"
+        ],
+        "resumoDescricao": "Sem outros detalhes."
+      }
+    },
+    "espera": {
+      "decisao": "aplicar"
+    }
+  }
+]

@@ -1,0 +1,29 @@
+[
+  { "id": "revisao-spring-6", "origem": "rodada: pré-preenchimento errado", "entrada": { "formulario": [
+    { "pergunta": "How many years of work experience do you have with Java?", "valor": "6" },
+    { "pergunta": "How many years of work experience do you have with Spring Boot?", "valor": "6" },
+    { "pergunta": "Are you legally authorized to work in Brazil?", "valor": "Yes" }
+  ] }, "espera": { "ok": false, "problemasEm": ["Spring Boot"], "semProblemaEm": ["Java?", "authorized"] } },
+  { "id": "revisao-react-node-3", "origem": "rodada: pré-preenchimento errado", "entrada": { "formulario": [
+    { "pergunta": "How many years of work experience do you have with React.js?", "valor": "3" },
+    { "pergunta": "How many years of work experience do you have with Node.js?", "valor": "3" },
+    { "pergunta": "How many years of work experience do you have with AWS?", "valor": "5" }
+  ] }, "espera": { "ok": false, "problemasEm": ["React", "Node"], "semProblemaEm": ["AWS"] } },
+  { "id": "revisao-tudo-certo", "origem": "rodada", "entrada": { "formulario": [
+    { "pergunta": "How many years of work experience do you have with Kotlin?", "valor": "2" },
+    { "pergunta": "What is your expected monthly compensation in USD?", "valor": "5000" },
+    { "pergunta": "Will you now or in the future require visa sponsorship?", "valor": "No" }
+  ] }, "espera": { "ok": true } },
+  { "id": "revisao-regime-errado", "origem": "rodada: pretensão no regime errado", "entrada": { "formulario": [
+    { "pergunta": "Pretensão salarial CLT (R$)", "valor": "20000" },
+    { "pergunta": "Disponibilidade para início", "valor": "2 semanas" }
+  ] }, "espera": { "ok": false, "problemasEm": ["CLT"], "semProblemaEm": ["Disponibilidade"] } },
+  { "id": "revisao-numero-com-texto", "origem": "rodada: LinkedIn recusa texto em campo numérico", "entrada": { "formulario": [
+    { "pergunta": "Expected salary (USD, numbers only)", "valor": "USD 5,000/month" },
+    { "pergunta": "How many years of work experience do you have with Kafka?", "valor": "2" }
+  ] }, "espera": { "ok": false, "problemasEm": ["salary"], "semProblemaEm": ["Kafka"] } },
+  { "id": "revisao-comecar-ja", "origem": "rodada", "entrada": { "formulario": [
+    { "pergunta": "Can you start immediately?", "valor": "Yes" },
+    { "pergunta": "English level", "valor": "Fluent" }
+  ] }, "espera": { "ok": false, "problemasEm": ["immediately"], "semProblemaEm": ["English"] } }
+]

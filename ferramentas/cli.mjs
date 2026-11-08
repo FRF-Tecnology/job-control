@@ -2,7 +2,7 @@
 // CLI da Central. É por aqui que o Claude grava tudo (nunca editando os JSON à mão).
 // Todo comando de dados passa pela API v1 (servidor/api.mjs), chamada no mesmo processo: não precisa da Central aberta.
 // Pasta de dados: CENTRAL_DADOS (padrão: ./dados ao lado do projeto).
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { criarArmazem } from '../nucleo/armazenamento.mjs';
@@ -53,6 +53,12 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   validar                                  confere todos os dados
   exportar-md [arquivo]                    histórico em Markdown (stdout ou arquivo)
   backup                                   cópia de hoje em dados/backups/
+  avaliar --provedor anthropic|openai|google --modelo <id> [--funcao f1,f2] [--limite n]
+                                           roda o conjunto de avaliacao/ no modelo (chave da variável de ambiente)
+  avaliar --provedor assistente-local      gera os pedidos para o assistente responder
+  avaliar --respostas <arquivo> --modelo <nome>
+                                           pontua as respostas do assistente com a mesma guarda
+  avaliar --comparar                       tabela com todas as avaliações salvas em dados/avaliacoes/
   chave                                    chave local usada pelos scripts de busca
   script <nome> [--palavras '["java"]'] [--dias 7] [--geo 106057199] [--central url]
                                            imprime automacao/<nome>.js com os marcadores preenchidos
@@ -238,6 +244,51 @@ async function comandos(cmd, o) {
       const literal = k => (['palavras', 'empresas'].includes(k) ? valores[k] : JSON.stringify(valores[k]));
       const js = readFileSync(arq, 'utf8').replace(/'?\{\{(\w+)\}\}'?/g, (m, k) => (k in valores ? literal(k) : m));
       return console.log(js);
+    }
+
+    case 'avaliar': {
+      const { criarIA } = await import('../nucleo/ia/index.mjs');
+      const av = await import('../nucleo/ia/avaliacao.mjs');
+      const dirAval = join(dirDados, 'avaliacoes');
+      mkdirSync(dirAval, { recursive: true });
+      const conjunto = av.carregarConjunto(join(raiz, 'avaliacao'));
+      const funcoes = typeof o.funcao === 'string' ? o.funcao.split(',') : [];
+      const carimbo = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const salvar = (provedor, modelo, resultados) => {
+        const exec = { provedor, modelo, data: new Date().toISOString(), casos: resultados.length, resumo: av.resumir(resultados), resultados };
+        const arq = join(dirAval, `${carimbo}-${provedor}-${String(modelo).replace(/[^\w.-]/g, '_')}.json`);
+        writeFileSync(arq, JSON.stringify(exec, null, 2));
+        console.log(av.tabelaResumo(exec.resumo));
+        const falhas = resultados.filter(r => !r.ok || r.violacoes.length);
+        if (falhas.length) console.log('\nCasos com erro ou violação:');
+        for (const r of falhas) console.log(`  ✗ ${r.id}: ${[r.erro, ...(r.divergencias ?? []), ...r.violacoes.map(v => `violou ${v}`)].filter(Boolean).join('; ')}`);
+        return console.log(`\nsalvo em ${arq}`);
+      };
+
+      if (o.comparar) {
+        const execs = readdirSync(dirAval).filter(n => /^\d{4}-.*\.json$/.test(n)).sort().map(n => JSON.parse(readFileSync(join(dirAval, n), 'utf8')));
+        if (!execs.length) sair('nenhuma avaliação salva ainda: rode avaliar --provedor ...');
+        return console.log(av.tabelaComparacao(execs));
+      }
+      if (o.respostas) {
+        const resultados = av.pontuarRespostas(conjunto, JSON.parse(readFileSync(o.respostas, 'utf8')));
+        if (!resultados.length) sair('nenhuma resposta bate com os ids dos casos');
+        return salvar('assistente-local', typeof o.modelo === 'string' ? o.modelo : 'assistente', resultados);
+      }
+      if (o.provedor === 'assistente-local') {
+        const pedidos = av.pedidosParaAssistente(conjunto, funcoes);
+        const arq = join(dirAval, `pedidos-${carimbo}.json`);
+        writeFileSync(arq, JSON.stringify(pedidos, null, 2));
+        return console.log(`${pedidos.length} pedidos em ${arq}\nResponda cada um com o JSON pedido, num arquivo {"<id>": {...}}, e rode:\n  avaliar --respostas <arquivo> --modelo <nome do assistente>`);
+      }
+      const VARIAVEL = { anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY', google: 'GEMINI_API_KEY' };
+      if (!VARIAVEL[o.provedor] || typeof o.modelo !== 'string') sair('use: avaliar --provedor anthropic|openai|google --modelo <id>  (ou --provedor assistente-local, --respostas, --comparar)');
+      if (!process.env[VARIAVEL[o.provedor]]) sair(`defina a variável ${VARIAVEL[o.provedor]} neste terminal antes (a chave fica só com você; a Central não grava)`);
+      const usos = [];
+      const ia = criarIA({ config: { provedores: { [o.provedor]: {} }, rotas: { padrao: { provedor: o.provedor, modelo: o.modelo } } }, registrarUso: u => usos.push(u) });
+      const { resultados } = await av.avaliar({ ia, usos, conjunto, funcoes, limite: Number(o.limite) || 0, aoProgresso: (i, n) => process.stderr.write(`\r${i}/${n} casos`) });
+      process.stderr.write('\n');
+      return salvar(o.provedor, o.modelo, resultados);
     }
 
     case 'backup':

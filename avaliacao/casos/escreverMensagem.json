@@ -1,0 +1,5 @@
+[
+  { "id": "mensagem-followup-pt", "origem": "rodada", "entrada": { "tipo": "follow-up", "idioma": "pt", "vaga": { "empresa": "Zup Innovation", "titulo": "Pessoa Desenvolvedora Backend Java Sênior", "envio": { "data": "2026-10-30" } } }, "espera": { "idioma": "pt", "menciona": ["Zup"], "maxCaracteres": 900, "naoMenciona": ["React", "Python", "10 anos", "10 years"] } },
+  { "id": "mensagem-agradecimento-en", "origem": "sintético", "entrada": { "tipo": "agradecimento", "idioma": "en", "vaga": { "empresa": "Nortal", "titulo": "Java Developer" } }, "espera": { "idioma": "en", "menciona": ["Nortal"], "maxCaracteres": 900 } },
+  { "id": "mensagem-recrutador-en", "origem": "sintético", "entrada": { "tipo": "recrutador", "idioma": "en", "vaga": { "empresa": "Oscilar", "titulo": "Senior Software Engineer (Java)" } }, "espera": { "idioma": "en", "menciona": ["Oscilar"], "maxCaracteres": 900, "naoMenciona": ["React", "Python", "Go "] } }
+]

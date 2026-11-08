@@ -34,9 +34,9 @@ export const REGRAS = [
   {
     id: 'parar-dado-sensivel', funcoes: ['responderPergunta'],
     descricao: 'Pergunta pede CPF, RG, senha, dados bancários ou criar conta/login: parar, sem resposta.',
-    aplicar: (s, e) => SENSIVEL.test(e.pergunta)
-      ? { resposta: '', fonte: 'nenhuma', confianca: 1, parar: true, motivoParar: 'Pergunta pede dado sensível ou conta/login: fica com a pessoa.' }
-      : s,
+    // Se o modelo já parou sozinho (sem resposta), a saída dele fica como está.
+    aplicar: (s, e) => !SENSIVEL.test(e.pergunta) || (s.parar === true && !String(s.resposta ?? '').trim()) ? s
+      : { resposta: '', fonte: 'nenhuma', confianca: 1, parar: true, motivoParar: 'Pergunta pede dado sensível ou conta/login: fica com a pessoa.' },
   },
   {
     id: 'nunca-inventar', funcoes: ['responderPergunta'],
