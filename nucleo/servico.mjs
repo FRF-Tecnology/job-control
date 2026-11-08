@@ -21,10 +21,10 @@ export class ErroDuplicata extends Error {
 }
 
 // Campos que podem ser editados livremente pela tela.
-const EDITAVEIS = ['titulo', 'empresa', 'link', 'plataforma', 'nivel', 'contrato', 'modelo', 'stack', 'ingles', 'idioma', 'aderencia', 'motivoClaude', 'notas', 'subEtapa', 'local'];
+const EDITAVEIS = ['titulo', 'empresa', 'link', 'plataforma', 'nivel', 'contrato', 'modelo', 'stack', 'ingles', 'idioma', 'aderencia', 'motivoClaude', 'notas', 'subEtapa', 'local', 'mercado'];
 
 export function estadoVazio() {
-  return { vagas: [], eventos: [], plataformas: [], rodadas: [], perfil: {} };
+  return { vagas: [], eventos: [], plataformas: [], rodadas: [], perfil: {}, pedidos: [] };
 }
 
 const clonar = o => structuredClone(o);
@@ -143,4 +143,28 @@ export function adiarFollowUp(estado, id, dias, ctx) {
   v.followUp = { feitos: v.followUp?.feitos ?? 0, proximo: somarDias(ctx.agora, dias) };
   v.atualizadoEm = ctx.agora;
   return { estado: novo, vaga: v };
+}
+
+// Pedidos: o que a pessoa digita na caixa "O que vamos fazer hoje?" e o assistente
+// (Claude Code, hoje) ainda não fez. O assistente lista com /pedidos e conclui com uma resposta curta.
+export function criarPedido(estado, texto, ctx) {
+  const t = String(texto ?? '').trim();
+  if (!t) throw new ErroValidacao(['escreva o pedido']);
+  if (t.length > 500) throw new ErroValidacao(['pedido longo demais (máximo 500 caracteres)']);
+  if (contemDocumento(t)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
+  const novo = clonar(estado);
+  novo.pedidos ??= [];
+  const pedido = { id: `pd-${ctx.agora}-${String(novo.pedidos.length + 1).padStart(4, '0')}-${Math.random().toString(36).slice(2, 6)}`, contaId: contaDe(ctx), texto: t, autor: ctx.autor, criadoEm: ctx.agora, status: 'aberto' };
+  novo.pedidos.push(pedido);
+  return { estado: novo, pedido };
+}
+
+export function concluirPedido(estado, id, resposta, ctx) {
+  if (resposta != null && typeof resposta !== 'string') throw new ErroValidacao(['resposta deve ser texto']);
+  if (contemDocumento(resposta)) throw new ErroValidacao(['parece conter CPF/RG — documentos não são guardados na central']);
+  const novo = clonar(estado);
+  const p = (novo.pedidos ?? []).find(x => x.id === id);
+  if (!p) throw new Error(`pedido não encontrado: ${id}`);
+  Object.assign(p, { status: 'feito', resposta: resposta ?? '', concluidoEm: ctx.agora });
+  return { estado: novo, pedido: p };
 }

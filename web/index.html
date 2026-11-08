@@ -2,9 +2,18 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Central de Candidaturas</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E6E6A'/%3E%3Cpath d='M7 20h18M7 14h12M7 8h6' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Central">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/web/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/web/icone.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/web/estilo.css">
   <script>
     try { const t = localStorage.getItem('tema'); if (t) document.documentElement.dataset.tema = t; } catch {}
@@ -12,20 +21,23 @@
 </head>
 <body>
   <a class="pular-link" href="#conteudo">Ir para o conteúdo</a>
-  <div class="moldura">
-    <nav class="lateral" aria-label="Seções">
+  <header class="topo-app">
+    <div class="topo-dentro">
       <a class="marca" href="#/hoje" aria-label="Central de Candidaturas — início">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 22h18M7 16h12M7 10h6" /></svg>
+        <img src="/web/icone.svg" alt="" width="28" height="28">
         <span>Central</span>
       </a>
-      <ul class="menu" id="menu"></ul>
-      <div class="lateral-pe">
-        <button class="botao-fantasma" id="alternar-tema" type="button">Tema</button>
+      <nav aria-label="Seções"><ul class="menu" id="menu"></ul></nav>
+      <div class="topo-pe">
         <span class="status-conexao" id="conexao" role="status"></span>
+        <button class="botao-icone" id="alternar-tema" type="button" aria-label="Alternar tema claro/escuro">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" /></svg>
+        </button>
       </div>
-    </nav>
-    <main id="conteudo" tabindex="-1"></main>
-  </div>
+    </div>
+  </header>
+  <main id="conteudo" tabindex="-1"></main>
+  <nav class="abas" id="abas" aria-label="Seções principais"></nav>
   <aside class="gaveta" id="gaveta" aria-label="Detalhe da vaga" hidden></aside>
   <div class="veu" id="veu" hidden></div>
   <dialog id="dialogo"></dialog>

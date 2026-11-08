@@ -9,6 +9,7 @@ Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação
 - A pessoa acompanha tudo ao vivo em http://localhost:4321 (aberto com `iniciar.bat` / `iniciar.sh`).
   Os scripts de busca precisam da Central aberta.
 - Antes de aplicar uma vaga, rode `cli.mjs dup "<empresa>" "<título>" --excluir <id da vaga>`. Se listar outra vaga **já enviada** (mostra "enviada <data>"), não aplique de novo: mova esta para `pulada --motivo Duplicada`.
+- Ao adicionar vaga, anote `"mercado": "internacional"` (paga em USD/EUR, contrato overseas/contractor) ou `"nacional"` (CLT/PJ em reais). O seletor de foco da Central usa esse campo; sem ele, a Central chuta pelo idioma e pelas anotações.
 - A porta real da Central fica em `dados/.porta` (padrão 4321). Os scripts gerados pela CLI já usam essa porta.
 - Fim de cada rodada: `cli.mjs rodada --json '{...}'` e `cli.mjs exportar-md ../historico-central.md`
   (ou outro caminho que a pessoa preferir).
@@ -48,6 +49,7 @@ Nesse caso:
 Nunca clique em prompts de permissão do navegador por ela.
 
 ## Comandos
-`/buscar`, `/triagem`, `/aplicar`, `/status`, `/followup` e `/rodada` estão em `.claude/commands/`.
+`/buscar`, `/triagem`, `/aplicar`, `/status`, `/followup`, `/rodada` e `/pedidos` estão em `.claude/commands/`.
+`/pedidos` faz o que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central (`cli.mjs pedidos` lista; `cli.mjs pedido <id> feito "<resposta>"` conclui).
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.

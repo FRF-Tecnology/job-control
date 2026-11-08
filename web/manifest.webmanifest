@@ -1,0 +1,15 @@
+{
+  "name": "Central de Candidaturas",
+  "short_name": "Central",
+  "description": "Busca, triagem, candidatura e acompanhamento de vagas num só lugar.",
+  "lang": "pt-BR",
+  "start_url": "/#/hoje",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "/web/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/web/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
