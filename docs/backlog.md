@@ -221,6 +221,25 @@ de armazenamento não muda o comportamento, e outro prova que as regras (CPF, nu
   `testes/ia.test.mjs` prova que a guarda barra CPF, invenção de experiência e senha nos três provedores.
 ---
 
+## T10 — Design system e nova Central
+
+**Status (2026-11-07, branch `feat/t10-nova-central`, em cima da T0): primeira entrega feita.**
+- Design system em `web/estilo.css`: Inter, tinta #0B1B33, um azul de destaque (#0066CC), superfícies #F5F5F7, raios grandes,
+  topo translúcido com desfoque, tema escuro no estilo Apple, movimento só com propósito (respeita "reduzir movimento").
+- Casca nova: menu no topo no PC; no celular, 3 abas embaixo (Hoje, Triagem, Vagas) + Mais.
+- Hoje: "Olá, <nome>. O que vamos fazer hoje?", caixa única, sugestões pelo foco, seletor Internacional / Nacional / Os dois
+  (salvo em `perfil.foco`), números grandes, "Precisa de você" agrupado por pendência, funil e linha do tempo.
+- Caixa única: atalhos simples abrem a tela certa; o resto vira **pedido** (`/api/v1/pedidos`) que o assistente faz com `/pedidos`.
+- Campo `mercado` na vaga (internacional | nacional), com palpite quando falta (`mercadoDe`).
+- Triagem: cartão que se arrasta (direita aplica, esquerda pula), etiqueta de mercado, fila filtrada pelo foco.
+- PWA: `manifest.webmanifest`, ícone e service worker (rede primeiro; dados nunca vão para o cache).
+
+**Falta:** instalação do PWA conferida num Chrome real (o navegador embutido do app não registra service worker);
+usar a Central pelo celular depende da nuvem (T7), porque hoje ela só atende o próprio computador;
+telas Entrevistas e Aprendizados entram com T3 e T5; a caixa responder na hora com IA própria entra quando a T9 escolher o modelo.
+
+---
+
 ## T9 — Avaliação de modelos com dados reais
 
 **Problema:** escolher o modelo pela marca é achismo. A diferença entre modelos aparece justamente no que é o coração

@@ -10,7 +10,7 @@ import { criarApi, PREFIXO, ErroApi, respostaDeErro } from './api.mjs';
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PASTAS = { web: join(raiz, 'web'), nucleo: join(raiz, 'nucleo') };
-const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.ico': 'image/x-icon' };
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json; charset=utf-8' };
 
 function lerCorpo(req) {
   return new Promise((ok, falha) => {
@@ -36,6 +36,8 @@ export function criarServidor({ dir, hoje = () => hojeISO(), armazem = criarArma
     try { decodificado = decodeURIComponent(caminho); } catch { return enviar(res, 404, { erro: 'não encontrado' }); }
     let base, rel;
     if (decodificado === '/' || decodificado === '/index.html') [base, rel] = [PASTAS.web, 'index.html'];
+    // PWA: o service worker e o manifesto moram na raiz para valer no site inteiro.
+    else if (decodificado === '/sw.js' || decodificado === '/manifest.webmanifest') [base, rel] = [PASTAS.web, decodificado.slice(1)];
     else if (decodificado.startsWith('/web/')) [base, rel] = [PASTAS.web, decodificado.slice(5)];
     // A tela só importa módulos soltos do núcleo (modelo, funil...). Armazéns e IA ficam de fora.
     else if (/^\/nucleo\/[\w-]+\.mjs$/.test(decodificado) && !decodificado.includes('armazenamento')) [base, rel] = [PASTAS.nucleo, decodificado.slice(8)];

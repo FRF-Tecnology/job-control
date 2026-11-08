@@ -1,4 +1,4 @@
-import { ETAPAS, PEDE_MOTIVO, SUB_ETAPAS, ehDataISO } from './modelo.mjs';
+import { ETAPAS, PEDE_MOTIVO, SUB_ETAPAS, MERCADOS, FOCOS, ehDataISO } from './modelo.mjs';
 
 function cpfValido(digitos) {
   if (!/^\d{11}$/.test(digitos) || /^(\d)\1{10}$/.test(digitos)) return false;
@@ -48,6 +48,7 @@ export function validarVaga(v) {
   }
   if (v.stack != null && !(Array.isArray(v.stack) && v.stack.every(x => typeof x === 'string'))) erros.push('stack deve ser uma lista de textos');
   if (v.subEtapa != null && !SUB_ETAPAS.includes(v.subEtapa)) erros.push(`subetapa desconhecida: ${v.subEtapa}`);
+  if (v.mercado != null && !MERCADOS.includes(v.mercado)) erros.push(`mercado deve ser ${MERCADOS.join(' ou ')}`);
   if (v.envio?.data && !ehDataISO(v.envio.data)) erros.push('data de envio deve ser AAAA-MM-DD');
   if (v.followUp?.proximo && !ehDataISO(v.followUp.proximo)) erros.push('data de follow-up deve ser AAAA-MM-DD');
   if (v.link && !/^https?:\/\//i.test(String(v.link))) erros.push('link deve começar com http:// ou https://');
@@ -72,7 +73,8 @@ export function validarPerfil(p) {
   if (p.respostasPadrao != null && !(Array.isArray(p.respostasPadrao) && p.respostasPadrao.every(r => r && typeof r === 'object' && ['string', 'undefined'].includes(typeof r.pergunta) && ['string', 'undefined'].includes(typeof r.resposta)))) {
     erros.push('respostasPadrao deve ser uma lista de {pergunta, resposta}');
   }
-  for (const k of ['pretensaoCLT', 'pretensaoPJ', 'experienciaAnos', 'diasFollowUp']) {
+  if (p.foco != null && !FOCOS.includes(p.foco)) erros.push(`foco deve ser ${FOCOS.join(', ')}`);
+  for (const k of ['pretensaoCLT', 'pretensaoPJ', 'experienciaAnos', 'diasFollowUp', 'limiteLinkedinDia']) {
     if (p[k] != null && p[k] !== '' && !Number.isFinite(Number(p[k]))) erros.push(`${k} deve ser número`);
   }
   return erros;

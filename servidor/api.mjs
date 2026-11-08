@@ -3,7 +3,7 @@
 // Resposta: { status, corpo, tipo?, cabecalhos? }.
 import { existsSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
+import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, criarPedido, concluirPedido, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
 import { perfilSensivel, contemDocumentoEm, validarPerfil, validarVaga } from '../nucleo/validacao.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
 import { resumo } from '../nucleo/funil.mjs';
@@ -12,7 +12,7 @@ import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { hojeISO } from '../nucleo/modelo.mjs';
 
 export const PREFIXO = '/api/v1';
-const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json'];
+const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json', 'pedidos.json'];
 
 export class ErroApi extends Error { constructor(status, corpo) { super(corpo.erro); this.status = status; this.corpo = corpo; } }
 
@@ -48,7 +48,7 @@ export function respostaDeErro(e) {
   if (e instanceof ErroApi) return { status: e.status, corpo: e.corpo };
   if (e instanceof ErroValidacao) return { status: 400, corpo: { erro: e.message, erros: e.erros } };
   if (e instanceof ErroDuplicata) return { status: 409, corpo: { erro: e.message, existente: e.existente } };
-  if (/não encontrada/.test(e.message)) return { status: 404, corpo: { erro: e.message } };
+  if (/não encontrad[ao]/.test(e.message)) return { status: 404, corpo: { erro: e.message } };
   return null;
 }
 
@@ -116,6 +116,7 @@ export function criarApi({ armazem, dir = armazem.dir, hoje = () => hojeISO(), c
       if (p === '/perfil') return ok(armazem.carregar().perfil ?? {});
       if (p === '/plataformas') return ok(armazem.carregar().plataformas);
       if (p === '/rodadas') return ok(armazem.carregar().rodadas);
+      if (p === '/pedidos') return ok((armazem.carregar().pedidos ?? []).filter(x => !q.status || x.status === q.status));
       if (p === '/curriculos') return ok({ pasta: dir ? join(dir, 'curriculos') : null, arquivos: curriculos() });
       if (p === '/primeiros-passos') return ok({ passos: primeirosPassos(armazem.carregar()) });
       if (p === '/historico.md') return ok(gerarHistoricoMd(armazem.carregar(), hoje()), 200, 'text/markdown; charset=utf-8');
@@ -159,6 +160,10 @@ export function criarApi({ armazem, dir = armazem.dir, hoje = () => hojeISO(), c
       gravar(e => ({ estado: { ...e, perfil: novo } }));
       return ok(novo);
     }
+
+    if (m === 'POST' && p === '/pedidos') return ok(gravar(e => criarPedido(e, corpo.texto, ctx(autor))).pedido, 201);
+    const rp = p.match(/^\/pedidos\/([^/]+)\/concluir$/);
+    if (m === 'POST' && rp) return ok(gravar(e => concluirPedido(e, decodificar(rp[1]), corpo.resposta, ctx(autor))).pedido);
 
     if (m === 'POST' && p === '/backup') return ok({ criado: armazem.backupDiario(hoje()), data: hoje() });
 

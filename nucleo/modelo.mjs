@@ -18,6 +18,10 @@ export const SUB_ETAPAS = ['teste', 'entrevista-rh', 'entrevista-tecnica', 'prop
 export const MOTIVOS_PULO = ['Sênior', 'Inglês', 'Diploma', 'Stack', 'Presencial/Local', 'Documento', 'Duplicada', 'Vaga fechada', 'Outro'];
 export const MOTIVOS_ENCERRAMENTO = ['Reprovada', 'Sem retorno', 'Vaga fechada', 'Desisti', 'Outro'];
 
+// Mercado da vaga e foco da busca (seletor Internacional / Nacional / Os dois).
+export const MERCADOS = ['internacional', 'nacional'];
+export const FOCOS = ['internacional', 'nacional', 'ambos'];
+
 // Etapas que exigem um texto explicando o porquê.
 export const PEDE_MOTIVO = ['pulada', 'encerrada'];
 
@@ -43,6 +47,16 @@ export function somarDias(iso, dias) {
 export function ehDataISO(v) {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
+
+// Vaga sem mercado anotado: palpite pelas anotações (CLT/nacional pesa mais) e pelo idioma.
+export function mercadoDe(v) {
+  if (MERCADOS.includes(v?.mercado)) return v.mercado;
+  const texto = normalizar(`${v?.motivoClaude ?? ''} ${v?.notas ?? ''} ${v?.contrato ?? ''}`);
+  if (/\bclt\b|nacional|\bbrl\b|reais/.test(texto)) return 'nacional';
+  if (/\busd\b|contractor|overseas|dolar/.test(texto) || v?.idioma === 'en') return 'internacional';
+  return 'nacional';
+}
+export const noFoco = (v, foco) => !foco || foco === 'ambos' || mercadoDe(v) === foco;
 
 export function foiEnviada(vaga) {
   return Boolean(vaga?.envio?.data);

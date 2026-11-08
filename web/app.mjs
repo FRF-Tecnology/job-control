@@ -11,11 +11,18 @@ import { telaNumeros } from './telas/numeros.mjs';
 import { telaPerfil } from './telas/perfil.mjs';
 import { abrirDetalhe, fecharDetalhe, detalheAberto } from './telas/detalhe.mjs';
 
+// aba: aparece na barra de baixo do celular (as outras ficam em Mais).
+const ICONES = {
+  hoje: 'M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z',
+  triagem: 'M5 6h14v12H5zM9 6V4h6v2M9 12l2 2 4-4',
+  vagas: 'M3 8h18v12H3zM9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3',
+  mais: 'M5 12h.01M12 12h.01M19 12h.01',
+};
 const TELAS = [
-  { rota: 'hoje', nome: 'Hoje', tela: telaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true },
-  { rota: 'triagem', nome: 'Triagem', tela: telaTriagem, contador: r => r.descoberta },
+  { rota: 'hoje', nome: 'Hoje', tela: telaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
+  { rota: 'triagem', nome: 'Triagem', tela: telaTriagem, contador: r => r.descoberta, aba: true },
   { rota: 'quadro', nome: 'Quadro', tela: telaQuadro },
-  { rota: 'vagas', nome: 'Vagas', tela: telaVagas, contador: r => r.total },
+  { rota: 'vagas', nome: 'Vagas', tela: telaVagas, aba: true },
   { rota: 'numeros', nome: 'Números', tela: telaNumeros },
   { rota: 'plataformas', nome: 'Plataformas', tela: telaPlataformas },
   { rota: 'rodadas', nome: 'Rodadas', tela: telaRodadas },
@@ -26,6 +33,14 @@ const app = {
   estado: null,
   versao: null,
   get hoje() { return this.estado?.hoje; },
+  // Foco da busca (Internacional / Nacional / Os dois), guardado no perfil.
+  get foco() { return this.estado?.perfil?.foco ?? 'ambos'; },
+  async mudarFoco(foco) {
+    if (foco === this.foco) return;
+    this.estado.perfil = { ...this.estado.perfil, foco };
+    renderizar();
+    await this.agir(() => this.api('/api/v1/perfil', 'PATCH', { foco }));
+  },
 
   async api(caminho, metodo = 'GET', corpo) {
     const r = await fetch(caminho, { method: metodo, headers: { 'content-type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined });
@@ -110,13 +125,36 @@ function rotaAtual() {
   return { ...(TELAS.find(t => t.rota === rota) ?? TELAS[0]), vaga: vaga ? decodeURIComponent(vaga) : null };
 }
 
+const SVG = 'http://www.w3.org/2000/svg';
+function icone(d) {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(SVG, 'path');
+  path.setAttribute('d', d);
+  svg.append(path);
+  return svg;
+}
+
 function montarMenu(r) {
   const atual = rotaAtual().rota;
-  document.getElementById('menu').replaceChildren(...TELAS.map(t => {
-    const n = t.contador?.(r);
-    return h('li', h('a', { href: `#/${t.rota}`, 'aria-current': t.rota === atual ? 'page' : null },
-      h('span', t.nome), n ? h(`span.contador${t.alerta ? '.alerta' : ''}`, String(n)) : null));
-  }));
+  const contador = t => { const n = t.contador?.(r); return n ? h(`span.contador${t.alerta ? '.alerta' : ''}`, String(n)) : null; };
+  document.getElementById('menu').replaceChildren(...TELAS.map(t =>
+    h('li', h('a', { href: `#/${t.rota}`, 'aria-current': t.rota === atual ? 'page' : null }, h('span', t.nome), contador(t)))));
+  // Celular: 3 abas principais + Mais (as outras telas numa folha).
+  const noMais = TELAS.some(t => !t.aba && t.rota === atual);
+  document.getElementById('abas').replaceChildren(
+    ...TELAS.filter(t => t.aba).map(t => h('a', { href: `#/${t.rota}`, 'aria-current': t.rota === atual ? 'page' : null }, icone(ICONES[t.rota]), t.nome, contador(t))),
+    h('button', { type: 'button', 'aria-current': noMais ? 'page' : null, on: { click: abrirMais } }, icone(ICONES.mais), 'Mais'));
+}
+
+function abrirMais() {
+  const dlg = document.getElementById('dialogo');
+  dlg.replaceChildren(h('form', { method: 'dialog' },
+    h('h2', 'Mais'),
+    h('nav.folha-mais', { 'aria-label': 'Outras seções' }, TELAS.filter(t => !t.aba).map(t => h('a', { href: `#/${t.rota}`, on: { click: () => dlg.close() } }, t.nome, h('span.mudo', '›')))),
+    h('div.acoes', { style: { justifyContent: 'flex-end' } }, h('button.botao-fantasma', { type: 'submit' }, 'Fechar'))));
+  dlg.showModal();
 }
 
 let ultimaRota = null;
@@ -197,3 +235,6 @@ window.addEventListener('hashchange', () => { app.sujo = false; carregar(true); 
 window.addEventListener('focus', () => carregar());
 setInterval(() => { if (document.visibilityState === 'visible') carregar(); }, 5000);
 carregar(true);
+
+// PWA: instala no celular/PC e abre a última interface mesmo sem rede.
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

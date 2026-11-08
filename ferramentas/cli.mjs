@@ -48,6 +48,8 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   perfil                                   mostra o perfil (JSON)
   perfil --json '{campo: valor}'           atualiza só os campos enviados (filtros mesclados;
                                            respostasPadrao mescladas pela pergunta)
+  pedidos                                  pedidos abertos da caixa "O que vamos fazer hoje?"
+  pedido <id> feito [resposta curta]       conclui um pedido (a resposta aparece na Central)
   validar                                  confere todos os dados
   exportar-md [arquivo]                    histórico em Markdown (stdout ou arquivo)
   backup                                   cópia de hoje em dados/backups/
@@ -173,6 +175,19 @@ async function comandos(cmd, o) {
       if (!p || typeof p !== 'object' || Array.isArray(p)) sair('--json deve ser um objeto');
       await chamar('PATCH', '/perfil', p);
       return console.log(`ok: perfil atualizado (${Object.keys(p).join(', ')})`);
+    }
+
+    case 'pedidos': {
+      const ps = await chamar('GET', '/pedidos?status=aberto');
+      for (const p of ps) console.log(`${p.id} | ${p.criadoEm} | ${p.texto}`);
+      return console.log(`(${ps.length})`);
+    }
+
+    case 'pedido': {
+      const [id, acao, ...resposta] = o._;
+      if (acao !== 'feito') sair('use: pedido <id> feito [resposta curta]');
+      await chamar('POST', `/pedidos/${id_(id)}/concluir`, { resposta: resposta.join(' ') });
+      return console.log('ok');
     }
 
     case 'validar': {

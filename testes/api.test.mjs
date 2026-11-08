@@ -81,3 +81,32 @@ test('dono dos dados: vaga e evento ganham contaId da sessão, nunca do corpo', 
   await criarApi({ armazem: local, dir: null, hoje }).chamar({ metodo: 'POST', caminho: `${PREFIXO}/vagas`, corpo: vaga('a') });
   assert.equal(local.carregar().vagas[0].contaId, 'local');
 });
+
+test('pedidos: criar, listar abertos e concluir; CPF é recusado', async () => {
+  const chamar = novaApi(criarArmazemMemoria());
+  const p = (await chamar('POST', '/pedidos', { texto: 'Aplicar nas 4 internacionais' }, 'eu')).corpo;
+  assert.equal(p.status, 'aberto');
+  assert.equal(p.contaId, 'local');
+  assert.equal((await chamar('POST', '/pedidos', { texto: '   ' })).status, 400);
+  assert.equal((await chamar('POST', '/pedidos', { texto: 'meu CPF 529.982.247-25' })).status, 400);
+  assert.equal((await chamar('GET', '/pedidos?status=aberto')).corpo.length, 1);
+  const feito = (await chamar('POST', `/pedidos/${encodeURIComponent(p.id)}/concluir`, { resposta: '4 enviadas' })).corpo;
+  assert.deepEqual([feito.status, feito.resposta], ['feito', '4 enviadas']);
+  assert.equal((await chamar('GET', '/pedidos?status=aberto')).corpo.length, 0);
+  assert.equal((await chamar('POST', '/pedidos/nao-existe/concluir', {})).status, 404);
+});
+
+test('mercado da vaga e foco do perfil: valores válidos e palpite', async () => {
+  const { mercadoDe, noFoco } = await import('../nucleo/modelo.mjs');
+  const chamar = novaApi(criarArmazemMemoria());
+  assert.equal((await chamar('POST', '/vagas', vaga('a', { mercado: 'marte' }))).status, 400);
+  assert.equal((await chamar('POST', '/vagas', vaga('b', { mercado: 'internacional' }))).status, 201);
+  assert.equal((await chamar('PATCH', '/vagas/b', { mercado: 'nacional' })).corpo.mercado, 'nacional');
+  assert.equal((await chamar('PATCH', '/perfil', { foco: 'tudo' })).status, 400);
+  assert.equal((await chamar('PATCH', '/perfil', { foco: 'internacional' })).status, 200);
+  assert.equal(mercadoDe({ idioma: 'en' }), 'internacional');
+  assert.equal(mercadoDe({ idioma: 'en', motivoClaude: 'CLT nacional (grupo 3)' }), 'nacional');
+  assert.equal(mercadoDe({ idioma: 'pt', notas: 'contractor USD' }), 'internacional');
+  assert.equal(mercadoDe({ idioma: 'pt' }), 'nacional');
+  assert.ok(noFoco({ idioma: 'en' }, 'ambos') && noFoco({ idioma: 'en' }, 'internacional') && !noFoco({ idioma: 'en' }, 'nacional'));
+});
