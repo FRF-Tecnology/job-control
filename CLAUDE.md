@@ -55,3 +55,44 @@ Nunca clique em prompts de permissão do navegador por ela.
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
 Com o MCP "central" ligado (`.mcp.json`), prefira as ferramentas dele (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...) aos comandos da CLI: são as mesmas regras, sem shell.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.
+
+<!-- rtk-instructions v2 -->
+# Command output
+
+Command output here is condensed to save tokens, keeping every signal and
+dropping costly noise. Treat it as the complete result: run commands
+normally, and batch related commands into one call to avoid extra turns.
+Truncated results state their recovery path in their own output. Re-run a
+command as `rtk bypass <cmd>` only when its result is unusable: empty when
+output was clearly expected, contradicting its exit code, or garbled.
+<!-- /rtk-instructions -->
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- graphify-out/ is not committed (it is in .gitignore). If it is missing, build it with `graphify extract . --code-only` (local AST, no API key; dados/ is skipped by .gitignore).
+
+## Ferramentas de desenvolvimento
+
+O projeto sempre usa três ferramentas:
+- **[Graphify](https://github.com/Graphify-Labs/graphify):** é o mapa do código, descrito na seção acima.
+- **[RTK](https://github.com/rtk-ai/rtk):** encurta a saída dos comandos antes de o assistente ler.
+- **[Gas Town](https://github.com/gastownhall/gastown):** organiza as tarefas (beads, prefixo `jc`) e os agentes. O rig é `job_control`, numa sede do Gas Town (`gt install`).
+
+**Instalação no Windows:**
+- RTK: `winget install rtk-ai.rtk`.
+- Graphify: `uv tool install --python 3.12 graphifyy`.
+- Gas Town e Beads: os binários `gt` e `bd` dos releases no GitHub.
+- Dolt: `winget install DoltHub.Dolt`.
+
+**Ganchos do Claude Code:** ficam em `.claude/settings.local.json`, fora do git, porque levam caminhos da máquina de cada pessoa. São dois:
+- RTK no Bash: `rtk hook claude`.
+- Graphify: rode `graphify claude install` e mova o que ele gravar em `.claude/settings.json` para o `.local`.
+
+Nunca deixe o Graphify ler `dados/`: são dados pessoais, e o repositório é público.
