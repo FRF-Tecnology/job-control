@@ -142,7 +142,7 @@ label.campo > span { font-weight: 600; color: var(--tinta); }
 .etapa::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cor, var(--tinta-3)); }
 .e-descoberta { --cor: var(--e-descoberta); } .e-aplicar { --cor: var(--e-aplicar); } .e-enviada { --cor: var(--e-enviada); }
 .e-bloqueada { --cor: var(--e-bloqueada); } .e-em-processo { --cor: var(--e-em-processo); } .e-oferta { --cor: var(--e-oferta); }
-.e-encerrada { --cor: var(--e-encerrada); } .e-pulada { --cor: var(--e-pulada); }
+.e-encerrada { --cor: var(--e-encerrada); } .e-pulada { --cor: var(--e-pulada); } .e-email { --cor: var(--destaque); }
 .chip { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 99px; background: var(--superficie-2); color: var(--tinta-2); font-size: .8rem; font-weight: 500; white-space: nowrap; }
 .chip.contorno { background: transparent; border: 1px solid var(--linha); color: var(--tinta); }
 .chip.ader-A { background: var(--verde-suave); color: var(--verde); font-weight: 600; }
@@ -392,3 +392,5 @@ dialog form { display: grid; gap: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.item-acao .selo-n svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.item-acao select { width: auto; flex: 1 1 220px; min-height: 34px; padding: 4px 10px; }

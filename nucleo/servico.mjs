@@ -3,6 +3,7 @@
 import { ETAPAS, somarDias } from './modelo.mjs';
 import { validarVaga, contemDocumento } from './validacao.mjs';
 import { acharDuplicata } from './dedupe.mjs';
+import { TIPOS_EMAIL, NOMES_EMAIL, passaPreFiltro, acharVagaDoEmail, transicaoDoEmail, dataDoEmail } from './emails.mjs';
 
 export class ErroValidacao extends Error {
   constructor(erros) {
@@ -24,7 +25,7 @@ export class ErroDuplicata extends Error {
 const EDITAVEIS = ['titulo', 'empresa', 'link', 'plataforma', 'nivel', 'contrato', 'modelo', 'stack', 'ingles', 'idioma', 'aderencia', 'motivoClaude', 'notas', 'subEtapa', 'local', 'mercado'];
 
 export function estadoVazio() {
-  return { vagas: [], eventos: [], plataformas: [], rodadas: [], perfil: {}, pedidos: [] };
+  return { vagas: [], eventos: [], plataformas: [], rodadas: [], perfil: {}, pedidos: [], emails: [] };
 }
 
 const clonar = o => structuredClone(o);
@@ -167,4 +168,79 @@ export function concluirPedido(estado, id, resposta, ctx) {
   if (!p) throw new Error(`pedido não encontrado: ${id}`);
   Object.assign(p, { status: 'feito', resposta: resposta ?? '', concluidoEm: ctx.agora });
   return { estado: novo, pedido: p };
+}
+
+// ---------- emails (T1) ----------
+// Guardamos só o necessário: id da mensagem (para não processar de novo), remetente, assunto e um resumo curto.
+// O corpo do email nunca fica na central.
+function exigirEmail(email, classificacao) {
+  const erros = [];
+  if (!email || typeof email !== 'object') return ['email vazio'];
+  if (!String(email.idMensagem ?? '').trim()) erros.push('email.idMensagem é obrigatório (evita processar o mesmo email duas vezes)');
+  if (!TIPOS_EMAIL.includes(classificacao?.tipo)) erros.push(`classificacao.tipo deve ser ${TIPOS_EMAIL.join(', ')}`);
+  for (const [k, v, max] of [['resumo', classificacao?.resumo, 300], ['proximoPasso', classificacao?.proximoPasso, 300], ['assunto', email.assunto, 300], ['de', email.de, 200]]) {
+    if (v != null && typeof v !== 'string') erros.push(`${k} deve ser texto`);
+    else if (String(v ?? '').length > max) erros.push(`${k} longo demais (máximo ${max})`);
+  }
+  if (contemDocumento([email.assunto, classificacao?.resumo, classificacao?.proximoPasso].join(' '))) erros.push('parece conter CPF/RG — documentos não são guardados na central');
+  return erros;
+}
+
+// Registra o email na linha do tempo da vaga e aplica a transição (recusa → encerrada, convite → entrevista...).
+function aplicarEmailNaVaga(estado, vagaId, reg, ctx) {
+  let e = registrarEvento(estado, vagaId, 'email', `${NOMES_EMAIL[reg.tipo]}: ${reg.resumo || reg.assunto || ''}`.trim(), ctx).estado;
+  const vaga = e.vagas.find(v => v.id === vagaId);
+  const t = transicaoDoEmail(reg.tipo, vaga, reg);
+  const jaEsta = t && vaga.etapa === t.etapa && (t.extras.subEtapa ?? null) === (vaga.subEtapa ?? null);
+  if (t && !jaEsta) e = moverVaga(e, vagaId, t.etapa, { ...t.extras, texto: `pelo email "${reg.assunto ?? ''}"` }, ctx).estado;
+  return { estado: e, transicao: t && !jaEsta ? t.etapa : null };
+}
+
+export function registrarEmail(estado, { email, classificacao }, ctx) {
+  const erros = exigirEmail(email, classificacao);
+  if (erros.length) throw new ErroValidacao(erros);
+  const idMensagem = String(email.idMensagem).trim();
+  const ja = (estado.emails ?? []).find(x => x.idMensagem === idMensagem);
+  if (ja) return { estado, resultado: { idMensagem, status: 'duplicado', vagaId: ja.vagaId ?? null, transicao: null } };
+
+  let novo = clonar(estado);
+  novo.emails ??= [];
+  const data = dataDoEmail(email.data, ctx.agora);
+  // Fora do pré-filtro e sem cara de processo: só o id, para não ler de novo.
+  if (classificacao.tipo === 'outro' && !passaPreFiltro(email)) {
+    novo.emails.push({ idMensagem, contaId: contaDe(ctx), data, status: 'ignorado' });
+    return { estado: novo, resultado: { idMensagem, status: 'ignorado', vagaId: null, transicao: null } };
+  }
+  const vaga = acharVagaDoEmail(novo.vagas, email, classificacao.vagaId);
+  const reg = {
+    idMensagem, contaId: contaDe(ctx), data, tipo: classificacao.tipo, de: email.de ?? '', assunto: email.assunto ?? '',
+    resumo: classificacao.resumo ?? '', ...(classificacao.proximoPasso ? { proximoPasso: classificacao.proximoPasso } : {}),
+    vagaId: vaga?.id ?? null, status: vaga ? 'ligado' : classificacao.tipo === 'outro' ? 'ignorado' : 'sem-vaga', registradoEm: ctx.agora,
+  };
+  novo.emails.push(reg);
+  let transicao = null;
+  if (vaga) ({ estado: novo, transicao } = aplicarEmailNaVaga(novo, vaga.id, reg, ctx));
+  return { estado: novo, resultado: { idMensagem, status: reg.status, vagaId: reg.vagaId, transicao } };
+}
+
+// "Emails sem vaga": a pessoa diz de qual vaga é (aí a transição acontece) ou descarta.
+export function ligarEmail(estado, idMensagem, vagaId, ctx) {
+  const reg = (estado.emails ?? []).find(x => x.idMensagem === idMensagem);
+  if (!reg) throw new Error(`email não encontrado: ${idMensagem}`);
+  if (reg.vagaId) throw new ErroValidacao([`este email já está ligado à vaga ${reg.vagaId}`]);
+  acharIndice(estado, vagaId);
+  let novo = clonar(estado);
+  const r = novo.emails.find(x => x.idMensagem === idMensagem);
+  Object.assign(r, { vagaId, status: 'ligado' });
+  let transicao;
+  ({ estado: novo, transicao } = aplicarEmailNaVaga(novo, vagaId, r, ctx));
+  return { estado: novo, resultado: { idMensagem, status: 'ligado', vagaId, transicao } };
+}
+
+export function descartarEmail(estado, idMensagem) {
+  const novo = clonar(estado);
+  const r = (novo.emails ?? []).find(x => x.idMensagem === idMensagem);
+  if (!r) throw new Error(`email não encontrado: ${idMensagem}`);
+  r.status = 'descartado';
+  return { estado: novo, resultado: { idMensagem, status: 'descartado' } };
 }

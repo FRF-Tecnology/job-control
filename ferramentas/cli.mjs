@@ -50,6 +50,13 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
                                            respostasPadrao mescladas pela pergunta)
   pedidos                                  pedidos abertos da caixa "O que vamos fazer hoje?"
   pedido <id> feito [resposta curta]       conclui um pedido (a resposta aparece na Central)
+  email --json '{"email":{...},"classificacao":{...}}' | --arquivo lista.json
+                                           registra email(s) de processo seletivo: acha a vaga e muda a etapa
+                                           (recusa → encerrada, convite → entrevista, teste, oferta). Repetido não duplica.
+  emails [--status sem-vaga|ligado|ignorado|descartado] [--ultimo]
+                                           lista os emails registrados (--ultimo: data do mais recente)
+  email-ligar <idMensagem> <vagaId>        liga um email sem vaga à vaga certa (aplica a mudança de etapa)
+  email-descartar <idMensagem>             tira um email da lista "sem vaga"
   validar                                  confere todos os dados
   exportar-md [arquivo]                    histórico em Markdown (stdout ou arquivo)
   backup                                   cópia de hoje em dados/backups/
@@ -195,6 +202,35 @@ async function comandos(cmd, o) {
       await chamar('POST', `/pedidos/${id_(id)}/concluir`, { resposta: resposta.join(' ') });
       return console.log('ok');
     }
+
+    case 'email': {
+      const bruto = o.arquivo ? readFileSync(o.arquivo, 'utf8') : o.json;
+      if (!bruto || bruto === true) sair('informe --json ou --arquivo');
+      const dados = lerJson(bruto, o.arquivo ? o.arquivo : '--json');
+      const lista = Array.isArray(dados) ? dados : [dados];
+      const rs = await chamar('POST', '/emails', { lista });
+      const NOMES = { ligado: 'ligado', 'sem-vaga': 'SEM VAGA', ignorado: 'ignorado', duplicado: 'já registrado', erro: 'ERRO' };
+      for (const r of rs) console.log(`${NOMES[r.status] ?? r.status} | ${r.idMensagem}${r.vagaId ? ` | ${r.vagaId}` : ''}${r.transicao ? ` → ${r.transicao}` : ''}${r.erro ? ` | ${r.erro}` : ''}`);
+      const conta = s => rs.filter(r => r.status === s).length;
+      return console.log(`(${rs.length}: ${conta('ligado')} ligados, ${rs.filter(r => r.transicao).length} mudaram de etapa, ${conta('sem-vaga')} sem vaga, ${conta('duplicado')} repetidos, ${conta('erro')} com erro)`);
+    }
+
+    case 'emails': {
+      const todos = await chamar('GET', `/emails${typeof o.status === 'string' ? `?status=${encodeURIComponent(o.status)}` : ''}`);
+      if (o.ultimo) return console.log(todos.map(e => e.data).sort().at(-1) ?? 'nenhum email registrado ainda');
+      for (const e of todos) console.log([e.idMensagem, e.data, e.status, e.tipo ?? '', e.vagaId ?? '', e.de ?? '', e.assunto ?? ''].join(' | '));
+      return console.log(`(${todos.length})`);
+    }
+
+    case 'email-ligar': {
+      const [id, vagaId] = o._;
+      const r = await chamar('POST', `/emails/${id_(id)}/ligar`, { vagaId });
+      return console.log(`ok: ${r.idMensagem} → ${r.vagaId}${r.transicao ? ` (vaga foi para ${r.transicao})` : ''}`);
+    }
+
+    case 'email-descartar':
+      await chamar('POST', `/emails/${id_(o._[0])}/descartar`, {});
+      return console.log('ok');
 
     case 'validar': {
       const r = await chamar('GET', '/validar');

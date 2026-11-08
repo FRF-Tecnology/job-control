@@ -49,7 +49,8 @@ Nesse caso:
 Nunca clique em prompts de permissão do navegador por ela.
 
 ## Comandos
-`/buscar`, `/triagem`, `/aplicar`, `/status`, `/followup`, `/rodada` e `/pedidos` estão em `.claude/commands/`.
+`/buscar`, `/triagem`, `/aplicar`, `/status`, `/followup`, `/rodada`, `/pedidos` e `/emails` estão em `.claude/commands/`.
+`/emails` lê os retornos por email (só leitura) e grava com `cli.mjs email --arquivo`: a vaga muda de etapa sozinha e repetir não duplica.
 `/pedidos` faz o que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central (`cli.mjs pedidos` lista; `cli.mjs pedido <id> feito "<resposta>"` conclui).
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.
