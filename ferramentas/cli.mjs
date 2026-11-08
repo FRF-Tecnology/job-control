@@ -69,7 +69,9 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
   chave                                    chave local usada pelos scripts de busca
   script <nome> [--palavras '["java"]'] [--dias 7] [--geo 106057199] [--central url]
                                            imprime automacao/<nome>.js com os marcadores preenchidos
-                                           (busca-linkedin, busca-gupy, busca-inhire, inhire-IH, inhire-Q, linkedin-LI, linkedin-auto)`;
+                                           (busca-linkedin, busca-gupy, busca-inhire, inhire-IH, inhire-Q, linkedin-LI, linkedin-auto)
+
+Saída 0 = tudo certo; 1 = o comando falhou; 2 = add/email rodou, mas algum item foi recusado (veja as linhas "erro").`;
 
 function opcoes(args) {
   const o = { _: [] };
@@ -119,6 +121,8 @@ async function comandos(cmd, o) {
       console.log(`adicionadas: ${r.adicionadas.length}\nduplicadas: ${r.duplicadas.length}\ncom erro: ${r.erros.length}`);
       for (const d of r.duplicadas) console.log(`  dup  ${d.id} → ${d.existente}`);
       for (const e of r.erros) console.log(`  erro ${e.id ?? '?'}: ${e.erro}`);
+      // Código 2: rodou, mas alguma vaga foi recusada. Quem chama (o Claude) precisa ver isso.
+      if (r.erros.length) process.exitCode = 2;
       return;
     }
 
@@ -212,6 +216,7 @@ async function comandos(cmd, o) {
       const NOMES = { ligado: 'ligado', 'sem-vaga': 'SEM VAGA', ignorado: 'ignorado', duplicado: 'já registrado', erro: 'ERRO' };
       for (const r of rs) console.log(`${NOMES[r.status] ?? r.status} | ${r.idMensagem}${r.vagaId ? ` | ${r.vagaId}` : ''}${r.transicao ? ` → ${r.transicao}` : ''}${r.erro ? ` | ${r.erro}` : ''}`);
       const conta = s => rs.filter(r => r.status === s).length;
+      if (conta('erro')) process.exitCode = 2;
       return console.log(`(${rs.length}: ${conta('ligado')} ligados, ${rs.filter(r => r.transicao).length} mudaram de etapa, ${conta('sem-vaga')} sem vaga, ${conta('duplicado')} repetidos, ${conta('erro')} com erro)`);
     }
 

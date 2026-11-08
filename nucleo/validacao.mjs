@@ -74,7 +74,7 @@ export function validarPerfil(p) {
     erros.push('respostasPadrao deve ser uma lista de {pergunta, resposta}');
   }
   if (p.foco != null && !FOCOS.includes(p.foco)) erros.push(`foco deve ser ${FOCOS.join(', ')}`);
-  for (const k of ['pretensaoCLT', 'pretensaoPJ', 'experienciaAnos', 'diasFollowUp', 'limiteLinkedinDia']) {
+  for (const k of ['pretensaoCLT', 'pretensaoPJ', 'pretensaoUSD', 'experienciaAnos', 'diasFollowUp', 'limiteLinkedinDia']) {
     if (p[k] != null && p[k] !== '' && !Number.isFinite(Number(p[k]))) erros.push(`${k} deve ser número`);
   }
   return erros;

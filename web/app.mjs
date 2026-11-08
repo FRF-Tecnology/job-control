@@ -146,7 +146,21 @@ function montarMenu(r) {
   document.getElementById('abas').replaceChildren(
     ...TELAS.filter(t => t.aba).map(t => h('a', { href: `#/${t.rota}`, 'aria-current': t.rota === atual ? 'page' : null }, icone(ICONES[t.rota]), t.nome, contador(t))),
     h('button', { type: 'button', 'aria-current': noMais ? 'page' : null, on: { click: abrirMais } }, icone(ICONES.mais), 'Mais'));
+  marcarMenuCortado();
 }
+
+// Janela estreita: o menu rola para o lado. Esmaece as pontas cortadas e mantém a seção atual à vista.
+function marcarMenuCortado() {
+  const nav = document.getElementById('menu').parentElement;
+  const cortado = nav.scrollWidth > nav.clientWidth + 1;
+  nav.classList.toggle('corta-fim', cortado && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  nav.classList.toggle('corta-inicio', cortado && nav.scrollLeft > 1);
+  const atual = nav.querySelector('[aria-current="page"]');
+  if (cortado && atual && !nav.dataset.rolado) { nav.scrollLeft = atual.offsetLeft - (nav.clientWidth - atual.offsetWidth) / 2; nav.dataset.rolado = '1'; }
+}
+document.getElementById('menu').parentElement.addEventListener('scroll', marcarMenuCortado, { passive: true });
+window.addEventListener('resize', marcarMenuCortado);
+window.addEventListener('hashchange', () => { delete document.getElementById('menu').parentElement.dataset.rolado; });
 
 function abrirMais() {
   const dlg = document.getElementById('dialogo');
@@ -187,12 +201,13 @@ async function carregar(forcar = false) {
   try {
     if (!forcar && app.estado) {
       const { versao } = await app.api('/api/v1/versao');
-      if (versao === app.versao) { conexao.textContent = 'Conectado'; conexao.classList.remove('off'); return; }
+      if (versao === app.versao) { conexao.textContent = 'Conectado'; conexao.classList.remove('off'); conexao.classList.add('ok'); return; }
     }
-    if (app.sujo && !forcar) { conexao.textContent = 'Há mudanças novas — salve o que está editando para ver'; return; }
+    if (app.sujo && !forcar) { conexao.textContent = 'Há mudanças novas — salve o que está editando para ver'; conexao.classList.remove('ok'); return; }
     estado = await app.api('/api/v1/estado');
   } catch (e) {
     conexao.classList.add('off');
+    conexao.classList.remove('ok');
     if (e.status) {
       // O servidor respondeu, mas com erro (ex.: arquivo de dados corrompido).
       conexao.textContent = 'Erro nos dados';
@@ -206,6 +221,7 @@ async function carregar(forcar = false) {
   app.estado = estado;
   conexao.textContent = 'Conectado';
   conexao.classList.remove('off');
+  conexao.classList.add('ok');
   try {
     renderizar();
     app.versao = estado.versao;
@@ -233,6 +249,8 @@ document.addEventListener('keydown', ev => {
 });
 window.addEventListener('hashchange', () => { app.sujo = false; carregar(true); });
 window.addEventListener('focus', () => carregar());
+// No celular (PWA), voltar para o app nem sempre gera "focus": atualiza quando a aba volta a aparecer.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') carregar(); });
 setInterval(() => { if (document.visibilityState === 'visible') carregar(); }, 5000);
 carregar(true);
 

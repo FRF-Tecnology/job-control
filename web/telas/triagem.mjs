@@ -65,7 +65,7 @@ export function telaTriagem(app) {
 
   const cab = h('header.cabecalho',
     h('div', h('h1', 'Triagem'), h('p', todas.length
-      ? `${plural(fila.length, 'vaga espera', 'vagas esperam')} decisão${foco !== 'ambos' ? ` no foco ${foco}` : ''}. Hoje você já decidiu ${feitas}.`
+      ? `${fila.length ? plural(fila.length, 'vaga espera', 'vagas esperam') : 'Nenhuma vaga espera'} decisão${foco !== 'ambos' ? ` no foco ${foco}` : ''}. Hoje você já decidiu ${feitas}.`
       : 'Nenhuma vaga esperando decisão.')),
     grupoA.length > 1 && h('button.botao-fantasma', { type: 'button', on: { click: async () => {
       const ok = await app.perguntar({ titulo: `Aprovar as ${grupoA.length} vagas do grupo A?`, texto: 'Elas vão para a fila do Claude aplicar.', confirmar: 'Aprovar todas' });

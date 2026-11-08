@@ -94,6 +94,12 @@ h3 { font-size: 1.05rem; }
 .marca { display: flex; align-items: center; gap: 10px; color: var(--tinta); text-decoration: none; font: 700 1.05rem var(--fonte-display); letter-spacing: -.02em; flex-shrink: 0; }
 .marca img { border-radius: 8px; }
 .topo-app nav { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.topo-app nav::-webkit-scrollbar { display: none; }
+/* Menu cortado: as pontas somem aos poucos para mostrar que há mais seções */
+.topo-app nav.corta-fim { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+.topo-app nav.corta-inicio { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); }
+.topo-app nav.corta-inicio.corta-fim { -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); }
+@media (max-width: 1200px) { .status-conexao.ok { font-size: 0; gap: 0; padding: 8px; } }
 .menu { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
 .menu a { display: flex; align-items: center; gap: 6px; padding: 8px 12px; min-height: 40px; border-radius: 999px; color: var(--tinta-2); text-decoration: none; font-size: .9rem; font-weight: 500; white-space: nowrap; transition: background .15s, color .15s; }
 .menu a:hover { color: var(--tinta); background: var(--superficie-2); }
@@ -384,6 +390,13 @@ dialog form { display: grid; gap: 16px; }
   .item-acao { grid-template-columns: 40px minmax(0, 1fr); padding: 14px; }
   .funil-barras a { grid-template-columns: 92px minmax(0, 1fr) 32px; }
   .dica-gesto { display: flex; }
+  /* Os botões de decidir ficam sempre à vista, logo acima das abas, mesmo com o cartão comprido */
+  .decisao { position: sticky; bottom: calc(var(--abas) + env(safe-area-inset-bottom)); z-index: 5; margin: 18px -16px 0; padding: 28px 16px 12px; gap: 18px; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--papel) 45%); }
+  .decisao button { pointer-events: auto; }
+  .decisao .redondo:not(.sim) { background: var(--superficie-3); }
+  .decisao .redondo { width: 60px; height: 60px; }
+  .decisao .redondo.menor { width: 48px; height: 48px; }
+  .legenda-decisao { display: none; }
   .formulario .duas, .respostas .par { grid-template-columns: 1fr; }
   .barra { grid-template-columns: 96px 1fr 36px; }
   .quadro { grid-auto-columns: minmax(80vw, 1fr); }

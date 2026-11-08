@@ -168,6 +168,18 @@ test('mensagem de follow-up cita empresa e vaga, em inglês quando pedido', () =
   assert.match(sugerirMensagem(v, { nome: 'Aldenor' }), /Compass UOL/);
   assert.match(sugerirMensagem({ ...v, idioma: 'en' }, { nome: 'Aldenor' }), /Hi|Hello/);
 });
+test('mensagem de follow-up se apresenta só com o perfil da pessoa', () => {
+  const v = base();
+  const front = { nome: 'Ana', cargo: 'Desenvolvedora front-end React', stackPrincipal: ['React', 'TypeScript'] };
+  const pt = sugerirMensagem(v, front);
+  assert.match(pt, /Atuo como desenvolvedora front-end React/);
+  assert.doesNotMatch(pt, /Java|Spring|Kafka|Obrigado/);
+  assert.match(sugerirMensagem({ ...v, idioma: 'en' }, front), /I work with React and TypeScript/);
+  // sem cargo nem stack: nenhuma apresentação inventada
+  const vazio = sugerirMensagem(v, {});
+  assert.doesNotMatch(vazio, /Atuo|Trabalho com|Java/);
+  assert.doesNotMatch(sugerirMensagem({ ...v, idioma: 'en' }, {}), /I work/);
+});
 
 test('forçar aceita mesmo empresa+título quando o id é outro (vaga republicada)', () => {
   const { estado } = adicionarVaga(estadoVazio(), base(), ctx());
