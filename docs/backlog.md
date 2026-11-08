@@ -394,6 +394,19 @@ As três formas entregam o mesmo objeto para `entrada(email)`, e daí em diante 
 **Pronto quando:** o Claude Desktop lista e move vagas pelo MCP local, sem shell. A versão remota fica pronta quando um usuário
 de teste conecta pelo fluxo OAuth sem editar nenhum arquivo.
 
+**Status (2026-11-07, branch `feat/t8-mcp`): versão local feita; falta ver no Claude Desktop.**
+- `mcp/servidor.mjs`: JSON-RPC 2.0 por stdio, sem dependências (initialize, ping, tools/list, tools/call; versões de protocolo
+  2024-11-05 a 2025-11-25). As regras de uso vão no `instructions` do initialize.
+- `mcp/ferramentas.mjs`: 18 ferramentas finas em cima da API v1 (as da lista acima + `vaga_editar`, `evento_registrar`,
+  `followup_registrar`, `pedidos_listar`, `pedido_concluir`, `emails_registrar`, `emails_sem_vaga`, `resumo`).
+  `vaga_registrar_envio` é o único caminho para "enviada". Leitura marcada com `readOnlyHint`. Nenhuma ferramenta envia mensagem.
+- Recusa da API (motivo faltando, CPF, vaga inexistente) volta como `isError` para o modelo corrigir, sem derrubar o servidor.
+- `.mcp.json` registra o servidor no Claude Code; README explica o Claude Desktop.
+- Testes: protocolo, cada ferramenta, recusas, conversa real por stdio (linha quebrada em pedaços). 134 → 140.
+- Conferido com os dados reais (só leitura): lista as 3 vagas da CI&T em entrevista e acha "Spring Boot → 5" para pergunta em inglês.
+
+**Falta:** abrir no Claude Desktop (mexe na configuração do app, fica com o dono) e a versão remota com OAuth (junto da T7).
+
 ---
 
 ## T3 — Entrevistas: etapas, transcript e revisão

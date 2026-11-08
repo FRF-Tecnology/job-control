@@ -53,4 +53,5 @@ Nunca clique em prompts de permissão do navegador por ela.
 `/emails` lê os retornos por email (só leitura) e grava com `cli.mjs email --arquivo`: a vaga muda de etapa sozinha e repetir não duplica.
 `/pedidos` faz o que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central (`cli.mjs pedidos` lista; `cli.mjs pedido <id> feito "<resposta>"` conclui).
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
+Com o MCP "central" ligado (`.mcp.json`), prefira as ferramentas dele (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...) aos comandos da CLI: são as mesmas regras, sem shell.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.

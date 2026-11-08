@@ -37,6 +37,25 @@ Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. 
 | `/status` | Confere retornos e encerramentos |
 | `/followup` | Lista os follow-ups vencidos com mensagem sugerida (só envia com seu ok) |
 | `/rodada [máx]` | Tudo acima, em ordem, e atualiza o histórico |
+| `/pedidos` | Faz o que você digitou na caixa "O que vamos fazer hoje?" da tela Hoje |
+| `/emails` | Lê os retornos por email (só leitura) e muda a etapa das vagas sozinho |
+
+## Usar a Central de dentro do Claude (MCP)
+A Central tem um servidor MCP local (`mcp/servidor.mjs`). Com ele, o Claude Desktop ou o Claude Code
+listam, movem e registram vagas com ferramentas próprias, sem rodar comandos no terminal.
+Ele grava pela mesma API da tela e da CLI, com as mesmas regras (CPF recusado, sem duplicar) e não tem ferramenta de enviar mensagem.
+
+- **Claude Code:** o arquivo `.mcp.json` desta pasta já registra o servidor. Na próxima vez que abrir o Claude Code aqui,
+  aprove o servidor "central" quando ele perguntar.
+- **Claude Desktop:** em Configurações → Desenvolvedor → Editar configuração, acrescente (troque o caminho pelo desta pasta):
+  ```json
+  { "mcpServers": { "central": { "command": "node", "args": ["C:\\caminho\\para\\job-control\\mcp\\servidor.mjs"] } } }
+  ```
+  Reinicie o Claude Desktop. As ferramentas aparecem como "central".
+
+Ferramentas: `resumo`, `vagas_listar`, `vaga_detalhe`, `vaga_duplicada`, `vaga_adicionar`, `vaga_mover`, `vaga_registrar_envio`,
+`vaga_editar`, `evento_registrar`, `perfil_ler`, `resposta_padrao`, `followups_vencidos`, `followup_registrar`, `rodada_registrar`,
+`pedidos_listar`, `pedido_concluir`, `emails_registrar`, `emails_sem_vaga`.
 
 ## Regras de segurança
 - CPF, RG, senhas e dados bancários nunca são preenchidos pelo Claude nem guardados na Central.
@@ -50,6 +69,7 @@ Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. 
   - `nucleo/ia/`: adaptador de IA (Claude, GPT ou Gemini) com as regras de segurança validadas no código.
 - `servidor/api.mjs`: API v1 (`/api/v1/...`). A CLI, a tela e, depois, a extensão e o MCP usam só ela.
 - `servidor/app.mjs`: servidor HTTP local (`node:http`, sem dependências) em volta da API.
+- `mcp/`: servidor MCP local (stdio) com as ferramentas da Central, também em cima da API v1.
 - `web/`: interface (HTML/CSS/JS puros, módulos ES).
 - `ferramentas/cli.mjs`: o que o Claude usa para gravar.
 - `automacao/`: scripts de navegador e notas por plataforma.
