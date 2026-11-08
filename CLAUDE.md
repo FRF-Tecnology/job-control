@@ -21,6 +21,7 @@ Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação
    ficam com a pessoa: vaga `bloqueada` com a pendência certa.
 4. Só vagas dentro dos `filtros` do perfil (nível, modelo, o que pular). Na dúvida, a vaga vai para Descoberta com o alerta em `motivoClaude`,
    e não é aplicada.
+4b. Prioridade de vagas (`perfil.prioridadeVagas`): 1) USD LATAM de empresas dos EUA; 2) empresas que atendem LATAM + Europa e contratam overseas; 3) só depois, nacionais (CLT/PJ).
 5. Pretensão: CLT ou PJ conforme o rótulo do campo (cooperado = PJ). Campo só numérico: apenas dígitos.
 6. Mensagens de follow-up: só sugerir o texto. Enviar mensagem em nome da pessoa exige um "pode mandar" explícito no chat.
 7. Currículo: `dados/curriculos/` (PT ou EN pelo idioma da vaga, caminhos em `perfil.curriculos`).
