@@ -259,6 +259,35 @@ violação de regra (peso alto: uma violação reprova), custo e tempo. Resultad
 **Pronto quando:** o mesmo conjunto rodou em pelo menos três modelos (um de cada provedor), a configuração padrão de roteamento
 foi escolhida pelos números, e o conjunto roda de novo a cada mudança de prompt ou de modelo.
 
+**Status (2026-11-07, branch `feat/t9-avaliacao-modelos`): ferramenta pronta, primeira rodada feita só com Claude.**
+- Conjunto em `avaliacao/`: 77 casos (36 triagens tiradas das decisões reais das rodadas, 24 perguntas de formulário,
+  6 revisões de formulário, 8 emails, 3 mensagens). Perfil e currículo **fictícios** (o repositório é público); um teste barra dado pessoal.
+- `cli.mjs avaliar`: `--provedor anthropic|openai|google --modelo <id>` (chave na variável de ambiente), `--provedor assistente-local`
+  (gera os pedidos) + `--respostas` (pontua), `--comparar` (tabela). Resultados em `dados/avaliacoes/`.
+- Métricas: acerto depois da guarda; **violações** = regras de segurança que a guarda precisou aplicar (uma reprova o modelo);
+  correções de formato; erros (JSON, esquema, provedor); custo e tempo.
+
+Primeira rodada (modo assistente local: Opus, Sonnet e Haiku como agentes, sem chave de API):
+
+| Modelo | Total | Triagem | Perguntas | Revisão | Email | Mensagem | Violações |
+|---|---|---|---|---|---|---|---|
+| Claude Opus | 97% | 94% | 100% | 100% | 100% | 100% | 0 |
+| Claude Sonnet | 97% | 94% | 100% | 100% | 100% | 100% | 0 |
+| Claude Haiku | 99% | 97% | 100% | 100% | 100% | 100% | 0 |
+
+O que isso diz (e o que não diz):
+- Os três ficaram no teto: o conjunto ainda é fácil demais para separar modelos. Próximo passo: casos mais difíceis
+  (descrições longas e ambíguas, pré-preenchimentos sutis, perguntas de formulário com redação estranha).
+- Rodou como agente (com tempo para pensar e conferir), não como chamada única de API. Custo e tempo reais só aparecem
+  com `--provedor anthropic|openai|google`.
+- Os erros que sobraram foram todos de triagem em vaga ambígua ("Híbrido/Remoto", vaga Android): os modelos preferiram "perguntar".
+  O rótulo desses dois casos também é discutível.
+- Achado na guarda: se o modelo diz "6 anos de React, fonte: respostasPadrao", a guarda aceita (confere só se a fonte existe,
+  não se o valor bate com ela). Próximo passo: comparar o valor com a resposta padrão da mesma tecnologia.
+
+**Falta para fechar a T9:** rodar em GPT e Gemini (e Claude via API) com as chaves do dono, escolher o roteamento padrão pelos números
+e acrescentar os casos difíceis.
+
 ---
 
 ---

@@ -37,6 +37,9 @@ export const FUNCOES = {
 Compare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).
 aderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.
 decisao: "aplicar" só se está dentro dos filtros; "pular" se bate em filtros.pularSe (informe motivoPulo); "perguntar" na dúvida.
+motivoPulo: "Sênior" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); "Stack" = tecnologia principal fora do perfil;
+"Presencial/Local" = exige presencial, híbrido ou morar numa cidade; "Inglês", "Diploma", "Documento" quando for isso; "Outro" no resto
+(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).
 Vaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é "aplicar" direto: use "perguntar".
 motivo: uma frase curta.`,
     mensagem: e => `Vaga:\n${json(e.vaga)}\n\nPerfil:\n${json(resumoPerfil(e.perfil))}`,
