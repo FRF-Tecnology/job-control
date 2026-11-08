@@ -36,7 +36,9 @@ export function haQuanto(iso, hoje) {
   return `há ${d} dias`;
 }
 
-export const nomeEtapa = e => NOMES_ETAPA[e] ?? e;
+// Etapas e outros tipos de evento da linha do tempo.
+const NOMES_EVENTO = { email: 'Email', 'follow-up': 'Follow-up', nota: 'Nota', retorno: 'Retorno', teste: 'Teste', entrevista: 'Entrevista' };
+export const nomeEtapa = e => NOMES_ETAPA[e] ?? NOMES_EVENTO[e] ?? e;
 export const NOMES_SUB = { teste: 'Teste online', 'entrevista-rh': 'Entrevista RH', 'entrevista-tecnica': 'Entrevista técnica', proposta: 'Proposta' };
 
 export function nomePlataforma(id, plataformas = []) {

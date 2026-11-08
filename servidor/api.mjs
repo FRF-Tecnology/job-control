@@ -3,7 +3,7 @@
 // Resposta: { status, corpo, tipo?, cabecalhos? }.
 import { existsSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, criarPedido, concluirPedido, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
+import { adicionarVaga, moverVaga, atualizarVaga, registrarEvento, followUpFeito, adiarFollowUp, criarPedido, concluirPedido, registrarEmail, ligarEmail, descartarEmail, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
 import { perfilSensivel, contemDocumentoEm, validarPerfil, validarVaga } from '../nucleo/validacao.mjs';
 import { gerarHistoricoMd } from '../nucleo/historico.mjs';
 import { resumo } from '../nucleo/funil.mjs';
@@ -12,7 +12,7 @@ import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { hojeISO } from '../nucleo/modelo.mjs';
 
 export const PREFIXO = '/api/v1';
-const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json', 'pedidos.json'];
+const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json', 'pedidos.json', 'emails.json'];
 
 export class ErroApi extends Error { constructor(status, corpo) { super(corpo.erro); this.status = status; this.corpo = corpo; } }
 
@@ -117,6 +117,7 @@ export function criarApi({ armazem, dir = armazem.dir, hoje = () => hojeISO(), c
       if (p === '/plataformas') return ok(armazem.carregar().plataformas);
       if (p === '/rodadas') return ok(armazem.carregar().rodadas);
       if (p === '/pedidos') return ok((armazem.carregar().pedidos ?? []).filter(x => !q.status || x.status === q.status));
+      if (p === '/emails') return ok((armazem.carregar().emails ?? []).filter(x => (!q.status || x.status === q.status) && (!q.vaga || x.vagaId === q.vaga)));
       if (p === '/curriculos') return ok({ pasta: dir ? join(dir, 'curriculos') : null, arquivos: curriculos() });
       if (p === '/primeiros-passos') return ok({ passos: primeirosPassos(armazem.carregar()) });
       if (p === '/historico.md') return ok(gerarHistoricoMd(armazem.carregar(), hoje()), 200, 'text/markdown; charset=utf-8');
@@ -164,6 +165,32 @@ export function criarApi({ armazem, dir = armazem.dir, hoje = () => hojeISO(), c
     if (m === 'POST' && p === '/pedidos') return ok(gravar(e => criarPedido(e, corpo.texto, ctx(autor))).pedido, 201);
     const rp = p.match(/^\/pedidos\/([^/]+)\/concluir$/);
     if (m === 'POST' && rp) return ok(gravar(e => concluirPedido(e, decodificar(rp[1]), corpo.resposta, ctx(autor))).pedido);
+
+    // Emails (T1): { email, classificacao } ou { lista: [...] }. Cada item falha sozinho; repetido não duplica.
+    if (m === 'POST' && p === '/emails') {
+      const lote = Array.isArray(corpo.lista);
+      const resultados = [];
+      gravar(estado => {
+        for (const item of lote ? corpo.lista : [corpo]) {
+          try {
+            const r = registrarEmail(estado, item ?? {}, ctx(autor));
+            estado = r.estado;
+            resultados.push(r.resultado);
+          } catch (e) {
+            if (!(e instanceof ErroValidacao)) throw e;
+            resultados.push({ idMensagem: item?.email?.idMensagem ?? null, status: 'erro', erro: e.message });
+          }
+        }
+        return { estado };
+      });
+      if (lote) return ok(resultados);
+      return ok(resultados[0], resultados[0].status === 'erro' ? 400 : 200);
+    }
+    const re = p.match(/^\/emails\/([^/]+)\/(ligar|descartar)$/);
+    if (m === 'POST' && re) {
+      const id = decodificar(re[1]);
+      return ok(gravar(e => (re[2] === 'ligar' ? ligarEmail(e, id, corpo.vagaId, ctx(autor)) : descartarEmail(e, id))).resultado);
+    }
 
     if (m === 'POST' && p === '/backup') return ok({ criado: armazem.backupDiario(hoje()), data: hoje() });
 

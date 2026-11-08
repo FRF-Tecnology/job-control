@@ -2,9 +2,10 @@
 import { h, dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural } from '../util.mjs';
 import { pendentesFollowUp, sugerirMensagem } from '../../nucleo/followup.mjs';
 import { foiEnviada, normalizar, noFoco } from '../../nucleo/modelo.mjs';
+import { NOMES_EMAIL } from '../../nucleo/emails.mjs';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
-const TIPOS_EVENTO = { descoberta: 'Encontrada', aplicar: 'Aprovada para aplicar', enviada: 'Enviada', bloqueada: 'Travou', 'em-processo': 'Em processo', oferta: 'Oferta', encerrada: 'Encerrada', pulada: 'Pulada', 'follow-up': 'Follow-up', nota: 'Nota', retorno: 'Retorno', teste: 'Teste', entrevista: 'Entrevista' };
+const TIPOS_EVENTO = { descoberta: 'Encontrada', aplicar: 'Aprovada para aplicar', enviada: 'Enviada', bloqueada: 'Travou', 'em-processo': 'Em processo', oferta: 'Oferta', encerrada: 'Encerrada', pulada: 'Pulada', 'follow-up': 'Follow-up', nota: 'Nota', retorno: 'Retorno', teste: 'Teste', entrevista: 'Entrevista', email: 'Email' };
 const FUNIL = [
   ['descoberta', 'Descoberta', 'triagem'], ['aplicar', 'Para aplicar', 'quadro'], ['enviada', 'Enviadas', 'quadro'],
   ['em-processo', 'Em processo', 'quadro'], ['oferta', 'Oferta', 'quadro'],
@@ -83,6 +84,22 @@ function acoesBloqueada(app, v) {
   ];
 }
 
+// Email que chegou e não deu para saber de qual vaga é: a pessoa liga à vaga certa (a etapa muda) ou descarta.
+function emailSemVaga(app, e, opcoes) {
+  const escolha = h('select', { 'aria-label': `Vaga do email "${e.assunto}"` },
+    h('option', { value: '' }, 'De qual vaga é?'),
+    opcoes.map(v => h('option', { value: v.id }, `${v.empresa} — ${v.titulo}`)));
+  const ir = (acao, corpo, msg) => app.agir(() => app.api(`/api/v1/emails/${encodeURIComponent(e.idMensagem)}/${acao}`, 'POST', corpo), msg);
+  return h('li.item-acao',
+    h('span.selo-n', svgEmail()),
+    h('div', h('strong', `${NOMES_EMAIL[e.tipo] ?? 'Email'}: ${e.assunto || '(sem assunto)'}`),
+      h('span.sub', [e.de, e.resumo].filter(Boolean).join(' · '))),
+    h('div.acoes', escolha,
+      h('button.botao.p', { type: 'button', on: { click: () => { if (!escolha.value) return escolha.focus(); ir('ligar', { vagaId: escolha.value }, 'Email ligado à vaga'); } } }, 'Ligar'),
+      h('button.botao-fantasma.p', { type: 'button', on: { click: () => ir('descartar', {}, 'Email descartado') } }, 'Descartar')));
+}
+const svgEmail = () => svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>');
+
 const linkVaga = (app, v) => h('button.link-vaga', { type: 'button', on: { click: () => app.abrirVaga(v.id) } }, `${v.empresa} — ${v.titulo}`);
 
 export function telaHoje(app) {
@@ -110,6 +127,8 @@ export function telaHoje(app) {
   const passos = app.estado.primeirosPassos ?? [];
   const faltam = passos.filter(p => !p.feito).length;
   const pedidos = (app.estado.pedidos ?? []).filter(p => p.status === 'aberto' || p.concluidoEm === hoje).reverse();
+  const semVaga = (app.estado.emails ?? []).filter(e => e.status === 'sem-vaga');
+  const opcoesEmail = vagas.filter(v => foiEnviada(v) || ['aplicar', 'bloqueada', 'em-processo', 'oferta'].includes(v.etapa)).sort((a, b) => a.empresa.localeCompare(b.empresa));
   const nome = String(perfil?.nome ?? '').trim().split(/\s+/)[0];
   const maiorFunil = Math.max(1, ...FUNIL.map(([e]) => conta(e)));
 
@@ -157,6 +176,10 @@ export function telaHoje(app) {
                 h('ul.vagas-grupo', g.vagas.map(v => h('li', linkVaga(app, v), h('span.acoes', acoesBloqueada(app, v)))))))))
             : h('p.vazio', 'Nada travado. O Claude consegue seguir sozinho.')),
 
+        semVaga.length > 0 && h('section.bloco',
+          h('header', h('h2', 'Emails sem vaga'), h('span.num', String(semVaga.length))),
+          h('ul.lista-cartao', semVaga.map(e => emailSemVaga(app, e, opcoesEmail)))),
+
         h('section.bloco',
           h('header', h('h2', 'Follow-ups para hoje'), h('span.num', String(follow.length))),
           follow.length ? h('ul.linhas', follow.map(v => h('li.linha', linkVaga(app, v),
@@ -174,7 +197,7 @@ export function telaHoje(app) {
           h('header', h('h2', 'Em andamento'), h('span.num', String(emProcesso.length))),
           emProcesso.length ? h('ul.linhas', emProcesso.map(v => h('li.linha', linkVaga(app, v),
             h('div.acoes', v.link && h('a.botao-fantasma.p', { href: v.link, target: '_blank', rel: 'noopener' }, 'Abrir')),
-            h('div.sub', [NOMES_SUB[v.subEtapa] ?? nomeEtapa(v.etapa), v.notas].filter(Boolean).join(': ')))))
+            h('div.sub', [NOMES_SUB[v.subEtapa] ?? nomeEtapa(v.etapa), v.pendencia, v.notas].filter(Boolean).join(' · ')))))
             : h('p.vazio', 'Nenhum processo seletivo andando ainda. Quando alguém responder, aparece aqui.'))),
 
       h('div',

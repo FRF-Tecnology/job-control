@@ -338,6 +338,29 @@ As três formas entregam o mesmo objeto para `entrada(email)`, e daí em diante 
 
 **Pronto quando:** `/emails` processa a caixa, as vagas mudam de etapa sozinhas e rodar duas vezes não duplica nada.
 
+**Status (2026-11-07, branch `feat/t1-emails`): feito no modo local; falta a primeira leitura da caixa real.**
+- `nucleo/emails.mjs`: pré-filtro (ATS + palavras), achar a vaga (empresa no domínio, remetente, assunto ou texto; título desempata;
+  empate vira "sem vaga"), transições da tabela acima (nunca anda para trás nem mexe em vaga encerrada/pulada).
+- Em vez de `vaga.emails[]`, os emails ficam em `dados/emails.json` (um registro por `idMensagem`, com `vagaId` e status
+  ligado / sem-vaga / ignorado / descartado) e cada um vira um evento "Email" na linha do tempo da vaga. Só resumo, nunca o corpo.
+- API `/api/v1/emails` (registrar um ou um lote, listar, ligar, descartar); CLI `email`, `emails`, `email-ligar`, `email-descartar`.
+- Tela Hoje: bloco "Emails sem vaga" (escolhe a vaga e liga, ou descarta); "Em andamento" mostra a pendência (ex.: "Agendar a entrevista").
+- `/emails` (`.claude/commands/emails.md`): lê pelo conector do Gmail ou pelo Gmail no navegador, só com o ok da pessoa.
+- Testes: cada linha da tabela, achar vaga (inclusive empate), rodar duas vezes, CPF no resumo, CLI de ponta a ponta. 127 → 134.
+- Conferido numa Central de demonstração (porta separada, dados de exemplo): recusa → encerrada, convite → entrevista,
+  email ambíguo → "sem vaga", ligar pela tela → etapa muda.
+
+- **Primeira rodada real (2026-11-07), pelo Gmail no navegador, só leitura:** 21 emails desde 05/nov (quando a Central começou a
+  registrar envios). 3 vagas da CI&T foram para "entrevista" (entrevista com IA no DigAÍ, pendência vinda do próprio email),
+  Zup e Nortal foram encerradas como "Reprovada", 14 confirmações e avisos ficaram na linha do tempo. Segunda rodada: 21 repetidos.
+  Email não lido não foi aberto (abrir marca como lido): o "Update" da TRM Labs entrou como aviso, sem mudar a etapa.
+- Respostas à pergunta em aberto 2: as candidaturas chegam no email do perfil, que é a segunda conta do Gmail no navegador.
+- Emails de outubro (BEES, Binance, NinjaOne, entrevistas de outubro) são de candidaturas anteriores à Central:
+  entram quando a T4 importar o histórico do LinkedIn. Emails de recrutadores oferecendo vaga (TCS, AMBEV, Paramount, DXC) são leads
+  para a T2, não retornos.
+
+**Falta:** no produto, o endereço de encaminhamento (webhook) e a notificação; ler um email sem marcá-lo como lido (API do Gmail ou encaminhamento).
+
 ---
 
 ## T8 — MCP do applyer
@@ -566,7 +589,7 @@ O painel mostra o que falta conectar, como um checklist, e por que cada item val
 
 ## Perguntas em aberto
 1. ~~Links do Leapfrog e do Applika~~ — respondido; ver "Concorrentes de referência".
-2. Os emails das candidaturas chegam todos no seu email principal? (T1, cliente zero)
+2. ~~Os emails das candidaturas chegam todos no seu email principal?~~ Respondida: chegam no email do perfil (T1).
 3. Você grava ou transcreve as entrevistas hoje? Com qual ferramenta (Meet, Zoom, Teams, tl;dv, Otter)? (T3)
 4. ~~Público inicial~~ — **decidido em 2026-11-06:** devs brasileiros/LATAM, com seletor de foco internacional, nacional ou os dois.
    Ver "Público e foco".

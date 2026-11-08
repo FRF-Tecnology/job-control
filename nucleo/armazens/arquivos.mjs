@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { estadoVazio } from '../servico.mjs';
 import { hojeISO } from '../modelo.mjs';
 
-const ARQUIVOS = { vagas: 'vagas.json', eventos: 'eventos.json', plataformas: 'plataformas.json', rodadas: 'rodadas.json', perfil: 'perfil.json', pedidos: 'pedidos.json' };
+const ARQUIVOS = { vagas: 'vagas.json', eventos: 'eventos.json', plataformas: 'plataformas.json', rodadas: 'rodadas.json', perfil: 'perfil.json', pedidos: 'pedidos.json', emails: 'emails.json' };
 
 // Espera síncrona curta (usada só enquanto outro processo grava).
 const dormir = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
