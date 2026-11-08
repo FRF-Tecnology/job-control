@@ -31,7 +31,7 @@ export function telaVagas(app) {
       h('div', h('h1', 'Vagas'), h('p', `${lista.length} de ${vagas.length}`)),
       h('div.acoes',
         h('button.botao-fantasma', { type: 'button', on: { click: () => novaVaga(app) } }, 'Adicionar vaga'),
-        h('a.botao-fantasma', { href: '/api/exportar.csv' }, 'Exportar CSV'))),
+        h('a.botao-fantasma', { href: '/api/v1/exportar.csv' }, 'Exportar CSV'))),
     h('div.filtros',
       busca,
       sel('etapa', 'Todas as etapas', ETAPAS.map(e => [e, NOMES_ETAPA[e]])),
@@ -68,6 +68,6 @@ async function novaVaga(app) {
   if (/linkedin\.com/.test(link)) plataforma = 'linkedin';
   else if (/gupy\.io/.test(link)) plataforma = 'gupy';
   else if (/inhire\.app/.test(link)) plataforma = 'inhire';
-  const ok = await app.agir(() => app.api('/api/vagas', 'POST', { id, empresa, titulo, link, plataforma }), 'Vaga adicionada em Descoberta');
+  const ok = await app.agir(() => app.api('/api/v1/vagas', 'POST', { id, empresa, titulo, link, plataforma }), 'Vaga adicionada em Descoberta');
   if (ok) app.abrirVaga(id);
 }

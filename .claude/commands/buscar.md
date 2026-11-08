@@ -9,6 +9,7 @@ Busque vagas novas e grave na Central. Argumentos: $ARGUMENTS (padrão: todas, 3
    - **LinkedIn**: aba logada em linkedin.com → `node ferramentas/cli.mjs script busca-linkedin --dias N --palavras '<termos do perfil>'` → injete com javascript_tool.
    - **Gupy**: aba em portal.gupy.io → `script busca-gupy --dias N`.
    - **InHire**: aba em qualquer `*.inhire.app` → `script busca-inhire --dias N`.
+   - **Ordem de prioridade (`perfil.prioridadeVagas`)**: rode primeiro com `perfil.palavrasBusca` (USD LATAM de empresas dos EUA, depois empresas LATAM + Europa que contratam overseas). Só depois, com o limite do dia que sobrar, rode `perfil.palavrasBuscaNacional` (vagas brasileiras CLT/PJ). Na aplicação, siga a mesma ordem: grupo 1, depois 2, depois nacionais. Para o grupo 1, rode também com `--geo 91000011` (localização "Latin America" no LinkedIn) e descarte vagas restritas a outro país (México, Colômbia, Argentina...).
 3. Os scripts já filtram o óbvio e sugerem grupo A, B ou C. Depois, revise com `cli.mjs listar --etapa descoberta`:
    - vaga fora do perfil (sênior disfarçado, presencial, stack errada): `mover <id> pulada --motivo <motivo padrão>`;
    - vaga com ponto de atenção: complete com `editar <id> --json '{"motivoClaude":"..."}'`.

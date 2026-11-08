@@ -73,8 +73,8 @@ export function telaHoje(app) {
               const texto = await app.perguntar({ titulo: `Mensagem para ${v.empresa}`, texto: 'Ajuste se quiser e copie. Envie pelo LinkedIn ou e-mail do recrutador.', campo: 'Mensagem', valor: sugerirMensagem(v, perfil), multilinha: true, confirmar: 'Copiar mensagem' });
               if (texto) { try { await navigator.clipboard.writeText(texto); app.aviso('Mensagem copiada'); } catch { app.aviso('Não consegui copiar; selecione o texto manualmente', true); } }
             } } }, 'Mensagem'),
-            h('button.botao-fantasma.p', { type: 'button', on: { click: () => app.agir(() => app.api(`/api/vagas/${encodeURIComponent(v.id)}/followup`, 'POST', { acao: 'feito' }), 'Follow-up registrado') } }, 'Feito'),
-            h('button.botao-fantasma.p', { type: 'button', on: { click: () => app.agir(() => app.api(`/api/vagas/${encodeURIComponent(v.id)}/followup`, 'POST', { acao: 'adiar', dias: 3 }), 'Adiado 3 dias') } }, '+3 dias')])))
+            h('button.botao-fantasma.p', { type: 'button', on: { click: () => app.agir(() => app.api(`/api/v1/vagas/${encodeURIComponent(v.id)}/followup`, 'POST', { acao: 'feito' }), 'Follow-up registrado') } }, 'Feito'),
+            h('button.botao-fantasma.p', { type: 'button', on: { click: () => app.agir(() => app.api(`/api/v1/vagas/${encodeURIComponent(v.id)}/followup`, 'POST', { acao: 'adiar', dias: 3 }), 'Adiado 3 dias') } }, '+3 dias')])))
             : h('p.vazio', proximoFollowUp(vagas, hoje))),
 
         h('section.bloco',

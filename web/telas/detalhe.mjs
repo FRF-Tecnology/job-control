@@ -46,7 +46,7 @@ export function abrirDetalhe(app, id) {
   const salvarNotas = async () => {
     const minha = notas.value;
     if ((v.notas ?? '') === minha) return;
-    const caminho = `/api/vagas/${encodeURIComponent(id)}`;
+    const caminho = `/api/v1/vagas/${encodeURIComponent(id)}`;
     try {
       await app.api(caminho, 'PATCH', { notas: minha, notasAntes: v.notas ?? '' });
       app.aviso('Notas salvas');
@@ -56,7 +56,7 @@ export function abrirDetalhe(app, id) {
       if (!/mudaram/.test(e.message)) return app.aviso(e.message, true);
     }
     // Alguém (ex.: o Claude) mudou as notas enquanto você digitava: junte as duas versões.
-    const atual = (await app.api('/api/estado')).vagas.find(x => x.id === id)?.notas ?? '';
+    const atual = (await app.api('/api/v1/estado')).vagas.find(x => x.id === id)?.notas ?? '';
     const juntas = await app.perguntar({ titulo: 'As notas mudaram enquanto você editava', texto: 'Juntei as duas versões. Ajuste e salve.', campo: 'Notas', valor: `${atual}\n\n${minha}`.trim(), multilinha: true, confirmar: 'Salvar notas' });
     if (juntas == null) { app.aviso('Suas notas não foram salvas', true); return; }
     await app.agir(() => app.api(caminho, 'PATCH', { notas: juntas, notasAntes: atual }), 'Notas salvas');
@@ -102,7 +102,7 @@ export function abrirDetalhe(app, id) {
         ev.preventDefault();
         const texto = novaNota.value.trim();
         if (!texto) return;
-        const ok = await app.agir(() => app.api(`/api/vagas/${encodeURIComponent(id)}/eventos`, 'POST', { tipo: tipoNota.value, texto }), 'Registrado');
+        const ok = await app.agir(() => app.api(`/api/v1/vagas/${encodeURIComponent(id)}/eventos`, 'POST', { tipo: tipoNota.value, texto }), 'Registrado');
         if (ok) novaNota.value = '';
       } } }, tipoNota, novaNota, h('button.botao-fantasma', { type: 'submit' }, 'Registrar')),
       eventos.length ? h('ol.linha-tempo', eventos.map(e => h(`li.e-${e.tipo}`,

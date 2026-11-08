@@ -9,7 +9,7 @@ export function telaPlataformas(app) {
   const ordem = Object.keys(STATUS);
   const lista = [...plataformas].sort((a, b) => ordem.indexOf(a.status) - ordem.indexOf(b.status) || String(a.nome ?? a.id).localeCompare(String(b.nome ?? b.id)));
 
-  const salvar = (p, patch, msg) => app.agir(() => app.api(`/api/plataformas/${encodeURIComponent(p.id)}`, 'PUT', patch), msg);
+  const salvar = (p, patch, msg) => app.agir(() => app.api(`/api/v1/plataformas/${encodeURIComponent(p.id)}`, 'PUT', patch), msg);
 
   return h('div',
     h('header.cabecalho',

@@ -1,0 +1,40 @@
+{
+  "_leia": "Configuração da IA. Padrão: o assistente do próprio cliente (Claude Code) faz o papel da IA, sem chave de API. Chaves podem vir daqui (BYOK) ou das variáveis ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY. Nunca versione chaves.",
+  "provedores": {},
+  "rotas": {
+    "padrao": { "provedor": "assistente-local" }
+  },
+  "_exemplos": {
+    "_nota": "Copie um bloco para 'provedores'/'rotas'. Ids da Anthropic conferidos em 2026-11; ids de OpenAI e Google tirados de exemplos da documentação oficial em 2026-11-07: confirme na lista de modelos da sua conta antes de usar.",
+    "anthropic": {
+      "provedores": { "anthropic": { "chave": "<opcional: senão usa ANTHROPIC_API_KEY>" } },
+      "rotas": {
+        "padrao": { "provedor": "anthropic", "modelo": "claude-sonnet-5-5" },
+        "triarVaga": { "provedor": "anthropic", "modelo": "claude-haiku-5-5", "reserva": { "provedor": "anthropic", "modelo": "claude-sonnet-5-5" } },
+        "revisarAntesDeEnviar": { "provedor": "anthropic", "modelo": "claude-opus-5-5" }
+      }
+    },
+    "openai": {
+      "provedores": { "openai": {} },
+      "rotas": {
+        "padrao": { "provedor": "openai", "modelo": "gpt-6-astra" },
+        "triarVaga": { "provedor": "openai", "modelo": "<modelo-openai-barato>" }
+      }
+    },
+    "google": {
+      "provedores": { "google": {} },
+      "rotas": {
+        "padrao": { "provedor": "google", "modelo": "gemini-3.8-flash" }
+      }
+    },
+    "misto": {
+      "_nota": "Triagem barata no Gemini com reserva no Claude; perguntas de formulário num modelo forte.",
+      "rotas": {
+        "padrao": { "provedor": "assistente-local" },
+        "triarVaga": { "provedor": "google", "modelo": "gemini-3.8-flash", "reserva": { "provedor": "anthropic", "modelo": "claude-haiku-5-5" } },
+        "responderPergunta": { "provedor": "anthropic", "modelo": "claude-sonnet-5-5", "reserva": { "provedor": "openai", "modelo": "gpt-6-astra" } },
+        "escreverMensagem": { "provedor": "openai", "modelo": "gpt-6-astra" }
+      }
+    }
+  }
+}

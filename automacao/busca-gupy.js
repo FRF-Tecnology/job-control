@@ -32,7 +32,7 @@ window.__CENTRAL_RESULTADO = 'rodando';
   const limite = setTimeout(() => ctl.abort(), 6000);
   let res;
   try {
-    const resp = await fetch(CENTRAL + '/api/importar', { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', 'x-central-chave': CHAVE }, body: JSON.stringify(vagas) });
+    const resp = await fetch(CENTRAL + '/api/v1/importar', { method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json', 'x-central-chave': CHAVE }, body: JSON.stringify(vagas) });
     res = await resp.json().catch(() => ({}));
     if (!resp.ok) return 'erro: a Central recusou a importação (HTTP ' + resp.status + ': ' + (res.erro || '?') + '). Gere o script de novo com cli.mjs script busca-gupy.';
   } catch {

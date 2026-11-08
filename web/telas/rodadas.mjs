@@ -17,7 +17,7 @@ export function telaRodadas(app) {
 
   return h('div',
     h('header.cabecalho', h('div', h('h1', 'Rodadas'), h('p', 'Cada vez que o Claude busca e aplica, é uma rodada. Peça uma nova com /rodada.')),
-      h('a.botao-fantasma', { href: '/api/historico.md', target: '_blank' }, 'Ver histórico em texto')),
+      h('a.botao-fantasma', { href: '/api/v1/historico.md', target: '_blank' }, 'Ver histórico em texto')),
     lista.length ? h('div.tabela-rolagem', h('table',
       h('thead', h('tr', ['Rodada', 'Data', 'Fontes', 'Encontradas', 'Enviadas', 'Puladas', 'Travadas', 'Resumo'].map(t => h('th', { scope: 'col' }, t)))),
       h('tbody', lista.map(r => h('tr', { style: { cursor: 'default' } },

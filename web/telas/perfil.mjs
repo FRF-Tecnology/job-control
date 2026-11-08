@@ -63,7 +63,7 @@ export function telaPerfil(app) {
 
   return h('form.formulario', { on: { submit: async ev => {
     ev.preventDefault();
-    await app.agir(() => app.api('/api/perfil', 'PUT', perfil), 'Perfil salvo');
+    await app.agir(() => app.api('/api/v1/perfil', 'PUT', perfil), 'Perfil salvo');
   } } },
   h('header.cabecalho', h('div', h('h1', 'Perfil e regras'), h('p', 'O Claude lê esta página antes de cada rodada. CPF, RG e senhas nunca ficam aqui.')),
     h('button.botao', { type: 'submit' }, 'Salvar perfil')),
