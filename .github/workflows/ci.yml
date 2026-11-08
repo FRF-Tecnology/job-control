@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, reescrita-go]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Central atual (Node). Continua valendo até a reescrita terminar (fase P8).
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test
+
+  # App novo (Wails: Go + React/TS). No Windows o build não precisa de cgo nem de bibliotecas extras.
+  app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - name: Instalar wails3
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+      - name: Gerar bindings e telas
+        working-directory: app
+        run: |
+          wails3 generate bindings -clean=true -ts -i
+          cd frontend
+          npm ci
+          npm run build
+      - run: go vet ./...
+      - run: go test ./...
+      - name: Compilar o app
+        run: go build -o central.exe ./app
+
+  # Repositório público: nenhum segredo pode entrar.
+  segredos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git --redact --verbose .
