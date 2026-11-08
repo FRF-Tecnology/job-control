@@ -1,16 +1,16 @@
-// Guarda o estado em arquivos JSON dentro de dados/. Cada leitura vai ao disco
+// Armazém em arquivos JSON dentro de dados/ (modo local). Cada leitura vai ao disco
 // (a tela e o Claude gravam nos mesmos arquivos) e cada gravação é atômica.
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, copyFileSync, openSync, closeSync, unlinkSync, statSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { estadoVazio } from './servico.mjs';
-import { hojeISO } from './modelo.mjs';
+import { estadoVazio } from '../servico.mjs';
+import { hojeISO } from '../modelo.mjs';
 
 const ARQUIVOS = { vagas: 'vagas.json', eventos: 'eventos.json', plataformas: 'plataformas.json', rodadas: 'rodadas.json', perfil: 'perfil.json' };
 
 // Espera síncrona curta (usada só enquanto outro processo grava).
 const dormir = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
-export function criarArmazem(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000, hoje = () => hojeISO() } = {}) {
+export function criarArmazemArquivos(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000, hoje = () => hojeISO() } = {}) {
   mkdirSync(dir, { recursive: true });
   const arqTrava = join(dir, '.trava');
 
@@ -85,14 +85,5 @@ export function criarArmazem(dir, { esperaTravaMs = 5000, travaVelhaMs = 15000, 
     return true;
   }
 
-  return { dir, carregar, salvar, transacao, backupDiario };
-}
-
-// Computador novo: começa com as plataformas conhecidas. Devolve true se preparou algo.
-export function prepararPrimeiraVez(dir, modeloDir) {
-  mkdirSync(join(dir, 'curriculos'), { recursive: true });
-  const destino = join(dir, 'plataformas.json');
-  if (existsSync(destino) || !existsSync(join(modeloDir, 'plataformas.json'))) return false;
-  copyFileSync(join(modeloDir, 'plataformas.json'), destino);
-  return true;
+  return { tipo: 'arquivos', dir, carregar, salvar, transacao, backupDiario };
 }

@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 // CLI da Central. É por aqui que o Claude grava tudo (nunca editando os JSON à mão).
+// Todo comando de dados passa pela API v1 (servidor/api.mjs), chamada no mesmo processo: não precisa da Central aberta.
 // Pasta de dados: CENTRAL_DADOS (padrão: ./dados ao lado do projeto).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { criarArmazem } from '../nucleo/armazenamento.mjs';
-import { adicionarVaga, moverVaga, registrarEvento, followUpFeito, adiarFollowUp, atualizarVaga, ErroDuplicata, ErroValidacao } from '../nucleo/servico.mjs';
-import { resumo } from '../nucleo/funil.mjs';
-import { duplicatasPorTitulo } from '../nucleo/dedupe.mjs';
-import { validarVaga, contemDocumentoEm, validarPerfil, perfilSensivel } from '../nucleo/validacao.mjs';
+import { criarApi, PREFIXO } from '../servidor/api.mjs';
 import { randomBytes } from 'node:crypto';
-import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
-import { gerarHistoricoMd } from '../nucleo/historico.mjs';
 import { hojeISO, somarDias, lerValor } from '../nucleo/modelo.mjs';
 import { existsSync } from 'node:fs';
 
@@ -19,6 +15,17 @@ const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dirDados = process.env.CENTRAL_DADOS || join(raiz, 'dados');
 const hoje = process.env.CENTRAL_HOJE || hojeISO();
 const armazem = criarArmazem(dirDados, { hoje: () => hoje });
+const api = criarApi({ armazem, dir: dirDados, hoje: () => hoje });
+
+class ErroCli extends Error {}
+// Chama a API como "claude". Erro de validação vira "recusado: ...", o resto "erro: ...".
+async function chamar(metodo, caminho, corpo) {
+  const r = await api.chamar({ metodo, caminho: PREFIXO + caminho, corpo, autor: 'claude' });
+  if (r.status >= 400) throw new ErroCli(r.corpo.erros ? `recusado: ${r.corpo.erros.join('; ')}` : `erro: ${r.corpo.erro}`);
+  return r.corpo;
+}
+const id_ = id => encodeURIComponent(id ?? '');
+const lerJson = (texto, nome = '--json') => { try { return JSON.parse(texto); } catch { sair(`JSON inválido em ${nome}`); } };
 
 const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
 
@@ -60,30 +67,30 @@ function opcoes(args) {
   return o;
 }
 
-const ctx = () => ({ autor: 'claude', agora: hoje, diasFollowUp: Number(armazem.carregar().perfil?.diasFollowUp) || 7 });
 const sair = (msg, cod = 1) => { (cod ? console.error : console.log)(msg); process.exit(cod); };
 
-function comandos(cmd, o) {
+async function comandos(cmd, o) {
   switch (cmd) {
     case 'resumo':
-      return console.log(JSON.stringify(resumo(armazem.carregar().vagas, hoje), null, 2));
+      return console.log(JSON.stringify(await chamar('GET', '/resumo'), null, 2));
 
     case 'listar': {
-      const vs = armazem.carregar().vagas.filter(v => (!o.etapa || v.etapa === o.etapa) && (!o.plataforma || v.plataforma === o.plataforma));
+      const q = new URLSearchParams(Object.entries({ etapa: o.etapa, plataforma: o.plataforma }).filter(([, v]) => typeof v === 'string'));
+      const vs = await chamar('GET', `/vagas${q.size ? `?${q}` : ''}`);
       for (const v of vs) console.log([v.id, v.etapa, v.empresa, v.titulo, v.plataforma, v.aderencia ?? '', v.link ?? ''].join(' | '));
       return console.log(`(${vs.length})`);
     }
 
     case 'ver': {
-      const e = armazem.carregar();
-      const v = e.vagas.find(x => x.id === o._[0]);
-      if (!v) sair(`vaga não encontrada: ${o._[0]}`);
-      return console.log(JSON.stringify({ ...v, eventos: e.eventos.filter(x => x.vagaId === v.id) }, null, 2));
+      const r = await api.chamar({ metodo: 'GET', caminho: `${PREFIXO}/vagas/${id_(o._[0])}` });
+      if (r.status === 404) sair(`vaga não encontrada: ${o._[0]}`);
+      return console.log(JSON.stringify(r.corpo, null, 2));
     }
 
     case 'dup': {
       // Lista todas as vagas com a mesma empresa+título, menos a indicada em --excluir (a própria vaga).
-      const ds = duplicatasPorTitulo(armazem.carregar().vagas, { empresa: o._[0], titulo: o._[1] }, o.excluir);
+      const q = new URLSearchParams({ empresa: o._[0] ?? '', titulo: o._[1] ?? '', ...(typeof o.excluir === 'string' ? { excluir: o.excluir } : {}) });
+      const ds = await chamar('GET', `/duplicatas?${q}`);
       if (!ds.length) return console.log('nova');
       for (const d of ds) console.log(`JÁ EXISTE: ${d.id} | ${d.etapa} | ${d.empresa} | ${d.titulo}${d.envio?.data ? ` | enviada ${d.envio.data}` : ''}`);
       return;
@@ -93,22 +100,10 @@ function comandos(cmd, o) {
       const bruto = o.arquivo ? readFileSync(o.arquivo, 'utf8') : o.uri ? decodeURIComponent(o.uri) : o.json;
       if (!bruto) sair('informe --json ou --arquivo');
       const lista = [].concat(JSON.parse(bruto));
-      const r = { adicionadas: [], duplicadas: [], erros: [] };
-      armazem.transacao(estado => {
-        for (const dados of lista) {
-          try {
-            ({ estado } = adicionarVaga(estado, dados, ctx(), { forcar: Boolean(o.forcar) }));
-            r.adicionadas.push(dados.id);
-          } catch (e) {
-            if (e instanceof ErroDuplicata) r.duplicadas.push(`${dados.id} → ${e.existente.id}`);
-            else r.erros.push(`${dados.id ?? '?'}: ${e.message}`);
-          }
-        }
-        return { estado };
-      });
+      const r = await chamar('POST', '/vagas', { lista, forcar: Boolean(o.forcar) });
       console.log(`adicionadas: ${r.adicionadas.length}\nduplicadas: ${r.duplicadas.length}\ncom erro: ${r.erros.length}`);
-      for (const d of r.duplicadas) console.log(`  dup  ${d}`);
-      for (const e of r.erros) console.log(`  erro ${e}`);
+      for (const d of r.duplicadas) console.log(`  dup  ${d.id} → ${d.existente}`);
+      for (const e of r.erros) console.log(`  erro ${e.id ?? '?'}: ${e.erro}`);
       return;
     }
 
@@ -129,95 +124,65 @@ function comandos(cmd, o) {
         };
       }
       if (Number.isNaN(extras.envio?.pretensao)) sair(`pretensão inválida: ${o.pretensao} (use 8500 ou 8.500)`);
-      const { vaga } = armazem.transacao(e => moverVaga(e, id, etapa, extras, ctx()));
+      const vaga = await chamar('POST', `/vagas/${id_(id)}/mover`, { etapa, ...extras });
       return console.log(`ok: ${vaga.empresa} · ${vaga.titulo} → ${vaga.etapa}${vaga.followUp?.proximo ? ` (follow-up ${vaga.followUp.proximo})` : ''}`);
     }
 
     case 'editar': {
-      const { vaga } = armazem.transacao(e => atualizarVaga(e, o._[0], JSON.parse(o.json), ctx()));
+      const vaga = await chamar('PATCH', `/vagas/${id_(o._[0])}`, lerJson(o.json));
       return console.log(`ok: ${vaga.id}`);
     }
 
     case 'evento': {
       const [id, tipo, ...texto] = o._;
-      armazem.transacao(e => registrarEvento(e, id, tipo, texto.join(' '), ctx()));
+      await chamar('POST', `/vagas/${id_(id)}/eventos`, { tipo, texto: texto.join(' ') });
       return console.log('ok');
     }
 
     case 'followup': {
       const [id, acao, dias] = o._;
       if (!id) {
-        const e = armazem.carregar();
-        for (const v of pendentesFollowUp(e.vagas, hoje)) {
-          console.log(`\n## ${v.id} | ${v.empresa} · ${v.titulo} | enviada ${v.envio.data} | vence ${v.followUp.proximo}${v.link ? `\n${v.link}` : ''}\n${sugerirMensagem(v, e.perfil)}`);
+        for (const v of await chamar('GET', '/followups')) {
+          console.log(`\n## ${v.id} | ${v.empresa} · ${v.titulo} | enviada ${v.envio.data} | vence ${v.followUp.proximo}${v.link ? `\n${v.link}` : ''}\n${v.mensagem}`);
         }
         return;
       }
-      if (acao === 'feito') armazem.transacao(e => followUpFeito(e, id, ctx()));
-      else if (acao === 'adiar') armazem.transacao(e => adiarFollowUp(e, id, Number(dias) || 3, ctx()));
+      if (acao === 'feito') await chamar('POST', `/vagas/${id_(id)}/followup`, { acao: 'feito' });
+      else if (acao === 'adiar') await chamar('POST', `/vagas/${id_(id)}/followup`, { acao: 'adiar', dias: Number(dias) || 3 });
       else sair('use: followup <id> feito | adiar <dias>');
       return console.log('ok');
     }
 
     case 'rodada': {
-      const r = JSON.parse(o.json);
+      const r = lerJson(o.json);
       if (r.n == null) sair('a rodada precisa de "n"');
-      if (contemDocumentoEm(r)) sair('recusado: parece conter CPF/RG');
-      armazem.transacao(e => {
-        const rodadas = e.rodadas.filter(x => x.n !== r.n);
-        rodadas.push({ data: hoje, ...e.rodadas.find(x => x.n === r.n), ...r });
-        rodadas.sort((a, b) => a.n - b.n);
-        return { estado: { ...e, rodadas } };
-      });
+      await chamar('PUT', `/rodadas/${id_(String(r.n))}`, r);
       return console.log(`ok: rodada ${r.n}`);
     }
 
     case 'plataforma': {
-      const p = JSON.parse(o.json);
+      const p = lerJson(o.json);
       if (!p.id) sair('a plataforma precisa de "id"');
-      if (contemDocumentoEm(p)) sair('recusado: parece conter CPF/RG');
-      if (!p.nome && !armazem.carregar().plataformas.some(x => x.id === p.id)) p.nome = p.id;
-      armazem.transacao(e => {
-        const atual = e.plataformas.find(x => x.id === p.id) ?? {};
-        return { estado: { ...e, plataformas: [...e.plataformas.filter(x => x.id !== p.id), { ...atual, ...p }] } };
-      });
+      await chamar('PATCH', `/plataformas/${id_(p.id)}`, p);
       return console.log(`ok: ${p.id}`);
     }
 
     case 'perfil': {
-      if (!o.json || o.json === true) return console.log(JSON.stringify(armazem.carregar().perfil ?? {}, null, 2));
-      let p;
-      try { p = JSON.parse(o.json); } catch { sair('JSON inválido em --json'); }
+      if (!o.json || o.json === true) return console.log(JSON.stringify(await chamar('GET', '/perfil'), null, 2));
+      const p = lerJson(o.json);
       if (!p || typeof p !== 'object' || Array.isArray(p)) sair('--json deve ser um objeto');
-      const atual = armazem.carregar().perfil ?? {};
-      const respostas = [...(atual.respostasPadrao ?? [])];
-      for (const r of p.respostasPadrao ?? []) {
-        const i = respostas.findIndex(x => String(x.pergunta).toLowerCase() === String(r.pergunta).toLowerCase());
-        if (i >= 0) respostas[i] = r; else respostas.push(r);
-      }
-      const novo = { ...atual, ...p, filtros: { ...(atual.filtros ?? {}), ...(p.filtros ?? {}) }, respostasPadrao: respostas };
-      const erros = validarPerfil(novo);
-      if (erros.length) sair(erros.join('; '));
-      if (perfilSensivel(novo)) sair('recusado: o perfil não pode guardar CPF, RG, senha ou dados bancários');
-      armazem.transacao(e => ({ estado: { ...e, perfil: novo } }));
+      await chamar('PATCH', '/perfil', p);
       return console.log(`ok: perfil atualizado (${Object.keys(p).join(', ')})`);
     }
 
     case 'validar': {
-      const e = armazem.carregar();
-      const problemas = [];
-      const ids = new Set();
-      for (const v of e.vagas) {
-        if (ids.has(v.id)) problemas.push(`${v.id}: id repetido`);
-        ids.add(v.id);
-        for (const erro of validarVaga(v)) problemas.push(`${v.id}: ${erro}`);
-      }
-      if (problemas.length) sair(problemas.join('\n'));
-      return console.log(`OK: ${e.vagas.length} vagas, ${e.eventos.length} eventos`);
+      const r = await chamar('GET', '/validar');
+      if (!r.ok) sair(r.problemas.join('\n'));
+      return console.log(`OK: ${r.vagas} vagas, ${r.eventos} eventos`);
     }
 
     case 'exportar-md': {
-      const md = gerarHistoricoMd(armazem.carregar(), hoje);
+      const md = await chamar('GET', '/historico.md');
       if (o._[0]) { writeFileSync(o._[0], md, 'utf8'); return console.log(`ok: ${o._[0]}`); }
       return console.log(md);
     }
@@ -232,7 +197,7 @@ function comandos(cmd, o) {
       const nome = String(o._[0] ?? '').replace(/\.js$/, '');
       const arq = join(raiz, 'automacao', `${nome}.js`);
       if (!/^[a-z-]+$/i.test(nome) || !existsSync(arq)) sair(`script não encontrado: ${nome}`);
-      const perfil = armazem.carregar().perfil ?? {};
+      const perfil = await chamar('GET', '/perfil');
       const arqChave = join(dirDados, '.chave');
       const empresas = readFileSync(join(raiz, 'automacao', 'inhire-empresas.txt'), 'utf8').split(/\r?\n/).filter(l => !l.startsWith('#')).join(' ').split(/\s+/).filter(Boolean);
       const valores = {
@@ -248,6 +213,10 @@ function comandos(cmd, o) {
         pretensaoCLT: String(perfil.pretensaoCLT ?? ''), pretensaoPJ: String(perfil.pretensaoPJ ?? ''),
         // Início do nome do arquivo de currículo como aparece no LinkedIn (perfil.curriculosLinkedin).
         cvPT: perfil.curriculosLinkedin?.PT ?? '', cvEN: perfil.curriculosLinkedin?.EN ?? '',
+        // Filtros de título da busca (regex; vazio = padrão do script) e regras de senioridade/inglês vindas do perfil.
+        tituloFora: perfil.buscaTituloFora ?? '', tituloDev: perfil.buscaTituloDev ?? '',
+        aceitaSenior: (perfil.filtros?.niveis ?? []).some(n => /s[eê]nior/i.test(n)) ? '1' : '',
+        inglesOk: /fluente|avan[cç]ad|proficient|fluent|advanced|c1|c2/i.test(perfil.ingles ?? '') ? '1' : '',
       };
       // Valores de texto entram como literais JSON (aspas e apóstrofos não quebram o script);
       // palavras e empresas já são listas JSON.
@@ -257,7 +226,7 @@ function comandos(cmd, o) {
     }
 
     case 'backup':
-      return console.log(armazem.backupDiario(hoje) ? `ok: dados/backups/${hoje}` : 'backup de hoje já existe');
+      return console.log((await chamar('POST', '/backup')).criado ? `ok: dados/backups/${hoje}` : 'backup de hoje já existe');
 
     default:
       return console.log(AJUDA);
@@ -266,8 +235,7 @@ function comandos(cmd, o) {
 
 const [cmd, ...resto] = process.argv.slice(2);
 try {
-  comandos(cmd, opcoes(resto));
+  await comandos(cmd, opcoes(resto));
 } catch (e) {
-  if (e instanceof ErroValidacao) sair(`recusado: ${e.erros.join('; ')}`);
-  sair(`erro: ${e.message}`);
+  sair(e instanceof ErroCli ? e.message : `erro: ${e.message}`);
 }

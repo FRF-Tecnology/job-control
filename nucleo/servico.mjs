@@ -40,19 +40,24 @@ function acharIndice(estado, id) {
   return i;
 }
 
-function novoEvento(estado, vagaId, tipo, texto, { autor, agora }) {
+// Dono dos dados: no modo local é sempre "local"; na nuvem vem da conta logada (nunca do corpo do pedido).
+export const contaDe = ctx => ctx?.contaId ?? 'local';
+
+function novoEvento(estado, vagaId, tipo, texto, ctx) {
+  const { autor, agora } = ctx;
   const n = estado.eventos.length + 1;
-  return { id: `ev-${agora}-${String(n).padStart(6, '0')}-${Math.random().toString(36).slice(2, 6)}`, vagaId, tipo, data: agora, autor, texto: texto ?? '' };
+  return { id: `ev-${agora}-${String(n).padStart(6, '0')}-${Math.random().toString(36).slice(2, 6)}`, contaId: contaDe(ctx), vagaId, tipo, data: agora, autor, texto: texto ?? '' };
 }
 
 export function adicionarVaga(estado, dados, ctx, { forcar: forcarLote = false } = {}) {
   if (!dados || typeof dados !== 'object' || Array.isArray(dados)) throw new ErroValidacao(['vaga vazia ou inválida']);
   // "forcar" pode vir no próprio item (vaga republicada) ou valer para o lote inteiro.
-  const { forcar: forcarItem, ...resto } = dados;
+  const { forcar: forcarItem, contaId: _ignorado, ...resto } = dados;
   const forcar = Boolean(forcarLote || forcarItem);
   const vaga = {
     plataforma: 'outra', etapa: 'descoberta', descobertaEm: ctx.agora, atualizadoEm: ctx.agora,
     ...resto,
+    contaId: contaDe(ctx),
   };
   exigirValida(vaga);
   const mesmoId = estado.vagas.find(v => v.id === vaga.id);

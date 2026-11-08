@@ -45,8 +45,11 @@ Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. 
 - Na primeira busca, o Chrome pode perguntar se o LinkedIn, a Gupy ou a InHire podem **acessar dispositivos da rede local**. Permitir deixa as vagas irem direto para a Central. Se você negar, o Claude copia as vagas em partes (mais lento, mas funciona).
 
 ## Para quem mexe no código
-- `nucleo/`: regras (validação, deduplicação, funil, follow-up, armazenamento). Puro e testado.
-- `servidor/`: API local (`node:http`, sem dependências).
+- `nucleo/`: regras (validação, deduplicação, funil, follow-up). Puro e testado.
+  - `nucleo/armazens/`: onde os dados moram (`arquivos` no modo local, `memoria` nos testes; Postgres na nuvem depois).
+  - `nucleo/ia/`: adaptador de IA (Claude, GPT ou Gemini) com as regras de segurança validadas no código.
+- `servidor/api.mjs`: API v1 (`/api/v1/...`). A CLI, a tela e, depois, a extensão e o MCP usam só ela.
+- `servidor/app.mjs`: servidor HTTP local (`node:http`, sem dependências) em volta da API.
 - `web/`: interface (HTML/CSS/JS puros, módulos ES).
 - `ferramentas/cli.mjs`: o que o Claude usa para gravar.
 - `automacao/`: scripts de navegador e notas por plataforma.

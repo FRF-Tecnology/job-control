@@ -54,7 +54,7 @@ const app = {
   },
 
   mover(id, etapa, extras = {}, mensagem) {
-    return this.agir(() => this.api(`/api/vagas/${encodeURIComponent(id)}/mover`, 'POST', { etapa, ...extras }), mensagem);
+    return this.agir(() => this.api(`/api/v1/vagas/${encodeURIComponent(id)}/mover`, 'POST', { etapa, ...extras }), mensagem);
   },
 
   abrirVaga(id) { location.hash = `#/${rotaAtual().rota}/${encodeURIComponent(id)}`; },
@@ -148,11 +148,11 @@ async function carregar(forcar = false) {
   let estado;
   try {
     if (!forcar && app.estado) {
-      const { versao } = await app.api('/api/versao');
+      const { versao } = await app.api('/api/v1/versao');
       if (versao === app.versao) { conexao.textContent = 'Conectado'; conexao.classList.remove('off'); return; }
     }
     if (app.sujo && !forcar) { conexao.textContent = 'Há mudanças novas — salve o que está editando para ver'; return; }
-    estado = await app.api('/api/estado');
+    estado = await app.api('/api/v1/estado');
   } catch (e) {
     conexao.classList.add('off');
     if (e.status) {
