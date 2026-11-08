@@ -518,7 +518,7 @@ O painel mostra o que falta conectar, como um checklist, e por que cada item val
 
 ## Perguntas em aberto
 1. ~~Links do Leapfrog e do Applika~~ — respondido; ver "Concorrentes de referência".
-2. Os emails das candidaturas chegam todos no `fermovinicius@gmail.com`? (T1, cliente zero)
+2. Os emails das candidaturas chegam todos no seu email principal? (T1, cliente zero)
 3. Você grava ou transcreve as entrevistas hoje? Com qual ferramenta (Meet, Zoom, Teams, tl;dv, Otter)? (T3)
 4. ~~Público inicial~~ — **decidido em 2026-11-06:** devs brasileiros/LATAM, com seletor de foco internacional, nacional ou os dois.
    Ver "Público e foco".
