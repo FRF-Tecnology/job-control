@@ -1,0 +1,45 @@
+openapi: 3.1.0
+info:
+  title: Central de Candidaturas — API local
+  version: 0.1.0
+  description: >
+    API que a janela do app, a CLI, o MCP local e as automações usam.
+    Roda dentro do app (sem porta aberta para fora). Cresce a cada fase da reescrita;
+    as rotas seguem as de servidor/api.mjs (Node) para manter o contrato.
+servers:
+  - url: /api/v1
+paths:
+  /saude:
+    get:
+      summary: O app está de pé
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, app]
+                properties:
+                  ok: { type: boolean }
+                  app: { type: string, description: versão do app }
+  /versao:
+    get:
+      summary: Versão dos dados (sobe a cada gravação; a tela recarrega quando muda)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [versao]
+                properties:
+                  versao: { type: string }
+components:
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string }

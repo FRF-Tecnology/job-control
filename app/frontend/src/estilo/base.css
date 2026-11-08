@@ -1,0 +1,14 @@
+/* Estilo provisório da tela inicial da P0. As telas da P3 trazem o resto do design system. */
+.inicio {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.inicio h1 { font-size: clamp(2rem, 5vw, 3.2rem); }
+.inicio p { margin: 0; }
+.mudo { color: var(--tinta-2); }
+.erro { color: var(--erro); }

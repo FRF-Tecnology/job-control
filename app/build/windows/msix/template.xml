@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MsixPackagingToolTemplate
+    xmlns="http://schemas.microsoft.com/msix/packaging/msixpackagingtool/template/2022">
+    <Settings
+        AllowTelemetry="false"
+        ApplyACLsToPackageFiles="true"
+        GenerateCommandLineFile="true"
+        AllowPromptForPassword="false">
+    </Settings>
+    <Installer
+        Path="central.exe"
+        Arguments=""
+        InstallLocation="C:\Program Files\FRF Tecnology\Central de Candidaturas">
+    </Installer>
+    <PackageInformation
+        PackageName="Central de Candidaturas"
+        PackageDisplayName="Central de Candidaturas"
+        PublisherName="CN=FRF Tecnology"
+        PublisherDisplayName="FRF Tecnology"
+        Version="0.1.0.0"
+        PackageDescription="Central de Candidaturas">
+        <Capabilities>
+            <Capability Name="runFullTrust" />
+            
+        </Capabilities>
+        <Applications>
+            <Application
+                Id="com.frftecnology.central"
+                Description="Central de Candidaturas"
+                DisplayName="Central de Candidaturas"
+                ExecutableName="central.exe"
+                EntryPoint="Windows.FullTrustApplication">
+                
+            </Application>
+        </Applications>
+        <Resources>
+            <Resource Language="en-us" />
+        </Resources>
+        <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+        </Dependencies>
+        <Properties>
+            <Framework>false</Framework>
+            <DisplayName>Central de Candidaturas</DisplayName>
+            <PublisherDisplayName>FRF Tecnology</PublisherDisplayName>
+            <Description>Central de Candidaturas</Description>
+            <Logo>Assets\AppIcon.png</Logo>
+        </Properties>
+    </PackageInformation>
+    <SaveLocation PackagePath="central.msix" />
+    <PackageIntegrity>
+        <CertificatePath></CertificatePath>
+    </PackageIntegrity>
+</MsixPackagingToolTemplate>

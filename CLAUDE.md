@@ -78,6 +78,24 @@ Rules:
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - graphify-out/ is not committed (it is in .gitignore). If it is missing, build it with `graphify extract . --code-only` (local AST, no API key; dados/ is skipped by .gitignore).
 
+## Reescrita: app de PC (Go + React/TS)
+
+A Central está sendo reescrita como app de PC com Wails v3. O plano tem as fases P0 a P8, acompanhadas no Gas Town (épico `jc-a2y`).
+Até a P8, o código Node atual continua sendo a Central em uso, e a API dele é a referência do contrato.
+
+**Onde fica cada parte:**
+- `go.mod` na raiz;
+- `internal/` com os pacotes Go (config, armazem SQLite com migrações em `migracoes/`, api);
+- `app/` é o projeto Wails: `main.go`, `build/` e `frontend/`, este último em React + TS + Vite;
+- `api/openapi.yaml` é o contrato da API local.
+
+**Comandos:**
+- `go test ./...` roda os testes do Go. O pacote `app` precisa de `app/frontend/dist`, que é gerado pelo build.
+- `cd app && wails3 build` gera `app/bin/central.exe`. Ele também gera os bindings e as telas.
+- `cd app && wails3 dev` abre o modo de desenvolvimento.
+
+**Pasta de dados:** `os.UserConfigDir()/Central de Candidaturas`. A variável `CENTRAL_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
+
 ## Ferramentas de desenvolvimento
 
 O projeto sempre usa três ferramentas:
