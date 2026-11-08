@@ -25,7 +25,7 @@ Use AskUserQuestion, com até 4 perguntas por chamada e opções prontas quando 
 |---|---|---|
 | Identidade | `nome` (completo), `email`, `telefone`, `cidade`, `linkedin`, `github` | texto livre |
 | Cargo | `cargo`, `experienciaAnos`, `stackPrincipal`, `stackSecundaria` | stack lida do currículo; peça confirmação |
-| Dinheiro | `pretensaoCLT`, `pretensaoPJ` (só números), `salarioAtual`, `contratos` | opções: CLT / PJ / ambos |
+| Dinheiro | `pretensaoCLT`, `pretensaoPJ`, `pretensaoUSD` (só números; USD para contractor no exterior), `salarioAtual`, `contratos` | opções: CLT / PJ / ambos |
 | Expectativas | `filtros.niveis`, `filtros.modelo`, `filtros.pularSe`, `palavrasBusca` | níveis Júnior/Pleno/Sênior; Remoto/Híbrido/Presencial; stacks a evitar |
 | Formação e idiomas | `formacao` (cursando? conclusão?), `ingles`, `espanhol`, `inicio` | opções de nível |
 | Funcionamento | `modo` (`revisar` = aplico só o que você aprovar; `direto` = aplico o grupo A sozinho), `diasFollowUp` | opções |
@@ -83,7 +83,7 @@ Antes de aplicar, leia o currículo PDF. É a fonte do que é verdade sobre a ex
 |---|---|
 | O LinkedIn preenche sozinho anos de uma tecnologia que a pessoa não tem (ex.: Kotlin = 3) | Antes do `send`, confira cada número contra o perfil e corrija para 0 |
 | Campo opcional "salário atual" recebeu a pretensão | Use `salarioAtual`, ou deixe em branco se o campo for opcional |
-| Campo de pretensão só numérico | Só dígitos. Rótulo PJ ou cooperado = `pretensaoPJ`; caso contrário, `pretensaoCLT` |
+| Campo de pretensão só numérico | Só dígitos. Rótulo PJ ou cooperado = `pretensaoPJ`; em dólar (USD, US$, contractor) = `pretensaoUSD`; caso contrário, `pretensaoCLT` |
 | Formulário de uma página só (sem botão Avançar) | O `auto` já trata como REVIEW. Confira os campos antes de enviar |
 | Banner de cookies cobre o botão de enviar | Recuse os cookies e clique de novo |
 | A vaga pede "graduação concluída" e a pessoa está cursando | `pulada --motivo Diploma`. Não marque "concluída" |

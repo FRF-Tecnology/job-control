@@ -107,7 +107,7 @@ export function criarApi({ armazem, dir = armazem.dir, hoje = () => hojeISO(), c
     if (m !== 'GET' && !objeto(corpo) && !(m === 'POST' && (p === '/vagas' || p === '/vagas/importar') && Array.isArray(corpo))) throw new ErroApi(400, { erro: 'envie um objeto JSON' });
 
     if (m === 'GET') {
-      if (p === '/estado') { const e = armazem.carregar(); return ok({ ...e, hoje: hoje(), versao: versao(), curriculos: curriculos(), primeirosPassos: primeirosPassos(e) }); }
+      if (p === '/estado') { const e = armazem.carregar(); return ok({ ...e, hoje: hoje(), versao: versao(), curriculos: curriculos(), pastaCurriculos: dir ? join(dir, 'curriculos') : null, primeirosPassos: primeirosPassos(e) }); }
       if (p === '/versao') return ok({ versao: versao() });
       if (p === '/resumo') return ok(resumo(armazem.carregar().vagas, hoje()));
       if (p === '/vagas') return ok(armazem.carregar().vagas.filter(v => (!q.etapa || v.etapa === q.etapa) && (!q.plataforma || v.plataforma === q.plataforma)));

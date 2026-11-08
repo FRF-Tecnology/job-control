@@ -1,5 +1,8 @@
 import { h, dataCurta, etapaChip, nomePlataforma, contem } from '../util.mjs';
-import { ETAPAS, NOMES_ETAPA } from '../../nucleo/modelo.mjs';
+import { ETAPAS, NOMES_ETAPA, normalizar } from '../../nucleo/modelo.mjs';
+
+// 'Contractor USD', 'PJ ou CLT'…: o contrato vem em texto livre, então o filtro procura a palavra.
+const temContrato = (v, c) => normalizar(v.contrato ?? '').split(/[^a-z0-9]+/).includes(normalizar(c));
 
 const POR_PAGINA = 50;
 // Filtros ficam guardados entre redesenhos (e entre visitas, no navegador).
@@ -12,7 +15,7 @@ export function telaVagas(app) {
   const plataformasUsadas = [...new Set(vagas.map(v => v.plataforma))];
 
   const lista = vagas
-    .filter(v => contem(v, filtros.texto ?? '') && (!filtros.etapa || v.etapa === filtros.etapa) && (!filtros.plataforma || v.plataforma === filtros.plataforma) && (!filtros.aderencia || v.aderencia === filtros.aderencia) && (!filtros.contrato || v.contrato === filtros.contrato))
+    .filter(v => contem(v, filtros.texto ?? '') && (!filtros.etapa || v.etapa === filtros.etapa) && (!filtros.plataforma || v.plataforma === filtros.plataforma) && (!filtros.aderencia || v.aderencia === filtros.aderencia) && (!filtros.contrato || temContrato(v, filtros.contrato)))
     .sort((a, b) => (b.envio?.data ?? b.descobertaEm ?? '').localeCompare(a.envio?.data ?? a.descobertaEm ?? ''));
   const paginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
   pagina = Math.min(pagina, paginas - 1);
@@ -37,7 +40,7 @@ export function telaVagas(app) {
       sel('etapa', 'Todas as etapas', ETAPAS.map(e => [e, NOMES_ETAPA[e]])),
       sel('plataforma', 'Todas as plataformas', plataformasUsadas.map(p => [p, nomePlataforma(p, plataformas)])),
       sel('aderencia', 'Qualquer aderência', [['A', 'Grupo A'], ['B', 'Grupo B'], ['C', 'Grupo C']]),
-      sel('contrato', 'Qualquer contrato', [['CLT', 'CLT'], ['PJ', 'PJ'], ['Cooperado', 'Cooperado']])),
+      sel('contrato', 'Qualquer contrato', [['CLT', 'CLT'], ['PJ', 'PJ'], ['Contractor', 'Contractor (exterior)'], ['Cooperado', 'Cooperado']])),
     lista.length ? h('div.tabela-rolagem', h('table',
       h('thead', h('tr', ['Data', 'Empresa', 'Vaga', 'Etapa', 'Plataforma', 'Grupo', 'Observação'].map(t => h('th', { scope: 'col' }, t)))),
       h('tbody', visiveis.map(v => h('tr', { tabindex: '0', on: { click: () => app.abrirVaga(v.id), keydown: ev => { if (ev.key === 'Enter') app.abrirVaga(v.id); } } },

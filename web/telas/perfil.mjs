@@ -4,7 +4,7 @@ import { h } from '../util.mjs';
 const CAMPOS = [
   ['Contato', [['nome', 'Nome completo', 'text'], ['email', 'E-mail', 'email'], ['telefone', 'Telefone', 'text'], ['cidade', 'Cidade', 'text'], ['linkedin', 'LinkedIn', 'url'], ['github', 'GitHub', 'url']]],
   ['Profissional', [['cargo', 'Como você se apresenta', 'text'], ['experienciaAnos', 'Anos de experiência', 'number'], ['ingles', 'Inglês', 'text', 'Básico, Conversacional, Avançado…'], ['formacao', 'Formação', 'text'], ['inicio', 'Disponibilidade para começar', 'text']]],
-  ['Remuneração', [['pretensaoCLT', 'Pretensão CLT (R$/mês)', 'number'], ['pretensaoPJ', 'Pretensão PJ (R$/mês)', 'number'], ['salarioAtual', 'Salário atual', 'text', 'deixe em branco se preferir']]],
+  ['Remuneração', [['pretensaoCLT', 'Pretensão CLT (R$/mês)', 'number'], ['pretensaoPJ', 'Pretensão PJ (R$/mês)', 'number'], ['pretensaoUSD', 'Pretensão internacional (US$/mês)', 'number', 'vagas contractor no exterior'], ['salarioAtual', 'Salário atual', 'text', 'deixe em branco se preferir']]],
 ];
 
 export function telaPerfil(app) {
@@ -27,9 +27,9 @@ export function telaPerfil(app) {
   };
   const secaoCurriculos = h('fieldset', h('legend', 'Currículos'),
     pdfs.length
-      ? [h('p.pequeno.mudo', { style: { margin: 0 } }, `${pdfs.length === 1 ? 'Encontrei 1 PDF' : `Encontrei ${pdfs.length} PDFs`} na pasta dados/curriculos. O Claude escolhe pelo idioma da vaga.`),
+      ? [h('p.pequeno.mudo', { style: { margin: 0 } }, `${pdfs.length === 1 ? 'Encontrei 1 PDF' : `Encontrei ${pdfs.length} PDFs`} na pasta de currículos. O Claude escolhe pelo idioma da vaga.`),
          h('div.duas', escolhaCurriculo('PT', 'Vagas em português'), escolhaCurriculo('EN', 'Vagas em inglês'))]
-      : h('p.aviso-cv', h('strong', 'Nenhum currículo ainda. '), 'Copie seu PDF para a pasta ', h('code', 'dados/curriculos'), ' do projeto. Esta página atualiza sozinha quando ele aparecer.'));
+      : h('p.aviso-cv', h('strong', 'Nenhum currículo ainda. '), 'Copie seu PDF para a pasta ', h('code', app.estado.pastaCurriculos ?? 'dados/curriculos'), '. Esta página atualiza sozinha quando ele aparecer.'));
 
   const campo = (k, rotulo, tipo, dica) => {
     const i = h('input', { id: `perfil-${k}`, type: tipo, placeholder: dica ?? '' });

@@ -66,7 +66,8 @@ test('cli add em lote informa adicionadas, duplicadas e erros sem parar', () => 
     { id: 'c', empresa: '', titulo: 'X' },
   ]));
   const r = cli(dir, 'add', '--arquivo', arq);
-  assert.equal(r.status, 0, r.stderr);
+  // processa o lote inteiro, mas sai com 2 para quem chamou perceber a vaga recusada
+  assert.equal(r.status, 2, r.stderr);
   assert.match(r.stdout, /adicionadas: 1/);
   assert.match(r.stdout, /duplicadas: 1/);
   assert.match(r.stdout, /com erro: 1/);
