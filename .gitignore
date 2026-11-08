@@ -13,3 +13,7 @@ dados/
 .superpowers/
 .impeccable/
 node_modules/
+
+# Ferramentas de desenvolvimento geradas na máquina de cada pessoa
+graphify-out/
+.claude/settings.local.json
