@@ -493,6 +493,17 @@ dialog form { display: grid; gap: 16px; }
 .envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
 .envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
 .envio-janelas h3 { margin: 0; font-size: .95rem; }
+/* estado por plataforma (jc-a2y.6.11.1) */
+.envio-plataformas { display: grid; gap: 8px; }
+.envio-plataformas h3 { margin: 0; font-size: .95rem; }
+.envio-plataformas ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.plat-envio { display: grid; gap: 4px; align-content: start; padding: 12px 14px; border: 1px solid var(--linha); border-radius: var(--raio-p); }
+.plat-envio p { margin: 0; overflow-wrap: anywhere; }
+.plat-envio .acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.plat-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.plat-envio.e-ativa .chip { background: var(--verde-suave); color: var(--verde); font-weight: 600; }
+.plat-envio.e-pausada .chip, .plat-envio.e-precisa-entrar .chip, .plat-envio.e-parada-hoje .chip { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+.plat-envio.e-pausada, .plat-envio.e-precisa-entrar, .plat-envio.e-parada-hoje { border-color: color-mix(in srgb, var(--ambar) 45%, var(--linha)); }
 .envio-proxima { display: grid; gap: 2px; } .envio-proxima p { margin: 0; } .envio-proxima p:first-child { font-weight: 600; overflow-wrap: anywhere; } /* jc-a2y.6.10 */
 .login-aberto { margin: 0; padding: 8px 12px; border-radius: var(--raio-p); background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
 /* Lista do dia (jc-a2y.6.13): aprovar em lote, com o resumo de cada pacote e a opção de tirar itens. */

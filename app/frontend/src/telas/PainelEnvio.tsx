@@ -10,10 +10,39 @@ import { ErroApi, useApp } from '../app/contexto';
 // envio numa janela (POST /envio/janela, vale a partir da próxima candidatura) e entrar nas plataformas
 // (POST /navegador/entrar): enquanto a janela de login está aberta, o envio espera (login true). As duas só pela tela.
 type Desfecho = { id: string; estado: 'enviada' | 'bloqueada' | 'falhou' | 'incerta'; motivo: string | null; em: string };
+// Estado por plataforma (jc-a2y.6.11, contrato do #101). Sem o campo (servidor anterior), o painel não mostra o bloco.
+export type EstadoPlataforma = {
+  plataforma: 'linkedin' | 'gupy' | 'inhire'; estado: 'ativa' | 'pausada' | 'precisa-entrar' | 'parada-hoje';
+  motivo?: 'falhas-seguidas' | 'login' | 'captcha' | 'aviso-conta' | null; ate?: string | null;
+  voltasHoje?: number; paginasHoje?: number; tetoPaginas?: number;
+};
 export type EstadoEnvio = {
   ligado: boolean; pausado: boolean; enviandoAgora: { id: string; desde: string } | null; desfechos: Desfecho[];
-  janela?: 'oculta' | 'visivel'; login?: boolean;
+  janela?: 'oculta' | 'visivel'; login?: boolean; plataformas?: EstadoPlataforma[];
 };
+
+const NOME_PLATAFORMA: Record<EstadoPlataforma['plataforma'], string> = { linkedin: 'LinkedIn', gupy: 'Gupy', inhire: 'InHire' };
+const PLATAFORMAS_ENVIO = new Set<string>(['linkedin', 'gupy', 'inhire']); // lista fechada do contrato
+const ROTULO_ESTADO: Record<EstadoPlataforma['estado'], string> = { ativa: 'Ativa', pausada: 'Pausada', 'precisa-entrar': 'Precisa entrar', 'parada-hoje': 'Parada até amanhã' };
+// Frases fixas por estado e motivo (lista fechada do contrato); nada vem da página.
+function explicarPlataforma(p: EstadoPlataforma, volta: string) {
+  switch (p.estado) {
+    case 'ativa': return (p.tetoPaginas && (p.paginasHoje ?? 0) >= p.tetoPaginas) ? 'Chegou ao teto de páginas de hoje: espera até amanhã.' : 'Envia as aprovadas desta plataforma.';
+    case 'pausada': return p.motivo === 'falhas-seguidas' ? 'Pausada depois de duas falhas seguidas iguais. Confira o que houve antes de retomar.' : 'Pausada. Nada desta plataforma sai até você retomar.';
+    case 'precisa-entrar': return p.plataforma === 'linkedin'
+      ? 'A sessão caiu. Entre no LinkedIn; ao fechar a janela de login, ela volta sozinha. Ou retome aqui.'
+      : 'A sessão caiu. Entre pelo cartão de uma candidatura desta plataforma (o login é por empresa); ao fechar a janela, ela volta sozinha. Ou retome aqui.';
+    case 'parada-hoje': return `${p.motivo === 'aviso-conta' ? 'A plataforma mostrou um aviso sobre a sua conta: veja você antes de tentar de novo.' : p.motivo === 'captcha' ? 'A plataforma pediu um captcha.' : 'Parada por hoje.'} ${volta}`.trim();
+  }
+}
+// "Volta amanhã às 00:00" (ou a data, se não for amanhã); data inválida não quebra a tela.
+function quandoVolta(iso?: string | null) {
+  const n = iso ? Date.parse(iso) : NaN;
+  if (Number.isNaN(n)) return 'Volta sozinha amanhã.';
+  const d = new Date(n), amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
+  const h = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(d);
+  return d.toDateString() === amanha.toDateString() ? `Volta sozinha amanhã às ${h}.` : `Volta sozinha em ${new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short' }).format(d)} às ${h}.`;
+}
 
 // Abre a janela de login: no LinkedIn, ou na página da vaga (Gupy e InHire têm login por empresa). Frases fixas.
 export async function entrarNavegador(app: { api: (c: string, m?: string, b?: unknown) => Promise<any> }, corpo: { plataforma: 'linkedin' } | { candidatura: string }): Promise<EstadoEnvio> {
@@ -129,6 +158,30 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
         : 'Não deu para mudar a janela do envio. Tente de novo.', true);
     } finally { setOcupado(false); }
   }
+  // Retomar uma plataforma: só a pessoa, por esta tela (x-so-tela). Parada até amanhã nem mostra o botão.
+  async function retomarPlataforma(p: EstadoPlataforma) {
+    // Só as plataformas da lista fechada viram caminho (nota do CyberSec no #114).
+    if (!PLATAFORMAS_ENVIO.has(p.plataforma)) return;
+    const nomeP = NOME_PLATAFORMA[p.plataforma];
+    const ok = await app.perguntar({
+      titulo: `Retomar ${nomeP}?`,
+      texto: p.motivo === 'falhas-seguidas'
+        ? `O envio ${nomeP === 'LinkedIn' ? 'no' : 'na'} ${nomeP} parou depois de duas falhas seguidas iguais. Retome só se você já viu o que houve.`
+        : `O app volta a enviar as aprovadas ${nomeP === 'LinkedIn' ? 'no' : 'na'} ${nomeP}, dentro do limite de hoje.`,
+      confirmar: `Retomar ${nomeP}`,
+    });
+    if (!ok) return;
+    setOcupado(true);
+    try { aplicar(await app.api(`/api/v1/envio/plataformas/${p.plataforma}/retomar`, 'POST', {})); app.aviso(`${nomeP} retomada.`); }
+    catch (e) {
+      app.aviso(e instanceof ErroApi && e.status === 403 ? 'Só você pode retomar, por esta tela.'
+        : e instanceof ErroApi && e.status === 409 ? `${nomeP} já está ativa ou parada até amanhã. A tela foi atualizada.`
+        : e instanceof ErroApi && e.status === 404 ? 'O envio não está disponível neste app.'
+        : 'Não deu para retomar. Tente de novo.', true);
+      ler();
+    } finally { setOcupado(false); }
+  }
+
   async function entrarLinkedin() {
     setOcupado(true);
     try { aplicar(await entrarNavegador(app, { plataforma: 'linkedin' })); app.aviso('Janela de login do LinkedIn aberta. O envio espera até você fechá-la.'); }
@@ -176,6 +229,35 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
           </div>
         );
       })()}
+      {!!envio.plataformas?.length && (
+        <div className="envio-plataformas">
+          <h3>Plataformas</h3>
+          <ul>
+            {envio.plataformas.map(p => {
+              const nomeP = NOME_PLATAFORMA[p.plataforma] ?? p.plataforma;
+              const paginas = typeof p.paginasHoje === 'number' && typeof p.tetoPaginas === 'number'
+                ? `${p.paginasHoje} de ${p.tetoPaginas} páginas hoje${p.voltasHoje ? ` (${contar(p.voltasHoje, 'volta', 'voltas')})` : ''}` : null;
+              const podeRetomar = (p.estado === 'pausada' || p.estado === 'precisa-entrar') && PLATAFORMAS_ENVIO.has(p.plataforma);
+              return (
+                <li key={p.plataforma} className={`plat-envio e-${p.estado}`}>
+                  <div className="plat-topo">
+                    <strong>{nomeP}</strong>
+                    <span className="chip">{p.estado === 'parada-hoje' && p.motivo === 'aviso-conta' ? 'Aviso da conta' : ROTULO_ESTADO[p.estado] ?? 'Pausada'}</span>
+                  </div>
+                  <p className="pequeno">{explicarPlataforma(p, quandoVolta(p.ate))}</p>
+                  {paginas && <p className="pequeno mudo">{paginas}</p>}
+                  {podeRetomar && (
+                    <div className="acoes">
+                      <button className="botao-fantasma p" type="button" disabled={ocupado} onClick={() => retomarPlataforma(p)}>{`Retomar ${nomeP}`}</button>
+                      {p.estado === 'precisa-entrar' && p.plataforma === 'linkedin' && <button className="botao-fantasma p" type="button" disabled={ocupado || !!envio.login} onClick={entrarLinkedin}>Entrar no LinkedIn</button>}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       {envio.login && <p className="login-aberto" role="status">Janela de login aberta. O envio espera até você fechá-la; depois, volta sozinho.</p>}
       <div className="envio-janelas">
         <div>
