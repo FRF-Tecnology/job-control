@@ -184,6 +184,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [vagaId, conteudo]
               properties:
                 vagaId: { type: string }
@@ -215,6 +216,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [conteudo, versao]
               properties:
                 conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
@@ -237,6 +239,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [impressao]
               properties:
                 impressao: { type: string, pattern: '^sha256:v1:', description: 'A impressão que a tela mostrou' }
@@ -317,6 +320,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [limite]
               properties:
                 limite: { type: integer, minimum: 1, maximum: 40 }
@@ -411,21 +415,25 @@ components:
       description: 'outra não tem envio automático: o executor marca bloqueada/site-externo'
     ConteudoCandidatura:
       type: object
-      description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. CPF ou RG em qualquer texto dá 400'
+      description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. Campo a mais em qualquer nível dá 400 (nada é gravado). CPF ou RG em qualquer texto dá 400'
+      additionalProperties: false
       required: [curriculo, idioma, respostas]
       properties:
         curriculo:
           type: object
+          additionalProperties: false
           required: [arquivo]
           properties:
-            arquivo: { type: string, description: 'Nome dentro da pasta de currículos, nunca caminho' }
+            arquivo: { type: string, pattern: '^[^/\\:]+\.pdf$', description: 'Nome de um PDF dentro da pasta de currículos, nunca caminho; o servidor confere que existe ali depois de analisar o caminho' }
             sha256: { type: string, readOnly: true, description: 'Calculado pelo servidor; o executor confere de novo antes de anexar' }
         idioma: { type: string, enum: [pt, en] }
         contato:
           type: [object, 'null']
+          additionalProperties: false
           properties: { nome: { type: string }, email: { type: string }, telefone: { type: string }, cidade: { type: string } }
         pretensao:
           type: [object, 'null']
+          additionalProperties: false
           properties:
             valor: { type: number }
             moeda: { type: string, enum: [BRL, USD, EUR] }
@@ -434,6 +442,7 @@ components:
           type: array
           items:
             type: object
+            additionalProperties: false
             required: [pergunta, resposta, origem]
             properties:
               pergunta: { type: string }

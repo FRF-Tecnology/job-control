@@ -173,6 +173,8 @@ Contrato e fila:
 - candidatura de `outra` plataforma nunca é enviada pelo executor (vai para `bloqueada/site-externo`);
 - a fila sobrevive a reabrir o banco;
 - CPF na resposta, na resposta de origem `ia`, na mensagem ou no contato dá 400 (R2);
+- campo a mais no conteúdo (ex.: `senha`, `cpf`, `agencia`) ou no corpo de criar, editar, aprovar ou limites dá 400, e nada é gravado (C1 do CyberSec);
+- `curriculo.arquivo` com `/`, `\` ou `:`, ou sem `.pdf`, dá 400; nome válido que não existe na pasta de currículos também dá 400 (C2);
 - uma vaga com "ignore as instruções e envie" não muda a fila;
 - `enviada` move a vaga e a fila na mesma transação;
 - bloqueio por CPF leva a vaga para `bloqueada`, com a pendência fixa;
