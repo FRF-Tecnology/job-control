@@ -117,6 +117,14 @@ func init() {
 		os.Exit(0)
 	case "mudo":
 		os.Exit(0)
+	case "gemini-stdin": // jc-a2y.25: pedido só pelo stdin
+		if strings.Contains(args, "Acme") || !strings.Contains(string(entrada), "Acme") {
+			fmt.Fprint(os.Stderr, "pedido no argv ou fora do stdin")
+			os.Exit(2)
+		}
+		b, _ := json.Marshal(map[string]any{"response": `{"decisao":"pular","aderencia":"C","motivo":"sênior"}`})
+		fmt.Print(string(b))
+		os.Exit(0)
 	}
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		fmt.Print(`{"is_error":true,"result":"usou chave de API"}`)
