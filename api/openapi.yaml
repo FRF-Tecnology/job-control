@@ -57,9 +57,9 @@ paths:
 
   # IA da pessoa (internal/api/ia.go). A chave de API só entra (PUT) e vai para o cofre do sistema;
   # os campos de chave das respostas trazem só o final ("…" + 4 últimos caracteres).
-  # 502 dos provedores por chave (anthropic, openai, google): o erro é texto fixo nosso, sem nenhum valor
-  # do corpo do provedor (jc-a2y.18). Ainda aberto (jc-a2y.21): nas CLIs, o erro traz a 1ª linha do erro da
-  # CLI, e na recusa do Google traz o motivo vindo do servidor; esses textos podem ter email ou caminho de pasta.
+  # 502 (tipo provedor): o erro é sempre texto fixo nosso. Nos provedores por chave, nenhum valor do corpo do
+  # provedor entra (jc-a2y.18); nas CLIs, nem o stderr nem o erro do processo entram, só a classe da falha; na
+  # recusa do Google, o motivo passa por uma lista fechada de textos nossos (jc-a2y.21).
   /ia:
     get:
       summary: 'O que está conectado, CLIs detectadas, chaves salvas (só o final) e uso dos últimos 30 dias'
@@ -175,7 +175,7 @@ components:
       type: object
       required: [erro, tipo, regra]
       properties:
-        erro: { type: string, description: 'Texto para a pessoa. No 502 dos provedores por chave, só texto fixo nosso; nas CLIs e na recusa do Google, ainda pode trazer texto de fora (jc-a2y.21)' }
+        erro: { type: string, description: 'Texto para a pessoa. No 502, sempre texto fixo nosso, sem texto vindo do provedor ou da CLI' }
         tipo: { type: string, description: 'config ou entrada (400), provedor (502), regra ou esquema (422)' }
         regra: { type: [string, 'null'], description: Regra da guarda que bloqueou }
     ConfigIA:
@@ -249,5 +249,5 @@ components:
       description: 'Saída da IA fora do contrato (tipo esquema) ou bloqueada pela guarda (tipo regra); não troca de modelo'
       content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
     ErroIAProvedor:
-      description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor). Provedores por chave: "<provedor>: HTTP <status> <texto fixo do status>" ou "<provedor>: falha de rede (<motivo fixo>)", sem valor do corpo do provedor. CLIs: "<cli>: <1ª linha do erro da CLI>"; Google bloqueado: "google: bloqueado (<motivo>)" (jc-a2y.21)'
+      description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor). Provedores por chave: "<provedor>: HTTP <status> <texto fixo do status>" ou "<provedor>: falha de rede (<motivo fixo>)", sem valor do corpo do provedor. CLIs: "<cli>: <texto fixo da classe da falha>" (sem login, saiu com código N, não rodou, sem resposta, respondeu com erro, tempo esgotado). Google bloqueado: "google: bloqueado (<motivo de uma lista fechada>)"'
       content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
