@@ -129,8 +129,17 @@ func (a *AoVivo) Querendo() bool {
 
 // Etapa: o executor conta em que passo está. Etapa fora da lista ou id fora do padrão é ignorado. A etapa fica
 // guardada mesmo desligado (só o id e um valor da lista), para o painel aberto no meio de um envio já mostrar o
-// passo certo; o quadro, não.
+// passo certo; o quadro, não. SemEnvio (a candidatura voltou para aprovada, jc-a2y.6.11) limpa, só se for a mesma
+// candidatura.
 func (a *AoVivo) Etapa(candidatura, etapa string) {
+	if etapa == SemEnvio && reCand.MatchString(candidatura) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		if a.cand == candidatura {
+			a.limparSemTrava()
+		}
+		return
+	}
 	if !reCand.MatchString(candidatura) || !(emAndamento[etapa] || finais[etapa]) {
 		return
 	}

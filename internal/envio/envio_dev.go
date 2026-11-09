@@ -39,6 +39,9 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 	}
 	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos"), Etapa: av.Etapa})
 	ctx, cancelar := context.WithCancel(ctx)
+	// A pessoa fechou a janela de login: plataformas em precisa-entrar voltam, se o envio geral estiver liberado
+	// (jc-a2y.6.11).
+	nav.QuandoFecharLogin(func() { x.LiberarDepoisDoLogin(ctx) })
 	feito := make(chan struct{})
 	var ciclo sync.Mutex // um ciclo da fila por vez; Suspender segura até soltar
 	go func() {

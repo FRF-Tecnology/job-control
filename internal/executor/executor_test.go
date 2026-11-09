@@ -41,6 +41,12 @@ type paginaFalsa struct {
 	etapas       [][]Campo // formulário em etapas (vazio: uma etapa só, com campos)
 	urls         []string  // URLAtual por chamada (vazio: final)
 	aoAnexar     func()
+	aoEnviar     func()
+	// botao: o rótulo do botão de candidatura que a página mostra antes do formulário ("" = o formulário já está).
+	botao              string
+	aoAbrirFormulario  func()
+	errAbrirFormulario error
+	abriuFormulario    int
 
 	chamadasBloqueio int
 	etapa            int
@@ -57,6 +63,22 @@ func (p *paginaFalsa) Abrir(ctx context.Context, u string) (string, error) {
 		p.final = u
 	}
 	return p.final, p.errAbrir
+}
+func (p *paginaFalsa) BotaoDeCandidatura(ctx context.Context) (string, error) {
+	if p.abriuFormulario > 0 {
+		return "", nil
+	}
+	return p.botao, nil
+}
+func (p *paginaFalsa) AbrirFormulario(ctx context.Context, rotulo string) error {
+	if rotulo != p.botao {
+		return errors.New("rótulo diferente do lido")
+	}
+	if p.aoAbrirFormulario != nil {
+		p.aoAbrirFormulario()
+	}
+	p.abriuFormulario++
+	return p.errAbrirFormulario
 }
 func (p *paginaFalsa) Bloqueio(ctx context.Context) (string, error) {
 	i := p.chamadasBloqueio
@@ -124,6 +146,9 @@ func (p *paginaFalsa) Anexar(ctx context.Context, c Campo, caminho string) error
 	return nil
 }
 func (p *paginaFalsa) Enviar(ctx context.Context) error {
+	if p.aoEnviar != nil {
+		p.aoEnviar()
+	}
 	p.enviou++
 	return p.errEnviar
 }
@@ -471,15 +496,19 @@ func TestIncertaEFalha(t *testing.T) {
 		t.Fatalf("cliques %d/%d, páginas %d", semConfirmar.enviou, erroNoClique.enviou, s.nav.abertas)
 	}
 
+	// Erro ao abrir (antes de interagir): volta para aprovada, sem contar no limite (jc-a2y.6.11). Erro ao preencher
+	// (já interagiu): falhou, como antes.
 	abrir := novaPagina()
 	abrir.errAbrir = errors.New("rede")
 	preencher := novaPagina()
 	preencher.errPreencher = errors.New("campo sumiu")
 	s2 := novoCenario(t, abrir, preencher)
-	for _, id := range []string{s2.aprovada("linkedin", linkLI), s2.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")} {
-		if d := s2.enviar(id); d.Estado != dominio.CandFalhou || d.Motivo != "erro-tecnico" {
-			t.Fatalf("%s = %+v", id, d)
-		}
+	idAbrir, idPreencher := s2.aprovada("linkedin", linkLI), s2.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	if d := s2.enviar(idAbrir); d.Estado != dominio.CandAprovada || d.Motivo != "erro-tecnico" || s2.cand(idAbrir)["estado"] != "aprovada" {
+		t.Fatalf("erro ao abrir = %+v", d)
+	}
+	if d := s2.enviar(idPreencher); d.Estado != dominio.CandFalhou || d.Motivo != "erro-tecnico" {
+		t.Fatalf("erro ao preencher = %+v", d)
 	}
 	if preencher.enviou != 0 {
 		t.Fatal("clicou depois de erro ao preencher")
@@ -528,19 +557,40 @@ func TestRecusaNaEntrada(t *testing.T) {
 }
 
 // Ao abrir o app: enviando vira incerta e aprovação vencida volta a preparada.
+// Ao abrir o app (M3 e jc-a2y.6.11): enviando COM marca gravada (caiu depois de interagir) vira incerta; SEM marca
+// (caiu antes) volta para aprovada, contando como volta; no dia seguinte, a aprovação vence.
 func TestIniciar(t *testing.T) {
 	s := novoCenario(t)
 	a := s.aprovada("linkedin", linkLI)
 	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	c := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000003")
 	s.gravar(func(e dominio.Estado) (dominio.Estado, error) {
-		v, _ := dominio.NumeroDe(s.cand(a)["versao"])
-		e, _, err := dominio.IniciarEnvio(e, a, int(v), s.agora, nil)
+		for _, id := range []string{a, c} {
+			v, _ := dominio.NumeroDe(s.cand(id)["versao"])
+			var err error
+			if e, _, err = dominio.IniciarEnvio(e, id, int(v), s.agora, nil); err != nil {
+				return e, err
+			}
+		}
+		e, _, err := dominio.MarcarTentativa(e, a, dominio.MarcaInteragiu, s.agora) // a caiu depois da marca
 		return e, err
 	})
-	s.agora = time.Date(2026, 11, 10, 8, 0, 0, 0, sp)
+	s.agora = s.agora.Add(time.Hour)
 	incertas, vencidas, err := s.x.Iniciar(context.Background())
-	if err != nil || incertas != 1 || vencidas != 1 || s.cand(a)["estado"] != "incerta" || s.cand(b)["estado"] != "preparada" {
+	if err != nil || incertas != 1 || vencidas != 0 || s.cand(a)["estado"] != "incerta" || s.cand(b)["estado"] != "aprovada" {
 		t.Fatalf("Iniciar = %d %d %v; %v %v", incertas, vencidas, err, s.cand(a)["estado"], s.cand(b)["estado"])
+	}
+	cc := s.cand(c)
+	if cc["estado"] != "aprovada" || len(dominio.ListaDe(cc["retentativas"])) != 1 || dominio.Texto(cc["proximaTentativaEm"]) == "" || len(dominio.ListaDe(cc["tentativas"])) != 0 {
+		t.Fatalf("sem marca, ao abrir = %v", cc)
+	}
+	if !strings.Contains(strings.Join(s.logs, "\n"), "1 incerta(s), 1 devolvida(s)") {
+		t.Errorf("logs = %v", s.logs)
+	}
+	// No dia seguinte, as aprovações vencem.
+	s.agora = time.Date(2026, 11, 10, 8, 0, 0, 0, sp)
+	if _, vencidas, _ := s.x.Iniciar(context.Background()); vencidas != 2 || s.cand(b)["estado"] != "preparada" || s.cand(c)["estado"] != "preparada" {
+		t.Fatalf("dia seguinte: vencidas %d, %v %v", vencidas, s.cand(b)["estado"], s.cand(c)["estado"])
 	}
 }
 
@@ -784,31 +834,28 @@ func TestReabrirOAppVoltaPausado(t *testing.T) {
 // "Ao vivo" (jc-a2y.6.9): o executor conta ao painel em que passo está, só com valores da lista fechada (nada da
 // página), e termina com o desfecho. "outra" nunca abre página: nenhuma etapa.
 func TestEtapasDoAoVivo(t *testing.T) {
-	sucesso := novaPagina()
-	sucesso.final = linkLI + "/apply"
-	semConfirmar := novaPagina()
-	semConfirmar.confirma = false
-	captcha := novaPagina()
-	captcha.bloqueios = []string{"captcha"}
-	rede := novaPagina()
-	rede.errAbrir = errors.New("rede")
-	s := novoCenario(t, sucesso, semConfirmar, captcha, rede)
+	// Um cenário por caso: com o .6.11, um captcha para a plataforma até amanhã, e o próximo envio não sairia.
 	for _, c := range []struct {
-		link string
-		quer string
+		nome   string
+		ajuste func(p *paginaFalsa)
+		quer   string
 	}{
-		{linkLI, "abrindo preenchendo revisando enviando confirmada"},
-		{"https://www.linkedin.com/jobs/view/9000000002", "abrindo preenchendo revisando enviando incerta"},
-		{"https://www.linkedin.com/jobs/view/9000000003", "abrindo bloqueada"}, // captcha ao abrir: antes de preencher
-		{"https://www.linkedin.com/jobs/view/9000000004", "abrindo falhou"},
+		{"enviada", func(p *paginaFalsa) { p.final = linkLI + "/apply" }, "abrindo preenchendo revisando enviando confirmada"},
+		{"sem confirmação", func(p *paginaFalsa) { p.confirma = false }, "abrindo preenchendo revisando enviando incerta"},
+		{"captcha ao abrir", func(p *paginaFalsa) { p.bloqueios = []string{"captcha"} }, "abrindo bloqueada"}, // antes de preencher
+		// .6.11: falha técnica antes de interagir devolve a candidatura para aprovada; o painel volta a sem envio.
+		{"erro ao abrir", func(p *paginaFalsa) { p.errAbrir = errors.New("rede") }, "abrindo sem-envio"},
+		{"erro ao preencher", func(p *paginaFalsa) { p.errPreencher = errors.New("campo sumiu") }, "abrindo preenchendo falhou"},
 	} {
-		s.etapas = nil
-		s.enviar(s.aprovada("linkedin", c.link))
+		p := novaPagina()
+		c.ajuste(p)
+		s := novoCenario(t, p)
+		s.enviar(s.aprovada("linkedin", linkLI))
 		if got := strings.Join(s.etapas, " "); got != c.quer {
-			t.Errorf("%s: etapas %q; queria %q", c.link, got, c.quer)
+			t.Errorf("%s: etapas %q; queria %q", c.nome, got, c.quer)
 		}
 	}
-	s.etapas = nil
+	s := novoCenario(t)
 	s.enviar(s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1"))
 	if len(s.etapas) != 0 {
 		t.Fatalf("outra: etapas %v", s.etapas)

@@ -333,15 +333,23 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 		}
 	})
 
-	t.Run("LinkedIn manda para o authwall: bloqueada por login, sem enviar (P0 da .6.5)", func(t *testing.T) {
+	// Antes de interagir: volta para aprovada e o LinkedIn fica em precisa-entrar (jc-a2y.6.11).
+	t.Run("LinkedIn manda para o authwall: volta por login, sem enviar (P0 da .6.5, .6.11)", func(t *testing.T) {
 		antes := len(srv.envios())
 		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000015"))
-		if d.Estado != dominio.CandBloqueada || d.Motivo != "login" || len(srv.envios()) != antes {
+		if d.Estado != dominio.CandAprovada || d.Motivo != "login" || len(srv.envios()) != antes {
 			t.Fatalf("desfecho = %+v, envios %d → %d", d, antes, len(srv.envios()))
+		}
+		if st := s.arm.Plataformas(context.Background()).DaPlataforma("linkedin", s.agora); st.Estado != dominio.PlataformaPrecisaEntrar {
+			t.Fatalf("linkedin = %+v", st)
 		}
 		if strings.Contains(saida.String(), "authwall") {
 			t.Error("o endereço foi para o log")
 		}
+		// A pessoa entrou de novo (fictício): o LinkedIn volta para os próximos casos.
+		s.arm.MudarPlataformas(context.Background(), func(p dominio.Plataformas, _ bool) (dominio.Plataformas, error) {
+			return p.RetomarPlataforma("linkedin", s.agora)
+		})
 	})
 
 	t.Run("Gupy pede CPF: bloqueia sem enviar", func(t *testing.T) {

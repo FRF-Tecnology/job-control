@@ -212,3 +212,20 @@ func TestLigarNoMeioDoEnvioMostraAEtapa(t *testing.T) {
 		t.Fatal("não quer quadros no meio do envio")
 	}
 }
+
+// jc-a2y.6.11: a candidatura devolvida para aprovada (falha antes de interagir) volta o painel a "sem envio". Só a
+// mesma candidatura limpa; sem-envio de outra não mexe na que está em andamento.
+func TestDevolvidaVoltaASemEnvio(t *testing.T) {
+	a, _ := novo()
+	a.Ligar(true)
+	a.Etapa("cand-1", Abrindo)
+	a.Quadro(jpegFalso, 800, 600)
+	a.Etapa("cand-2", SemEnvio) // outra candidatura: nada muda
+	if e := a.Ler(); e.Etapa != Abrindo || e.Quadro == nil {
+		t.Fatalf("sem-envio de outra mexeu: %+v", e)
+	}
+	a.Etapa("cand-1", SemEnvio)
+	if e := a.Ler(); e.Etapa != SemEnvio || e.Candidatura != "" || e.Quadro != nil || a.Querendo() {
+		t.Fatalf("devolvida = %+v", e)
+	}
+}
