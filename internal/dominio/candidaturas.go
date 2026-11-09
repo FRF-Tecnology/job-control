@@ -83,11 +83,16 @@ type Candidatura struct {
 	Tentativas []string   `json:"tentativas,omitempty"` // instantes em que entrou em enviando (contam no limite)
 	// Retentativas: voltas automáticas para aprovada depois de falha técnica antes de interagir (jc-a2y.6.11). Não
 	// contam no limite; no máximo MaxRetentativas por aprovação.
-	Retentativas     []Retentativa `json:"retentativas,omitempty"`
-	ProximaTentativa string        `json:"proximaTentativa,omitempty"` // o executor só pega a aprovada depois disto
-	Versao           int           `json:"versao"`
-	CriadaEm         string        `json:"criadaEm"`
-	AtualizadaEm     string        `json:"atualizadaEm"`
+	Retentativas       []Retentativa `json:"retentativas,omitempty"`
+	ProximaTentativaEm string        `json:"proximaTentativaEm,omitempty"` // o executor só pega a aprovada depois disto
+	// Marcas gravadas da tentativa em curso (jc-a2y.6.11), cada uma numa transação ANTES do passo: interagiuEm antes
+	// do primeiro preencher, anexar, desmarcar ou avançar; clicouEnviarEm antes do clique final. Com qualquer uma, a
+	// candidatura nunca volta sozinha para aprovada.
+	InteragiuEm    string `json:"interagiuEm,omitempty"`
+	ClicouEnviarEm string `json:"clicouEnviarEm,omitempty"`
+	Versao         int    `json:"versao"`
+	CriadaEm       string `json:"criadaEm"`
+	AtualizadaEm   string `json:"atualizadaEm"`
 }
 
 // Retentativa: uma volta automática para aprovada (instante e código da falha, da lista fechada).
@@ -502,7 +507,7 @@ func AprovarCandidatura(e Estado, id, impressao string, agora time.Time, limites
 	if err := conferirLimite(e, c.Plataforma, agora, limites); err != nil {
 		return e, nil, err
 	}
-	c.Retentativas, c.ProximaTentativa = nil, "" // aprovação nova: as voltas recomeçam do zero (no máximo 3 por aprovação)
+	c.ProximaTentativaEm = "" // aprovação nova: as voltas recomeçam do zero (no máximo 3 por aprovação; o histórico fica)
 	c.Aprovacao = &Aprovacao{
 		Em:        agora.Format(time.RFC3339),
 		Impressao: c.Impressao,
@@ -522,7 +527,28 @@ func conferirLimite(e Estado, plataforma string, agora time.Time, limites map[st
 	if usadas := UsadasNoDia(e, plataforma, agora); usadas >= limite {
 		return &ErroLimite{Plataforma: plataforma, Limite: limite, Usadas: usadas, RenovaEm: RenovaEm(agora).Format(time.RFC3339)}
 	}
+	// Teto firme de páginas abertas (jc-a2y.6.11): as voltas não contam no limite, mas contadas + devolvidas no dia
+	// nunca passam de LimiteMaximo por plataforma.
+	if abertas := AberturasNoDia(e, plataforma, agora); abertas >= LimiteMaximo {
+		return &ErroLimite{Plataforma: plataforma, Limite: limite, Usadas: UsadasNoDia(e, plataforma, agora), RenovaEm: RenovaEm(agora).Format(time.RFC3339)}
+	}
 	return nil
+}
+
+// AberturasNoDia: páginas abertas hoje na plataforma, contando as tentativas devolvidas (retentativas).
+func AberturasNoDia(e Estado, plataforma string, agora time.Time) int {
+	n := UsadasNoDia(e, plataforma, agora)
+	for _, o := range e.Candidaturas {
+		if !igual(o["plataforma"], plataforma) {
+			continue
+		}
+		for _, r := range lista(o["retentativas"]) {
+			if quando, err := time.Parse(time.RFC3339, texto(ObjetoDe(r)["em"])); err == nil && mesmoDia(quando.In(agora.Location()), agora) {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // RevogarCandidatura: aprovada → preparada (tira a aprovação). Pode vir de qualquer autor: só reduz o risco.
@@ -535,7 +561,7 @@ func RevogarCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado, 
 		return e, nil, conflitoEstado(c, "revogar")
 	}
 	c.Estado, c.Aprovacao = CandPreparada, nil
-	c.Retentativas, c.ProximaTentativa = nil, ""
+	c.ProximaTentativaEm = ""
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
@@ -654,16 +680,17 @@ func IniciarEnvio(e Estado, id string, versao int, agora time.Time, limites map[
 	c.Estado = CandEnviando
 	c.Aprovacao.UsadaEm = agora.Format(time.RFC3339)
 	c.Tentativas = append(c.Tentativas, agora.Format(time.RFC3339))
+	c.InteragiuEm, c.ClicouEnviarEm = "", "" // tentativa nova: as marcas são desta tentativa
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
 
 // ProntaParaTentar: sem próxima tentativa marcada, ou já passou dela.
 func ProntaParaTentar(c Candidatura, agora time.Time) bool {
-	if c.ProximaTentativa == "" {
+	if c.ProximaTentativaEm == "" {
 		return true
 	}
-	quando, err := time.Parse(time.RFC3339, c.ProximaTentativa)
+	quando, err := time.Parse(time.RFC3339, c.ProximaTentativaEm)
 	return err == nil && !agora.Before(quando)
 }
 
@@ -676,14 +703,19 @@ var esperaDaRetentativa = []time.Duration{5 * time.Minute, 30 * time.Minute, 2 *
 var CodigosDeVolta = map[string]bool{"erro-tecnico": true, "login": true}
 
 // DevolverAprovada (jc-a2y.6.11): enviando → aprovada, quando o executor falhou ANTES de interagir com o
-// formulário (nada foi preenchido, anexado nem clicado em avançar ou enviar). Nada do pacote saiu do app, então:
-//   - a aprovação volta a não usada (usadaEm apagado), com a mesma impressão e a mesma validade no dia;
-//   - a tentativa sai de tentativas (não conta no limite) e entra em retentativas, para auditoria;
+// formulário. "Antes" é a marca gravada, não dedução: com interagiuEm ou clicouEnviarEm, recusa (409) e o executor
+// segue para falhou, bloqueada ou incerta, como sempre (M2, M3). A volta não é aprovação nova:
+//   - versao tem de ser a lida depois de entrar em enviando (qualquer gravação no meio, como uma marca, recusa);
+//   - a impressão recalculada do pacote tem de ser a aprovada;
+//   - a aprovação volta a não usada, com a mesma impressão e a mesma validade; vencida (passou da meia-noite), a
+//     candidatura volta a preparada, sem aprovação;
+//   - a tentativa sai de tentativas (não conta no limite) e entra em retentativas (histórico; conta no teto de
+//     páginas, AberturasNoDia);
 //   - a próxima tentativa fica para daqui a 5 min, 30 min ou 2 h.
 //
-// Na volta de número MaxRetentativas+1, a candidatura vai para falhou/erro-tecnico, como antes. Só o executor chama
-// isto, e só antes de interagir: depois disso, falhou, bloqueada ou incerta, como sempre (M2, M3).
-func DevolverAprovada(e Estado, id, codigo string, agora time.Time) (Estado, Objeto, error) {
+// Na volta de número MaxRetentativas+1 desde a aprovação, a candidatura vai para falhou/erro-tecnico. Só o executor
+// chama isto.
+func DevolverAprovada(e Estado, id string, versao int, codigo string, agora time.Time) (Estado, Objeto, error) {
 	if !CodigosDeVolta[codigo] {
 		return e, nil, validacao("código de volta desconhecido: " + codigo)
 	}
@@ -694,7 +726,18 @@ func DevolverAprovada(e Estado, id, codigo string, agora time.Time) (Estado, Obj
 	if c.Estado != CandEnviando || c.Aprovacao == nil {
 		return e, nil, conflitoEstado(c, "devolver")
 	}
-	if len(c.Retentativas) >= MaxRetentativas {
+	if c.InteragiuEm != "" || c.ClicouEnviarEm != "" {
+		return e, nil, &ErroConflito{Msg: "a tentativa já interagiu com o formulário", Estado: c.Estado}
+	}
+	if versao != c.Versao {
+		return e, nil, &ErroConflito{Msg: "a candidatura mudou depois de lida", Estado: c.Estado}
+	}
+	atual, err := ImpressaoCandidatura(c.VagaID, c.Plataforma, c.URL, c.Conteudo)
+	if err != nil || c.Aprovacao.Impressao != atual || c.Impressao != atual {
+		return e, nil, &ErroConflito{Msg: "a aprovação não é deste conteúdo", Estado: c.Estado, ImpressaoAtual: atual}
+	}
+	feitas := RetentativasDaAprovacao(c)
+	if feitas >= MaxRetentativas {
 		return FalharCandidatura(e, id, "erro-tecnico", agora)
 	}
 	c.Estado = CandAprovada
@@ -703,7 +746,58 @@ func DevolverAprovada(e Estado, id, codigo string, agora time.Time) (Estado, Obj
 		c.Tentativas = c.Tentativas[:n-1] // a tentativa que acabou de entrar em enviando não conta no limite
 	}
 	c.Retentativas = append(c.Retentativas, Retentativa{Em: agora.Format(time.RFC3339), Codigo: codigo})
-	c.ProximaTentativa = agora.Add(esperaDaRetentativa[len(c.Retentativas)-1]).Format(time.RFC3339)
+	c.ProximaTentativaEm = agora.Add(esperaDaRetentativa[feitas]).Format(time.RFC3339)
+	if !AprovacaoValida(c.Aprovacao, agora) {
+		c.Estado, c.Aprovacao, c.ProximaTentativaEm = CandPreparada, nil, "" // a aprovação era do dia que passou
+	}
+	novo, o := salvarCandidatura(e, i, c, agora)
+	return novo, o, nil
+}
+
+// RetentativasDaAprovacao: voltas desde a aprovação em vigor (as de aprovações antigas ficam só no histórico).
+func RetentativasDaAprovacao(c Candidatura) int {
+	if c.Aprovacao == nil {
+		return 0
+	}
+	desde, err := time.Parse(time.RFC3339, c.Aprovacao.Em)
+	if err != nil {
+		return len(c.Retentativas)
+	}
+	n := 0
+	for _, r := range c.Retentativas {
+		if em, err := time.Parse(time.RFC3339, r.Em); err != nil || !em.Before(desde) {
+			n++
+		}
+	}
+	return n
+}
+
+// Marcas da tentativa (jc-a2y.6.11). O executor grava a marca, numa transação, ANTES do passo.
+const (
+	MarcaInteragiu    = "interagiu"     // antes do primeiro preencher, anexar, desmarcar ou avançar
+	MarcaClicouEnviar = "clicou-enviar" // antes do clique final
+)
+
+// MarcarTentativa grava a marca na candidatura em enviando. Repetir não muda o instante gravado. clicou-enviar
+// também grava interagiu, se faltar (formulário sem campo nenhum).
+func MarcarTentativa(e Estado, id, marca string, agora time.Time) (Estado, Objeto, error) {
+	if marca != MarcaInteragiu && marca != MarcaClicouEnviar {
+		return e, nil, validacao("marca desconhecida: " + marca)
+	}
+	i, c, err := acharCandidatura(e, id)
+	if err != nil {
+		return e, nil, err
+	}
+	if c.Estado != CandEnviando {
+		return e, nil, conflitoEstado(c, "marcar a tentativa")
+	}
+	quando := agora.Format(time.RFC3339)
+	if c.InteragiuEm == "" {
+		c.InteragiuEm = quando
+	}
+	if marca == MarcaClicouEnviar && c.ClicouEnviarEm == "" {
+		c.ClicouEnviarEm = quando
+	}
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
@@ -726,7 +820,7 @@ func VencerAprovacoes(e Estado, agora time.Time) (Estado, int) {
 			continue
 		}
 		c.Estado, c.Aprovacao = CandPreparada, nil
-		c.Retentativas, c.ProximaTentativa = nil, ""
+		c.ProximaTentativaEm = ""
 		c.Versao++
 		c.AtualizadaEm = agora.Format(time.RFC3339)
 		novo.Candidaturas[i] = c.objeto()
