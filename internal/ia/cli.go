@@ -11,13 +11,16 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
 // Modo "assinatura": roda a CLI oficial (Claude Code, Codex do ChatGPT, Gemini CLI) com o login da pessoa.
 // Sempre com argumentos fixos (sem shell), sem ferramentas, numa pasta temporária vazia, com tempo limite
-// e saída limitada. A Central só manda texto; nunca comandos.
+// e saída limitada. A Central só manda texto; nunca comandos. O texto da vaga vai pela entrada padrão, nunca
+// pela linha de comando (jc-a2y.25). No Windows, uma CLI instalada como .cmd/.bat roda dentro do cmd.exe, que
+// não respeita o escape do Go: ela só roda se todos os argumentos forem seguros para o cmd.exe.
 
 // CLIs conhecidas. Verificada = testada de verdade com a versão indicada.
 var CLIs = []InfoCLI{
@@ -56,6 +59,9 @@ func (c cli) Nome() string { return c.qual + "-cli" }
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
 func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
+	if alvo, err := exec.LookPath(comando); err == nil && viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
+		return nil, "", &ErroIA{Tipo: "config", Mensagem: comando + "-cli: " + msgCmdInseguro, Provedor: comando + "-cli"}
+	}
 	ctx, cancelar := context.WithTimeout(ctx, tempoLimite)
 	defer cancelar()
 	pasta, err := os.MkdirTemp("", "central-ia-")
@@ -75,6 +81,27 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 		return nil, "", &ErroIA{Tipo: "provedor", Mensagem: comando + ": passou do tempo limite", Provedor: comando + "-cli", Reintentavel: true}
 	}
 	return saida.Bytes(), strings.TrimSpace(erro.String()), err
+}
+
+const msgCmdInseguro = "esta CLI está instalada como .cmd, e o app não passa o pedido pelo cmd.exe; instale a versão nativa (.exe)"
+
+// viaCmdExe: no Windows, .cmd e .bat rodam dentro do cmd.exe.
+func viaCmdExe(caminho string) bool {
+	ext := strings.ToLower(filepath.Ext(caminho))
+	return ext == ".cmd" || ext == ".bat"
+}
+
+// argsSegurosParaCmd: só letras, dígitos, espaço e . , _ : / \ = + @ ~ -. Nada de aspas, quebra de linha,
+// & | < > ^ % ! ( ) nem crase, que o cmd.exe interpreta. Argumento vazio pode.
+func argsSegurosParaCmd(args []string) bool {
+	for _, a := range args {
+		for _, r := range a {
+			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune(` .,_:/\=+@~-`, r)) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func semChaves(env []string) []string {
@@ -186,11 +213,12 @@ func chamarCodex(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error
 
 // Gemini CLI — não testado nesta versão: -p sem interação, saída JSON com o campo "response".
 func chamarGemini(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
-	args := []string{"-p", p.Prompt.Sistema + "\n\n" + p.Prompt.Mensagem, "--output-format", "json"}
+	// O pedido (com o texto da vaga) vai pela entrada padrão; o -p só leva um texto fixo, que o Gemini junta ao fim dela.
+	args := []string{"-p", "Answer the request given on standard input.", "--output-format", "json"}
 	if p.Modelo != "" {
 		args = append(args, "--model", p.Modelo)
 	}
-	out, stderr, err := rodar(ctx, "gemini", args, "")
+	out, stderr, err := rodar(ctx, "gemini", args, p.Prompt.Sistema+"\n\n"+p.Prompt.Mensagem)
 	var r map[string]any
 	if json.Unmarshal(out, &r) != nil || r["response"] == nil {
 		return RespostaProvedor{}, falhaDaCLI("gemini-cli", stderr, err)
@@ -219,9 +247,13 @@ func pedeLogin(texto string) bool {
 }
 
 // falhaDaCLI transforma a falha do processo numa mensagem fixa: sem login, código de saída, não rodou ou sem resposta.
+// Erro que o próprio rodar já classificou (tempo esgotado, .cmd inseguro) passa como está.
 func falhaDaCLI(nome, stderr string, err error) *ErroIA {
 	var saiu *exec.ExitError
+	var ja *ErroIA
 	switch {
+	case errors.As(err, &ja):
+		return ja
 	case pedeLogin(stderr):
 		return &ErroIA{Tipo: "provedor", Mensagem: nome + ": " + msgSemLogin, Provedor: nome}
 	case errors.As(err, &saiu):
