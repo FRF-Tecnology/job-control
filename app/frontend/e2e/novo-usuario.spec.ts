@@ -136,8 +136,11 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   expect(criada.conteudo.respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }]);
   const naFila = page.getByTestId(criada.id);
   await expect(naFila.getByText('Para revisar')).toBeVisible();
-  await expect(naFila.getByText(criada.impressao)).toBeVisible();
+  // O selo fica à vista; o código, recolhido em "Detalhes técnicos" (jc-a2y.6.3.5).
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
+  await expect(naFila.getByText(criada.impressao)).toBeHidden();
+  await naFila.getByText('Detalhes técnicos').click();
+  await expect(naFila.getByText(criada.impressao)).toBeVisible();
   // Editar: a mensagem muda, a impressão muda e continua conferida.
   await naFila.getByRole('button', { name: 'Editar pacote' }).click();
   await naFila.getByLabel('Mensagem').fill('Olá, tenho interesse na vaga.');
@@ -146,8 +149,9 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   const editada = (await (await page.request.get(`/api/v1/candidaturas/${criada.id}`)).json());
   expect(editada.conteudo.mensagem).toBe('Olá, tenho interesse na vaga.');
   expect(editada.impressao).not.toBe(criada.impressao);
-  await expect(naFila.getByText(editada.impressao)).toBeVisible();
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
+  await naFila.getByText('Detalhes técnicos').click();
+  await expect(naFila.getByText(editada.impressao)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Limite de hoje' }).getByText('LinkedIn')).toBeVisible();
 
   // 10. Aprovar (jc-a2y.6.3.2): a tela manda a impressão que ela calculou; o servidor só aceita se for a atual.

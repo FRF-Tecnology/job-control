@@ -266,7 +266,7 @@ export function TelaFila() {
                     <summary>Pacote que vai para a vaga</summary>
                     <dl>
                       <dt>Currículo</dt>
-                      <dd><span>{k.curriculo.arquivo}</span>{k.curriculo.sha256 && <span className="pequeno mudo">{` sha256 ${k.curriculo.sha256.slice(0, 12)}…`}</span>}</dd>
+                      <dd>{k.curriculo.arquivo}</dd>
                       <dt>Idioma</dt><dd>{k.idioma === 'en' ? 'Inglês' : 'Português'}</dd>
                       <dt>Contato</dt><dd>{contato || 'Sem contato'}</dd>
                       <dt>Pretensão</dt><dd>{k.pretensao ? dinheiro(k.pretensao) : 'Sem pretensão'}</dd>
@@ -280,15 +280,20 @@ export function TelaFila() {
                       ) : 'Sem respostas'}</dd>
                       <dt>Mensagem</dt><dd>{k.mensagem ? k.mensagem : 'Sem mensagem'}</dd>
                       <dt>Endereço da vaga</dt><dd className="quebra">{c.url}</dd>
-                      <dt>Impressão</dt>
-                      <dd>
-                        <code className="impressao">{c.impressao}</code>
-                        {conferida === 'ok' && <span className="conferida ok">Conferida nesta tela</span>}
-                        {conferida === 'diferente' && <span className="conferida diferente" role="alert">Não confere com o pacote mostrado. Não aprove; atualize a fila.</span>}
-                        {!conferida && <span className="conferida mudo">Conferindo…</span>}
-                      </dd>
                     </dl>
                   </details>
+                  {/* Os códigos ficam recolhidos; o selo, que é o que a pessoa precisa saber, fica sempre à vista, junto
+                      dos botões. Quando não confere, os detalhes abrem sozinhos para mostrar o valor. */}
+                  <details className="tecnicos" open={conferida === 'diferente'}>
+                    <summary>Detalhes técnicos</summary>
+                    <dl>
+                      <dt>Impressão do pacote</dt><dd><code className="impressao">{c.impressao}</code></dd>
+                      {k.curriculo.sha256 && <><dt>sha256 do currículo</dt><dd><code className="impressao">{k.curriculo.sha256}</code></dd></>}
+                    </dl>
+                  </details>
+                  {conferida === 'ok' && <p className="conferida ok">Conferida nesta tela</p>}
+                  {conferida === 'diferente' && <p className="conferida diferente" role="alert">Não confere com o pacote mostrado. Não aprove; atualize a fila.</p>}
+                  {!conferida && <p className="conferida mudo">Conferindo…</p>}
                   {/* Ações por estado, conforme o contrato: incerta não se cancela; enviando, enviada e cancelada não têm ação. */}
                   {['preparada', 'aprovada', 'bloqueada', 'falhou', 'incerta'].includes(c.estado) && (
                     <div className="acoes acoes-cand">

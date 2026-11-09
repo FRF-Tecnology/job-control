@@ -98,6 +98,23 @@ describe('Fila: só leitura', () => {
     expect(await within(ruim).findByText(/Não confere com o pacote mostrado/)).toBeTruthy();
   });
 
+  it('impressão recolhida em "Detalhes técnicos"; o selo fica visível fora dela (jc-a2y.6.3.5)', async () => {
+    montar({ candidaturas: [cand('ok', 'preparada'), cand('ruim', 'preparada', { impressao: 'sha256:v1:' + '0'.repeat(64) }), TODAS[1]] });
+    const ok = await cartao('ok');
+    const selo = await within(ok).findByText('Conferida nesta tela');
+    const tecnicos = within(ok).getByText('Detalhes técnicos').closest('details')!;
+    expect(tecnicos.open).toBe(false);
+    expect(tecnicos.contains(within(ok).getByText(IMPRESSAO_DO_GO))).toBe(true);
+    expect(tecnicos.contains(within(ok).getByText('a'.repeat(64)))).toBe(true); // sha256 inteiro do currículo
+    expect(selo.closest('details')).toBeNull();
+    // Não confere: abre sozinho, para mostrar o valor.
+    const ruim = await cartao('ruim');
+    await within(ruim).findByText(/Não confere com o pacote mostrado/);
+    expect(within(ruim).getByText('Detalhes técnicos').closest('details')!.open).toBe(true);
+    // Aprovada: o pacote vem recolhido, mas o selo continua à vista.
+    expect((await within(await cartao('apro')).findByText('Conferida nesta tela')).closest('details')).toBeNull();
+  });
+
   it('mostra os limites por plataforma e quando renovam', async () => {
     montar();
     const limites = await screen.findByRole('region', { name: 'Limite de hoje' });
