@@ -342,6 +342,15 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 /* min-width 0: fieldset não encolhe abaixo do conteúdo por padrão, e um caminho longo alargava a página (jc-a2y.53). */
 fieldset { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
 legend { font: 700 1rem var(--fonte-display); padding: 0 6px; }
+/* Seus dados neste computador (jc-a2y.49): fora do formulário do perfil, cada ação no seu bloco. */
+.seus-dados { display: grid; gap: 16px; max-width: 860px; margin-top: 48px; }
+.seus-dados h2 { margin: 0; } .seus-dados > p { margin: 0; }
+.zona { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 20px; display: grid; gap: 12px; }
+.zona h3 { margin: 0; font-size: 1rem; } .zona p, .zona ul { margin: 0; } .zona ul { padding-left: 20px; display: grid; gap: 4px; }
+.zona.perigo { border-color: color-mix(in srgb, var(--erro) 45%, var(--linha-2)); }
+.seus-dados .feito { margin: 0; color: var(--verde); font-weight: 600; }
+.seus-dados .feito.parcial { color: var(--ambar); } /* faltou algo: atenção, não sucesso */
+.feito-bloco { display: grid; gap: 8px; } .feito-bloco p, .feito-bloco ul { margin: 0; } .feito-bloco ul { padding-left: 20px; }
 
 /* ---------- diálogo e avisos ---------- */
 dialog { border: 0; border-radius: 24px; padding: 26px; width: min(500px, calc(100vw - 32px)); background: var(--superficie); color: var(--tinta); box-shadow: var(--sombra-alta); }
