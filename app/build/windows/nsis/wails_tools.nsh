@@ -11,7 +11,7 @@
     !define INFO_COMPANYNAME "FRF Tecnology"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "Central de Candidaturas"
+    !define INFO_PRODUCTNAME "Applyer"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "0.1.0"

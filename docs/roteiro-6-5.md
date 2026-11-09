@@ -60,6 +60,7 @@ Antes, **abra o app uma vez e feche**, com o `CENTRAL_PASTA` do passo 2 (o coman
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="$env:CENTRAL_PASTA\navegador" https://www.linkedin.com/login
 ```
 
+- Se a tela já tiver o botão **"Entrar nas plataformas"** (`POST /navegador/entrar`, `jc-a2y.6.7`), use-o no lugar do comando acima. Ele abre o login do LinkedIn no perfil do app numa janela visível, e o envio espera até a janela fechar.
 - A pessoa entra e resolve o 2FA, se houver.
 - Quando o Chrome oferecer **salvar a senha**, escolha **"Nunca"**.
 - **Não** entre com conta Google nem ligue a sincronização nesse perfil.
@@ -98,9 +99,11 @@ O log fica **fora** da pasta de dados, para não ser apagado no passo 8, e em `%
 
 ## 6. Retomar e acompanhar o envio
 
+- O envio roda **sem janela** por padrão (`jc-a2y.6.7`): não pega o foco, o mouse nem o teclado. Para acompanhar no dia, o Vinicius liga **"Ver o envio"** antes de Retomar (`POST /envio/janela`, no log `envio: janela visível (eu)`). Assim a candidatura abre numa janela visível.
 - O Vinicius aperta **Retomar**. No log: `envio: retomado (eu)`.
-- Em até 2 minutos, o executor pega a aprovada, e o Chrome do app abre **visível**.
-- **O que conferir na tela do navegador, em cada etapa:**
+- Em até 2 minutos, o executor pega a aprovada. Com "Ver o envio" ligado, o Chrome do app abre **visível**; sem ele, nada aparece, e o desfecho sai no painel.
+- Conferir também se o LinkedIn aceita o envio sem janela (o padrão). Se recusar, anotar no bead `jc-a2y.6.7`: a próxima etapa é a janela que não pega o foco.
+- **O que conferir na tela do navegador, em cada etapa (com "Ver o envio"):**
   - o endereço continua em `linkedin.com` e na mesma vaga (`/jobs/view/<id>`, ou `currentJobId=<id>`);
   - os campos preenchidos são só os do pacote;
   - nada é digitado em campo sensível;

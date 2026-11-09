@@ -20,6 +20,13 @@ func TestBuildPadraoSemGatilho(t *testing.T) {
 	c := Ligar(context.Background(), nil, "") // não faz nada, nem com armazém nil
 	c.Suspender()()
 	c.FecharNavegador()
+	c.MostrarEnvio(true) // não faz nada: não há navegador
+	if v, l := c.Janela(); v || l {
+		t.Fatalf("build padrão com janela: visível %v, login %v", v, l)
+	}
+	if err := c.Entrar("https://www.linkedin.com/login"); err != ErrSemNavegador {
+		t.Fatalf("Entrar no build padrão = %v", err)
+	}
 	c.Parar()
 
 	if testing.Short() {

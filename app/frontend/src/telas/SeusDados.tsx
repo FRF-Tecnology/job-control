@@ -105,7 +105,7 @@ export function SeusDados() {
         <ul>{Object.values(ITENS).map(t => <li key={t}>{t}</li>)}</ul>
         <p className="mudo">Não apaga: o login das ferramentas de IA (Claude, Codex, Gemini), os PDFs originais que você copiou, os dados da Central antiga (pasta dados/) e o cache da janela do app.</p>
         {/* A trava do app não alcança outros processos (revisão do CyberSec no #58). */}
-        <p className="aviso-cv"><strong>Antes, feche a CLI e o assistente (MCP) da Central</strong>, se estiverem abertos. Eles rodam fora do app e podem gravar de novo enquanto ele apaga.</p>
+        <p className="aviso-cv"><strong>Antes, feche a CLI e o assistente (MCP) do Applyer</strong>, se estiverem abertos. Eles rodam fora do app e podem gravar de novo enquanto ele apaga.</p>
         <label className="campo"><span>{`Para confirmar, digite ${FRASE}`}</span>
           <input type="text" autoComplete="off" spellCheck={false} value={digitado} onChange={e => setDigitado(e.target.value)} aria-describedby="seus-dados-dica" />
         </label>

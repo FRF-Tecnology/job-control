@@ -1,5 +1,5 @@
 ---
-description: Aplica as vagas aprovadas (etapa Aplicar) e registra cada envio ou bloqueio na Central
+description: Aplica as vagas aprovadas (etapa Aplicar) e registra cada envio ou bloqueio na Central (Node)
 argument-hint: "[máximo de vagas]"
 ---
 Aplique até $ARGUMENTS vagas (padrão 25). Siga o CLAUDE.md à risca.

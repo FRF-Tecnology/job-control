@@ -19,7 +19,7 @@ description: Lê os emails de processos seletivos (só leitura) e atualiza as va
    ```
    - `tipo`: confirmacao = recebemos sua candidatura; rejeicao; entrevista = convite ou agendamento; teste; oferta; outro.
    - `vagaId`: só se tiver certeza (confira em `cli.mjs listar --etapa enviada` e `--etapa em-processo`). Na dúvida, `null`:
-     a Central tenta achar pela empresa e, se não der, o email vai para "Emails sem vaga" na tela Hoje.
+     a Central (Node) tenta achar pela empresa e, se não der, o email vai para "Emails sem vaga" na tela Hoje.
    - Nunca copie o corpo do email. Nada de CPF, RG, telefone ou endereço no resumo.
 4. Grave tudo de uma vez: salve a lista num arquivo temporário e rode `node ferramentas/cli.mjs email --arquivo <arquivo>`.
    Rodar de novo com os mesmos emails não duplica nada ("já registrado").

@@ -42,6 +42,9 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 			log.Printf("envio: retomado (%s)", autor)
 		}
 		return r, true, err
+	case m == "POST" && p == "/envio/janela":
+		r, err := a.mudarJanela(ctx, c, autor)
+		return r, true, err
 	}
 	return Resposta{}, false, nil
 }
@@ -114,5 +117,12 @@ func (a *API) estadoEnvio(ctx context.Context, q map[string]string) (Resposta, e
 	for i := 0; i < len(itens) && i < maxDesfechos; i++ {
 		desfechos = append(desfechos, itens[i].o)
 	}
-	return ok(Objeto{"ligado": a.envioLigado, "pausado": a.arm.EnvioPausado(ctx), "enviandoAgora": enviando, "desfechos": desfechos})
+	janela, login := "oculta", false
+	if a.envioLigado {
+		var visivel bool
+		if visivel, login = a.janela(); visivel {
+			janela = "visivel"
+		}
+	}
+	return ok(Objeto{"ligado": a.envioLigado, "pausado": a.arm.EnvioPausado(ctx), "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
 }

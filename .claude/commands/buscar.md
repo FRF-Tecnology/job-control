@@ -1,5 +1,5 @@
 ---
-description: Busca vagas novas nas plataformas automatizadas e coloca na Descoberta da Central
+description: Busca vagas novas nas plataformas automatizadas e coloca na Descoberta da Central (Node)
 argument-hint: "[linkedin|gupy|inhire|todas] [dias]"
 ---
 Busque vagas novas e grave na Central. Argumentos: $ARGUMENTS (padrão: todas, 3 dias).
