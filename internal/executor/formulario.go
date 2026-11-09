@@ -43,7 +43,21 @@ type PaginaFormulario interface {
 var (
 	errSemPaginaFormulario = errors.New("executor: a página não sabe enviar formulário")
 	errCopiaMarcada        = errors.New("executor: a cópia por e-mail continuou marcada")
+	// ErrSemEnvioDeFormulario: o navegador deste build não envia formulário. O Enviar recusa antes de entrar em
+	// enviando (nada muda), e a fila pula os formulários.
+	ErrSemEnvioDeFormulario = errors.New("executor: este navegador não envia formulário")
 )
+
+// NavegadorDeFormulario: o navegador que sabe enviar formulário (as páginas dele são PaginaFormulario). Sem isso, o
+// formulário aprovado espera, sem tentativa.
+type NavegadorDeFormulario interface {
+	EnviaFormulario() bool
+}
+
+func (x *Executor) enviaFormulario() bool {
+	n, ok := x.o.Navegador.(NavegadorDeFormulario)
+	return ok && n.EnviaFormulario()
+}
 
 func (x *Executor) preencherFormulario(ctx context.Context, c dominio.Objeto, t *tentativa) passo {
 	id, plataforma, aprovada := t.id, dominio.Texto(c["plataforma"]), dominio.Texto(c["url"])
