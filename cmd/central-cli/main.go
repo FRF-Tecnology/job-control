@@ -47,7 +47,7 @@ func main() {
 		return
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "erro:", err)
+		fmt.Fprintln(os.Stderr, "erro:", config.OcultarCaminhos(err.Error())) // sem o caminho da pasta nem o nome do usuário
 		os.Exit(1)
 	}
 }
@@ -70,7 +70,7 @@ func importarLegado(args []string) error {
 		colecoes = append(colecoes, c)
 	}
 	sort.Strings(colecoes)
-	fmt.Println("Lido de", *dir)
+	fmt.Println("Lido de", config.OcultarCaminhos(*dir))
 	for _, c := range colecoes {
 		fmt.Printf("  %-12s %d\n", c, rel.Contagem[c])
 	}
@@ -105,7 +105,7 @@ func importarLegado(args []string) error {
 	}
 	temDados := len(atual.Vagas)+len(atual.Eventos)+len(atual.Pedidos)+len(atual.Emails)+len(atual.Rodadas) > 0 || len(atual.Perfil) > 0
 	if temDados && !*substituir {
-		return fmt.Errorf("o app novo já tem dados em %s; use --substituir para trocar (um backup é feito antes)", pasta)
+		return fmt.Errorf("o app novo já tem dados (%s); use --substituir para trocar (um backup é feito antes)", config.OrigemPasta())
 	}
 	if temDados {
 		if _, err := arm.BackupDiario(ctx, dominio.HojeISO(time.Now())+"-antes-da-importacao"); err != nil {
@@ -119,6 +119,6 @@ func importarLegado(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Importado para %s (%d currículo(s) copiado(s)).\n", pasta, copiados)
+	fmt.Printf("Importado (%s; %d currículo(s) copiado(s)).\n", config.OrigemPasta(), copiados)
 	return nil
 }

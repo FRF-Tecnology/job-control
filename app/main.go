@@ -24,15 +24,15 @@ func main() {
 	ctx := context.Background()
 	pasta, err := config.PastaDados()
 	if err != nil {
-		log.Fatalf("pasta de dados: %v", err)
+		falhar("pasta de dados", err)
 	}
 	banco, err := armazem.Abrir(ctx, config.CaminhoBanco(pasta))
 	if err != nil {
-		log.Fatalf("banco: %v", err)
+		falhar("banco", err)
 	}
 	defer banco.Fechar()
 	if _, err := banco.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
-		log.Fatalf("primeira vez: %v", err)
+		falhar("primeira vez", err)
 	}
 	// Envio de candidaturas: desligado no build padrão (não faz nada); só o build -tags envio_dev liga o executor.
 	controleEnvio := envio.Ligar(ctx, banco, pasta)
@@ -78,8 +78,13 @@ func main() {
 	})
 
 	if err := app.Run(); err != nil {
-		log.Fatal(err)
+		falhar("janela", err)
 	}
+}
+
+// falhar encerra com o erro de partida sem o caminho da pasta de dados nem o da pasta do usuário.
+func falhar(etapa string, err error) {
+	log.Fatalf("%s: %s", etapa, config.OcultarCaminhos(err.Error()))
 }
 
 // rotear manda /api/ para a API e todo o resto para as telas.
