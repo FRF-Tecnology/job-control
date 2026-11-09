@@ -752,6 +752,7 @@ components:
                   obrigatoria: { type: boolean }
                   opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
         pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2 (proposta): ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
+        preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (proposta, decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
     EstadoEnvio:
       type: object
       additionalProperties: false
@@ -809,8 +810,8 @@ components:
         fechar: { type: boolean, description: 'true em /dados/apagar: o app fecha logo depois de responder' }
     MotivoBloqueio:
       type: string
-      enum: [cpf, rg, senha, dado-bancario, captcha, aviso-conta, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
-      description: 'aviso-conta (jc-a2y.6.11, proposta): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã'
+      enum: [cpf, rg, senha, dado-bancario, captcha, aviso-conta, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, varias-etapas, outro]
+      description: 'aviso-conta (jc-a2y.6.11, proposta): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã. varias-etapas (jc-a2y.7.2, proposta): Google Forms com mais de uma seção, fora do primeiro recorte (pendência fixa "Formulário em várias etapas: envie à mão."; o segundo recorte é o jc-a2y.7.2.1)'
     LimiteDiario:
       type: object
       required: [limite, usadas, renovaEm]

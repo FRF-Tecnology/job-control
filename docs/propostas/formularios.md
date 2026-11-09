@@ -25,6 +25,7 @@ Hoje, uma vaga que manda para um formulário vira `outra` e acaba em `bloqueada/
 
 O Google aceita `?entry.N=valor`, e o Typeform aceita campos ocultos (`hidden`) na query ou no `#fragmento`. Esses valores iriam junto no envio sem estar no pacote. Por isso:
 - **A URL guardada é a canônica, sem query nem fragmento.** O app tira a query e o fragmento ao criar a vaga e a candidatura, e o executor só abre a canônica.
+- **Sem esconder da pessoa (decisão do PO):** quando o link trazia respostas pré-preenchidas (`entry.*` ou campos ocultos), a candidatura guarda `preenchimentoIgnorado: true`, e o resumo do pacote na Fila mostra a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." **Os valores nunca são guardados nem mostrados.** O log fica só com o fato: `formulario: link com pré-preenchimento ignorado`.
 - **Vale a regra do #89:** um campo que a página já trouxe preenchido e que não está no pacote bloqueia (`pergunta-nova`). O executor nunca apaga nem troca o valor que veio na página.
 
 ## Fluxo
@@ -32,7 +33,8 @@ O Google aceita `?entry.N=valor`, e o Typeform aceita campos ocultos (`hidden`) 
 1. A vaga de formulário vai para Aplicar. O pacote preparado sozinho (`.6.12`) fica **sem respostas do formulário**, porque elas dependem das perguntas.
 2. **Ler o formulário (rota nova, só a tela):** `POST /candidaturas/{id}/ler-formulario`.
    - O executor abre a URL canônica no navegador do envio, **sem janela**, espera a página montar e lê a estrutura **sem interagir**: sem digitar, clicar em "Próxima", marcar nem enviar.
-   - Ele lê a definição que a própria página carregou: todas as perguntas, de todas as páginas, com texto, tipo, se é obrigatória e as opções, em ordem.
+   - Ele lê a definição que a própria página carregou: todas as perguntas, com texto, tipo, se é obrigatória e as opções, em ordem.
+   - **Formulário em várias etapas fica de fora neste recorte (decisão do PO).** É o Google Forms com mais de uma seção. Ele fica `bloqueada/varias-etapas`, com a pendência fixa "Formulário em várias etapas: envie à mão.", e a pessoa envia sozinha. O segundo recorte, que avança as seções lendo a estrutura de cada página com a mesma impressão e as mesmas regras, é o bead `jc-a2y.7.2.1` (P2). O Typeform, que mostra uma pergunta por vez de um formulário só, não conta como várias etapas.
    - Se não der para ler a estrutura inteira sem interagir, a candidatura fica `bloqueada/outro`, e a pessoa envia sozinha.
    - A leitura não conta no limite do dia. Ela conta no teto de 40 páginas abertas por plataforma no dia (`.6.11`).
 3. **Pacote:** as respostas vêm só do perfil (contato e pretensão, pelo tipo do campo, como hoje) e das `respostasPadrao`, **com casamento exato da pergunta** (texto normalizado igual). Não há IA neste primeiro recorte e nunca há chute.
@@ -41,7 +43,7 @@ O Google aceita `?entry.N=valor`, e o Typeform aceita campos ocultos (`hidden`) 
    - Com uma pendência obrigatória, `aprovar` dá 409 (`faltam respostas`).
 4. **Impressão:** para `formulario`, ela passa a incluir a estrutura, como sha256 do JSON canônico de `{vagaId, plataforma, url, conteudo, estrutura}`. Para as outras plataformas, a fórmula não muda.
 5. **Aprovar, na Fila:** igual às outras plataformas, uma a uma ou no lote do `.6.13`. "formulario" conta no limite do dia (30 por padrão) e no teto de 40 com as voltas do `.6.11`.
-6. **Envio:** o executor abre a URL canônica, confere o destino na lista e confere o destino guardado. Depois **relê a estrutura e compara o hash**: se mudou, `bloqueada/pergunta-nova`. Em seguida preenche só o pacote, avança as páginas e clica uma vez em enviar.
+6. **Envio:** o executor abre a URL canônica, confere o destino na lista e confere o destino guardado. Depois **relê a estrutura e compara o hash**: se mudou, `bloqueada/pergunta-nova`. Em seguida preenche só o pacote e clica uma vez em enviar (no Typeform, com cada "OK" no caminho).
 
 ## Bloqueios próprios do formulário
 
@@ -55,6 +57,7 @@ O Google aceita `?entry.N=valor`, e o Typeform aceita campos ocultos (`hidden`) 
 | Pagamento | `bloqueada/outro` |
 | Iframe ou embed de outro domínio | `bloqueada/site-externo` |
 | Estrutura diferente da aprovada, ou campo preenchido pela página fora do pacote | `bloqueada/pergunta-nova` |
+| Google Forms com mais de uma seção | `bloqueada/varias-etapas` ("Formulário em várias etapas: envie à mão."); o segundo recorte é o `jc-a2y.7.2.1` |
 
 ## Typeform: página que monta tudo por script
 
@@ -97,7 +100,7 @@ Só o tipo e o resultado, como no executor de hoje: `executor: <id> ler-formular
   - o limite e o teto para `formulario`.
 - **Executor, com páginas falsas:** estrutura que mudou; campo pré-preenchido fora do pacote; caixa de cópia por e-mail; login; e-mail registrado; termos; upload; pagamento; iframe; várias páginas; `interagiuEm` antes de cada "OK" no Typeform; confirmação; o link de editar nunca guardado nem no log.
 - **Navegador, com Chrome de verdade e sem janela (no CI), contra o servidor fictício local:**
-  - variantes do Google: várias páginas, login, e-mail registrado, `entry.*` na URL e cópia por e-mail;
+  - variantes do Google: várias seções (dá `varias-etapas`), login, e-mail registrado, `entry.*` na URL e cópia por e-mail;
   - variantes do Typeform: página montada por script, `hidden` no fragmento e iframe;
   - o `forms.gle` redirecionando para dentro e para fora da lista.
 
@@ -111,7 +114,7 @@ Só o tipo e o resultado, como no executor de hoje: `executor: <id> ler-formular
 2. **Domínio e API:** a plataforma, a URL canônica, a impressão com a estrutura, as pendências, o limite e a rota, que dá 404 sem o envio.
 3. **Executor e navegador:** a leitura, o envio, os bloqueios e o Typeform. Antes, combino arquivo por arquivo com o Faker, e o trabalho vai depois do #101 (`.6.11`) e do #98, que mexem no executor e na conferência do endereço final.
 
-## Para decidir
+## Decidido (PO, no #108)
 
-- **Pré-preenchimento na URL:** tirar a query e o fragmento em silêncio (a recomendação, porque a pessoa nem vê) ou recusar a vaga com aviso.
-- **Leitura que precisa interagir:** um formulário cuja estrutura inteira só aparece avançando as páginas fica `bloqueada/outro` neste recorte. Ler avançando as páginas sem enviar fica para depois, com revisão do CyberSec.
+- **Pré-preenchimento na URL:** o app tira a query e o fragmento, mas avisa a pessoa no resumo do pacote, sem os valores (`preenchimentoIgnorado`). O log fica só com o fato.
+- **Várias etapas:** o Google Forms com seções fica `bloqueada/varias-etapas` neste recorte, com o motivo claro. O segundo recorte é o `jc-a2y.7.2.1` (P2), com contrato e revisão do CyberSec próprios.
