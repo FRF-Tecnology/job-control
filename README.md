@@ -1,4 +1,6 @@
-# Central de Candidaturas
+# Applyer
+
+> **Nome novo.** O produto agora se chama **Applyer** e está virando um app de PC (veja `docs/status.md`). A versão em uso hoje é a **Central** (versão em Node, sai na P8), descrita abaixo. A tela dela ainda diz "Central", e os nomes internos (`dados/`, o MCP "central") continuam iguais.
 
 Um painel local para organizar a busca de emprego: o que foi encontrado, o que você decidiu, o que foi enviado, o que travou e quando fazer follow-up.
 O Claude Code busca e aplica. Você decide e acompanha na tela.

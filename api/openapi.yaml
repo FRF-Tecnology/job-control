@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.12
+  version: 0.4.13
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -371,6 +371,29 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
         '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+  # Entrar nas plataformas (jc-a2y.6.7): a única forma de abrir uma janela do navegador sem ser "Ver o envio".
+  # O envio roda sem janela; o login é da própria pessoa, no perfil do app.
+  /navegador/entrar:
+    post:
+      x-so-tela: true
+      summary: 'Abre o navegador do app numa janela visível, na página de login do LinkedIn ou na página da vaga de uma candidatura da fila (Gupy e InHire, cujo login é por empresa), para a pessoa entrar com a conta dela. Nenhum agente digita senha. Enquanto a janela está aberta, o envio espera (login true) e não abre outra página; ao fechar a janela, o envio volta sem janela. Só no build com o envio (ligado true)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              description: 'Exatamente um dos dois'
+              properties:
+                plataforma: { type: string, enum: [linkedin], description: 'Abre https://www.linkedin.com/login' }
+                candidatura: { type: string, pattern: '^cand-', description: 'Abre a página da vaga desta candidatura, se o endereço é de uma vaga na lista fechada da plataforma dela' }
+      responses:
+        '200': { description: 'Janela aberta: estado do envio com login true', content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio, ou a candidatura não existe: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'Há candidatura em enviando ({erro, estado: enviando}) ou já há uma janela de login aberta ({erro})', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
 
   # Envio (jc-a2y.51; achado 2 da revisão integrada jc-a2y.6.4). O executor só existe no build envio_dev; no build
   # padrão, ligado é false e nada é enviado. Começa PAUSADO (por padrão, depois de apagar os dados e quando o estado
@@ -409,6 +432,26 @@ paths:
         '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
+  # Ver o envio (jc-a2y.6.7). O padrão é sem janela, para não pegar o foco, o mouse nem o teclado de quem usa o PC.
+  # A janela só aparece quando a pessoa pede, e volta a oculta a cada abertura do app.
+  /envio/janela:
+    post:
+      summary: 'Ver o envio: visivel true mostra o navegador do envio numa janela a partir da próxima candidatura (a que está em enviando termina sem janela); visivel false volta ao envio sem janela. Só a pessoa liga (pela tela); qualquer autor desliga, como pausar. Só no build com o envio'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [visivel]
+              properties:
+                visivel: { type: boolean }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { description: 'visivel true pedido pelo assistente (CLI, MCP): só a pessoa abre a janela. {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
 
 components:
   schemas:
@@ -570,10 +613,12 @@ components:
     EstadoEnvio:
       type: object
       additionalProperties: false
-      required: [ligado, pausado, enviandoAgora, desfechos]
+      required: [ligado, pausado, janela, login, enviandoAgora, desfechos]
       properties:
         ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
         pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
+        janela: { type: string, enum: [oculta, visivel], description: 'Como o navegador abre nas próximas candidaturas. oculta (sem janela, sem foco, mouse nem teclado) a cada abertura do app; visivel só por POST /envio/janela da tela. oculta também no build padrão' }
+        login: { type: boolean, description: 'Há uma janela de login aberta pela pessoa (POST /navegador/entrar); enquanto true, o envio espera' }
         enviandoAgora:
           type: [object, 'null']
           additionalProperties: false
