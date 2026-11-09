@@ -91,3 +91,27 @@ func muitos(o Objeto, n int) []any {
 	}
 	return l
 }
+
+// Decisão do PO e do Fallen (#102): o aprovar de uma e o lote contam, no limite do dia, as enviadas hoje e as
+// aprovadas que ainda não saíram. O excesso dá 429 no aprovar de uma e "limite" por item no lote. Dados fictícios.
+func TestAprovarContaAsPendentesNoLimite(t *testing.T) {
+	f := novaFila(t)
+	f.chamar("POST", "/vagas", Objeto{"id": "li-2", "empresa": "Empresa Dois", "titulo": "Dev Go", "plataforma": "linkedin", "link": "https://www.linkedin.com/jobs/view/9000000002"}, 201)
+	f.chamar("POST", "/vagas/li-2/mover", Objeto{"etapa": "aplicar"}, 200)
+	f.chamar("PUT", "/candidaturas/limites/linkedin", Objeto{"limite": 1}, 200)
+	c1 := f.chamar("POST", "/candidaturas", Objeto{"vagaId": "li-1", "conteudo": conteudoTeste()}, 201)
+	c2 := f.chamar("POST", "/candidaturas", Objeto{"vagaId": "li-2", "conteudo": conteudoTeste()}, 201)
+	f.chamar("POST", "/candidaturas/"+c1["id"].(string)+"/aprovar", Objeto{"impressao": c1["impressao"]}, 200)
+	antes := f.versao()
+	r := f.chamar("POST", "/candidaturas/"+c2["id"].(string)+"/aprovar", Objeto{"impressao": c2["impressao"]}, 429)
+	if r["plataforma"] != "linkedin" || r["usadas"] != float64(0) {
+		t.Fatalf("429 = %v", r)
+	}
+	l := f.chamar("POST", "/candidaturas/aprovar-lote", Objeto{"itens": []any{Objeto{"id": c2["id"], "impressao": c2["impressao"]}}}, 200)
+	if len(l["aprovadas"].([]any)) != 0 || l["recusadas"].([]any)[0].(Objeto)["motivo"] != "limite" {
+		t.Fatalf("lote = %v", l)
+	}
+	if f.versao() != antes || f.chamar("GET", "/candidaturas/"+c2["id"].(string), nil, 200)["estado"] != "preparada" {
+		t.Fatal("o excesso gravou")
+	}
+}

@@ -119,3 +119,98 @@ func TestAprovarLoteRecusaTudoAntes(t *testing.T) {
 		t.Fatalf("vaga fora = %v %v %v", a, r, err)
 	}
 }
+
+// Decisão do PO e do Fallen (#102): o aprovar de uma conta, no limite do dia, as enviadas hoje e as aprovadas que
+// ainda não saíram, como o lote. O executor (IniciarEnvio) continua contando só as tentativas: a candidatura não
+// conta contra ela mesma. Dados fictícios.
+func TestAprovarDeUmaContaAsAprovadas(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 9, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	limites := map[string]int{"linkedin": 2}
+	e := EstadoVazio()
+	var c [3]Candidatura
+	for i, n := range []string{"1", "2", "3"} {
+		e = comVaga(t, e, "li-"+n, "linkedin", linkLI(n), true)
+		e, c[i] = preparada(t, e, "li-"+n, agora)
+	}
+	var err error
+	for _, x := range c[:2] {
+		if e, _, err = AprovarCandidatura(e, x.ID, x.Impressao, agora, limites, eu); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// 0 enviadas + 2 aprovadas pendentes = limite 2: a 3ª dá limite (429 na API), e nada muda.
+	novo, _, err := AprovarCandidatura(e, c[2].ID, c[2].Impressao, agora, limites, eu)
+	var el *ErroLimite
+	if !errors.As(err, &el) || estadoDe(t, novo, c[2].ID).Estado != CandPreparada {
+		t.Fatalf("3ª aprovada com 2 pendentes e limite 2: %v", err)
+	}
+	// O executor envia as duas aprovadas: nenhuma conta contra ela mesma.
+	for _, x := range c[:2] {
+		atual := estadoDe(t, e, x.ID)
+		if e, _, err = IniciarEnvio(e, x.ID, atual.Versao, agora, limites); err != nil {
+			t.Fatalf("executor recusou %s dentro do limite: %v", x.ID, err)
+		}
+	}
+	// 2 enviadas + 0 pendentes: continua no limite.
+	if _, _, err = AprovarCandidatura(e, c[2].ID, c[2].Impressao, agora, limites, eu); !errors.As(err, &el) {
+		t.Fatalf("3ª aprovada com 2 enviadas: %v", err)
+	}
+}
+
+// jc-a2y.6.11: a volta automática devolve a candidatura para aprovada e tira a tentativa de tentativas. Ela conta
+// uma vez só, como aprovada pendente, mesmo com a aprovação já marcada como usada.
+func TestVoltaAutomaticaContaUmaVez(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 9, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	limites := map[string]int{"linkedin": 2}
+	e := EstadoVazio()
+	var c [3]Candidatura
+	for i, n := range []string{"1", "2", "3"} {
+		e = comVaga(t, e, "li-"+n, "linkedin", linkLI(n), true)
+		e, c[i] = preparada(t, e, "li-"+n, agora)
+	}
+	var err error
+	for _, x := range c[:2] {
+		if e, _, err = AprovarCandidatura(e, x.ID, x.Impressao, agora, limites, eu); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if e, _, err = IniciarEnvio(e, c[0].ID, estadoDe(t, e, c[0].ID).Versao, agora, limites); err != nil {
+		t.Fatal(err)
+	}
+	// Em enviando: 1 tentativa + 1 pendente.
+	if u, p := UsadasNoDia(e, "linkedin", agora), AprovadasPendentes(e, "linkedin", agora); u+p != 2 {
+		t.Fatalf("enviando: usadas %d + pendentes %d; queria 2", u, p)
+	}
+	// A volta, como o .6.11 descreve (a tentativa sai de tentativas; a marca de uso pode ficar).
+	i, v, err := acharCandidatura(e, c[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v.Estado, v.Tentativas = CandAprovada, nil
+	e, _ = salvarCandidatura(e, i, v, agora)
+	if u, p := UsadasNoDia(e, "linkedin", agora), AprovadasPendentes(e, "linkedin", agora); u != 0 || p != 2 {
+		t.Fatalf("depois da volta: usadas %d, pendentes %d; queria 0 e 2", u, p)
+	}
+	var el *ErroLimite
+	if _, _, err = AprovarCandidatura(e, c[2].ID, c[2].Impressao, agora, limites, eu); !errors.As(err, &el) {
+		t.Fatalf("3ª aprovada com uma volta pendente: %v", err)
+	}
+	if _, _, r, _ := AprovarLote(e, []ItemLote{{c[2].ID, c[2].Impressao}}, agora, limites, eu); len(r) != 1 || r[0].Motivo != RecusaLimite {
+		t.Fatalf("lote com uma volta pendente: %v", r)
+	}
+}
+
+// "outra" não tem limite (só envio manual): no lote ela é aprovada como no aprovar de uma, nunca recusada por
+// "limite". Dados fictícios.
+func TestAprovarLoteOutraSemLimite(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 9, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	e := comVaga(t, EstadoVazio(), "ou-1", "outra", "https://vagas.exemplo.com/1", true)
+	e, c := preparada(t, e, "ou-1", agora)
+	if _, _, err := AprovarCandidatura(e, c.ID, c.Impressao, agora, nil, eu); err != nil {
+		t.Fatalf("aprovar de uma: %v", err)
+	}
+	_, a, r, err := AprovarLote(e, []ItemLote{{c.ID, c.Impressao}}, agora, nil, eu)
+	if err != nil || len(a) != 1 || len(r) != 0 {
+		t.Fatalf("lote com outra: aprovadas %v, recusadas %v, %v", a, r, err)
+	}
+}

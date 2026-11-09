@@ -293,6 +293,9 @@ func (a *API) acaoCandidatura(ctx context.Context, id, acao string, c Objeto, au
 
 var reImpressaoLote = regexp.MustCompile(`^sha256:v1:[0-9a-f]{64}$`)
 
+// errLoteSemMudanca: só dentro do aprovarLote, para não gravar um lote todo recusado.
+var errLoteSemMudanca = errors.New("lote sem aprovação")
+
 // aprovarLote (jc-a2y.6.13): aprova a "Lista do dia" de uma vez, só pela tela. Cada item com a impressão que a tela
 // mostrou; numa transação só; item recusado não afeta os outros. O log leva só os números.
 func (a *API) aprovarLote(ctx context.Context, c Objeto, autor string) (Resposta, error) {
@@ -332,8 +335,14 @@ func (a *API) aprovarLote(ctx context.Context, c Objeto, autor string) (Resposta
 	err = a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
 		novo, ap, rec, err := dominio.AprovarLote(e, itens, agora, limites, a.ctx(e, autor))
 		aprovadas, recusadas = ap, rec
+		if err == nil && len(ap) == 0 {
+			return e, errLoteSemMudanca // tudo recusado: desfaz a transação, sem subir a versão
+		}
 		return novo, err
 	})
+	if errors.Is(err, errLoteSemMudanca) {
+		err = nil
+	}
 	if err != nil {
 		return Resposta{}, err
 	}

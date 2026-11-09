@@ -33,12 +33,14 @@ const (
 // MaxItensLote: 3 plataformas × o maior limite.
 const MaxItensLote = 3 * LimiteMaximo
 
-// AprovadasPendentes: aprovadas na plataforma que ainda não saíram (aprovação válida agora e sem uso).
+// AprovadasPendentes: aprovadas na plataforma que ainda não saíram (estado aprovada, aprovação válida agora). Não
+// olha a marca de uso: na volta automática do .6.11 a tentativa sai de tentativas, e a candidatura conta uma vez
+// só, aqui. Em enviando, ela conta só nas tentativas (UsadasNoDia).
 func AprovadasPendentes(e Estado, plataforma string, agora time.Time) int {
 	n := 0
 	for _, o := range e.Candidaturas {
 		c, err := candidaturaDe(o)
-		if err != nil || c.Plataforma != plataforma || c.Estado != CandAprovada || c.Aprovacao == nil || c.Aprovacao.UsadaEm != "" {
+		if err != nil || c.Plataforma != plataforma || c.Estado != CandAprovada || c.Aprovacao == nil {
 			continue
 		}
 		if AprovacaoValida(c.Aprovacao, agora) {
@@ -82,11 +84,6 @@ func AprovarLote(e Estado, itens []ItemLote, agora time.Time, limites map[string
 			motivo = RecusaImpressaoMudou
 		case !vagaAprovada(novo, c.VagaID):
 			motivo = RecusaVagaFora
-		default:
-			limite, _ := LimiteDe(limites, c.Plataforma)
-			if UsadasNoDia(novo, c.Plataforma, agora)+AprovadasPendentes(novo, c.Plataforma, agora) >= limite {
-				motivo = RecusaLimite
-			}
 		}
 		if motivo != "" {
 			recusadas = append(recusadas, Recusa{ID: it.ID, Motivo: motivo})
@@ -94,7 +91,7 @@ func AprovarLote(e Estado, itens []ItemLote, agora time.Time, limites map[string
 		}
 		depois, _, err := AprovarCandidatura(novo, it.ID, it.Impressao, agora, limites, ctx)
 		if err != nil {
-			var el *ErroLimite // a conferência do aprovar de uma também vale aqui
+			var el *ErroLimite // o limite é o do aprovar de uma: tentativas + aprovadas pendentes, já com as do lote
 			if errors.As(err, &el) {
 				recusadas = append(recusadas, Recusa{ID: it.ID, Motivo: RecusaLimite})
 				continue
