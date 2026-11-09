@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,16 +134,16 @@ func chamarClaude(ctx context.Context, p PedidoProvedor) (RespostaProvedor, erro
 	var r map[string]any
 	if jerr := json.Unmarshal(out, &r); jerr != nil {
 		if err != nil {
-			return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "claude-cli: " + primeiraLinha(stderr, err), Provedor: "claude-cli", Reintentavel: true}
+			return RespostaProvedor{}, falhaDaCLI("claude-cli", stderr, err)
 		}
 		return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "claude-cli: resposta não é JSON", Provedor: "claude-cli", Reintentavel: true}
 	}
 	if r["is_error"] == true {
-		msg := dominio.Texto(r["result"])
-		if msg == "" {
-			msg = dominio.Texto(r["subtype"])
+		// O texto do erro só escolhe a classe; ele não vai para a mensagem.
+		if pedeLogin(dominio.Texto(r["result"]) + " " + dominio.Texto(r["subtype"])) {
+			return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "claude-cli: " + msgSemLogin, Provedor: "claude-cli"}
 		}
-		return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "claude-cli: " + msg, Provedor: "claude-cli", Reintentavel: !strings.Contains(strings.ToLower(msg), "login")}
+		return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "claude-cli: " + msgRespondeuErro, Provedor: "claude-cli", Reintentavel: true}
 	}
 	texto := dominio.Texto(r["result"])
 	if s, ok := r["structured_output"]; ok && s != nil {
@@ -178,7 +179,7 @@ func chamarCodex(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error
 	_, stderr, err := rodar(ctx, "codex", args, p.Prompt.Sistema+"\n\n"+p.Prompt.Mensagem)
 	texto, lerr := os.ReadFile(ultima)
 	if lerr != nil || len(bytes.TrimSpace(texto)) == 0 {
-		return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "codex-cli: " + primeiraLinha(stderr, err), Provedor: "codex-cli", Reintentavel: true}
+		return RespostaProvedor{}, falhaDaCLI("codex-cli", stderr, err)
 	}
 	return RespostaProvedor{Texto: string(texto)}, nil
 }
@@ -192,20 +193,43 @@ func chamarGemini(ctx context.Context, p PedidoProvedor) (RespostaProvedor, erro
 	out, stderr, err := rodar(ctx, "gemini", args, "")
 	var r map[string]any
 	if json.Unmarshal(out, &r) != nil || r["response"] == nil {
-		return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "gemini-cli: " + primeiraLinha(stderr, err), Provedor: "gemini-cli", Reintentavel: true}
+		return RespostaProvedor{}, falhaDaCLI("gemini-cli", stderr, err)
 	}
 	return RespostaProvedor{Texto: dominio.Texto(r["response"])}, nil
 }
 
-func primeiraLinha(stderr string, err error) string {
-	if stderr != "" {
-		l, _, _ := strings.Cut(stderr, "\n")
-		return cortarUTF16(l, 200)
+// Mensagens fixas das falhas das CLIs. O stderr e o erro do processo podem ter email da conta, caminho de pasta
+// com o nome do usuário ou outra mensagem de fora: eles só escolhem a classe e nunca entram na mensagem (jc-a2y.21).
+const (
+	msgSemLogin      = "sem login na CLI (abra a CLI no terminal e entre na sua conta)"
+	msgRespondeuErro = "a CLI respondeu com erro (rode a CLI no terminal para ver o detalhe)"
+	msgNaoRodou      = "não foi possível rodar a CLI"
+	msgSemResposta   = "a CLI não respondeu"
+)
+
+// pedeLogin diz se o texto da CLI fala de login. Serve só para escolher a mensagem fixa.
+func pedeLogin(texto string) bool {
+	t := strings.ToLower(texto)
+	for _, p := range []string{"login", "log in", "logged in", "sign in", "authenticat", "unauthorized"} {
+		if strings.Contains(t, p) {
+			return true
+		}
 	}
-	if err != nil {
-		return err.Error()
+	return false
+}
+
+// falhaDaCLI transforma a falha do processo numa mensagem fixa: sem login, código de saída, não rodou ou sem resposta.
+func falhaDaCLI(nome, stderr string, err error) *ErroIA {
+	var saiu *exec.ExitError
+	switch {
+	case pedeLogin(stderr):
+		return &ErroIA{Tipo: "provedor", Mensagem: nome + ": " + msgSemLogin, Provedor: nome}
+	case errors.As(err, &saiu):
+		return &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: a CLI saiu com código %d (rode a CLI no terminal para ver o detalhe)", nome, saiu.ExitCode()), Provedor: nome, Reintentavel: true}
+	case err != nil:
+		return &ErroIA{Tipo: "provedor", Mensagem: nome + ": " + msgNaoRodou, Provedor: nome, Reintentavel: true}
 	}
-	return "sem resposta"
+	return &ErroIA{Tipo: "provedor", Mensagem: nome + ": " + msgSemResposta, Provedor: nome, Reintentavel: true}
 }
 
 // DetectarCLIs diz quais CLIs estão instaladas e, quando dá para saber sem gastar cota, se há login.

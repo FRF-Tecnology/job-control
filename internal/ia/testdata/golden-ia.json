@@ -37739,7 +37739,285 @@
    },
    "erro": {
     "tipo": "provedor",
-    "mensagem": "google: bloqueado (SAFETY)",
+    "mensagem": "google: bloqueado (segurança)",
+    "regra": null,
+    "erros": null
+   }
+  },
+  {
+   "provedor": "google",
+   "modelo": "modelo-google",
+   "chave": "chave-google",
+   "opcoes": {},
+   "prompt": {
+    "sistema": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}",
+    "mensagem": "Vaga:\nundefined\n\nPerfil:\n{}",
+    "esquema": {
+     "type": "object",
+     "properties": {
+      "decisao": {
+       "type": "string",
+       "enum": [
+        "aplicar",
+        "pular",
+        "perguntar"
+       ]
+      },
+      "aderencia": {
+       "type": "string",
+       "enum": [
+        "A",
+        "B",
+        "C"
+       ]
+      },
+      "motivo": {
+       "type": "string"
+      },
+      "motivoPulo": {
+       "type": "string",
+       "enum": [
+        "Sênior",
+        "Inglês",
+        "Diploma",
+        "Stack",
+        "Presencial/Local",
+        "Documento",
+        "Duplicada",
+        "Vaga fechada",
+        "Outro"
+       ]
+      }
+     },
+     "required": [
+      "decisao",
+      "aderencia",
+      "motivo"
+     ],
+     "additionalProperties": false
+    },
+    "nomeEsquema": "triarVaga"
+   },
+   "resposta": {
+    "promptFeedback": {
+     "blockReason": "sk_ant_SENTINELA fulano@exemplo.com"
+    }
+   },
+   "pedido": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/modelo-google:generateContent",
+    "headers": {
+     "content-type": "application/json",
+     "x-goog-api-key": "chave-google"
+    },
+    "corpo": {
+     "systemInstruction": {
+      "parts": [
+       {
+        "text": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}"
+       }
+      ]
+     },
+     "contents": [
+      {
+       "role": "user",
+       "parts": [
+        {
+         "text": "Vaga:\nundefined\n\nPerfil:\n{}"
+        }
+       ]
+      }
+     ],
+     "generationConfig": {
+      "responseMimeType": "application/json",
+      "responseJsonSchema": {
+       "type": "object",
+       "properties": {
+        "decisao": {
+         "type": "string",
+         "enum": [
+          "aplicar",
+          "pular",
+          "perguntar"
+         ]
+        },
+        "aderencia": {
+         "type": "string",
+         "enum": [
+          "A",
+          "B",
+          "C"
+         ]
+        },
+        "motivo": {
+         "type": "string"
+        },
+        "motivoPulo": {
+         "type": "string",
+         "enum": [
+          "Sênior",
+          "Inglês",
+          "Diploma",
+          "Stack",
+          "Presencial/Local",
+          "Documento",
+          "Duplicada",
+          "Vaga fechada",
+          "Outro"
+         ]
+        }
+       },
+       "required": [
+        "decisao",
+        "aderencia",
+        "motivo"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   },
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "google: bloqueado (motivo não informado)",
+    "regra": null,
+    "erros": null
+   }
+  },
+  {
+   "provedor": "google",
+   "modelo": "modelo-google",
+   "chave": "chave-google",
+   "opcoes": {},
+   "prompt": {
+    "sistema": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}",
+    "mensagem": "Vaga:\nundefined\n\nPerfil:\n{}",
+    "esquema": {
+     "type": "object",
+     "properties": {
+      "decisao": {
+       "type": "string",
+       "enum": [
+        "aplicar",
+        "pular",
+        "perguntar"
+       ]
+      },
+      "aderencia": {
+       "type": "string",
+       "enum": [
+        "A",
+        "B",
+        "C"
+       ]
+      },
+      "motivo": {
+       "type": "string"
+      },
+      "motivoPulo": {
+       "type": "string",
+       "enum": [
+        "Sênior",
+        "Inglês",
+        "Diploma",
+        "Stack",
+        "Presencial/Local",
+        "Documento",
+        "Duplicada",
+        "Vaga fechada",
+        "Outro"
+       ]
+      }
+     },
+     "required": [
+      "decisao",
+      "aderencia",
+      "motivo"
+     ],
+     "additionalProperties": false
+    },
+    "nomeEsquema": "triarVaga"
+   },
+   "resposta": {
+    "promptFeedback": {
+     "blockReason": "toString"
+    }
+   },
+   "pedido": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/modelo-google:generateContent",
+    "headers": {
+     "content-type": "application/json",
+     "x-goog-api-key": "chave-google"
+    },
+    "corpo": {
+     "systemInstruction": {
+      "parts": [
+       {
+        "text": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}"
+       }
+      ]
+     },
+     "contents": [
+      {
+       "role": "user",
+       "parts": [
+        {
+         "text": "Vaga:\nundefined\n\nPerfil:\n{}"
+        }
+       ]
+      }
+     ],
+     "generationConfig": {
+      "responseMimeType": "application/json",
+      "responseJsonSchema": {
+       "type": "object",
+       "properties": {
+        "decisao": {
+         "type": "string",
+         "enum": [
+          "aplicar",
+          "pular",
+          "perguntar"
+         ]
+        },
+        "aderencia": {
+         "type": "string",
+         "enum": [
+          "A",
+          "B",
+          "C"
+         ]
+        },
+        "motivo": {
+         "type": "string"
+        },
+        "motivoPulo": {
+         "type": "string",
+         "enum": [
+          "Sênior",
+          "Inglês",
+          "Diploma",
+          "Stack",
+          "Presencial/Local",
+          "Documento",
+          "Duplicada",
+          "Vaga fechada",
+          "Outro"
+         ]
+        }
+       },
+       "required": [
+        "decisao",
+        "aderencia",
+        "motivo"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   },
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "google: bloqueado (motivo não informado)",
     "regra": null,
     "erros": null
    }
