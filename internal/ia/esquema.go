@@ -117,7 +117,7 @@ func validarEsquema(valor any, e *esquema, caminho string) []string {
 			}
 		}
 		if !achou {
-			erros = append(erros, fmt.Sprintf("%s: valor fora da lista (%s)", caminho, stringify(simples(valor), "")))
+			erros = append(erros, caminho+": valor fora da lista") // sem o valor: pode vir da vaga ou do email (jc-a2y.23)
 		}
 	}
 	if t == "object" && e.temPropriedad {
@@ -132,7 +132,7 @@ func validarEsquema(valor any, e *esquema, caminho string) []string {
 			if p, ok := e.Propriedades[k]; ok {
 				erros = append(erros, validarEsquema(v, p, caminho+"."+k)...)
 			} else if e.SemExtras {
-				erros = append(erros, fmt.Sprintf("%s.%s: campo não previsto", caminho, k))
+				erros = append(erros, caminho+": campo não previsto") // sem o nome: a chave vem da saída da IA (jc-a2y.23)
 			}
 		}
 	}

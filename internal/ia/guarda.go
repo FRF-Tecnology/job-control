@@ -126,7 +126,7 @@ var Regras = []Regra{
 			if len(numeros) == 1 && reSoDigitos.MatchString(numeros[0]) {
 				return com(s, "resposta", numeros[0]), nil
 			}
-			return nil, bloquear("numero-so-digitos", fmt.Sprintf(`campo numérico com resposta não numérica: "%s"`, r))
+			return nil, bloquear("numero-so-digitos", "campo numérico com resposta não numérica")
 		}},
 	{ID: "opcao-da-lista", Funcoes: []string{"responderPergunta"},
 		Descricao: "Campo de opção: a resposta tem de ser uma das opções (devolvida com o texto exato da lista).",
@@ -139,7 +139,7 @@ var Regras = []Regra{
 					return com(s, "resposta", o), nil
 				}
 			}
-			return nil, bloquear("opcao-da-lista", fmt.Sprintf(`opção fora da lista: "%s"`, dominio.JSString(s["resposta"])))
+			return nil, bloquear("opcao-da-lista", "a resposta não é uma das opções do campo")
 		}},
 	{ID: "sim-nao-valido", Funcoes: []string{"responderPergunta"},
 		Descricao: "Campo sim/não: só Sim, Não, Yes ou No.",
@@ -151,7 +151,7 @@ var Regras = []Regra{
 			if v, ok := mapa[dominio.Normalizar(s["resposta"])]; ok {
 				return com(s, "resposta", v), nil
 			}
-			return nil, bloquear("sim-nao-valido", fmt.Sprintf(`campo sim/não com resposta "%s"`, dominio.JSString(s["resposta"])))
+			return nil, bloquear("sim-nao-valido", "campo sim/não com resposta que não é sim nem não")
 		}},
 	{ID: "pulo-com-motivo", Funcoes: []string{"triarVaga"},
 		Descricao: `Triagem "pular" sempre tem motivoPulo (padrão "Outro").`,
