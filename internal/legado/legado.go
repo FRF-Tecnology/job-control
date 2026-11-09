@@ -174,9 +174,14 @@ func copiar(de, para string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(d, o); err != nil {
-		d.Close()
-		return err
+	// Cópia pela metade não fica na pasta de currículos: com erro ao copiar ou ao fechar, o destino é apagado
+	// (jc-a2y.15, gosec G104).
+	_, err = io.Copy(d, o)
+	if errFechar := d.Close(); err == nil {
+		err = errFechar
 	}
-	return d.Close()
+	if err != nil {
+		os.Remove(para)
+	}
+	return err
 }
