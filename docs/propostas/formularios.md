@@ -1,6 +1,6 @@
 # Formulários externos: Google Forms e Typeform
 
-Bead `jc-a2y.7.2` (P6). Status: **proposta**. O contrato vai para 0.10.0: a rota nova entra com `x-proposta`, e as mudanças de schema ficam marcadas como proposta na descrição. O 0.8.0 está no #103/#107 e o 0.9.0 no #94. O CyberSec passou os requisitos antes do contrato, e eles são critério de aceite. A tela é do Jarvis.
+Bead `jc-a2y.7.2` (P6). Status: **proposta**. O contrato vai para 0.13.0: a rota nova entra com `x-proposta`, e as mudanças de schema ficam marcadas como proposta na descrição. A 0.9.0 é do #94, a 0.10.0 do #101, a 0.11.0 do #113 e a 0.12.0 do #107. O CyberSec passou os requisitos antes do contrato, e eles são critério de aceite. A tela é do Jarvis.
 
 Hoje, uma vaga que manda para um formulário vira `outra` e acaba em `bloqueada/site-externo`. Com esta proposta, Google Forms e Typeform viram a plataforma `formulario`. O app lê as perguntas, monta o pacote só com o perfil e as `respostasPadrao`, a pessoa revisa e aprova na Fila, e o envio segue as mesmas regras do LinkedIn, da Gupy e da InHire:
 - a impressão aprovada;
@@ -70,7 +70,7 @@ O Google aceita `?entry.N=valor`, e o Typeform aceita campos ocultos (`hidden`) 
 - **A URL e o link "Editar sua resposta" da página final nunca são guardados nem vão para o log.** O link tem um token que deixa qualquer um editar a resposta.
 - **Nada de captura de tela.** O "Ao vivo" (`.6.9`) mostra a página só em memória, e o quadro é apagado no fim, como já é.
 
-## Contrato (0.10.0)
+## Contrato (0.13.0)
 
 - **Rota nova** (`x-proposta`, `x-so-tela`): `POST /candidaturas/{id}/ler-formulario`, com o corpo `{}`.
   - 200: a candidatura com `estrutura` e `pendentes`.
