@@ -21,6 +21,7 @@ func TestArgsSegurosParaCmd(t *testing.T) {
 	inseguros := []string{
 		`x" & type nul > %TEMP%\marcador & rem "`, "linha 1\nlinha 2", "a\rb", `{"type":"object"}`, "a&b", "a|b", "a<b", "a>b",
 		"a^b", "%PATH%", "!x!", "(a)", "a`b", "tab\there",
+		"aʺb", "aˆb", // ʺ (Lm) e ˆ (Sk): a conversão best-fit para ANSI pode virar " e ^
 	}
 	for _, s := range inseguros {
 		if argsSegurosParaCmd([]string{"-p", s}) {
@@ -35,5 +36,15 @@ func TestGeminiRecebePedidoPeloStdin(t *testing.T) {
 	s, err := cli{qual: "gemini"}.Chamar(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
 	if err != nil || s.Texto == "" {
 		t.Fatalf("gemini = %+v, %v", s, err)
+	}
+}
+
+// CLI que não está no PATH: nem instalada, nem pronta, sem aviso.
+func TestDetectarCLIsSemNadaInstalado(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, e := range DetectarCLIs(context.Background()) {
+		if e.Instalada || e.Pronta || e.Aviso != "" {
+			t.Errorf("%s: %+v", e.Comando, e)
+		}
 	}
 }

@@ -48,7 +48,13 @@ type EstadoCLI struct {
 	Instalada bool   `json:"instalada"`
 	Logada    *bool  `json:"logada"` // nil = não dá para saber sem chamar a IA
 	Versao    string `json:"versao,omitempty"`
+	Pronta    bool   `json:"pronta"`          // instalada e num formato que o app usa com segurança
+	Aviso     string `json:"aviso,omitempty"` // texto fixo quando não está pronta
 }
+
+// aceitaCmd: CLIs cujos argumentos são sempre seguros para o cmd.exe (o pedido vai pelo stdin). O Claude leva o
+// prompt de sistema (várias linhas) e o esquema (com aspas) no argv, então instalado como .cmd não roda (jc-a2y.25).
+func aceitaCmd(comando string) bool { return comando != "claude" }
 
 const limiteSaida = 4 << 20
 
@@ -59,7 +65,12 @@ func (c cli) Nome() string { return c.qual + "-cli" }
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
 func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
-	if alvo, err := exec.LookPath(comando); err == nil && viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
+	// O arquivo conferido é o mesmo que roda: o caminho resolvido pelo LookPath vai para o CommandContext.
+	alvo, err := exec.LookPath(comando)
+	if err != nil {
+		alvo = comando // o exec devolve o erro de "não achei" na hora de rodar
+	}
+	if viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
 		return nil, "", &ErroIA{Tipo: "config", Mensagem: comando + "-cli: " + msgCmdInseguro, Provedor: comando + "-cli"}
 	}
 	ctx, cancelar := context.WithTimeout(ctx, tempoLimite)
@@ -69,7 +80,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 		return nil, "", err
 	}
 	defer os.RemoveAll(pasta)
-	cmd := exec.CommandContext(ctx, comando, args...)
+	cmd := exec.CommandContext(ctx, alvo, args...)
 	cmd.Dir = pasta
 	cmd.Stdin = strings.NewReader(entrada)
 	var saida, erro limitado
@@ -96,6 +107,10 @@ func viaCmdExe(caminho string) bool {
 func argsSegurosParaCmd(args []string) bool {
 	for _, a := range args {
 		for _, r := range a {
+			// Letra modificadora (Lm) e símbolo modificador (Sk), como ʺ e ˆ, podem virar " e ^ na conversão para ANSI.
+			if unicode.Is(unicode.Lm, r) || unicode.Is(unicode.Sk, r) {
+				return false
+			}
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune(` .,_:/\=+@~-`, r)) {
 				return false
 			}
@@ -269,8 +284,11 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 	saida := make([]EstadoCLI, 0, len(CLIs))
 	for _, info := range CLIs {
 		e := EstadoCLI{InfoCLI: info}
-		if _, err := exec.LookPath(info.Comando); err == nil {
-			e.Instalada = true
+		if caminho, err := exec.LookPath(info.Comando); err == nil {
+			e.Instalada, e.Pronta = true, true
+			if viaCmdExe(caminho) && !aceitaCmd(info.Comando) {
+				e.Pronta, e.Aviso = false, msgCmdInseguro
+			}
 			c, cancelar := context.WithTimeout(ctx, 15*time.Second)
 			if out, err := exec.CommandContext(c, info.Comando, "--version").Output(); err == nil {
 				e.Versao = strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])

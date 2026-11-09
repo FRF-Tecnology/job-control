@@ -374,6 +374,8 @@ components:
         instalada: { type: boolean }
         logada: { type: [boolean, 'null'], description: null quando não dá para saber sem chamar a IA }
         versao: { type: string }
+        pronta: { type: boolean, description: 'Instalada e num formato que o app pode usar com segurança. Ex.: o Claude instalado como .cmd (npm, Windows) fica instalada: true, pronta: false (jc-a2y.25)' }
+        aviso: { type: string, description: 'Texto fixo nosso quando pronta é false, com o que a pessoa faz (ex.: instalar a versão nativa .exe)' }
     EstadoIA:
       type: object
       required: [configurada, chaves, clis, gratis, uso]

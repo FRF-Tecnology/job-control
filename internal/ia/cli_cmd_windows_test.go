@@ -92,3 +92,20 @@ func TestArgumentoInseguroNaoChegaAoCmdExe(t *testing.T) {
 		t.Fatal("o payload chegou ao cmd.exe")
 	}
 }
+
+// A tela Conectar IA vê o Claude .cmd como instalado, mas não pronto, com o aviso fixo; Gemini e Codex .cmd ficam prontos.
+func TestDetectarCLIsMarcaClaudeCmdComoNaoPronto(t *testing.T) {
+	pasta := t.TempDir()
+	for _, qual := range []string{"claude", "codex", "gemini"} {
+		if err := os.WriteFile(filepath.Join(pasta, qual+".cmd"), []byte("@echo off\r\necho 1.0.0\r\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", pasta+string(os.PathListSeparator)+filepath.Join(os.Getenv("SystemRoot"), "System32"))
+	for _, e := range DetectarCLIs(context.Background()) {
+		quer := e.Comando != "claude"
+		if !e.Instalada || e.Pronta != quer || (quer && e.Aviso != "") || (!quer && e.Aviso != msgCmdInseguro) {
+			t.Errorf("%s: instalada=%v pronta=%v aviso=%q", e.Comando, e.Instalada, e.Pronta, e.Aviso)
+		}
+	}
+}
