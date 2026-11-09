@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log"
 	"sort"
 	"time"
 
@@ -25,6 +26,9 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 			return Resposta{}, true, err
 		}
 		r, err := a.mudarPausa(ctx, true)
+		if err == nil {
+			log.Printf("envio: pausado (%s)", autor) // só o fato e o autor
+		}
 		return r, true, err
 	case m == "POST" && p == "/envio/retomar":
 		if err := soCampos(c); err != nil {
@@ -34,6 +38,9 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 			return Resposta{}, true, &dominio.ErroSoPessoa{Msg: "só a pessoa retoma o envio"}
 		}
 		r, err := a.mudarPausa(ctx, false)
+		if err == nil {
+			log.Printf("envio: retomado (%s)", autor)
+		}
 		return r, true, err
 	}
 	return Resposta{}, false, nil

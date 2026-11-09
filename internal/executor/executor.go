@@ -49,6 +49,8 @@ type Opcoes struct {
 type Executor struct {
 	arm *armazem.Armazem
 	o   Opcoes
+	// antesDeIniciar só existe para o teste agir entre "pegou a aprovada" e "entra em enviando".
+	antesDeIniciar func()
 }
 
 // Desfecho de um envio: o estado final e, se houver, o motivo (bloqueio) ou o código da falha.
@@ -146,6 +148,11 @@ func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err err
 	})
 	if err == nil && (incertas > 0 || vencidas > 0) {
 		x.o.Log("executor: ao abrir, %d incerta(s) e %d aprovação(ões) vencida(s)", incertas, vencidas)
+	}
+	// Ao abrir o app, o envio começa sempre PAUSADO (recomendação do CyberSec no #59): quem retomou e fechou o app
+	// não volta a enviar sem ninguém na frente. Só a tela retoma.
+	if err == nil {
+		err = x.arm.GravarEnvioPausado(ctx, true)
 	}
 	return incertas, vencidas, err
 }
@@ -261,6 +268,9 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 		return Desfecho{}, err
 	}
 	versao, _ := dominio.NumeroDe(c["versao"])
+	if x.antesDeIniciar != nil {
+		x.antesDeIniciar()
+	}
 	if _, err := x.gravarSeLiberado(ctx, func(e dominio.Estado, _ dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
 		return dominio.IniciarEnvio(e, id, int(versao), agora, limites)
 	}); err != nil {

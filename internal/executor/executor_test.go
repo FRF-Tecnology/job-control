@@ -619,3 +619,26 @@ func TestPausarNoMeioDaFila(t *testing.T) {
 		t.Fatalf("desfechos %v (%v); a=%v b=%v páginas %d", ds, err, s.cand(a)["estado"], s.cand(b)["estado"], s.nav.abertas)
 	}
 }
+
+// Pausar entre "pegou a aprovada" e "entrou em enviando" (o pedido do CyberSec no #59): a transação do IniciarEnvio
+// lê o pausado e recusa; a candidatura fica aprovada e nenhum envio acontece.
+func TestPausarEntrePegarEEntrarEmEnviando(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	id := s.aprovada("linkedin", linkLI)
+	s.x.antesDeIniciar = func() { s.arm.GravarEnvioPausado(context.Background(), true) }
+	ds, err := s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 0 || s.cand(id)["estado"] != "aprovada" || s.nav.abertas != 0 || dominio.ListaDe(s.cand(id)["tentativas"]) != nil {
+		t.Fatalf("desfechos %v (%v), estado %v, páginas %d, tentativas %v", ds, err, s.cand(id)["estado"], s.nav.abertas, s.cand(id)["tentativas"])
+	}
+}
+
+// Ao abrir o app, o envio volta a ficar pausado, mesmo que a pessoa tenha retomado antes de fechar.
+func TestIniciarPausa(t *testing.T) {
+	s := novoCenario(t) // o cenário começa com o envio liberado
+	if _, _, err := s.x.Iniciar(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !s.arm.EnvioPausado(context.Background()) {
+		t.Fatal("Iniciar não pausou o envio")
+	}
+}

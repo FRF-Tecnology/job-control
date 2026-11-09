@@ -1,9 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -46,6 +49,9 @@ func chamarEnvio(t *testing.T, a *API, m, p string, corpo any, autor string) Res
 }
 
 func TestEnvioEstadoPausarRetomar(t *testing.T) {
+	var saida bytes.Buffer
+	log.SetOutput(&saida)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
 	a, _ := apiDeEnvio(t, false)
 	r := chamarEnvio(t, a, "GET", "/envio", nil, "eu")
 	c := r.Corpo.(map[string]any)
@@ -77,6 +83,10 @@ func TestEnvioEstadoPausarRetomar(t *testing.T) {
 	}
 	if r := chamarEnvio(t, a, "GET", "/envio?desde=ontem", nil, "eu"); r.Status != 400 {
 		t.Fatalf("desde inválido = %d", r.Status)
+	}
+	// Log: só o fato e o autor, e nada nas recusas.
+	if got := saida.String(); !strings.Contains(got, "envio: retomado (eu)") || !strings.Contains(got, "envio: pausado (claude)") || strings.Count(got, "envio: ") != 2 {
+		t.Fatalf("log = %q", got)
 	}
 }
 
@@ -128,7 +138,7 @@ func TestEnvioDesfechos(t *testing.T) {
 		t.Fatalf("desfechos = %d; queria 20", len(ds))
 	}
 	ids := []string{}
-	for _, d := range ds[:4] {
+	for i, d := range ds {
 		o := d.(map[string]any)
 		chaves := []string{}
 		for k := range o {
@@ -136,9 +146,11 @@ func TestEnvioDesfechos(t *testing.T) {
 		}
 		sort.Strings(chaves)
 		if strings.Join(chaves, ",") != "em,estado,id,motivo" {
-			t.Fatalf("campos do desfecho = %v", chaves)
+			t.Fatalf("campos do desfecho %d = %v", i, chaves)
 		}
-		ids = append(ids, fmt.Sprint(o["id"], ":", o["estado"], ":", o["motivo"]))
+		if i < 4 {
+			ids = append(ids, fmt.Sprint(o["id"], ":", o["estado"], ":", o["motivo"]))
+		}
 	}
 	if strings.Join(ids, " ") != "cand-d:incerta:<nil> cand-b:bloqueada:cpf cand-c:falhou:<nil> cand-a:enviada:<nil>" {
 		t.Fatalf("ordem = %v", ids)
