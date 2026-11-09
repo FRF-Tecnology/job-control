@@ -35,14 +35,23 @@ func main() {
 		log.Fatalf("primeira vez: %v", err)
 	}
 	// Envio de candidaturas: desligado no build padrão (não faz nada); só o build -tags envio_dev liga o executor.
-	pararEnvio := envio.Ligar(ctx, banco, pasta)
-	defer pararEnvio()
+	controleEnvio := envio.Ligar(ctx, banco, pasta)
+	defer controleEnvio.Parar()
 
-	app := application.New(application.Options{
+	// Depois de "apagar meus dados", o app fecha (o banco já foi fechado e apagado).
+	var app *application.App
+	local := api.Nova(banco, api.Opcoes{
+		PararEnvio:      controleEnvio.Parar,
+		SuspenderEnvio:  controleEnvio.Suspender,
+		FecharNavegador: controleEnvio.FecharNavegador,
+		AoApagar:        func() { app.Quit() },
+	})
+
+	app = application.New(application.Options{
 		Name:        "Central de Candidaturas",
 		Description: "Busca, triagem e acompanhamento de candidaturas",
 		Assets: application.AssetOptions{
-			Handler: rotear(api.Nova(banco, api.Opcoes{}).Handler(), application.AssetFileServerFS(telas)),
+			Handler: rotear(local.Handler(), application.AssetFileServerFS(telas)),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,

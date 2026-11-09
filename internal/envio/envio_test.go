@@ -17,7 +17,10 @@ func TestBuildPadraoSemGatilho(t *testing.T) {
 	if Ligado {
 		t.Fatal("build padrão com o envio ligado")
 	}
-	Ligar(context.Background(), nil, "")() // não faz nada, nem com armazém nil
+	c := Ligar(context.Background(), nil, "") // não faz nada, nem com armazém nil
+	c.Suspender()()
+	c.FecharNavegador()
+	c.Parar()
 
 	if testing.Short() {
 		t.Skip("compilar a sonda: fora do -short")

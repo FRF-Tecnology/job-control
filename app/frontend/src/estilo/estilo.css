@@ -339,7 +339,8 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 .formulario .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .respostas { display: grid; gap: 8px; }
 .respostas .par { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; }
-fieldset { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 18px 20px; display: grid; gap: 14px; }
+/* min-width 0: fieldset não encolhe abaixo do conteúdo por padrão, e um caminho longo alargava a página (jc-a2y.53). */
+fieldset { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
 legend { font: 700 1rem var(--fonte-display); padding: 0 6px; }
 
 /* ---------- diálogo e avisos ---------- */
@@ -365,7 +366,7 @@ dialog form { display: grid; gap: 16px; }
 .primeiros li.feito .marca-passo { background: var(--destaque); }
 .primeiros li.feito strong { color: var(--tinta-2); font-weight: 500; }
 .estado-passo { font-size: .85rem; color: var(--tinta-2); }
-.aviso-cv { margin: 0; padding: 12px 14px; border-radius: var(--raio-p); background: var(--ambar-suave); }
+.aviso-cv { margin: 0; padding: 12px 14px; border-radius: var(--raio-p); background: var(--ambar-suave); overflow-wrap: anywhere; }
 
 /* Folha "Mais" (celular) */
 .folha-mais { display: grid; gap: 4px; }

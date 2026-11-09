@@ -72,6 +72,8 @@ func (n *Navegador) opcoes() []chromedp.ExecAllocatorOption {
 		chromedp.Flag("disable-save-password-bubble", true),
 		chromedp.Flag("no-pings", true),
 		chromedp.Flag("no-service-autorun", true),
+		// O padrão do chromedp desliga o bloqueio de popups; aqui ele volta (jc-a2y.6.2.8).
+		chromedp.Flag("disable-popup-blocking", false),
 	)
 	return append(o, n.extrasDeTeste...)
 }
@@ -86,6 +88,10 @@ func (n *Navegador) iniciar() error {
 	defer n.mu.Unlock()
 	if n.navCtx != nil {
 		return nil
+	}
+	// O perfil pode ter sido apagado ("sair das plataformas"): recria com as preferências antes de abrir.
+	if err := prepararPerfil(n.perfil); err != nil {
+		return err
 	}
 	alloc, fecharAlloc := chromedp.NewExecAllocator(context.Background(), n.opcoes()...)
 	navCtx, fecharNav := chromedp.NewContext(alloc, chromedp.WithLogf(semConteudo), chromedp.WithDebugf(semConteudo), chromedp.WithErrorf(soErro))

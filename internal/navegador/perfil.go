@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/FRF-Tecnology/job-control/internal/config"
 )
 
 // PastaPerfil é o perfil próprio do app: <pasta de dados>/navegador. Nunca é o perfil pessoal do Chrome ou do Edge.
 // Fica fora do git (a pasta de dados não está no repositório) e fora do backup (o backup diário copia só o banco).
 // Guarda o cookie de sessão das plataformas: "apagar meus dados" tem de chamar ApagarPerfil.
-func PastaPerfil(pastaDados string) string { return filepath.Join(pastaDados, "navegador") }
+func PastaPerfil(pastaDados string) string { return config.PastaNavegador(pastaDados) }
 
 // preferencias desligam o que o app não usa: salvar senhas, preencher formulário sozinho, notificações,
 // localização, câmera, microfone e downloads automáticos (2 = bloquear).

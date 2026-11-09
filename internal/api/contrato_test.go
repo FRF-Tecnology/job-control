@@ -27,7 +27,7 @@ import (
 //     implementação chegar, este teste falha até a marca sair.
 //
 // Limites (o que este teste NÃO garante):
-//   - a busca de rotas no código só olha api.go, ia.go e candidaturas.go e só reconhece os formatos de hoje:
+//   - a busca de rotas no código só olha api.go, ia.go, candidaturas.go e dados.go e só reconhece os formatos de hoje:
 //     `p == "/x"`, `case "/x"` e regexp.MustCompile(`^/x...`). Rota nova escrita de outro jeito,
 //     ou noutro arquivo, só é pega se cair num caminho que já está no contrato (2ª checagem);
 //   - cada operação é chamada com corpo {} e parâmetros de exemplo: o teste prova que a rota existe,
@@ -248,7 +248,7 @@ func TestRotasDoCodigoEstaoNoContrato(t *testing.T) {
 	for _, modelo := range ordenadas(ops) {
 		exemplos[concreto(modelo)] = true
 	}
-	for _, arq := range []string{"api.go", "ia.go", "candidaturas.go"} {
+	for _, arq := range []string{"api.go", "ia.go", "candidaturas.go", "dados.go"} {
 		b, err := os.ReadFile(arq)
 		if err != nil {
 			t.Fatal(err)

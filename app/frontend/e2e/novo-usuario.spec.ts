@@ -176,10 +176,15 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
 
 test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ page }, info) => {
   test.skip(info.project.name !== 'celular', 'conferência de layout no celular');
+  // O projeto celular é um Pixel 7 (412 px); a meta é a tela menor, 375 px (jc-a2y.53).
+  await page.setViewportSize({ width: 375, height: 812 });
   for (const rota of ['hoje', 'triagem', 'fila', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil']) {
     await ir(page, rota);
     const rolaDeLado = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
     expect(rolaDeLado, `${rota} rola para o lado`).toBe(false);
+    // No celular, uma página mais larga que a tela não rola: o navegador reduz o zoom e innerWidth cresce junto,
+    // então a conta acima não vê. A largura de layout tem de ser a da tela (jc-a2y.53).
+    expect(await page.evaluate(() => innerWidth), `${rota} é mais larga que a tela`).toBe(375);
     // Nenhum texto passa da borda do seu bloco (ex.: caminho longo de pasta num card; jc-a2y.47).
     // Blocos com rolagem própria (overflow auto/hidden, como o Quadro) ficam de fora.
     const vazam = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('main#conteudo *')].flatMap(el => {

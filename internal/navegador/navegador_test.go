@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/chromedp/cdproto/browser"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
@@ -329,6 +331,39 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 		}
 	})
 
+	t.Run("Linha de comando do navegador e popup bloqueado", func(t *testing.T) {
+		pag, err := nav.NovaPagina(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer pag.Fechar()
+		// A aba aberta garante o navegador de pé, mesmo rodando este subteste sozinho.
+		res, err := chromedp.CallBrowser(nav.navCtx, browser.GetBrowserCommandLine, cdp.Empty{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		linha := " " + strings.Join(res.Arguments, " ") + " "
+		for _, quer := range []string{"--remote-debugging-pipe", "--disable-extensions", "--disable-sync", "--no-first-run", "--user-data-dir="} {
+			if !strings.Contains(linha, quer) {
+				t.Errorf("falta %s na linha de comando", quer)
+			}
+		}
+		for _, proibido := range []string{"--disable-popup-blocking", "--remote-debugging-port", "--remote-debugging-address"} {
+			if strings.Contains(linha, proibido) {
+				t.Errorf("linha de comando tem %s", proibido)
+			}
+		}
+		p := pag.(*pagina)
+		ctx := context.Background()
+		if err := p.fazer(ctx, tempoAbrir, chromedp.Navigate("https://www.linkedin.com/jobs/view/9000000001")); err != nil {
+			t.Fatal(err)
+		}
+		bloqueado, err := rodar(ctx, p, tempoAcao, chromedp.Evaluate[bool](`window.open('https://www.linkedin.com/feed/') === null`))
+		if err != nil || !bloqueado {
+			t.Fatalf("popup sem clique abriu (bloqueado=%v, %v)", bloqueado, err)
+		}
+	})
+
 	t.Run("Download negado", func(t *testing.T) {
 		pag, err := nav.NovaPagina(context.Background())
 		if err != nil {
@@ -345,6 +380,22 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 					t.Fatalf("baixou %s em %s", i.Name(), dir)
 				}
 			}
+		}
+	})
+
+	t.Run("Sair das plataformas: o perfil volta com as preferências na próxima página", func(t *testing.T) {
+		nav.Fechar()
+		if err := ApagarPerfil(dados); err != nil {
+			t.Fatal(err)
+		}
+		pag, err := nav.NovaPagina(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer pag.Fechar()
+		b, err := os.ReadFile(filepath.Join(PastaPerfil(dados), "Default", "Preferences"))
+		if err != nil || !strings.Contains(string(b), "password_manager_enabled") {
+			t.Fatalf("perfil recriado sem as preferências: %v", err)
 		}
 	})
 

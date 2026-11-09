@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.11
+  version: 0.4.12
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -13,7 +13,8 @@ info:
     sem query e o tipo do erro (jc-a2y.13). 429 limite diário da plataforma ({erro, plataforma, limite,
     usadas, renovaEm}). O teste internal/api/contrato_test.go confere este arquivo contra as rotas da API;
     operações com x-proposta: true estão no contrato, mas ainda não são atendidas. 403 também quando o assistente
-    (CLI, MCP) pede uma ação só da pessoa (x-so-tela).
+    (CLI, MCP) pede uma ação só da pessoa (x-so-tela). 503 {erro} em qualquer rota depois de "apagar meus dados",
+    até o app fechar.
 servers:
   - url: /api/v1
 paths:
@@ -338,7 +339,6 @@ paths:
   # sistema na resposta nem no log.
   /dados/apagar:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Apaga os dados do app neste computador: banco (vagas, fila, perfil, eventos, limites), currículos copiados, backups locais, perfil do navegador e chaves de IA no cofre do sistema. Só esses caminhos, nunca a pasta inteira (CENTRAL_PASTA pode ser uma pasta da pessoa); junção ou link para fora é removido como link. Não apaga o login das CLIs de IA, os arquivos originais dos currículos nem o cache da janela do app (WebView2/WebKit). Depois de responder, o app fecha (fechar sempre true, também na falha parcial); ao abrir de novo, é um usuário novo'
       requestBody:
@@ -356,9 +356,9 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
         '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+        '503': { description: 'Os dados já foram apagados e o app está fechando: {erro}. Vale para qualquer rota depois de apagar', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /navegador/sair:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Sair das plataformas: apaga só o perfil do navegador do app (sessão e cookies de LinkedIn, Gupy e InHire). Os dados ficam; o app continua aberto'
       requestBody:
