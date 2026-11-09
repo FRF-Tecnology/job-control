@@ -6,7 +6,10 @@
 // nem botão que ligue o envio.
 package envio
 
-import "github.com/FRF-Tecnology/job-control/internal/dominio"
+import (
+	"github.com/FRF-Tecnology/job-control/internal/aovivo"
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
+)
 
 // Controle do envio ligado. No build padrão, nada faz nada.
 //   - Parar: cancela o executor, espera o ciclo acabar e fecha o navegador esperando o processo sair (ao fechar o
@@ -18,6 +21,7 @@ import "github.com/FRF-Tecnology/job-control/internal/dominio"
 //   - Entrar: "Entrar nas plataformas". Espera o ciclo atual acabar e abre o endereço numa janela visível, para a
 //     pessoa entrar com a conta dela; até ela fechar a janela, o envio espera.
 //   - Janela: se "Ver o envio" está ligado e se a janela de login está aberta.
+//   - AoVivo (jc-a2y.6.9): o último quadro da aba do envio e a etapa, só em memória. nil sem o envio (a rota dá 404).
 type Controle struct {
 	Parar           func()
 	Suspender       func() (soltar func())
@@ -25,6 +29,7 @@ type Controle struct {
 	MostrarEnvio    func(visivel bool)
 	Entrar          func(endereco string) error
 	Janela          func() (visivel, login bool)
+	AoVivo          *aovivo.AoVivo
 }
 
 func nada()                                {}
