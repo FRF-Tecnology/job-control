@@ -264,7 +264,7 @@ a.cartao-num:hover { transform: translateY(-2px); }
 .pedido > .acoes, .pedido > .proposta, .pedido > .resposta-ia, .pedido > [role="status"] { grid-column: 1 / -1; }
 .pedido .acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .pedido .proposta { display: grid; gap: 8px; }
-.proposta-campos { margin: 0; display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--raio-p); background: var(--superficie-2); }
+.proposta-campos { margin: 0; display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--raio-p); background: var(--superficie-2); border: 1px solid var(--linha); }
 .proposta-campos > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; }
 .proposta-campos dt { color: var(--tinta-2); font-size: .85rem; }
 .proposta-campos dd { margin: 0; overflow-wrap: anywhere; }
