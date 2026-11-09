@@ -1,6 +1,6 @@
 # Proposta: contrato da fila de candidaturas (P5, 1º recorte)
 
-Bead `jc-a2y.6.1`. Status: **proposta, versão 3.** Inclui a revisão do CyberSec ("aceite com mudanças", M1 a M7 e R1 a R4, [comentário no #19](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731466181)) e as decisões do PO (1 a 6 e 8; a 4 foi revista para adotar o R1). A decisão 7 segue pendente. Nada aqui está implementado; o `api/openapi.yaml` só muda quando a proposta for aceita, junto com as rotas (o teste do contrato exige rota atendida).
+Bead `jc-a2y.6.1`. Status: **proposta, versão 3.** Inclui a revisão do CyberSec ("aceite com mudanças", M1 a M7 e R1 a R4, [comentário no #19](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731466181)) e as 8 decisões do PO (a 4 foi revista para adotar o R1). Nada aqui está implementado; o `api/openapi.yaml` só muda quando a proposta for aceita, junto com as rotas (o teste do contrato exige rota atendida).
 
 Escopo do 1º recorte: fila, aprovação, estados, transições, erros e as regras que o executor tem de seguir. **Fora:** o código do navegador (chromedp), a busca e a tela. Esses ficam no `jc-a2y.6.2` (executor) e no `jc-a2y.6.3` (telas). Plataforma alvo: Windows e macOS.
 
@@ -57,7 +57,6 @@ stateDiagram-v2
   aprovada --> cancelada
   bloqueada --> cancelada
   falhou --> cancelada
-  incerta --> cancelada
   enviada --> [*]
   cancelada --> [*]
 ```
@@ -65,7 +64,7 @@ stateDiagram-v2
 - **Quem muda o estado:** só a pessoa, pelas rotas abaixo, e o executor do `jc-a2y.6.2`, que é código interno e não tem rota HTTP. O executor faz `aprovada → enviando → enviada | bloqueada | falhou`, e ao abrir o app faz `enviando → incerta`. Texto de página, vaga, email ou IA **nunca** muda a fila.
 - **`enviada`:** na mesma transação, a vaga vai para a etapa `enviada` via `MoverVaga`, com `envio.data` e `envio.candidaturaId`. O follow-up começa a contar como hoje.
 - **`bloqueada`:** na mesma transação, a vaga vai para a etapa `bloqueada` com a pendência. O valor pedido pela página (CPF, senha…) nunca é lido, gravado ou registrado.
-- **`incerta` (M3):** se o app fechar com uma candidatura em `enviando`, ao abrir ela vai para `incerta`. A pessoa confere na plataforma. **Nunca** há nova tentativa automática, para não candidatar duas vezes.
+- **`incerta` (M3, decisão 7):** se o app fechar com uma candidatura em `enviando`, ao abrir ela vai para `incerta`. A pessoa confere na plataforma. **Nunca** há nova tentativa automática, para não candidatar duas vezes. Ela sai de `incerta` só por ação da pessoa na tela: `concluir-manual` (foi enviada) ou `reabrir` (não foi). Ela não pode ser cancelada pelo MCP ou pela CLI, e conta no limite do dia.
 
 ## Regras do executor (M1, M2, M3, M5): valem para o `jc-a2y.6.2`
 
@@ -120,7 +119,7 @@ stateDiagram-v2
 | PUT | `/candidaturas/{id}/conteudo` | `{conteudo, versao}` em `preparada` ou `aprovada` (volta a `preparada`) | 400, 404, 409 versão ou estado | ✓ (P6: MCP/CLI recebem 403) |
 | POST | `/candidaturas/{id}/aprovar` | `{impressao}` → `aprovada` | 404, 409 impressão, estado ou vaga mudou, 429 limite | ✓ |
 | POST | `/candidaturas/{id}/revogar` | `aprovada → preparada` | 404, 409 estado | — |
-| POST | `/candidaturas/{id}/cancelar` | → `cancelada` | 404, 409 estado final | — |
+| POST | `/candidaturas/{id}/cancelar` | `preparada`, `aprovada`, `bloqueada` ou `falhou` → `cancelada` | 404, 409 estado final ou `incerta` | — |
 | POST | `/candidaturas/{id}/reabrir` | `bloqueada`, `falhou` ou `incerta` → `preparada` | 404, 409 estado | ✓ |
 | POST | `/candidaturas/{id}/concluir-manual` | `bloqueada` ou `incerta` → `enviada` | 404, 409 estado | ✓ |
 | GET | `/candidaturas/limites` | `{linkedin: {limite, usadas, renovaEm}, gupy: {…}, inhire: {…}}` | — | — |
@@ -196,5 +195,5 @@ Executor (no `jc-a2y.6.2`):
 | 4 | Limite também em Gupy e InHire | sim (R1) | **sim** (revisto): LinkedIn, Gupy e InHire com 30 e máximo 40; `outra` sem envio automático |
 | 5 | Identidade do MCP e da CLI | regra M4 registrada agora | **fica para a P6**; na P5, aprovação só pela tela e nenhuma rota aceita aprovação de MCP ou CLI |
 | 6 | Fila como coleção em `itens` | sim | **sim**; avisar o PO antes de trocar, se a contagem do limite ficar cara ou frágil |
-| 7 | Estado `incerta` próprio (M3), em vez de `falhou` com `resultado.tipo = incerto` | aceita os dois jeitos | pendente |
+| 7 | Estado `incerta` próprio (M3), em vez de `falhou` com `resultado.tipo = incerto` | aceita os dois jeitos | **sim**: sai só pela tela (`concluir-manual` ou `reabrir`) e conta no limite |
 | 8 | Quais ações ficam só para a tela | opcional, se o PO quiser | **aprovar, concluir-manual, reabrir e PUT limites**; revogar e cancelar também pelo MCP/CLI; qualquer outra ação do MCP/CLI dá 403 |
