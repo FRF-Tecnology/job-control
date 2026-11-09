@@ -182,6 +182,43 @@ var Regras = []Regra{
 	{ID: "mensagem-rascunho", Funcoes: []string{"escreverMensagem"},
 		Descricao: "Mensagem é sempre rascunho: nunca é enviada sem aprovação da pessoa.",
 		aplicar:   func(s, e Objeto) (Objeto, *ErroIA) { return com(s, "rascunho", true), nil }},
+	{ID: "pedido-catalogo", Funcoes: []string{"interpretarPedido"},
+		Descricao: "Pedido (jc-a2y.7.1): vagaId só da lista enviada; url https sem usuário, barra invertida, // a mais nem host fora do ASCII; texto puro, sem HTML, esquema de link perigoso, senha ou dado bancário; nenhum caractere invisível ou de direção.",
+		aplicar: func(s, e Objeto) (Objeto, *ErroIA) {
+			p := dominio.ObjetoDe(s["parametros"])
+			for _, x := range p { // a mensagem é a mesma em qualquer ordem
+				if v, ok := x.(string); ok && reInvisivel.MatchString(v) {
+					return nil, bloquear("pedido-catalogo", "parâmetro com caractere invisível ou de direção")
+				}
+			}
+			if id, tem := p["vagaId"]; tem && id != nil {
+				achou := false
+				for _, v := range dominio.ListaDe(e["vagas"]) {
+					if outro, ok := dominio.ObjetoDe(v)["id"].(string); ok && outro == id {
+						achou = true
+					}
+				}
+				if !achou {
+					return nil, bloquear("pedido-catalogo", "vagaId fora da lista de vagas enviada")
+				}
+			}
+			if s["acao"] == "adicionar-vaga" && !URLSeguraPedido(p["url"]) {
+				return nil, bloquear("pedido-catalogo", "url fora do formato seguro")
+			}
+			for _, k := range []string{"empresa", "titulo", "texto"} {
+				v, ok := p[k].(string)
+				if !ok {
+					continue
+				}
+				if strings.ContainsAny(v, "<>") || reEsquemaPerigoso.MatchString(v) {
+					return nil, bloquear("pedido-catalogo", "texto com HTML ou link perigoso")
+				}
+				if reSegredo.MatchString(v) {
+					return nil, bloquear("pedido-catalogo", "texto com senha ou dado bancário")
+				}
+			}
+			return s, nil
+		}},
 	{ID: "sem-documento", Funcoes: nil,
 		Descricao: "Qualquer saída com CPF ou RG é bloqueada.",
 		aplicar: func(s, e Objeto) (Objeto, *ErroIA) {
@@ -224,6 +261,8 @@ func ValidarEntrada(funcao string, e Objeto) error {
 
 func extra(funcao string, s Objeto) []string {
 	switch funcao {
+	case "interpretarPedido":
+		return conferirParametros(s)
 	case "responderPergunta":
 		if c, ok := s["confianca"].(float64); ok && (c < 0 || c > 1) {
 			return []string{"confianca deve estar entre 0 e 1"}

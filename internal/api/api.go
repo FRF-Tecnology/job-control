@@ -42,6 +42,8 @@ type Pedido struct {
 	// DaJanela: o Handler viu Sec-Fetch-Site same-origin e o Host da janela do app (jc-a2y.6.9). A CLI e o MCP
 	// nunca marcam. Só o "Ao vivo" usa.
 	DaJanela bool
+	// Confirmação da proposta de um pedido (jc-a2y.7.1): os cabeçalhos X-Pedido e X-Impressao, só eles.
+	XPedido, XImpressao string
 }
 
 // Resposta é o que a API devolve. Tipo vazio = JSON.
@@ -67,8 +69,10 @@ type API struct {
 
 	// trava: cada pedido segura a leitura; "apagar meus dados" segura a escrita (espera os pedidos em curso e
 	// barra os novos). Depois de apagar, apagando fica true e todo pedido recebe 503 até o app fechar.
-	trava    sync.RWMutex
-	apagando bool
+	trava sync.RWMutex
+	// interpretando: uma interpretação de pedido por vez (jc-a2y.7.1); a segunda recebe 409.
+	interpretando sync.Mutex
+	apagando      bool
 	// noMeioDoPedido só existe para o teste segurar um pedido em curso (com a trava de leitura).
 	noMeioDoPedido func(caminho string)
 
@@ -461,9 +465,20 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 	}
 	c := dominio.ObjetoDe(corpo)
 
+	// Confirmação da proposta de um pedido (jc-a2y.7.1): só POST /vagas e /vagas/{id}/mover, só da tela. Vem antes de
+	// qualquer outra rota: X-Pedido em outro caminho é recusado.
+	if ped.XPedido != "" || ped.XImpressao != "" {
+		return a.confirmarPedido(ctx, m, p, corpo, ped.XPedido, ped.XImpressao, autor)
+	}
+	if strings.HasPrefix(p, "/pedidos/") {
+		if r, feito, err := a.rotasPedidosNoApp(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
 	if p == "/envio/ao-vivo" {
 		return a.rotaAoVivo(ctx, m, c, autor, ped.DaJanela)
 	}
+
 	if strings.HasPrefix(p, "/envio") {
 		if r, feito, err := a.rotasEnvio(ctx, m, p, q, c, autor); feito {
 			return r, err
