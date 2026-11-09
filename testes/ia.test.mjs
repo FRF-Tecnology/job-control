@@ -238,3 +238,69 @@ for (const p of PROVEDORES) {
     }
   });
 }
+
+// ---------- erro do provedor não repete a chave (jc-a2y.18) ----------
+import * as provAnthropic from '../nucleo/ia/provedores/anthropic.mjs';
+import * as provOpenai from '../nucleo/ia/provedores/openai.mjs';
+import * as provGoogle from '../nucleo/ia/provedores/google.mjs';
+import { mensagemHttp } from '../nucleo/ia/provedores/http.mjs';
+
+const SEGREDO = 'FICTICIAqwerty0123456789/abcdefXYZ+fim=9876'; // fictício; gitleaks:allow
+const FORMAS = {
+  exata: SEGREDO,
+  'json-escapada': SEGREDO.replaceAll('/', '\/'),
+  'url-encoded': encodeURIComponent(SEGREDO),
+  'prefixo+final': SEGREDO.slice(0, 16) + '...' + SEGREDO.slice(-4),
+  'ultimos-20': SEGREDO.slice(-20),
+};
+const semPedaco = (msg) => {
+  for (const f of Object.values(FORMAS)) for (let i = 0; i + 4 <= f.length; i++) assert.ok(!msg.includes(f.slice(i, i + 4)), `trecho da chave na mensagem: ${msg}`);
+};
+
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: erro HTTP e falha de rede não repetem a chave em nenhuma forma`, async () => {
+    for (const [nome, eco] of Object.entries(FORMAS)) {
+      for (const status of [400, 401, 403, 429, 500]) {
+        const fetch = async () => new Response(JSON.stringify({ error: { type: 'authentication_error', message: `Incorrect API key provided: ${eco}` } }), { status });
+        await assert.rejects(prov.chamar({ fetch, chave: SEGREDO, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+          semPedaco(e.message);
+          assert.equal(e.tipo, 'provedor', nome);
+          assert.equal(e.status, status);
+          assert.equal(e.message, `${prov.nome}: HTTP ${status} ${mensagemHttp(status)}`);
+          return true;
+        });
+      }
+    }
+    const rede = async (url) => { throw new TypeError(`fetch failed ${url} ${SEGREDO}`, { cause: { code: 'ECONNREFUSED' } }); };
+    await assert.rejects(prov.chamar({ fetch: rede, chave: SEGREDO, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+      semPedaco(e.message);
+      assert.equal(e.message, `${prov.nome}: falha de rede (conexão recusada)`);
+      return e.reintentavel === true;
+    });
+  });
+}
+
+// Nenhum valor do corpo de erro entra na mensagem: 8 ecos × 3 campos × 3 provedores (revisão CyberSec do PR #15, v2).
+const SENTINELA = 'sk-ant-api03-SENTINELAvazaKEYfragmento_ABC-123xyz'; // fictícia; gitleaks:allow
+const RUN = 'SENTINELAvazaKEYfragmento_ABC';
+const ECOS = { exato: RUN, 'caixa-baixa': RUN.toLowerCase(), 'caixa-alta': RUN.toUpperCase(), prefixado: 'x' + RUN, 'err_prefixo': 'err_' + RUN,
+  sufixado: RUN + '_err', 'trecho+caixa': RUN.slice(0, 12).toLowerCase() + '_code', inicio: 'sk_ant_api' };
+const semLetrasDaSentinela = (msg) => {
+  const baixa = msg.toLowerCase();
+  for (const t of SENTINELA.match(/[A-Za-z]{4,}/g)) for (let i = 0; i + 4 <= t.length; i++) assert.ok(!baixa.includes(t.slice(i, i + 4).toLowerCase()), `letras da chave na mensagem: ${msg}`);
+  assert.ok(!/sk[_-]ant/.test(baixa), `começo da chave na mensagem: ${msg}`);
+};
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: nenhum valor do corpo de erro (code, type, status) entra na mensagem`, async () => {
+    for (const campo of ['code', 'type', 'status']) {
+      for (const [nome, eco] of Object.entries(ECOS)) {
+        const fetch = async () => new Response(JSON.stringify({ error: { [campo]: eco, message: 'x' } }), { status: 401 });
+        await assert.rejects(prov.chamar({ fetch, chave: SENTINELA, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+          semLetrasDaSentinela(e.message);
+          assert.equal(e.message, `${prov.nome}: HTTP 401 ${mensagemHttp(401)}`, `${campo}/${nome}`);
+          return true;
+        });
+      }
+    }
+  });
+}
