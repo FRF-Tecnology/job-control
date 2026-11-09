@@ -25,7 +25,13 @@ export const LISTA = [
 ];
 export const LIMITES = Object.fromEntries(['linkedin', 'gupy', 'inhire'].map(p => [p, { limite: 30, usadas: p === 'linkedin' ? 30 : 2, renovaEm: '2026-11-10T00:00:00-03:00' }]));
 export const ENVIO = { ligado: true, pausado: false, janela: 'oculta', login: false, enviandoAgora: { id: 'cand-envi', desde: '2026-11-09T10:10:00-03:00' },
-  desfechos: [{ id: 'cand-bloq', estado: 'bloqueada', motivo: 'cpf', em: '2026-11-09T11:00:00-03:00' }, { id: 'cand-falh', estado: 'falhou', motivo: null, em: '2026-11-09T10:50:00-03:00' }] };
+  desfechos: [{ id: 'cand-bloq', estado: 'bloqueada', motivo: 'cpf', em: '2026-11-09T11:00:00-03:00' }, { id: 'cand-falh', estado: 'falhou', motivo: null, em: '2026-11-09T10:50:00-03:00' }],
+  // jc-a2y.6.11.1: uma plataforma em cada situação que pede algo da pessoa.
+  plataformas: [
+    { plataforma: 'gupy', estado: 'pausada', motivo: 'falhas-seguidas', ate: null, voltasHoje: 2, paginasHoje: 12, tetoPaginas: 40 },
+    { plataforma: 'inhire', estado: 'parada-hoje', motivo: 'aviso-conta', ate: '2026-11-10T00:00:00-03:00', voltasHoje: 0, paginasHoje: 3, tetoPaginas: 40 },
+    { plataforma: 'linkedin', estado: 'precisa-entrar', motivo: 'login', ate: null, voltasHoje: 1, paginasHoje: 30, tetoPaginas: 40 },
+  ] };
 
 // A vaga fictícia entra só na resposta do GET /estado: os testes não gravam nada na pasta de dados, que a jornada de
 // usuário novo precisa vazia.
