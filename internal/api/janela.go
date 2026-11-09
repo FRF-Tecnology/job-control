@@ -97,6 +97,7 @@ func (a *API) entrarNoNavegador(ctx context.Context, c Objeto, autor string) (Re
 		}
 		return Resposta{}, &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador", Motivo: "sem-navegador"}
 	}
+	a.limparAoVivo()                                            // o login nunca entra no ao vivo (jc-a2y.6.9)
 	log.Printf("navegador: janela de login aberta (%s)", autor) // sem endereço (M7)
 	return a.estadoEnvio(ctx, nil)
 }

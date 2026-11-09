@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -57,7 +58,7 @@ func TestMarcaApplyerSemMudarNomesInternos(t *testing.T) {
 	// Internos: iguais até o jc-etv.6.
 	internos := map[string][]string{
 		"build/config.yml":                    {`productIdentifier: "com.frftecnology.central"`},
-		"build/darwin/Info.plist":             {"<string>com.frftecnology.central</string>", "<string>central.exe</string>"},
+		"build/darwin/Info.plist":             {"<string>com.frftecnology.central</string>"},
 		"build/windows/msix/app_manifest.xml": {`Name="com.frftecnology.central"`, `Executable="central.exe"`},
 		"Taskfile.yml":                        {`APP_NAME: "central"`},
 		"../internal/segredos/segredos.go":    {`servico = "Central de Candidaturas"`},
@@ -68,6 +69,13 @@ func TestMarcaApplyerSemMudarNomesInternos(t *testing.T) {
 			if !strings.Contains(texto, tr) {
 				t.Errorf("%s: nome interno mudou (%q); só com o plano do jc-etv.6", arq, tr)
 			}
+		}
+	}
+	// O executável do app tem o nome que cada sistema gera (jc-etv.10): central.exe no Windows (MSIX), central no Mac,
+	// porque o Taskfile do Mac copia o binário sem .exe. Com central.exe no plist, o .app não abria.
+	for _, plist := range []string{"build/darwin/Info.plist", "build/darwin/Info.dev.plist"} {
+		if !regexp.MustCompile(`<key>CFBundleExecutable</key>\s*<string>central</string>`).MatchString(ler(plist)) {
+			t.Errorf("%s: CFBundleExecutable tem de ser central (o binário do Mac)", plist)
 		}
 	}
 	// Pasta de dados (jc-etv.7, PR A1): a nova é Applyer, e a antiga, que a migração renomeia, continua com o nome de
