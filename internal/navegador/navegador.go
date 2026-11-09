@@ -72,6 +72,8 @@ func (n *Navegador) opcoes() []chromedp.ExecAllocatorOption {
 		chromedp.Flag("disable-save-password-bubble", true),
 		chromedp.Flag("no-pings", true),
 		chromedp.Flag("no-service-autorun", true),
+		// O padrão do chromedp desliga o bloqueio de popups; aqui ele volta (jc-a2y.6.2.8).
+		chromedp.Flag("disable-popup-blocking", false),
 	)
 	return append(o, n.extrasDeTeste...)
 }
