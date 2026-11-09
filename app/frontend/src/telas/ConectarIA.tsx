@@ -6,7 +6,11 @@ import { Convite, LinkExterno } from '../componentes';
 
 // pronta/aviso (contrato 0.4.2): instalada num formato que o app não usa (ex.: Claude .cmd no Windows) vem com
 // pronta false e um aviso fixo do back. Sem o campo (API antiga), vale como pronta.
-type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string; pronta?: boolean; aviso?: string };
+// motivo (contrato 0.4.5, só com pronta false): "formato" se resolve instalando a versão nativa (ex.: Claude .cmd);
+// "politica" é regra do app (Codex e Gemini por enquanto) e o caminho é uma chave de API.
+type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string; pronta?: boolean; aviso?: string; motivo?: 'formato' | 'politica' };
+// Para "Usar chave de API": o provedor de chave equivalente a cada CLI.
+const CHAVE_DA_CLI: Record<string, string> = { 'claude-cli': 'anthropic', 'codex-cli': 'openai', 'gemini-cli': 'google' };
 const naoPronta = (c?: CLI) => !!c && c.instalada && c.pronta === false;
 const AVISO_PADRAO = 'O app não consegue usar esta instalação. Veja como instalar a versão indicada.';
 // O aviso do back vem em minúscula (cabe no meio de uma frase); na tela ele é frase própria.
@@ -61,6 +65,11 @@ export function TelaConectarIA() {
     const emUso = ia?.configurada && ia.provedor === provedor;
     setEscolha(provedor); setModelo(emUso ? ia!.modelo ?? '' : ''); setUrl(emUso ? ia!.url ?? '' : '');
   };
+  // Leva à seção de chave já com o provedor equivalente escolhido; o foco rola a tela até o campo.
+  const usarChave = (cliProvedor: string) => { escolher(CHAVE_DA_CLI[cliProvedor] ?? 'anthropic'); campoChave.current?.focus(); };
+  const acaoNaoPronta = (c: CLI, classe: string) => c.motivo === 'politica'
+    ? <button className={classe} type="button" onClick={() => usarChave(c.provedor)}>Usar chave de API</button>
+    : <LinkExterno url={c.instalar} className={classe}>Como instalar</LinkExterno>;
   const salvarChave = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const nova = chave.trim();
@@ -112,14 +121,14 @@ export function TelaConectarIA() {
       </header>
 
       {ativa && naoPronta(cliAtiva) ? (
-        <Convite titulo={`Conectada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
+        <Convite ambar titulo={`Conectada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
           <span className="acoes">
-            <LinkExterno url={cliAtiva!.instalar} className="botao p">Como instalar</LinkExterno>
+            {acaoNaoPronta(cliAtiva!, 'botao p')}
             {desconectar}
           </span>
         </Convite>
       ) : ativa && faltaChave ? (
-        <Convite titulo={`Falta a chave: ${ativa}`} texto={`Cole a chave de API para ${destinoDe(ia.provedor!, ia.url).host}.`}>
+        <Convite ambar titulo={`Falta a chave: ${ativa}`} texto={`Cole a chave de API para ${destinoDe(ia.provedor!, ia.url).host}.`}>
           <span className="acoes">
             <button className="botao p" type="button" onClick={() => { escolher(ia.provedor!); campoChave.current?.focus(); }}>Colar a chave</button>
             {desconectar}
@@ -153,7 +162,7 @@ export function TelaConectarIA() {
                 <div className="acoes">
                   {pronto
                     ? <button className="botao p" type="button" disabled={!!ocupado || ia.provedor === c.provedor} onClick={() => usar(c.provedor)}>{ia.provedor === c.provedor ? 'Em uso' : ocupado === c.provedor ? 'Conectando…' : 'Usar'}</button>
-                    : <LinkExterno url={c.instalar} className="botao-fantasma p">Como instalar</LinkExterno>}
+                    : acaoNaoPronta(c, 'botao-fantasma p')}
                 </div>
               </li>
             );

@@ -93,7 +93,7 @@ export default function App() {
     try {
       if (!forcar && temEstado.current) {
         const { versao: v } = await chamarApi('/api/v1/versao');
-        if (v === versao.current) { setConexao({ texto: 'Conectado', estado: 'ok' }); return; }
+        if (v === versao.current) { setConexao({ texto: 'Dados locais', estado: 'ok' }); return; }
       }
       if (sujo.current && !forcar) { setConexao({ texto: 'Há mudanças novas — salve o que está editando para ver', estado: '' }); return; }
       novo = await chamarApi('/api/v1/estado');
@@ -113,7 +113,7 @@ export default function App() {
     sujo.current = false;
     setFalha(null);
     setEstado(novo);
-    setConexao({ texto: 'Conectado', estado: 'ok' });
+    setConexao({ texto: 'Dados locais', estado: 'ok' });
   }, []);
 
   // Atualização automática: a cada 5 s, ao voltar para a janela e ao trocar de seção.

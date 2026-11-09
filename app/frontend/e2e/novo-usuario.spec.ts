@@ -24,6 +24,8 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   // 1. Primeiro acesso: guia "Primeiros passos" com 0 de 3 e plataformas iniciais já cadastradas.
   await ir(page, 'hoje');
   await expect(page.getByRole('heading', { name: 'Olá.' })).toBeVisible();
+  // O selo do topo é a conexão com os dados locais, não a IA (jc-a2y.38).
+  await expect(page.locator('.status-conexao')).toHaveText('Dados locais');
   await expect(page.getByText('0 de 3 prontos')).toBeVisible();
   await ir(page, 'plataformas');
   await expect(page.locator('article.plataforma').first()).toBeVisible();
