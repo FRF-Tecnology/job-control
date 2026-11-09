@@ -130,9 +130,17 @@ jobs:
           test -x "$app/Contents/MacOS/$exe"
           lipo -archs "$app/Contents/MacOS/$exe" | grep -qw arm64
           codesign --verify --deep --strict "$app"
+          # O app de teste é o build padrão: nem o gatilho de envio (envio_dev) nem o navegador (chromedp) entram.
+          go version -m "$app/Contents/MacOS/$exe" > build-info.txt
+          if grep -E 'envio_dev|github\.com/chromedp/' build-info.txt; then
+            echo "::error::o binário do .app tem envio_dev ou chromedp; o artefato de teste é só o build padrão"; exit 1
+          fi
           cd ../pacote && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64.zip
           ls -l Applyer-macos-arm64.zip
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      # Só sobe em push no repo oficial (reescrita-go ou main): PR, inclusive de fork, testa o pacote mas não publica
+      # um .app que alguém poderia baixar e abrir.
+      - if: github.event_name == 'push' && github.repository == 'FRF-Tecnology/job-control'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: pacote/Applyer-macos-arm64.zip
           archive: false
