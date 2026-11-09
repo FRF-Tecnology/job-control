@@ -70,20 +70,30 @@ var PlataformasComLimite = []string{"linkedin", "gupy", "inhire"}
 
 // Candidatura é a forma tipada do item guardado na coleção "candidaturas".
 type Candidatura struct {
-	ID           string     `json:"id"`
-	VagaID       string     `json:"vagaId"`
-	Plataforma   string     `json:"plataforma"`
-	URL          string     `json:"url"`
-	Estado       string     `json:"estado"`
-	Conteudo     Objeto     `json:"conteudo"`
-	Impressao    string     `json:"impressao"`
-	Aprovacao    *Aprovacao `json:"aprovacao"`
-	Bloqueio     *Bloqueio  `json:"bloqueio"`
-	Resultado    *Resultado `json:"resultado"`
-	Tentativas   []string   `json:"tentativas,omitempty"` // instantes em que entrou em enviando (contam no limite)
-	Versao       int        `json:"versao"`
-	CriadaEm     string     `json:"criadaEm"`
-	AtualizadaEm string     `json:"atualizadaEm"`
+	ID         string     `json:"id"`
+	VagaID     string     `json:"vagaId"`
+	Plataforma string     `json:"plataforma"`
+	URL        string     `json:"url"`
+	Estado     string     `json:"estado"`
+	Conteudo   Objeto     `json:"conteudo"`
+	Impressao  string     `json:"impressao"`
+	Aprovacao  *Aprovacao `json:"aprovacao"`
+	Bloqueio   *Bloqueio  `json:"bloqueio"`
+	Resultado  *Resultado `json:"resultado"`
+	Tentativas []string   `json:"tentativas,omitempty"` // instantes em que entrou em enviando (contam no limite)
+	// Retentativas: voltas automáticas para aprovada depois de falha técnica antes de interagir (jc-a2y.6.11). Não
+	// contam no limite; no máximo MaxRetentativas por aprovação.
+	Retentativas     []Retentativa `json:"retentativas,omitempty"`
+	ProximaTentativa string        `json:"proximaTentativa,omitempty"` // o executor só pega a aprovada depois disto
+	Versao           int           `json:"versao"`
+	CriadaEm         string        `json:"criadaEm"`
+	AtualizadaEm     string        `json:"atualizadaEm"`
+}
+
+// Retentativa: uma volta automática para aprovada (instante e código da falha, da lista fechada).
+type Retentativa struct {
+	Em     string `json:"em"`
+	Codigo string `json:"codigo"`
 }
 
 // Aprovacao: a impressão aprovada, até quando vale (fim do dia local) e o fuso gravado.
@@ -492,6 +502,7 @@ func AprovarCandidatura(e Estado, id, impressao string, agora time.Time, limites
 	if err := conferirLimite(e, c.Plataforma, agora, limites); err != nil {
 		return e, nil, err
 	}
+	c.Retentativas, c.ProximaTentativa = nil, "" // aprovação nova: as voltas recomeçam do zero (no máximo 3 por aprovação)
 	c.Aprovacao = &Aprovacao{
 		Em:        agora.Format(time.RFC3339),
 		Impressao: c.Impressao,
@@ -524,6 +535,7 @@ func RevogarCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado, 
 		return e, nil, conflitoEstado(c, "revogar")
 	}
 	c.Estado, c.Aprovacao = CandPreparada, nil
+	c.Retentativas, c.ProximaTentativa = nil, ""
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
@@ -627,6 +639,9 @@ func IniciarEnvio(e Estado, id string, versao int, agora time.Time, limites map[
 	if !AprovacaoValida(c.Aprovacao, agora) {
 		return e, nil, &ErroConflito{Msg: "a aprovação venceu", Estado: c.Estado}
 	}
+	if !ProntaParaTentar(c, agora) {
+		return e, nil, &ErroConflito{Msg: "a próxima tentativa ainda não chegou", Estado: c.Estado}
+	}
 	if !URLDaPlataforma(c.Plataforma, c.URL) {
 		return e, nil, &ErroConflito{Msg: "o endereço não é do site da plataforma", Estado: c.Estado}
 	}
@@ -639,6 +654,56 @@ func IniciarEnvio(e Estado, id string, versao int, agora time.Time, limites map[
 	c.Estado = CandEnviando
 	c.Aprovacao.UsadaEm = agora.Format(time.RFC3339)
 	c.Tentativas = append(c.Tentativas, agora.Format(time.RFC3339))
+	novo, o := salvarCandidatura(e, i, c, agora)
+	return novo, o, nil
+}
+
+// ProntaParaTentar: sem próxima tentativa marcada, ou já passou dela.
+func ProntaParaTentar(c Candidatura, agora time.Time) bool {
+	if c.ProximaTentativa == "" {
+		return true
+	}
+	quando, err := time.Parse(time.RFC3339, c.ProximaTentativa)
+	return err == nil && !agora.Before(quando)
+}
+
+// MaxRetentativas e o espaço entre elas (jc-a2y.6.11): 5 min, 30 min, 2 h.
+const MaxRetentativas = 3
+
+var esperaDaRetentativa = []time.Duration{5 * time.Minute, 30 * time.Minute, 2 * time.Hour}
+
+// CodigosDeVolta: o que pode devolver a candidatura para aprovada (sempre antes de interagir com o formulário).
+var CodigosDeVolta = map[string]bool{"erro-tecnico": true, "login": true}
+
+// DevolverAprovada (jc-a2y.6.11): enviando → aprovada, quando o executor falhou ANTES de interagir com o
+// formulário (nada foi preenchido, anexado nem clicado em avançar ou enviar). Nada do pacote saiu do app, então:
+//   - a aprovação volta a não usada (usadaEm apagado), com a mesma impressão e a mesma validade no dia;
+//   - a tentativa sai de tentativas (não conta no limite) e entra em retentativas, para auditoria;
+//   - a próxima tentativa fica para daqui a 5 min, 30 min ou 2 h.
+//
+// Na volta de número MaxRetentativas+1, a candidatura vai para falhou/erro-tecnico, como antes. Só o executor chama
+// isto, e só antes de interagir: depois disso, falhou, bloqueada ou incerta, como sempre (M2, M3).
+func DevolverAprovada(e Estado, id, codigo string, agora time.Time) (Estado, Objeto, error) {
+	if !CodigosDeVolta[codigo] {
+		return e, nil, validacao("código de volta desconhecido: " + codigo)
+	}
+	i, c, err := acharCandidatura(e, id)
+	if err != nil {
+		return e, nil, err
+	}
+	if c.Estado != CandEnviando || c.Aprovacao == nil {
+		return e, nil, conflitoEstado(c, "devolver")
+	}
+	if len(c.Retentativas) >= MaxRetentativas {
+		return FalharCandidatura(e, id, "erro-tecnico", agora)
+	}
+	c.Estado = CandAprovada
+	c.Aprovacao.UsadaEm = ""
+	if n := len(c.Tentativas); n > 0 {
+		c.Tentativas = c.Tentativas[:n-1] // a tentativa que acabou de entrar em enviando não conta no limite
+	}
+	c.Retentativas = append(c.Retentativas, Retentativa{Em: agora.Format(time.RFC3339), Codigo: codigo})
+	c.ProximaTentativa = agora.Add(esperaDaRetentativa[len(c.Retentativas)-1]).Format(time.RFC3339)
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
@@ -661,6 +726,7 @@ func VencerAprovacoes(e Estado, agora time.Time) (Estado, int) {
 			continue
 		}
 		c.Estado, c.Aprovacao = CandPreparada, nil
+		c.Retentativas, c.ProximaTentativa = nil, ""
 		c.Versao++
 		c.AtualizadaEm = agora.Format(time.RFC3339)
 		novo.Candidaturas[i] = c.objeto()
