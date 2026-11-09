@@ -113,6 +113,23 @@ test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ pag
     await ir(page, rota);
     const rolaDeLado = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
     expect(rolaDeLado, `${rota} rola para o lado`).toBe(false);
+    // Nenhum texto passa da borda do seu bloco (ex.: caminho longo de pasta num card; jc-a2y.47).
+    // Blocos com rolagem própria (overflow auto/hidden, como o Quadro) ficam de fora.
+    const vazam = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('main#conteudo *')].flatMap(el => {
+      const e = getComputedStyle(el);
+      if (e.display === 'inline' || e.overflowX !== 'visible' || !el.clientWidth || el.closest('[hidden]')) return [];
+      if ([...el.querySelectorAll<HTMLElement>('*')].some(f => getComputedStyle(f).overflowX !== 'visible')) return [];
+      return el.scrollWidth > el.clientWidth + 1 ? [`${el.tagName.toLowerCase()}.${[...el.classList].join('.')} "${(el.textContent ?? '').trim().slice(0, 40)}" ${el.scrollWidth}>${el.clientWidth}`] : [];
+    }));
+    expect(vazam, `${rota}: texto vaza do bloco`).toEqual([]);
+    // Rolando até o fim, o conteúdo termina acima da barra de abas fixa (a barra não cobre nada).
+    const cobre = await page.evaluate(() => {
+      scrollTo(0, document.documentElement.scrollHeight);
+      const abas = document.querySelector('nav.abas')?.getBoundingClientRect();
+      const ultimo = [...document.querySelectorAll('main#conteudo > *')].at(-1)?.getBoundingClientRect();
+      return abas && ultimo ? ultimo.bottom > abas.top + 0.5 : false;
+    });
+    expect(cobre, `${rota}: a barra de abas cobre o fim do conteúdo`).toBe(false);
   }
   await ir(page, 'hoje');
   await page.locator('nav.abas').getByRole('button', { name: 'Mais' }).click();
