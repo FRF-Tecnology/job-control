@@ -6,6 +6,7 @@ import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
 import { Icone, LinkExterno } from '../componentes';
 import { SeusPedidos, type Pedido } from './Pedidos';
+import { AvisoPasta } from './AvisoPasta';
 import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode } from '../util';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
@@ -199,6 +200,8 @@ export function TelaHoje() {
         <div className="cartao-num"><span className="n">{Math.max(0, limite - linkedinHoje)}</span><span className="r">restantes no LinkedIn hoje</span></div>
         <div className="cartao-num"><span className="n">{naSemana}</span><span className="r">enviadas na semana</span></div>
       </div>
+
+      <AvisoPasta />
 
       {semIA && (
         <section className="bloco">
