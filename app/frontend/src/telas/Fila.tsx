@@ -112,6 +112,18 @@ export function TelaFila() {
   // Relê quando a casca recarrega o estado (a versão dos dados muda a cada gravação, inclusive na fila).
   useEffect(() => { ler(); }, [app.estado]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Vindo de um pedido ("preparar-pacote", jc-a2y.7.1): #/fila?preparar=<vagaId> abre o preparo dessa vaga, ou leva ao
+  // cartão da candidatura que ela já tem. Só navega: preparar, salvar e aprovar continuam com a pessoa.
+  const pedidoPreparar = new URLSearchParams(location.hash.split('?')[1] ?? '').get('preparar');
+  useEffect(() => {
+    if (!lista || !pedidoPreparar) return;
+    history.replaceState(null, '', '#/fila');
+    if (!/^[A-Za-z0-9._-]{1,80}$/.test(pedidoPreparar)) return;
+    const cand = lista.find(c => c.vagaId === pedidoPreparar && c.estado !== 'cancelada');
+    if (cand) { requestAnimationFrame(() => document.querySelector(`[data-testid="${cand.id}"]`)?.scrollIntoView({ block: 'start' })); return; }
+    if ((app.estado.vagas ?? []).some((v: any) => v.id === pedidoPreparar)) { setEditando(null); setPreparando(pedidoPreparar); }
+  }, [lista, pedidoPreparar]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!lista) return;
     let vivo = true;
