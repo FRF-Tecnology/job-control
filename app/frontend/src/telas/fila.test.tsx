@@ -62,7 +62,7 @@ describe('Fila: só leitura', () => {
     expect(within(await cartao('envi')).getByText('Enviando')).toBeTruthy();
     expect(within(await cartao('feit')).getByText('Enviada')).toBeTruthy();
     const bloq = await cartao('bloq');
-    expect(within(bloq).getByText('Bloqueada · CPF')).toBeTruthy();
+    expect(within(bloq).getByText('Bloqueada · Número fiscal')).toBeTruthy();
     expect(within(bloq).getByText('Digitar o CPF e enviar')).toBeTruthy();
     expect(within(await cartao('falh')).getByText(/currículo mudou/)).toBeTruthy();
     expect(within(await cartao('ince')).getByText(/Confira no LinkedIn/)).toBeTruthy();
