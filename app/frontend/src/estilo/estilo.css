@@ -144,6 +144,7 @@ label.campo { display: grid; gap: 6px; font-size: .88rem; color: var(--tinta-2);
 label.campo > span { font-weight: 600; color: var(--tinta); }
 .destino-chave { font-size: .85rem; color: var(--tinta-2); overflow-wrap: anywhere; } /* para onde a chave vai (jc-a2y.40) */
 .destino-chave strong { color: var(--tinta); font-weight: 600; }
+.destino-chave.proprio, .destino-chave.proprio strong { color: var(--ambar); } /* endereço fora do padrão: chama atenção */
 
 /* ---------- etapas e selos ---------- */
 .etapa { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--tinta-2); white-space: nowrap; }

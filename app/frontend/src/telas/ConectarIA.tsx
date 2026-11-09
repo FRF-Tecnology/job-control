@@ -99,6 +99,10 @@ export function TelaConectarIA() {
   const opcaoChave = CHAVES.find(c => c.provedor === escolha)!;
   const faltaChave = ia.configurada && CHAVES.some(c => c.provedor === ia.provedor) && !ia.chaves[ia.provedor!];
   const destino = destinoDe(escolha, url);
+  // No resumo do topo, o endereço da chave em uso: um endereço trocado (por script, por exemplo) fica à vista.
+  const destinoAtivo = ia.provedor ? destinoDe(ia.provedor, ia.url) : null;
+  const resumoChave = ia.configurada && CHAVES.some(c => c.provedor === ia.provedor) && destinoAtivo
+    ? `Chave para ${destinoAtivo.host} (${destinoAtivo.padrao ? 'padrão' : 'endereço próprio'}). ` : '';
   const desconectar = <button className="botao-fantasma" type="button" disabled={!!ocupado} onClick={() => fazer('nenhum', () => app.api('/api/v1/ia/config', 'PUT', { provedor: 'nenhum' }), 'IA desconectada')}>Desconectar</button>;
 
   return (
@@ -122,7 +126,7 @@ export function TelaConectarIA() {
           </span>
         </Convite>
       ) : ativa ? (
-        <Convite azul titulo={`Conectada: ${ativa}`} texto={`${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
+        <Convite azul titulo={`Conectada: ${ativa}`} texto={`${resumoChave}${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
           <span className="acoes">
             <button className="botao" type="button" disabled={!!ocupado} onClick={testar}>{ocupado === 'testar' ? 'Testando…' : 'Testar conexão'}</button>
             {desconectar}
@@ -169,7 +173,9 @@ export function TelaConectarIA() {
             </label>
             <label className="campo"><span>{`Chave de API${ia.chaves[escolha] ? ` (salva: ${ia.chaves[escolha]})` : ''}`}</span>
               <input ref={campoChave} type="password" autoComplete="off" value={chave} onChange={ev => setChave(ev.target.value)} placeholder={ia.chaves[escolha] ? 'deixe em branco para manter a salva' : opcaoChave.ajuda} />
-              <small className="destino-chave">A chave vai para <strong>{destino.host}</strong>{destino.padrao ? ' (padrão)' : ''}</small>
+              {destino.padrao
+                ? <small className="destino-chave">A chave vai para <strong>{destino.host}</strong> (padrão)</small>
+                : <small className="destino-chave proprio">A chave vai para um endereço próprio: <strong>{destino.host}</strong></small>}
             </label>
             <label className="campo"><span>Modelo</span>
               <input type="text" value={modelo} onChange={ev => setModelo(ev.target.value)} placeholder={opcaoChave.modelo || 'nome do modelo na sua conta'} />
