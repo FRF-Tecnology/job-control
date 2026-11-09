@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -59,6 +60,18 @@ type API struct {
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
 	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
 	cacheCLIs        cacheDeteccao
+
+	// trava: cada pedido segura a leitura; "apagar meus dados" segura a escrita (espera os pedidos em curso e
+	// barra os novos). Depois de apagar, apagando fica true e todo pedido recebe 503 até o app fechar.
+	trava    sync.RWMutex
+	apagando bool
+	// noMeioDoPedido só existe para o teste segurar um pedido em curso (com a trava de leitura).
+	noMeioDoPedido func(caminho string)
+
+	pararEnvio      func()        // apagar meus dados: para o executor, espera o ciclo e fecha o navegador
+	suspenderEnvio  func() func() // sair das plataformas: nenhum ciclo novo até soltar
+	fecharNavegador func()        // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
+	aoApagar        func()        // depois de apagar os dados: fecha o app
 }
 
 // Opcoes configura a API.
@@ -70,6 +83,12 @@ type Opcoes struct {
 	Cofre        segredos.Cofre                       // padrão: cofre do sistema operacional
 	ProvedoresIA map[string]ia.Provedor               // só nos testes
 	DetectarCLIs func(context.Context) []ia.EstadoCLI // padrão: procura claude, codex e gemini no PATH
+
+	// Ganchos do app (padrão: não fazem nada). PararEnvio e FecharNavegador vêm de envio.Ligar; AoApagar fecha o app.
+	PararEnvio      func()
+	SuspenderEnvio  func() (soltar func())
+	FecharNavegador func()
+	AoApagar        func()
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -89,7 +108,17 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.DetectarCLIs == nil {
 		o.DetectarCLIs = ia.DetectarCLIs
 	}
-	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now}
+	nada := func() {}
+	for _, f := range []*func(){&o.PararEnvio, &o.FecharNavegador, &o.AoApagar} {
+		if *f == nil {
+			*f = nada
+		}
+	}
+	if o.SuspenderEnvio == nil {
+		o.SuspenderEnvio = func() func() { return nada }
+	}
+	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
+		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -128,7 +157,22 @@ func respostaDeErro(err error) (Resposta, bool) {
 
 // Chamar atende um pedido. Erro só sobe quando é inesperado (o HTTP responde 500).
 func (a *API) Chamar(ctx context.Context, p Pedido) (Resposta, error) {
-	r, err := a.rotear(ctx, p)
+	if ehPedidoDeApagar(p) {
+		return respostaOuErro(a.apagarComTrava(ctx, p))
+	}
+	a.trava.RLock()
+	defer a.trava.RUnlock()
+	if a.apagando {
+		return respostaFechando(), nil
+	}
+	if a.noMeioDoPedido != nil {
+		a.noMeioDoPedido(p.Caminho)
+	}
+	return respostaOuErro(a.rotear(ctx, p))
+}
+
+// respostaOuErro transforma os erros conhecidos em status; o resto sobe (o HTTP responde 500).
+func respostaOuErro(r Resposta, err error) (Resposta, error) {
 	if err != nil {
 		if resp, ok := respostaDeErro(err); ok {
 			return resp, nil
@@ -383,6 +427,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{}, falha(400, "envie um objeto JSON")
 	}
 	c := dominio.ObjetoDe(corpo)
+
+	if p == "/dados/apagar" || p == "/navegador/sair" {
+		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
 
 	if strings.HasPrefix(p, "/candidaturas") {
 		if r, feito, err := a.rotasCandidaturas(ctx, m, p, q, c, autor); feito {

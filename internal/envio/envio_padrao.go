@@ -12,6 +12,6 @@ import (
 const Ligado = false
 
 // Ligar não faz nada no build padrão: nenhuma candidatura é enviada.
-func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) (parar func()) {
-	return func() {}
+func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
+	return Controle{Parar: nada, Suspender: suspenderNada, FecharNavegador: nada}
 }

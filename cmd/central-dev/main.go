@@ -35,7 +35,8 @@ func main() {
 	if telas == "" {
 		telas = "app/frontend/dist"
 	}
-	apiLocal := api.Nova(arm, api.Opcoes{}).Handler()
+	// Depois de "apagar meus dados", o processo sai (o banco já foi fechado e apagado).
+	apiLocal := api.Nova(arm, api.Opcoes{AoApagar: func() { os.Exit(0) }}).Handler()
 	arquivos := http.FileServer(http.Dir(telas))
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)
