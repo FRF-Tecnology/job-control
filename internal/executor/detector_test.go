@@ -124,10 +124,12 @@ func TestPaginasFicticias(t *testing.T) {
 			cobertos[d.Motivo] = true
 		})
 	}
-	// pergunta-nova, site-externo e outro também saem das páginas (M1, M5 e etapas demais).
+	// pergunta-nova, site-externo e outro também saem das páginas (M1, M5 e etapas demais). varias-etapas não sai do
+	// envio: só a leitura do formulário a aponta (jc-a2y.7.2, BloquearLeitura), com teste próprio na parte 3.
+	soDaLeitura := map[string]bool{"varias-etapas": true}
 	var faltam []string
 	for m := range dominio.PendenciaDoMotivo {
-		if !cobertos[m] {
+		if !cobertos[m] && !soDaLeitura[m] {
 			faltam = append(faltam, m)
 		}
 	}

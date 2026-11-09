@@ -62,6 +62,14 @@ func (a *API) rotasCandidaturas(ctx context.Context, m, p string, q map[string]s
 		r, err := a.aprovarLote(ctx, c, autor)
 		return r, true, err
 
+	case reLerFormulario.MatchString(p) && m == "POST": // jc-a2y.7.2
+		id, err := decodificar(reLerFormulario.FindStringSubmatch(p)[1])
+		if err != nil {
+			return Resposta{}, true, err
+		}
+		r, err := a.lerFormularioDe(ctx, id, c, autor)
+		return r, true, err
+
 	case reCandidatura.MatchString(p) && m == "GET":
 		id, err := decodificar(reCandidatura.FindStringSubmatch(p)[1])
 		if err != nil {
