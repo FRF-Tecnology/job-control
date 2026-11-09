@@ -360,7 +360,7 @@ dialog form { display: grid; gap: 16px; }
 .primeiros ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .primeiros li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--destaque) 15%, transparent); }
 .primeiros li:last-child { border-bottom: 0; }
-.primeiros li p { margin: 2px 0 0; color: var(--tinta-2); }
+.primeiros li p { margin: 2px 0 0; color: var(--tinta-2); overflow-wrap: anywhere; } /* caminho de pasta longo quebra no card (jc-a2y.47) */
 .marca-passo { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--destaque); font-size: .8rem; font-weight: 700; color: var(--sobre-destaque); }
 .primeiros li.feito .marca-passo { background: var(--destaque); }
 .primeiros li.feito strong { color: var(--tinta-2); font-weight: 500; }
