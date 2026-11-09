@@ -1,25 +1,35 @@
 package api
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
 
-// O contrato (api/openapi.yaml) e as rotas da API precisam andar juntos:
-//   - toda operação do contrato é atendida pela API;
+// O contrato (api/openapi.yaml) e as rotas da API precisam andar juntos. Este arquivo confere:
+//   - toda operação do contrato é atendida pela API, sem erro inesperado;
 //   - num caminho do contrato, método fora do contrato dá "rota não encontrada";
-//   - toda rota escrita no código (texto fixo ou regex) tem caminho no contrato;
+//   - rotas escritas em api.go e ia.go têm caminho no contrato;
 //   - na sessão gravada do Node, o que a API atendeu está no contrato e o que deu "rota não encontrada" não está.
+//
+// Limites (o que este teste NÃO garante):
+//   - a busca de rotas no código só olha api.go e ia.go e só reconhece os formatos de hoje:
+//     `p == "/x"`, `case "/x"` e regexp.MustCompile(`^/x...`). Rota nova escrita de outro jeito,
+//     ou noutro arquivo, só é pega se cair num caminho que já está no contrato (2ª checagem);
+//   - cada operação é chamada com corpo {} e parâmetros de exemplo: o teste prova que a rota existe,
+//     não que entradas, respostas e erros batem com os esquemas do contrato.
 
 const caminhoContrato = "../../api/openapi.yaml"
 
@@ -30,89 +40,33 @@ var exemplosParam = map[string]string{"provedor": "anthropic", "n": "1"}
 
 type operacoes map[string]map[string]bool // caminho do contrato → métodos
 
-var (
-	reLinhaCaminho = regexp.MustCompile(`^  (/[^:\s]*):(.*)$`)
-	reLinhaMetodo  = regexp.MustCompile(`^    (get|put|post|patch|delete):`)
-	reParam        = regexp.MustCompile(`\{([^}/]+)\}`)
-)
+var reParam = regexp.MustCompile(`\{([^}/]+)\}`)
 
-// lerContrato lê só a seção paths do openapi.yaml, no formato usado no arquivo:
-// "  /caminho: { get: {...}, post: {...} }" ou "  /caminho:" seguido de "    get:".
+// lerContrato lê a seção paths do openapi.yaml com um parser YAML de verdade.
 func lerContrato(t *testing.T) operacoes {
 	t.Helper()
-	f, err := os.Open(caminhoContrato)
+	b, err := os.ReadFile(caminhoContrato)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	var doc struct {
+		Paths map[string]map[string]yaml.Node `yaml:"paths"`
+	}
+	if err := yaml.Unmarshal(b, &doc); err != nil {
+		t.Fatalf("openapi.yaml inválido: %v", err)
+	}
 	ops := operacoes{}
-	emPaths, atual := false, ""
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		l := sc.Text()
-		if l == "paths:" {
-			emPaths = true
-			continue
-		}
-		if !emPaths || strings.TrimSpace(l) == "" || strings.HasPrefix(strings.TrimSpace(l), "#") {
-			continue
-		}
-		if l[0] != ' ' { // próxima seção de topo (components etc.)
-			break
-		}
-		if g := reLinhaCaminho.FindStringSubmatch(l); g != nil {
-			atual = g[1]
-			if ops[atual] == nil {
-				ops[atual] = map[string]bool{}
-			}
-			for _, m := range metodosEmLinha(g[2]) {
-				ops[atual][m] = true
-			}
-			continue
-		}
-		if g := reLinhaMetodo.FindStringSubmatch(l); g != nil && atual != "" {
-			ops[atual][strings.ToUpper(g[1])] = true
-		}
-	}
-	if err := sc.Err(); err != nil {
-		t.Fatal(err)
-	}
-	return ops
-}
-
-// metodosEmLinha acha as chaves de método no primeiro nível de "{ get: {...}, put: {...} }", pulando textos entre aspas.
-func metodosEmLinha(s string) []string {
-	var saida []string
-	nivel, aspas, inicio := 0, byte(0), -1
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch {
-		case aspas != 0:
-			if c == aspas {
-				aspas = 0
-			}
-		case c == '\'' || c == '"':
-			aspas = c
-		case c == '{':
-			nivel++
-			if nivel == 1 {
-				inicio = i + 1
-			}
-		case c == '}':
-			nivel--
-		case c == ',' && nivel == 1:
-			inicio = i + 1
-		case c == ':' && nivel == 1 && inicio >= 0:
-			chave := strings.ToUpper(strings.TrimSpace(s[inicio:i]))
+	for caminho, itens := range doc.Paths {
+		ops[caminho] = map[string]bool{}
+		for chave := range itens {
 			for _, m := range metodosHTTP {
-				if chave == m {
-					saida = append(saida, m)
+				if strings.ToUpper(chave) == m {
+					ops[caminho][m] = true
 				}
 			}
-			inicio = -1
 		}
 	}
-	return saida
+	return ops
 }
 
 func concreto(caminho string) string {
@@ -147,16 +101,16 @@ func (ops operacoes) tem(p, m string) bool {
 	return false
 }
 
-func apiDoContrato(t *testing.T) *API {
+func apiDoContrato(t *testing.T, cofre segredos.Cofre) *API {
 	t.Helper()
 	arm, err := armazem.Abrir(context.Background(), ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { arm.Fechar() })
-	// Cofre em memória e sem procurar CLIs: o teste não toca no cofre do sistema nem roda programas.
+	// Cofre falso e sem procurar CLIs: o teste não toca no cofre do sistema nem roda programas.
 	return Nova(arm, Opcoes{Hoje: func() string { return "2026-11-08" }, Aleatorio: func() string { return "abcd" },
-		Cofre: segredos.Memoria{}, ProvedoresIA: map[string]ia.Provedor{},
+		Cofre: cofre, ProvedoresIA: map[string]ia.Provedor{},
 		DetectarCLIs: func(context.Context) []ia.EstadoCLI { return nil }})
 }
 
@@ -164,6 +118,24 @@ func apiDoContrato(t *testing.T) *API {
 func rotaInexistente(r Resposta) bool {
 	c, _ := r.Corpo.(Objeto)
 	return r.Status == 404 && c != nil && c["erro"] == "rota não encontrada"
+}
+
+// conferirOperacao chama m no caminho de exemplo do modelo e devolve o problema ("" se bateu com o contrato).
+// Erro inesperado (o HTTP responderia 500) é sempre problema: não prova que a rota existe.
+func conferirOperacao(ctx context.Context, a *API, ops operacoes, m, modelo string) string {
+	p := concreto(modelo)
+	r, err := a.Chamar(ctx, Pedido{Metodo: m, Caminho: Prefixo + p, Corpo: Objeto{}})
+	if err != nil {
+		return fmt.Sprintf("%s %s (chamado como %s): erro inesperado: %v", m, modelo, p, err)
+	}
+	documentada := ops[modelo][m]
+	switch {
+	case documentada && rotaInexistente(r):
+		return fmt.Sprintf("%s %s está no contrato, mas a API responde \"rota não encontrada\"", m, modelo)
+	case !documentada && !rotaInexistente(r) && !ops.tem(p, m):
+		return fmt.Sprintf("%s %s é atendida pela API (status %d), mas não está no contrato", m, modelo, r.Status)
+	}
+	return ""
 }
 
 func ordenadas(ops operacoes) []string {
@@ -181,7 +153,7 @@ func TestContratoLido(t *testing.T) {
 	for _, ms := range ops {
 		n += len(ms)
 	}
-	// Guarda contra o leitor quebrar em silêncio: o contrato tem dezenas de operações, e algumas são conhecidas.
+	// Guarda contra a leitura falhar em silêncio: o contrato tem dezenas de operações, e algumas são conhecidas.
 	if n < 30 || !ops["/saude"]["GET"] || !ops["/plataformas/{id}"]["PATCH"] || !ops["/ia/chaves/{provedor}"]["DELETE"] {
 		t.Fatalf("leitura do contrato suspeita: %d operações, %v", n, ops)
 	}
@@ -189,24 +161,37 @@ func TestContratoLido(t *testing.T) {
 
 func TestContratoContraRotas(t *testing.T) {
 	ops := lerContrato(t)
-	a := apiDoContrato(t)
+	a := apiDoContrato(t, segredos.Memoria{})
 	ctx := context.Background()
 	for _, modelo := range ordenadas(ops) {
-		p := Prefixo + concreto(modelo)
 		for _, m := range metodosHTTP {
-			r, err := a.Chamar(ctx, Pedido{Metodo: m, Caminho: p, Corpo: Objeto{}})
-			atendida := err != nil || !rotaInexistente(r)
-			switch {
-			case ops[modelo][m] && !atendida:
-				t.Errorf("%s %s está no contrato, mas a API responde \"rota não encontrada\"", m, modelo)
-			case !ops.tem(concreto(modelo), m) && atendida:
-				t.Errorf("%s %s é atendida pela API (status %d), mas não está no contrato", m, modelo, r.Status)
+			if problema := conferirOperacao(ctx, a, ops, m, modelo); problema != "" {
+				t.Error(problema)
 			}
 		}
 	}
 }
 
-// Rotas escritas no código: textos fixos comparados com o caminho e regex de caminho.
+// Cofre que sempre falha: faz uma rota do contrato devolver erro inesperado.
+type cofreQuebrado struct{}
+
+var errCofre = errors.New("cofre indisponível (teste)")
+
+func (cofreQuebrado) Ler(string) (string, error)  { return "", errCofre }
+func (cofreQuebrado) Gravar(string, string) error { return errCofre }
+func (cofreQuebrado) Apagar(string) error         { return errCofre }
+
+// Erro inesperado numa rota do contrato reprova a checagem, com método e rota na mensagem.
+func TestErroInesperadoReprovaContrato(t *testing.T) {
+	ops := lerContrato(t)
+	a := apiDoContrato(t, cofreQuebrado{})
+	problema := conferirOperacao(context.Background(), a, ops, "DELETE", "/ia/chaves/{provedor}")
+	if !strings.Contains(problema, "DELETE /ia/chaves/{provedor}") || !strings.Contains(problema, "erro inesperado") {
+		t.Fatalf("erro do cofre deveria reprovar a operação; problema = %q", problema)
+	}
+}
+
+// Rotas escritas no código, nos formatos de hoje (ver os limites no topo do arquivo).
 var (
 	reRotaFixa  = regexp.MustCompile(`(?:p == |case )"(/[^"]*)"`)
 	reRotaRegex = regexp.MustCompile("regexp\\.MustCompile\\(`(\\^/[^`]*)`\\)")
