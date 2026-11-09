@@ -42,6 +42,8 @@ O e-mail usa um **perfil próprio**, numa pasta própria (`<pasta de dados>/nave
 2. **Navegação só por URL:** `https://mail.google.com/mail/u/0/#search/<consulta codificada>`. O leitor espera a lista montar.
 3. **Antes de ler:** confere no DOM que a página é a lista de resultados, e não uma mensagem aberta nem outra tela. Senão, para com `outro` (R3.5).
 4. **Lê só a lista:** de cada linha, o id da conversa, o endereço do remetente, o assunto, o trecho que o Gmail mostra e a data. **Nunca abre a mensagem**, porque abrir marca como lida (R3.2).
+   - A linha da lista é a **conversa**, e o trecho e a data são os da **última mensagem** dela. Por isso o `idMensagem` junta as duas coisas: `gmail:<id da conversa>:<AAAAMMDDhhmm da última mensagem>`. Uma recusa que chega na mesma conversa do convite muda a data, vira um `idMensagem` novo e é lida. A mesma última mensagem lida de novo dá o mesmo id e não duplica (nota do CyberSec no #133).
+   - Só a última mensagem de cada conversa é lida. Se duas chegarem entre uma leitura e outra, a do meio não é lida. A leitura nunca abre a conversa para buscar as outras.
 5. **Proibido no leitor:** `chromedp.Click`, `SendKeys`, `Input.*`, `dispatchEvent`, `.click()`, `focus()`, `submit()` e qualquer mudança de `location` (R3.3).
    - O script da página só lê e devolve JSON.
    - Um teste de código (AST do pacote do leitor) reprova se aparecer qualquer um desses.
@@ -102,7 +104,7 @@ O registro segue o `RegistrarEmail` de hoje, com `origem: email` e o `idMensagem
 
 ## O que fica guardado (R8)
 
-- Por e-mail: `idMensagem` (`gmail:` + id da conversa), endereço do remetente **sem o nome** (é dado de terceiro), assunto (até 300), data, tipo, resumo, próximo passo, `vagaId`, status e a transição proposta, quando `a-confirmar`.
+- Por e-mail: `idMensagem` (`gmail:<id da conversa>:<data da última mensagem>`), endereço do remetente **sem o nome** (é dado de terceiro), assunto (até 300), data, tipo, resumo, próximo passo, `vagaId`, status e a transição proposta, quando `a-confirmar`.
 - **Nunca:** o trecho, o corpo, os e-mails de segurança ou de dinheiro (nem o id), o nome do remetente.
 - **Log:** só contagens e códigos (`emails: lidos 12, sensíveis 2, ignorados 5, registrados 4, a-confirmar 1`). Nunca remetente, assunto, trecho nem id da conversa.
 - Os e-mails registrados entram no "Apagar meus dados" (estão no banco) e no exportar dos dados.
@@ -129,6 +131,7 @@ Todas as novas são `x-so-tela` (403 para o assistente) e só existem no build c
 ## Testes (todos com dados fictícios)
 
 - **Leitor:** página fictícia de lista de resultados servida pelo servidor local, com o Chrome de verdade sem janela. Depois da leitura, o DOM não mudou e nenhum evento de entrada foi disparado (R3.6).
+- **Mesma conversa:** o convite e depois a recusa na mesma conversa geram dois `idMensagem`, e a recusa fica `a-confirmar`. A mesma linha lida duas vezes não duplica.
 - **Mensagem aberta ou outra tela:** para com `outro` (R3.5). Redirecionamento para `accounts.google.com`: `precisa-entrar` (R2.2).
 - **Teste de código:** o AST do pacote do leitor sem `Click`, `SendKeys`, `Input.*`, `dispatchEvent`, `.click()`, `focus()`, `submit()` nem `location` (R3.3).
 - **Perfis:** depois da leitura, o perfil do envio sem cookie de `google.com` (R1.2).

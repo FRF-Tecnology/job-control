@@ -134,7 +134,7 @@ paths:
         '429': { description: 'Intervalo mínimo entre leituras: {erro, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroIntervaloEmails' } } } }
   /emails/{idMensagem}/confirmar:
     parameters:
-      - { name: idMensagem, in: path, required: true, schema: { type: string, maxLength: 200 }, description: 'gmail:<id da conversa> na leitura pelo navegador; o id que o assistente mandou no POST /emails' }
+      - { name: idMensagem, in: path, required: true, schema: { type: string, maxLength: 200 }, description: 'Na leitura pelo navegador, gmail:<id da conversa>:<AAAAMMDDhhmm da última mensagem>, para uma mensagem nova na mesma conversa ser lida; no POST /emails, o id que o assistente mandou' }
     post:
       x-proposta: true
       x-so-tela: true
