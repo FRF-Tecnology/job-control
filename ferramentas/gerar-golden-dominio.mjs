@@ -179,12 +179,25 @@ rodar('adicionar ignora contaId do corpo e guarda campos extras', 'adicionarVaga
 rodar('forçar aceita vaga republicada', 'adicionarVaga', e1, base({ id: 'inhire-novo' }), ctx(), { forcar: true });
 rodar('forçar no próprio item', 'adicionarVaga', e1, base({ id: 'inhire-novo', forcar: true }), ctx());
 rodar('forçar nunca aceita o mesmo id', 'adicionarVaga', e1, base(), ctx(), { forcar: true });
-rodar('evento inicial usa a data do envio', 'adicionarVaga', vazio, base({ etapa: 'enviada', descobertaEm: '2026-10-20', envio: { data: '2026-10-26' } }), ctx());
+rodar('evento inicial usa a data do envio', 'adicionarVaga', vazio, base({ etapa: 'enviada', descobertaEm: '2026-10-20', envio: { data: '2026-10-26' } }), ctx('2026-10-29', { autor: 'eu' }));
+// jc-a2y.28: aprovar (aplicar) e adicionar fora de descoberta são só da pessoa (autor eu).
+rodar('assistente não adiciona em aplicar', 'adicionarVaga', vazio, base({ etapa: 'aplicar' }), ctx());
+rodar('assistente não adiciona em enviada', 'adicionarVaga', vazio, base({ etapa: 'enviada', envio: { data: '2026-10-26' } }), ctx());
+rodar('assistente adiciona em descoberta explícita', 'adicionarVaga', vazio, base({ etapa: 'descoberta' }), ctx());
+rodar('pessoa adiciona direto em aplicar', 'adicionarVaga', vazio, base({ etapa: 'aplicar' }), ctx('2026-10-29', { autor: 'eu' }));
 rodar('plataforma nula sobrescreve o padrão', 'adicionarVaga', vazio, base({ plataforma: null }), ctx());
 const e2 = rodar('mover para enviada grava envio e follow-up', 'moverVaga', e1, 'li-1', 'enviada', { envio: { rodada: 15, curriculo: 'PT', pretensao: 5200 } }, ctx()).estado;
 rodar('mover para pulada sem motivo', 'moverVaga', e1, 'li-1', 'pulada', {}, ctx());
 rodar('mover para pulada com motivo', 'moverVaga', e1, 'li-1', 'pulada', { motivo: 'Stack' }, ctx());
-rodar('mover vaga inexistente', 'moverVaga', vazio, 'nao-existe', 'aplicar', {}, ctx());
+rodar('mover vaga inexistente', 'moverVaga', vazio, 'nao-existe', 'aplicar', {}, ctx('2026-10-29', { autor: 'eu' }));
+rodar('assistente não aprova (aplicar)', 'moverVaga', e1, 'li-1', 'aplicar', {}, ctx());
+rodar('assistente não aprova nem vaga inexistente', 'moverVaga', vazio, 'nao-existe', 'aplicar', {}, ctx());
+const eAprov = rodar('pessoa aprova (aplicar)', 'moverVaga', e1, 'li-1', 'aplicar', {}, ctx('2026-10-29', { autor: 'eu' })).estado;
+rodar('fila do aplicar: aprovada pela pessoa', 'filaAplicar', eAprov);
+rodar('fila do aplicar: vazia sem aprovação', 'filaAplicar', e1);
+rodar('fila do aplicar: evento de aplicar do assistente não conta', 'filaAplicar', { ...eAprov, eventos: eAprov.eventos.map(ev => (ev.tipo === 'aplicar' ? { ...ev, autor: 'claude' } : ev)) });
+rodar('fila do aplicar: modo direto inclui grupo A em descoberta', 'filaAplicar', { ...e1, perfil: { modo: 'direto' }, vagas: e1.vagas.map(v => ({ ...v, aderencia: 'A' })) });
+rodar('fila do aplicar: modo revisar não inclui descoberta', 'filaAplicar', { ...e1, perfil: { modo: 'revisar' }, vagas: e1.vagas.map(v => ({ ...v, aderencia: 'A' })) });
 rodar('mover etapa desconhecida', 'moverVaga', e1, 'li-1', 'voando', {}, ctx());
 const e3 = rodar('bloquear com pendência', 'moverVaga', e1, 'li-1', 'bloqueada', { pendencia: 'digitar CPF' }, ctx()).estado;
 rodar('sair de bloqueada limpa a pendência', 'moverVaga', e3, 'li-1', 'enviada', {}, ctx());

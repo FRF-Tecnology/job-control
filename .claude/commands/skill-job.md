@@ -49,7 +49,7 @@ Antes de aplicar, leia o currículo PDF. É a fonte do que é verdade sobre a ex
 2. Leia a descrição de cada vaga com `LI.desc(id, 0, 900)` e depois `(900, 900)`. Pule o que cair em `filtros.pularSe`:
    `cli.mjs mover <id> pulada --motivo <Sênior|Inglês|Diploma|Stack|Presencial/Local|Documento|Duplicada|Vaga fechada|Outro>`.
 3. Se `modo` = `direto`, o grupo A segue para aplicação. Grupos B e C e as dúvidas ficam em Descoberta, com o alerta: `editar <id> --json '{"motivoClaude":"..."}'`.
-4. Se `modo` = `revisar`, aplique só a etapa `aplicar`.
+4. A fila de aplicação é `cli.mjs fila-aplicar`: no modo `revisar`, só as vagas que a pessoa aprovou na Triagem; no modo `direto`, também o grupo A. Só a pessoa liga o modo `direto` (a Central recusa essa mudança vinda do assistente).
 5. A mesma empresa repostando a vaga em várias cidades conta uma vez. Marque as cópias como Duplicada.
 
 ## 4. Aplicar (uma vaga por vez)

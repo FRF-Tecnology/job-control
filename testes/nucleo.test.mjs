@@ -8,6 +8,8 @@ import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { estadoVazio, adicionarVaga, moverVaga, followUpFeito, adiarFollowUp, atualizarVaga, registrarEvento, ErroValidacao, ErroDuplicata } from '../nucleo/servico.mjs';
 
 const ctx = (agora = '2026-10-29') => ({ autor: 'claude', agora, diasFollowUp: 7 });
+// Aprovar (aplicar) e adicionar fora de descoberta são da pessoa (jc-a2y.28).
+const ctxEu = (agora = '2026-10-29') => ({ ...ctx(agora), autor: 'eu' });
 const base = (extra = {}) => ({ id: 'li-1', empresa: 'Compass UOL', titulo: 'Desenvolvedor Quarkus', plataforma: 'linkedin', etapa: 'descoberta', ...extra });
 
 // modelo
@@ -91,7 +93,7 @@ test('mover para pulada sem motivo não altera o estado', () => {
   assert.equal(estado.vagas[0].etapa, 'descoberta');
 });
 test('mover vaga inexistente avisa', () => {
-  assert.throws(() => moverVaga(estadoVazio(), 'nao-existe', 'aplicar', {}, ctx()), /não encontrada/);
+  assert.throws(() => moverVaga(estadoVazio(), 'nao-existe', 'aplicar', {}, ctxEu()), /não encontrada/);
 });
 test('sair de bloqueada limpa a pendência', () => {
   let { estado } = adicionarVaga(estadoVazio(), base(), ctx());
@@ -121,7 +123,7 @@ test('evento de nota com CPF é recusado', () => {
 test('operações não mutam o estado recebido', () => {
   const { estado } = adicionarVaga(estadoVazio(), base(), ctx());
   const antes = JSON.stringify(estado);
-  moverVaga(estado, 'li-1', 'aplicar', {}, ctx());
+  moverVaga(estado, 'li-1', 'aplicar', {}, ctxEu());
   assert.equal(JSON.stringify(estado), antes);
 });
 
@@ -192,7 +194,7 @@ test('forçar nunca aceita o mesmo id', () => {
 });
 
 test('evento inicial usa a data real do envio ou da descoberta', () => {
-  const { estado } = adicionarVaga(estadoVazio(), base({ etapa: 'enviada', descobertaEm: '2026-10-20', envio: { data: '2026-10-26' } }), ctx());
+  const { estado } = adicionarVaga(estadoVazio(), base({ etapa: 'enviada', descobertaEm: '2026-10-20', envio: { data: '2026-10-26' } }), ctxEu());
   assert.equal(estado.eventos[0].data, '2026-10-26');
   assert.equal(estado.eventos[0].tipo, 'enviada');
 });
