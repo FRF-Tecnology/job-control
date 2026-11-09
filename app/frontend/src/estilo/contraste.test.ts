@@ -48,10 +48,13 @@ for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 }
 // Estados que trocam só o fundo e herdam a cor do texto, e o anel de foco sobre fundo de destaque.
 const herdados = [
-  { regra: '.botao:hover', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque-forte)', minimo: 4.5 },
-  { regra: '.caixa-pedido button:hover', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque-forte)', minimo: 3 },
-  { regra: '.convite.azul :focus-visible (anel)', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque)', minimo: 3 },
-  { regra: '.primeiros li.feito .marca-passo (✓)', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque)', minimo: 3 },
+  { regra: '.botao:hover', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque-fundo-forte)', minimo: 4.5 },
+  { regra: '.caixa-pedido button:hover', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque-fundo-forte)', minimo: 3 },
+  { regra: '.convite.azul :focus-visible (anel)', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque-fundo)', minimo: 3 },
+  { regra: '.primeiros li.feito .marca-passo (✓)', texto: 'var(--sobre-destaque)', fundo: 'var(--destaque-fundo)', minimo: 3 },
+  // Texto e anel de foco com --destaque sobre o fundo da página: o tom de texto continua claro no escuro.
+  { regra: 'a, .mais, .abas atual (texto --destaque)', texto: 'var(--destaque)', fundo: 'var(--papel)', minimo: 4.5 },
+  { regra: ':focus-visible (anel sobre a página)', texto: 'var(--destaque)', fundo: 'var(--superficie)', minimo: 3 },
 ];
 
 describe('contraste nos temas claro e escuro', () => {
