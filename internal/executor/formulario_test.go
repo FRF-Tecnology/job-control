@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/curriculos"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -101,6 +102,8 @@ type navegadorDeForms struct {
 	paginas []Pagina
 	abertas int
 }
+
+func (n *navegadorDeForms) EnviaFormulario() bool { return true }
 
 func (n *navegadorDeForms) NovaPagina(ctx context.Context) (Pagina, error) {
 	if n.abertas >= len(n.paginas) {
@@ -420,4 +423,36 @@ func TestFormularioSemDestinoGuardado(t *testing.T) {
 	if s.x.o.Navegador.(*navegadorDeForms).abertas != 0 {
 		t.Fatal("abriu página sem o destino guardado")
 	}
+}
+
+// PO, na 3b-1: com um navegador que não envia formulário (o de verdade até a 3b-2), o formulário aprovado não vira
+// laço: nem entra em enviando, fica aprovada, sem tentativa, sem volta e sem página (nada no limite nem no teto). As
+// outras plataformas da fila seguem.
+func TestFormularioSemNavegadorDeFormularioEspera(t *testing.T) {
+	li := novaPagina()
+	s := novoCenario(t, li) // navegadorFalso: não implementa NavegadorDeFormulario
+	form := s.formularioAprovado(formFicticio)
+	outra := s.aprovada("linkedin", linkLI)
+	for i := 0; i < 3; i++ { // ciclos seguidos da fila
+		if _, err := s.x.EnviarAprovadas(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		s.agora = s.agora.Add(3 * time.Hour)
+	}
+	c := s.cand(form)
+	if c["estado"] != dominio.CandAprovada || len(dominio.ListaDe(c["tentativas"])) != 0 || len(dominio.ListaDe(c["retentativas"])) != 0 || c["proximaTentativaEm"] != nil {
+		t.Fatalf("formulário = %v %v %v %v", c["estado"], c["tentativas"], c["retentativas"], c["proximaTentativaEm"])
+	}
+	e, _ := s.arm.Carregar(context.Background())
+	if n := dominio.AberturasNoDia(e, dominio.PlataformaFormulario, s.agora); n != 0 {
+		t.Fatalf("aberturas de formulário = %d", n)
+	}
+	if s.nav.abertas != 1 || s.cand(outra)["estado"] != dominio.CandEnviada {
+		t.Fatalf("páginas abertas = %d; linkedin = %v", s.nav.abertas, s.cand(outra)["estado"])
+	}
+	if d, err := s.x.Enviar(context.Background(), form); !errors.Is(err, ErrSemEnvioDeFormulario) || d != (Desfecho{}) {
+		t.Fatalf("Enviar direto = %+v %v", d, err)
+	}
+	s.logSemConteudo()
+	semFormularioNoLog(t, s)
 }

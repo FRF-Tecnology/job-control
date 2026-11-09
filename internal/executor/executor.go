@@ -271,6 +271,10 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 			semLimite[plataforma] = true
 			x.o.Log("executor: %s pulada (plataforma %s parada)", o["id"], plataforma)
 			continue
+		case errors.Is(err, ErrSemEnvioDeFormulario):
+			semLimite[plataforma] = true
+			x.o.Log("executor: %s pulada (sem envio de formulário neste build)", o["id"])
+			continue
 		case err != nil:
 			return desfechos, err
 		}
@@ -322,6 +326,12 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 		}
 		x.o.Log("executor: %s bloqueada (site-externo)", id)
 		return Desfecho{ID: id, Estado: dominio.CandBloqueada, Motivo: "site-externo"}, nil
+	}
+
+	// Formulário (jc-a2y.7.2) com um navegador que não sabe enviar formulário: nem entra em enviando. Fica aprovada,
+	// sem tentativa, sem volta e sem página (nada no limite do dia nem no teto).
+	if plataforma == dominio.PlataformaFormulario && !x.enviaFormulario() {
+		return Desfecho{}, ErrSemEnvioDeFormulario
 	}
 
 	// M2: conferência atômica e consumo da aprovação, numa transação.
