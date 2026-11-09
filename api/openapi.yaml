@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.9
+  version: 0.4.10
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -333,6 +333,45 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
 
+  # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
+  # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
+  # sistema na resposta nem no log.
+  /dados/apagar:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Apaga os dados do app neste computador: banco (vagas, fila, perfil, eventos, limites), currículos copiados, backups locais, perfil do navegador e chaves de IA no cofre do sistema. Só esses caminhos, nunca a pasta inteira (CENTRAL_PASTA pode ser uma pasta da pessoa); junção ou link para fora é removido como link. Não apaga o login das CLIs de IA, os arquivos originais dos currículos nem o cache da janela do app (WebView2/WebKit). Depois de responder, o app fecha (fechar sempre true, também na falha parcial); ao abrir de novo, é um usuário novo'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmacao]
+              properties:
+                confirmacao: { type: string, const: 'APAGAR MEUS DADOS', description: 'A frase que a pessoa digitou na tela, exatamente; outra dá 400 e nada é apagado' }
+      responses:
+        '200': { description: 'O que foi apagado e o que faltou (completo false quando faltou algo); fechar true', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+  /navegador/sair:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Sair das plataformas: apaga só o perfil do navegador do app (sessão e cookies de LinkedIn, Gupy e InHire). Os dados ficam; o app continua aberto'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'apagado [navegador] ou faltou [navegador]; fechar false', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+
 components:
   schemas:
     Erro:
@@ -490,6 +529,19 @@ components:
         versao: { type: integer }
         criadaEm: { type: string }
         atualizadaEm: { type: string }
+    ItemApagado:
+      type: string
+      enum: [banco, curriculos, backups, navegador, chaves]
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema'
+    ResultadoApagar:
+      type: object
+      additionalProperties: false
+      required: [apagado, faltou, completo, fechar]
+      properties:
+        apagado: { type: array, items: { $ref: '#/components/schemas/ItemApagado' } }
+        faltou: { type: array, items: { $ref: '#/components/schemas/ItemApagado' }, description: 'O que não saiu (arquivo preso, cofre recusou); a tela mostra o que restou' }
+        completo: { type: boolean }
+        fechar: { type: boolean, description: 'true em /dados/apagar: o app fecha logo depois de responder' }
     MotivoBloqueio:
       type: string
       enum: [cpf, rg, senha, dado-bancario, captcha, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
@@ -524,6 +576,9 @@ components:
     Validacao:
       description: 'Entrada inválida ({erro, erros}) ou provedor sem chave ({erro})'
       content: { application/json: { schema: { $ref: '#/components/schemas/ErroValidacao' } } }
+    EnvioEmAndamento:
+      description: 'Há candidatura em enviando (o executor está numa página): {erro, estado: enviando}. Nada é apagado'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroConflitoCandidatura' } } }
     SoTela:
       description: 'Ação só da pessoa (tela), pedida pelo assistente (CLI, MCP): {erro}'
       content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } }
