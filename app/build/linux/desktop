@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=Central de Candidaturas
+Comment=Central de Candidaturas
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/central.exe %u
+Terminal=false
+Type=Application
+Icon=central.exe
+Categories=Utility;
+StartupWMClass=central.exe
+
+ 

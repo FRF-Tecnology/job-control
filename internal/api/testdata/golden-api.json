@@ -1,0 +1,3104 @@
+{
+ "fuso": "America/Sao_Paulo",
+ "sufixo": "4fzz",
+ "chamadas": [
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/estado",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "vagas": [],
+     "eventos": [],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": [],
+     "hoje": "2026-11-07",
+     "versao": "0",
+     "curriculos": [],
+     "pastaCurriculos": null,
+     "primeirosPassos": [
+      {
+       "id": "perfil",
+       "feito": false,
+       "titulo": "Preencher o perfil",
+       "texto": "Nome, pretensões, inglês e filtros. O Claude usa em todas as candidaturas.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "curriculo",
+       "feito": false,
+       "titulo": "Colocar o currículo",
+       "texto": "Copie o PDF (em português e, se tiver, em inglês) para a pasta de currículos.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "rodada",
+       "feito": false,
+       "titulo": "Fazer a primeira rodada",
+       "texto": "Abra o Claude Code nesta pasta e digite /rodada. Ele busca, filtra e mostra as vagas aqui para você decidir.",
+       "rota": "#/plataformas",
+       "botao": "Ver plataformas"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/versao",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "versao": "0"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/primeiros-passos",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "passos": [
+      {
+       "id": "perfil",
+       "feito": false,
+       "titulo": "Preencher o perfil",
+       "texto": "Nome, pretensões, inglês e filtros. O Claude usa em todas as candidaturas.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "curriculo",
+       "feito": false,
+       "titulo": "Colocar o currículo",
+       "texto": "Copie o PDF (em português e, se tiver, em inglês) para a pasta de currículos.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "rodada",
+       "feito": false,
+       "titulo": "Fazer a primeira rodada",
+       "texto": "Abra o Claude Code nesta pasta e digite /rodada. Ele busca, filtra e mostra as vagas aqui para você decidir.",
+       "rota": "#/plataformas",
+       "botao": "Ver plataformas"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": {},
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "nome": "Ana Teste",
+    "foco": "internacional",
+    "diasFollowUp": 10,
+    "filtros": {
+     "niveis": [
+      "Pleno"
+     ]
+    },
+    "respostasPadrao": [
+     {
+      "pergunta": "Anos com React?",
+      "resposta": "4"
+     }
+    ]
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "nome": "Ana Teste",
+     "foco": "internacional",
+     "diasFollowUp": 10,
+     "filtros": {
+      "niveis": [
+       "Pleno"
+      ]
+     },
+     "respostasPadrao": [
+      {
+       "pergunta": "Anos com React?",
+       "resposta": "4"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "cargo": "Desenvolvedora front-end React",
+    "stackPrincipal": [
+     "React",
+     "TypeScript"
+    ],
+    "filtros": {
+     "modelo": [
+      "Remoto"
+     ]
+    },
+    "respostasPadrao": [
+     {
+      "pergunta": "anos com react?",
+      "resposta": "5"
+     },
+     {
+      "pergunta": "Inglês?",
+      "resposta": "Avançado"
+     }
+    ]
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "nome": "Ana Teste",
+     "foco": "internacional",
+     "diasFollowUp": 10,
+     "filtros": {
+      "niveis": [
+       "Pleno"
+      ],
+      "modelo": [
+       "Remoto"
+      ]
+     },
+     "respostasPadrao": [
+      {
+       "pergunta": "anos com react?",
+       "resposta": "5"
+      },
+      {
+       "pergunta": "Inglês?",
+       "resposta": "Avançado"
+      }
+     ],
+     "cargo": "Desenvolvedora front-end React",
+     "stackPrincipal": [
+      "React",
+      "TypeScript"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "nome": "X",
+    "senha": "123"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "o perfil não pode guardar CPF, RG, senha ou dados bancários",
+     "erros": [
+      "o perfil não pode guardar CPF, RG, senha ou dados bancários"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "respostasPadrao": [
+     {
+      "pergunta": "Qual seu CPF?",
+      "resposta": "529.982.247-25"
+     }
+    ]
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "o perfil não pode guardar CPF, RG, senha ou dados bancários",
+     "erros": [
+      "o perfil não pode guardar CPF, RG, senha ou dados bancários"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "foco": "lua",
+    "pretensaoCLT": "muito"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "foco deve ser internacional, nacional, ambos; pretensaoCLT deve ser número",
+     "erros": [
+      "foco deve ser internacional, nacional, ambos",
+      "pretensaoCLT deve ser número"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": "texto",
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "envie um objeto JSON"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/perfil",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "nome": "Ana Teste",
+     "foco": "internacional",
+     "diasFollowUp": 10,
+     "filtros": {
+      "niveis": [
+       "Pleno"
+      ],
+      "modelo": [
+       "Remoto"
+      ]
+     },
+     "respostasPadrao": [
+      {
+       "pergunta": "anos com react?",
+       "resposta": "5"
+      },
+      {
+       "pergunta": "Inglês?",
+       "resposta": "Avançado"
+      }
+     ],
+     "cargo": "Desenvolvedora front-end React",
+     "stackPrincipal": [
+      "React",
+      "TypeScript"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "id": "li-1",
+    "empresa": "Acme Remote",
+    "titulo": "Senior React Developer (LATAM, USD)",
+    "plataforma": "linkedin",
+    "idioma": "en",
+    "contrato": "Contractor USD",
+    "aderencia": "A",
+    "motivoClaude": "React + TS, USD"
+   },
+   "resposta": {
+    "status": 201,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "descoberta",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "idioma": "en",
+     "contrato": "Contractor USD",
+     "aderencia": "A",
+     "motivoClaude": "React + TS, USD",
+     "contaId": "local"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "id": "li-1",
+    "empresa": "Acme Remote",
+    "titulo": "Senior React Developer (LATAM, USD)",
+    "plataforma": "linkedin"
+   },
+   "resposta": {
+    "status": 409,
+    "corpo": {
+     "erro": "já existe: Acme Remote · Senior React Developer (LATAM, USD) (li-1, etapa descoberta)",
+     "existente": {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-1",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "idioma": "en",
+      "contrato": "Contractor USD",
+      "aderencia": "A",
+      "motivoClaude": "React + TS, USD",
+      "contaId": "local"
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "id": "li-1b",
+    "empresa": "Acme Remote",
+    "titulo": "Senior React Developer (LATAM, USD)",
+    "plataforma": "linkedin"
+   },
+   "resposta": {
+    "status": 409,
+    "corpo": {
+     "erro": "já existe: Acme Remote · Senior React Developer (LATAM, USD) (li-1, etapa descoberta)",
+     "existente": {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-1",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "idioma": "en",
+      "contrato": "Contractor USD",
+      "aderencia": "A",
+      "motivoClaude": "React + TS, USD",
+      "contaId": "local"
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "id": "li-1b",
+    "empresa": "Acme Remote",
+    "titulo": "Senior React Developer (LATAM, USD)",
+    "plataforma": "linkedin",
+    "forcar": true
+   },
+   "resposta": {
+    "status": 201,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "descoberta",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-1b",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "contaId": "local"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": [
+    {
+     "id": "gupy-2",
+     "empresa": "Banco Exemplo",
+     "titulo": "Desenvolvedora Front-end React Pleno",
+     "plataforma": "gupy",
+     "contrato": "CLT",
+     "aderencia": "A"
+    },
+    {
+     "id": "gupy-3",
+     "empresa": "Varejo Teste",
+     "titulo": "Dev Front-end Sênior",
+     "plataforma": "gupy",
+     "contrato": "PJ",
+     "aderencia": "C"
+    },
+    {
+     "id": "gupy-2",
+     "empresa": "Banco Exemplo",
+     "titulo": "Desenvolvedora Front-end React Pleno",
+     "plataforma": "linkedin"
+    },
+    {
+     "id": "ruim",
+     "empresa": "",
+     "titulo": "x"
+    },
+    {
+     "empresa": "Sem id",
+     "titulo": "y"
+    },
+    {
+     "id": "li-cpf",
+     "empresa": "Fraude",
+     "titulo": "Dev",
+     "plataforma": "linkedin",
+     "notas": "cpf 529.982.247-25"
+    }
+   ],
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "adicionadas": [
+      "gupy-2",
+      "gupy-3"
+     ],
+     "duplicadas": [
+      {
+       "id": "gupy-2",
+       "existente": "gupy-2",
+       "etapa": "descoberta"
+      }
+     ],
+     "erros": [
+      {
+       "id": "ruim",
+       "erro": "campo obrigatório: empresa"
+      },
+      {
+       "id": null,
+       "erro": "campo obrigatório: id"
+      },
+      {
+       "id": "li-cpf",
+       "erro": "parece conter CPF/RG — documentos não são guardados na central"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "lista": [
+     {
+      "id": "li-4",
+      "empresa": "Initech",
+      "titulo": "React Native Developer",
+      "plataforma": "linkedin",
+      "idioma": "en"
+     },
+     {
+      "id": "li-5",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "plataforma": "linkedin"
+     }
+    ],
+    "forcar": true
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "adicionadas": [
+      "li-4",
+      "li-5"
+     ],
+     "duplicadas": [],
+     "erros": []
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/importar",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": [
+    {
+     "id": "li-6",
+     "empresa": "Hooli",
+     "titulo": "Senior Frontend Engineer",
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "envio": {
+      "data": "2026-11-01"
+     },
+     "followUp": {
+      "proximo": "2026-11-08"
+     },
+     "descobertaEm": "2020-01-01",
+     "motivo": "x",
+     "pendencia": "y",
+     "subEtapa": "teste"
+    },
+    "não é objeto",
+    {
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "plataforma": "linkedin"
+    }
+   ],
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "adicionadas": [
+      "li-6"
+     ],
+     "duplicadas": [
+      {
+       "id": "li-1",
+       "existente": "li-1",
+       "etapa": "descoberta"
+      }
+     ],
+     "erros": []
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/importar",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "id": "li-7",
+    "empresa": "Globex",
+    "titulo": "Frontend Engineer - Next.js",
+    "plataforma": "linkedin"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "adicionadas": [
+      "li-7"
+     ],
+     "duplicadas": [],
+     "erros": []
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": "texto",
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "envie um objeto JSON"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": [
+    "x"
+   ],
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "adicionadas": [],
+     "duplicadas": [],
+     "erros": [
+      {
+       "id": null,
+       "erro": "vaga vazia ou inválida"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/vagas",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-1",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "idioma": "en",
+      "contrato": "Contractor USD",
+      "aderencia": "A",
+      "motivoClaude": "React + TS, USD",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-1b",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "gupy",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "gupy-2",
+      "empresa": "Banco Exemplo",
+      "titulo": "Desenvolvedora Front-end React Pleno",
+      "contrato": "CLT",
+      "aderencia": "A",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "gupy",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "gupy-3",
+      "empresa": "Varejo Teste",
+      "titulo": "Dev Front-end Sênior",
+      "contrato": "PJ",
+      "aderencia": "C",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-4",
+      "empresa": "Initech",
+      "titulo": "React Native Developer",
+      "idioma": "en",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-5",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-6",
+      "empresa": "Hooli",
+      "titulo": "Senior Frontend Engineer",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-7",
+      "empresa": "Globex",
+      "titulo": "Frontend Engineer - Next.js",
+      "contaId": "local"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/vagas?etapa=descoberta&plataforma=gupy",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "plataforma": "gupy",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "gupy-2",
+      "empresa": "Banco Exemplo",
+      "titulo": "Desenvolvedora Front-end React Pleno",
+      "contrato": "CLT",
+      "aderencia": "A",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "gupy",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "gupy-3",
+      "empresa": "Varejo Teste",
+      "titulo": "Dev Front-end Sênior",
+      "contrato": "PJ",
+      "aderencia": "C",
+      "contaId": "local"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/duplicatas?empresa=Acme%20Remote&titulo=Senior%20React%20Developer%20(LATAM%2C%20USD)&excluir=li-1",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-1b",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "contaId": "local"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "descoberta",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-5",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "contaId": "local"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/duplicatas?empresa=&titulo=x",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": [],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/vagas/li-1",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "descoberta",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "idioma": "en",
+     "contrato": "Contractor USD",
+     "aderencia": "A",
+     "motivoClaude": "React + TS, USD",
+     "contaId": "local",
+     "eventos": [
+      {
+       "id": "ev-2026-11-07-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": "React + TS, USD"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/vagas/nao-existe",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "vaga não encontrada: nao-existe"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/vagas/%E0%A4%A",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "não encontrado"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/vagas/li-1",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "notas": "falar com a recrutadora",
+    "etapa": "oferta"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "descoberta",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "idioma": "en",
+     "contrato": "Contractor USD",
+     "aderencia": "A",
+     "motivoClaude": "React + TS, USD",
+     "contaId": "local",
+     "notas": "falar com a recrutadora"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/vagas/li-1",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "notas": "minha versão",
+    "notasAntes": "outra coisa"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "as notas mudaram enquanto você editava — recarregue a vaga e junte as duas versões",
+     "erros": [
+      "as notas mudaram enquanto você editava — recarregue a vaga e junte as duas versões"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/vagas/li-1",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "link": "acme.com"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "link deve começar com http:// ou https://",
+     "erros": [
+      "link deve começar com http:// ou https://"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/vagas/nao-existe",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "notas": "x"
+   },
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "vaga não encontrada: nao-existe"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-1/mover",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "aplicar"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "aplicar",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "idioma": "en",
+     "contrato": "Contractor USD",
+     "aderencia": "A",
+     "motivoClaude": "React + TS, USD",
+     "contaId": "local",
+     "notas": "falar com a recrutadora",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-1/mover",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "enviada",
+    "envio": {
+     "rodada": 1,
+     "curriculo": "EN",
+     "pretensao": 6000
+    }
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "idioma": "en",
+     "contrato": "Contractor USD",
+     "aderencia": "A",
+     "motivoClaude": "React + TS, USD",
+     "contaId": "local",
+     "notas": "falar com a recrutadora",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null,
+     "envio": {
+      "rodada": 1,
+      "curriculo": "EN",
+      "pretensao": 6000,
+      "data": "2026-11-07"
+     },
+     "followUp": {
+      "proximo": "2026-11-17",
+      "feitos": 0
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/gupy-2/mover",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "bloqueada",
+    "pendencia": "A Gupy pede CPF: preencha você"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "gupy",
+     "etapa": "bloqueada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "gupy-2",
+     "empresa": "Banco Exemplo",
+     "titulo": "Desenvolvedora Front-end React Pleno",
+     "contrato": "CLT",
+     "aderencia": "A",
+     "contaId": "local",
+     "pendencia": "A Gupy pede CPF: preencha você",
+     "motivo": null,
+     "subEtapa": null
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/gupy-3/mover",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "pulada"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "informe o motivo",
+     "erros": [
+      "informe o motivo"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/gupy-3/mover",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "pulada",
+    "motivo": "Stack"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "gupy",
+     "etapa": "pulada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "gupy-3",
+     "empresa": "Varejo Teste",
+     "titulo": "Dev Front-end Sênior",
+     "contrato": "PJ",
+     "aderencia": "C",
+     "contaId": "local",
+     "motivo": "Stack",
+     "pendencia": null,
+     "subEtapa": null
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/nao-existe/mover",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "aplicar"
+   },
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "vaga não encontrada: nao-existe"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-4/mover",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "voando"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "etapa desconhecida: voando",
+     "erros": [
+      "etapa desconhecida: voando"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-4/mover",
+   "autor": "claude",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "etapa": "enviada",
+    "envio": {
+     "rodada": 1
+    }
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-07",
+     "id": "li-4",
+     "empresa": "Initech",
+     "titulo": "React Native Developer",
+     "idioma": "en",
+     "contaId": "local",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null,
+     "envio": {
+      "rodada": 1,
+      "data": "2026-11-07"
+     },
+     "followUp": {
+      "proximo": "2026-11-17",
+      "feitos": 0
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-1/eventos",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "texto": "mandei mensagem no LinkedIn"
+   },
+   "resposta": {
+    "status": 201,
+    "corpo": {
+     "id": "ev-2026-11-07-000014-4fzz",
+     "contaId": "local",
+     "vagaId": "li-1",
+     "tipo": "nota",
+     "data": "2026-11-07",
+     "autor": "eu",
+     "texto": "mandei mensagem no LinkedIn"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-1/eventos",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "tipo": "entrevista",
+    "texto": "cpf 529.982.247-25"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "parece conter CPF/RG — documentos não são guardados na central",
+     "erros": [
+      "parece conter CPF/RG — documentos não são guardados na central"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/nao-existe/eventos",
+   "autor": "eu",
+   "hoje": "2026-11-07",
+   "corpo": {
+    "texto": "x"
+   },
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "vaga não encontrada: nao-existe"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/followups",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "plataforma": "linkedin",
+      "etapa": "enviada",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-1",
+      "empresa": "Acme Remote",
+      "titulo": "Senior React Developer (LATAM, USD)",
+      "idioma": "en",
+      "contrato": "Contractor USD",
+      "aderencia": "A",
+      "motivoClaude": "React + TS, USD",
+      "contaId": "local",
+      "notas": "falar com a recrutadora",
+      "pendencia": null,
+      "motivo": null,
+      "subEtapa": null,
+      "envio": {
+       "rodada": 1,
+       "curriculo": "EN",
+       "pretensao": 6000,
+       "data": "2026-11-07"
+      },
+      "followUp": {
+       "proximo": "2026-11-17",
+       "feitos": 0
+      },
+      "mensagem": "Hi! I applied for the Senior React Developer (LATAM, USD) position at Acme Remote and wanted to reinforce my interest. I work with React and TypeScript and would be glad to talk about how I can help the team. Is there any update on the process?\n\nThanks,\nAna Teste"
+     },
+     {
+      "plataforma": "linkedin",
+      "etapa": "enviada",
+      "descobertaEm": "2026-11-07",
+      "atualizadoEm": "2026-11-07",
+      "id": "li-4",
+      "empresa": "Initech",
+      "titulo": "React Native Developer",
+      "idioma": "en",
+      "contaId": "local",
+      "pendencia": null,
+      "motivo": null,
+      "subEtapa": null,
+      "envio": {
+       "rodada": 1,
+       "data": "2026-11-07"
+      },
+      "followUp": {
+       "proximo": "2026-11-17",
+       "feitos": 0
+      },
+      "mensagem": "Hi! I applied for the React Native Developer position at Initech and wanted to reinforce my interest. I work with React and TypeScript and would be glad to talk about how I can help the team. Is there any update on the process?\n\nThanks,\nAna Teste"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-1/followup",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "acao": "feito",
+    "texto": "mandei de novo"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-17",
+     "id": "li-1",
+     "empresa": "Acme Remote",
+     "titulo": "Senior React Developer (LATAM, USD)",
+     "idioma": "en",
+     "contrato": "Contractor USD",
+     "aderencia": "A",
+     "motivoClaude": "React + TS, USD",
+     "contaId": "local",
+     "notas": "falar com a recrutadora",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null,
+     "envio": {
+      "rodada": 1,
+      "curriculo": "EN",
+      "pretensao": 6000,
+      "data": "2026-11-07"
+     },
+     "followUp": {
+      "proximo": "2026-11-27",
+      "feitos": 1
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-4/followup",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "acao": "adiar",
+    "dias": "muitos"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-17",
+     "id": "li-4",
+     "empresa": "Initech",
+     "titulo": "React Native Developer",
+     "idioma": "en",
+     "contaId": "local",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null,
+     "envio": {
+      "rodada": 1,
+      "data": "2026-11-07"
+     },
+     "followUp": {
+      "feitos": 0,
+      "proximo": "2026-11-20"
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-4/followup",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "acao": "adiar",
+    "dias": 5
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "descobertaEm": "2026-11-07",
+     "atualizadoEm": "2026-11-17",
+     "id": "li-4",
+     "empresa": "Initech",
+     "titulo": "React Native Developer",
+     "idioma": "en",
+     "contaId": "local",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null,
+     "envio": {
+      "rodada": 1,
+      "data": "2026-11-07"
+     },
+     "followUp": {
+      "feitos": 0,
+      "proximo": "2026-11-22"
+     }
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-4/followup",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "acao": "esquecer"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "acao deve ser \"feito\" ou \"adiar\""
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/followups",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/vagas/li-1/acoes",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "rota não encontrada"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/pedidos",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "texto": "Buscar vagas USD LATAM"
+   },
+   "resposta": {
+    "status": 201,
+    "corpo": {
+     "id": "pd-2026-11-17-0001-4fzz",
+     "contaId": "local",
+     "texto": "Buscar vagas USD LATAM",
+     "autor": "eu",
+     "criadoEm": "2026-11-17",
+     "status": "aberto"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/pedidos",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "texto": ""
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "escreva o pedido",
+     "erros": [
+      "escreva o pedido"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/pedidos?status=aberto",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "id": "pd-2026-11-17-0001-4fzz",
+      "contaId": "local",
+      "texto": "Buscar vagas USD LATAM",
+      "autor": "eu",
+      "criadoEm": "2026-11-17",
+      "status": "aberto"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/pedidos/pd-2026-11-17-0001-4fzz/concluir",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "resposta": "Achei 5 vagas"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "id": "pd-2026-11-17-0001-4fzz",
+     "contaId": "local",
+     "texto": "Buscar vagas USD LATAM",
+     "autor": "eu",
+     "criadoEm": "2026-11-17",
+     "status": "feito",
+     "resposta": "Achei 5 vagas",
+     "concluidoEm": "2026-11-17"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/pedidos/pd-x/concluir",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "resposta": "x"
+   },
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "pedido não encontrado: pd-x"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/pedidos",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "id": "pd-2026-11-17-0001-4fzz",
+      "contaId": "local",
+      "texto": "Buscar vagas USD LATAM",
+      "autor": "eu",
+      "criadoEm": "2026-11-17",
+      "status": "feito",
+      "resposta": "Achei 5 vagas",
+      "concluidoEm": "2026-11-17"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/pedidos?status=aberto",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "lista": [
+     {
+      "email": {
+       "idMensagem": "m1",
+       "de": "talent@acmeremote.example",
+       "assunto": "Acme Remote - next steps",
+       "texto": "corpo que não fica guardado",
+       "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+      },
+      "classificacao": {
+       "tipo": "entrevista",
+       "vagaId": null,
+       "resumo": "entrevista de talent@acmeremote.example",
+       "proximoPasso": "Escolher horário"
+      }
+     },
+     {
+      "email": {
+       "idMensagem": "m2",
+       "de": "no-reply@initech.example",
+       "assunto": "Your application to Initech",
+       "texto": "",
+       "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+      },
+      "classificacao": {
+       "tipo": "rejeicao",
+       "vagaId": null,
+       "resumo": "rejeicao de no-reply@initech.example"
+      }
+     },
+     {
+      "email": {
+       "idMensagem": "m3",
+       "de": "jobs@misterio.example",
+       "assunto": "Desafio técnico",
+       "texto": "",
+       "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+      },
+      "classificacao": {
+       "tipo": "teste",
+       "vagaId": null,
+       "resumo": "teste de jobs@misterio.example"
+      }
+     },
+     {
+      "email": {
+       "idMensagem": "m4",
+       "de": "news@loja.com",
+       "assunto": "Promoção",
+       "texto": "",
+       "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+      },
+      "classificacao": {
+       "tipo": "outro",
+       "vagaId": null,
+       "resumo": "outro de news@loja.com"
+      }
+     },
+     {
+      "email": {
+       "idMensagem": "m5",
+       "de": "a@b.com",
+       "assunto": "x",
+       "texto": "",
+       "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+      },
+      "classificacao": {
+       "tipo": "convite",
+       "vagaId": null,
+       "resumo": "convite de a@b.com"
+      }
+     },
+     {
+      "email": {
+       "idMensagem": "m1",
+       "de": "talent@acmeremote.example",
+       "assunto": "Acme Remote - next steps",
+       "texto": "",
+       "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+      },
+      "classificacao": {
+       "tipo": "entrevista",
+       "vagaId": null,
+       "resumo": "entrevista de talent@acmeremote.example"
+      }
+     }
+    ]
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "idMensagem": "m1",
+      "status": "ligado",
+      "vagaId": "li-1",
+      "transicao": "em-processo"
+     },
+     {
+      "idMensagem": "m2",
+      "status": "ligado",
+      "vagaId": "li-4",
+      "transicao": "encerrada"
+     },
+     {
+      "idMensagem": "m3",
+      "status": "sem-vaga",
+      "vagaId": null,
+      "transicao": null
+     },
+     {
+      "idMensagem": "m4",
+      "status": "ignorado",
+      "vagaId": null,
+      "transicao": null
+     },
+     {
+      "idMensagem": "m5",
+      "status": "erro",
+      "erro": "classificacao.tipo deve ser confirmacao, rejeicao, entrevista, teste, oferta, outro"
+     },
+     {
+      "idMensagem": "m1",
+      "status": "duplicado",
+      "vagaId": "li-1",
+      "transicao": null
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "email": {
+     "idMensagem": "m6",
+     "de": "rh@x.com",
+     "assunto": "Documentos",
+     "texto": "",
+     "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+    },
+    "classificacao": {
+     "tipo": "outro",
+     "vagaId": null,
+     "resumo": "pediu o CPF 529.982.247-25"
+    }
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "idMensagem": "m6",
+     "status": "erro",
+     "erro": "parece conter CPF/RG — documentos não são guardados na central"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "email": {
+     "idMensagem": "m7",
+     "de": "jobs@acme.io",
+     "assunto": "Application received",
+     "texto": "",
+     "data": "Fri, 07 Nov 2026 14:00:00 +0000"
+    },
+    "classificacao": {
+     "tipo": "confirmacao",
+     "vagaId": null,
+     "resumo": "confirmacao de jobs@acme.io"
+    }
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "idMensagem": "m7",
+     "status": "ligado",
+     "vagaId": "li-1",
+     "transicao": null
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "email": {
+     "de": "x"
+    },
+    "classificacao": {
+     "tipo": "outro"
+    }
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "idMensagem": null,
+     "status": "erro",
+     "erro": "email.idMensagem é obrigatório (evita processar o mesmo email duas vezes)"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/emails?status=sem-vaga",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "idMensagem": "m3",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "teste",
+      "de": "jobs@misterio.example",
+      "assunto": "Desafio técnico",
+      "resumo": "teste de jobs@misterio.example",
+      "vagaId": null,
+      "status": "sem-vaga",
+      "registradoEm": "2026-11-17"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/emails?vaga=li-1",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "idMensagem": "m1",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "entrevista",
+      "de": "talent@acmeremote.example",
+      "assunto": "Acme Remote - next steps",
+      "resumo": "entrevista de talent@acmeremote.example",
+      "proximoPasso": "Escolher horário",
+      "vagaId": "li-1",
+      "status": "ligado",
+      "registradoEm": "2026-11-17"
+     },
+     {
+      "idMensagem": "m7",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "confirmacao",
+      "de": "jobs@acme.io",
+      "assunto": "Application received",
+      "resumo": "confirmacao de jobs@acme.io",
+      "vagaId": "li-1",
+      "status": "ligado",
+      "registradoEm": "2026-11-17"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails/m3/ligar",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "vagaId": "li-1"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "idMensagem": "m3",
+     "status": "ligado",
+     "vagaId": "li-1",
+     "transicao": "em-processo"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails/m3/ligar",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "vagaId": "li-4"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "este email já está ligado à vaga li-1",
+     "erros": [
+      "este email já está ligado à vaga li-1"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails/m7/descartar",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "idMensagem": "m7",
+     "status": "descartado"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/emails/nao-existe/descartar",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "email não encontrado: nao-existe"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/emails",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "idMensagem": "m1",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "entrevista",
+      "de": "talent@acmeremote.example",
+      "assunto": "Acme Remote - next steps",
+      "resumo": "entrevista de talent@acmeremote.example",
+      "proximoPasso": "Escolher horário",
+      "vagaId": "li-1",
+      "status": "ligado",
+      "registradoEm": "2026-11-17"
+     },
+     {
+      "idMensagem": "m2",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "rejeicao",
+      "de": "no-reply@initech.example",
+      "assunto": "Your application to Initech",
+      "resumo": "rejeicao de no-reply@initech.example",
+      "vagaId": "li-4",
+      "status": "ligado",
+      "registradoEm": "2026-11-17"
+     },
+     {
+      "idMensagem": "m3",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "teste",
+      "de": "jobs@misterio.example",
+      "assunto": "Desafio técnico",
+      "resumo": "teste de jobs@misterio.example",
+      "vagaId": "li-1",
+      "status": "ligado",
+      "registradoEm": "2026-11-17"
+     },
+     {
+      "idMensagem": "m4",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "status": "ignorado"
+     },
+     {
+      "idMensagem": "m7",
+      "contaId": "local",
+      "data": "2026-11-07",
+      "tipo": "confirmacao",
+      "de": "jobs@acme.io",
+      "assunto": "Application received",
+      "resumo": "confirmacao de jobs@acme.io",
+      "vagaId": "li-1",
+      "status": "descartado",
+      "registradoEm": "2026-11-17"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/plataformas",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/plataformas/gupy",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "nome": "Gupy",
+    "status": "Automatizada",
+    "comoAplicar": "Script de busca"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "ok": true,
+     "id": "gupy"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PATCH",
+   "caminho": "/api/v1/plataformas/gupy",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "limitacoes": "Pede CPF no formulário"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "ok": true,
+     "id": "gupy"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/plataformas/nova%20fonte",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "url": "https://exemplo.com"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "ok": true,
+     "id": "nova fonte"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/plataformas/ruim",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "nome": 3
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "nome deve ser texto",
+     "erros": [
+      "nome deve ser texto"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/plataformas/ruim",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "nome": "cpf 529.982.247-25"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "parece conter CPF/RG — documentos não são guardados na central",
+     "erros": [
+      "parece conter CPF/RG — documentos não são guardados na central"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/plataformas",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "nome": "Gupy",
+      "status": "Automatizada",
+      "comoAplicar": "Script de busca",
+      "id": "gupy",
+      "limitacoes": "Pede CPF no formulário"
+     },
+     {
+      "nome": "nova fonte",
+      "url": "https://exemplo.com",
+      "id": "nova fonte"
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/rodadas/2",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "fontes": [
+     "gupy"
+    ],
+    "resumo": "Segunda"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "data": "2026-11-17",
+     "fontes": [
+      "gupy"
+     ],
+     "resumo": "Segunda",
+     "n": 2
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/rodadas/1",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "fontes": [
+     "linkedin",
+     "gupy"
+    ],
+    "resumo": "Primeira rodada"
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "data": "2026-11-17",
+     "fontes": [
+      "linkedin",
+      "gupy"
+     ],
+     "resumo": "Primeira rodada",
+     "n": 1
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/rodadas/1",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "enviadas": 2
+   },
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "data": "2026-11-17",
+     "fontes": [
+      "linkedin",
+      "gupy"
+     ],
+     "resumo": "Primeira rodada",
+     "n": 1,
+     "enviadas": 2
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/rodadas/abc",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "número da rodada inválido",
+     "erros": [
+      "número da rodada inválido"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "PUT",
+   "caminho": "/api/v1/rodadas/3",
+   "autor": "claude",
+   "hoje": "2026-11-17",
+   "corpo": {
+    "resumo": "rg 1234567"
+   },
+   "resposta": {
+    "status": 400,
+    "corpo": {
+     "erro": "parece conter CPF/RG — documentos não são guardados na central",
+     "erros": [
+      "parece conter CPF/RG — documentos não são guardados na central"
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/rodadas",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": [
+     {
+      "data": "2026-11-17",
+      "fontes": [
+       "linkedin",
+       "gupy"
+      ],
+      "resumo": "Primeira rodada",
+      "n": 1,
+      "enviadas": 2
+     },
+     {
+      "data": "2026-11-17",
+      "fontes": [
+       "gupy"
+      ],
+      "resumo": "Segunda",
+      "n": 2
+     }
+    ],
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/resumo",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "total": 8,
+     "descoberta": 4,
+     "aplicar": 0,
+     "bloqueadas": 1,
+     "emProcesso": 1,
+     "ofertas": 0,
+     "enviadas": 2,
+     "enviadasHoje": 0,
+     "enviadasSemana": 0,
+     "retornos": 2,
+     "taxaRetorno": 100,
+     "followUps": 0
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/historico.md",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": "# Histórico de candidaturas\n\n> Gerado pela Central em 17/11/2026. Não edite à mão: use a Central ou `node ferramentas/cli.mjs`.\n> Enviadas: **2** · com retorno: 2 (100%) · precisa de você: 1 · esperando triagem: 4\n\n## Rodada 1 (17/11/2026) – 2 enviadas\n_Primeira rodada_\n- **Acme Remote** – Senior React Developer (LATAM, USD) (07/11/2026; linkedin · Contractor USD · pretensão 6000 · Em processo)\n- **Initech** – React Native Developer (07/11/2026; linkedin · Encerrada: Reprovada)\n\n## Precisa de você\n- **Banco Exemplo** – Desenvolvedora Front-end React Pleno: A Gupy pede CPF: preencha você\n\n## Puladas\n- Varejo Teste – Dev Front-end Sênior: Stack\n",
+    "tipo": "text/markdown; charset=utf-8",
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/exportar.csv",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": "﻿id;empresa;titulo;plataforma;etapa;subEtapa;aderencia;contrato;motivo;pendencia;dataEnvio;rodada;pretensao;proximoFollowUp;link;notas\n\"li-1\";\"Acme Remote\";\"Senior React Developer (LATAM, USD)\";\"linkedin\";\"em-processo\";\"teste\";\"A\";\"Contractor USD\";\"\";\"Fazer o teste\";\"2026-11-07\";\"1\";\"6000\";\"2026-11-27\";\"\";\"falar com a recrutadora\"\n\"li-1b\";\"Acme Remote\";\"Senior React Developer (LATAM, USD)\";\"linkedin\";\"descoberta\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\"\n\"gupy-2\";\"Banco Exemplo\";\"Desenvolvedora Front-end React Pleno\";\"gupy\";\"bloqueada\";\"\";\"A\";\"CLT\";\"\";\"A Gupy pede CPF: preencha você\";\"\";\"\";\"\";\"\";\"\";\"\"\n\"gupy-3\";\"Varejo Teste\";\"Dev Front-end Sênior\";\"gupy\";\"pulada\";\"\";\"C\";\"PJ\";\"Stack\";\"\";\"\";\"\";\"\";\"\";\"\";\"\"\n\"li-4\";\"Initech\";\"React Native Developer\";\"linkedin\";\"encerrada\";\"\";\"\";\"\";\"Reprovada\";\"\";\"2026-11-07\";\"1\";\"\";\"2026-11-22\";\"\";\"\"\n\"li-5\";\"Acme Remote\";\"Senior React Developer (LATAM, USD)\";\"linkedin\";\"descoberta\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\"\n\"li-6\";\"Hooli\";\"Senior Frontend Engineer\";\"linkedin\";\"descoberta\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\"\n\"li-7\";\"Globex\";\"Frontend Engineer - Next.js\";\"linkedin\";\"descoberta\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\";\"\"",
+    "tipo": "text/csv; charset=utf-8",
+    "cabecalhos": {
+     "content-disposition": "attachment; filename=\"candidaturas-2026-11-17.csv\""
+    }
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/validar",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "ok": true,
+     "problemas": [],
+     "vagas": 8,
+     "eventos": 22
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/curriculos",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "pasta": null,
+     "arquivos": []
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/primeiros-passos",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "passos": [
+      {
+       "id": "perfil",
+       "feito": true,
+       "titulo": "Preencher o perfil",
+       "texto": "Nome, pretensões, inglês e filtros. O Claude usa em todas as candidaturas.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "curriculo",
+       "feito": false,
+       "titulo": "Colocar o currículo",
+       "texto": "Copie o PDF (em português e, se tiver, em inglês) para a pasta de currículos.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "rodada",
+       "feito": true,
+       "titulo": "Fazer a primeira rodada",
+       "texto": "Abra o Claude Code nesta pasta e digite /rodada. Ele busca, filtra e mostra as vagas aqui para você decidir.",
+       "rota": "#/plataformas",
+       "botao": "Ver plataformas"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/backup",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "criado": true,
+     "data": "2026-11-17"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "POST",
+   "caminho": "/api/v1/backup",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "criado": false,
+     "data": "2026-11-17"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/nada",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "rota não encontrada"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "DELETE",
+   "caminho": "/api/v1/vagas/li-1",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "corpo": {},
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "rota não encontrada"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/outra",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 404,
+    "corpo": {
+     "erro": "rota não encontrada"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/versao",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "versao": "33"
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  },
+  {
+   "metodo": "GET",
+   "caminho": "/api/v1/estado",
+   "autor": "eu",
+   "hoje": "2026-11-17",
+   "resposta": {
+    "status": 200,
+    "corpo": {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "em-processo",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-17",
+       "id": "li-1",
+       "empresa": "Acme Remote",
+       "titulo": "Senior React Developer (LATAM, USD)",
+       "idioma": "en",
+       "contrato": "Contractor USD",
+       "aderencia": "A",
+       "motivoClaude": "React + TS, USD",
+       "contaId": "local",
+       "notas": "falar com a recrutadora",
+       "pendencia": "Fazer o teste",
+       "motivo": null,
+       "subEtapa": "teste",
+       "envio": {
+        "rodada": 1,
+        "curriculo": "EN",
+        "pretensao": 6000,
+        "data": "2026-11-07"
+       },
+       "followUp": {
+        "proximo": "2026-11-27",
+        "feitos": 1
+       }
+      },
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-07",
+       "id": "li-1b",
+       "empresa": "Acme Remote",
+       "titulo": "Senior React Developer (LATAM, USD)",
+       "contaId": "local"
+      },
+      {
+       "plataforma": "gupy",
+       "etapa": "bloqueada",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-07",
+       "id": "gupy-2",
+       "empresa": "Banco Exemplo",
+       "titulo": "Desenvolvedora Front-end React Pleno",
+       "contrato": "CLT",
+       "aderencia": "A",
+       "contaId": "local",
+       "pendencia": "A Gupy pede CPF: preencha você",
+       "motivo": null,
+       "subEtapa": null
+      },
+      {
+       "plataforma": "gupy",
+       "etapa": "pulada",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-07",
+       "id": "gupy-3",
+       "empresa": "Varejo Teste",
+       "titulo": "Dev Front-end Sênior",
+       "contrato": "PJ",
+       "aderencia": "C",
+       "contaId": "local",
+       "motivo": "Stack",
+       "pendencia": null,
+       "subEtapa": null
+      },
+      {
+       "plataforma": "linkedin",
+       "etapa": "encerrada",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-17",
+       "id": "li-4",
+       "empresa": "Initech",
+       "titulo": "React Native Developer",
+       "idioma": "en",
+       "contaId": "local",
+       "pendencia": null,
+       "motivo": "Reprovada",
+       "subEtapa": null,
+       "envio": {
+        "rodada": 1,
+        "data": "2026-11-07"
+       },
+       "followUp": {
+        "feitos": 0,
+        "proximo": "2026-11-22"
+       }
+      },
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-07",
+       "id": "li-5",
+       "empresa": "Acme Remote",
+       "titulo": "Senior React Developer (LATAM, USD)",
+       "contaId": "local"
+      },
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-07",
+       "id": "li-6",
+       "empresa": "Hooli",
+       "titulo": "Senior Frontend Engineer",
+       "contaId": "local"
+      },
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-11-07",
+       "atualizadoEm": "2026-11-07",
+       "id": "li-7",
+       "empresa": "Globex",
+       "titulo": "Frontend Engineer - Next.js",
+       "contaId": "local"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-11-07-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": "React + TS, USD"
+      },
+      {
+       "id": "ev-2026-11-07-000002-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1b",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000003-4fzz",
+       "contaId": "local",
+       "vagaId": "gupy-2",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000004-4fzz",
+       "contaId": "local",
+       "vagaId": "gupy-3",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000005-4fzz",
+       "contaId": "local",
+       "vagaId": "li-4",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000006-4fzz",
+       "contaId": "local",
+       "vagaId": "li-5",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000007-4fzz",
+       "contaId": "local",
+       "vagaId": "li-6",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "eu",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000008-4fzz",
+       "contaId": "local",
+       "vagaId": "li-7",
+       "tipo": "descoberta",
+       "data": "2026-11-07",
+       "autor": "eu",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000009-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "aplicar",
+       "data": "2026-11-07",
+       "autor": "eu",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000010-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "enviada",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000011-4fzz",
+       "contaId": "local",
+       "vagaId": "gupy-2",
+       "tipo": "bloqueada",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": "A Gupy pede CPF: preencha você"
+      },
+      {
+       "id": "ev-2026-11-07-000012-4fzz",
+       "contaId": "local",
+       "vagaId": "gupy-3",
+       "tipo": "pulada",
+       "data": "2026-11-07",
+       "autor": "eu",
+       "texto": "Stack"
+      },
+      {
+       "id": "ev-2026-11-07-000013-4fzz",
+       "contaId": "local",
+       "vagaId": "li-4",
+       "tipo": "enviada",
+       "data": "2026-11-07",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-11-07-000014-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "nota",
+       "data": "2026-11-07",
+       "autor": "eu",
+       "texto": "mandei mensagem no LinkedIn"
+      },
+      {
+       "id": "ev-2026-11-17-000015-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "follow-up",
+       "data": "2026-11-17",
+       "autor": "eu",
+       "texto": "mandei de novo"
+      },
+      {
+       "id": "ev-2026-11-17-000016-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "email",
+       "data": "2026-11-17",
+       "autor": "claude",
+       "texto": "Convite para entrevista: entrevista de talent@acmeremote.example"
+      },
+      {
+       "id": "ev-2026-11-17-000017-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "em-processo",
+       "data": "2026-11-17",
+       "autor": "claude",
+       "texto": "Escolher horário"
+      },
+      {
+       "id": "ev-2026-11-17-000018-4fzz",
+       "contaId": "local",
+       "vagaId": "li-4",
+       "tipo": "email",
+       "data": "2026-11-17",
+       "autor": "claude",
+       "texto": "Recusa: rejeicao de no-reply@initech.example"
+      },
+      {
+       "id": "ev-2026-11-17-000019-4fzz",
+       "contaId": "local",
+       "vagaId": "li-4",
+       "tipo": "encerrada",
+       "data": "2026-11-17",
+       "autor": "claude",
+       "texto": "Reprovada"
+      },
+      {
+       "id": "ev-2026-11-17-000020-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "email",
+       "data": "2026-11-17",
+       "autor": "claude",
+       "texto": "Candidatura recebida: confirmacao de jobs@acme.io"
+      },
+      {
+       "id": "ev-2026-11-17-000021-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "email",
+       "data": "2026-11-17",
+       "autor": "eu",
+       "texto": "Teste: teste de jobs@misterio.example"
+      },
+      {
+       "id": "ev-2026-11-17-000022-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "em-processo",
+       "data": "2026-11-17",
+       "autor": "eu",
+       "texto": "Fazer o teste"
+      }
+     ],
+     "plataformas": [
+      {
+       "nome": "Gupy",
+       "status": "Automatizada",
+       "comoAplicar": "Script de busca",
+       "id": "gupy",
+       "limitacoes": "Pede CPF no formulário"
+      },
+      {
+       "nome": "nova fonte",
+       "url": "https://exemplo.com",
+       "id": "nova fonte"
+      }
+     ],
+     "rodadas": [
+      {
+       "data": "2026-11-17",
+       "fontes": [
+        "linkedin",
+        "gupy"
+       ],
+       "resumo": "Primeira rodada",
+       "n": 1,
+       "enviadas": 2
+      },
+      {
+       "data": "2026-11-17",
+       "fontes": [
+        "gupy"
+       ],
+       "resumo": "Segunda",
+       "n": 2
+      }
+     ],
+     "perfil": {
+      "nome": "Ana Teste",
+      "foco": "internacional",
+      "diasFollowUp": 10,
+      "filtros": {
+       "niveis": [
+        "Pleno"
+       ],
+       "modelo": [
+        "Remoto"
+       ]
+      },
+      "respostasPadrao": [
+       {
+        "pergunta": "anos com react?",
+        "resposta": "5"
+       },
+       {
+        "pergunta": "Inglês?",
+        "resposta": "Avançado"
+       }
+      ],
+      "cargo": "Desenvolvedora front-end React",
+      "stackPrincipal": [
+       "React",
+       "TypeScript"
+      ]
+     },
+     "pedidos": [
+      {
+       "id": "pd-2026-11-17-0001-4fzz",
+       "contaId": "local",
+       "texto": "Buscar vagas USD LATAM",
+       "autor": "eu",
+       "criadoEm": "2026-11-17",
+       "status": "feito",
+       "resposta": "Achei 5 vagas",
+       "concluidoEm": "2026-11-17"
+      }
+     ],
+     "emails": [
+      {
+       "idMensagem": "m1",
+       "contaId": "local",
+       "data": "2026-11-07",
+       "tipo": "entrevista",
+       "de": "talent@acmeremote.example",
+       "assunto": "Acme Remote - next steps",
+       "resumo": "entrevista de talent@acmeremote.example",
+       "proximoPasso": "Escolher horário",
+       "vagaId": "li-1",
+       "status": "ligado",
+       "registradoEm": "2026-11-17"
+      },
+      {
+       "idMensagem": "m2",
+       "contaId": "local",
+       "data": "2026-11-07",
+       "tipo": "rejeicao",
+       "de": "no-reply@initech.example",
+       "assunto": "Your application to Initech",
+       "resumo": "rejeicao de no-reply@initech.example",
+       "vagaId": "li-4",
+       "status": "ligado",
+       "registradoEm": "2026-11-17"
+      },
+      {
+       "idMensagem": "m3",
+       "contaId": "local",
+       "data": "2026-11-07",
+       "tipo": "teste",
+       "de": "jobs@misterio.example",
+       "assunto": "Desafio técnico",
+       "resumo": "teste de jobs@misterio.example",
+       "vagaId": "li-1",
+       "status": "ligado",
+       "registradoEm": "2026-11-17"
+      },
+      {
+       "idMensagem": "m4",
+       "contaId": "local",
+       "data": "2026-11-07",
+       "status": "ignorado"
+      },
+      {
+       "idMensagem": "m7",
+       "contaId": "local",
+       "data": "2026-11-07",
+       "tipo": "confirmacao",
+       "de": "jobs@acme.io",
+       "assunto": "Application received",
+       "resumo": "confirmacao de jobs@acme.io",
+       "vagaId": "li-1",
+       "status": "descartado",
+       "registradoEm": "2026-11-17"
+      }
+     ],
+     "hoje": "2026-11-17",
+     "versao": "33",
+     "curriculos": [],
+     "pastaCurriculos": null,
+     "primeirosPassos": [
+      {
+       "id": "perfil",
+       "feito": true,
+       "titulo": "Preencher o perfil",
+       "texto": "Nome, pretensões, inglês e filtros. O Claude usa em todas as candidaturas.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "curriculo",
+       "feito": false,
+       "titulo": "Colocar o currículo",
+       "texto": "Copie o PDF (em português e, se tiver, em inglês) para a pasta de currículos.",
+       "rota": "#/perfil"
+      },
+      {
+       "id": "rodada",
+       "feito": true,
+       "titulo": "Fazer a primeira rodada",
+       "texto": "Abra o Claude Code nesta pasta e digite /rodada. Ele busca, filtra e mostra as vagas aqui para você decidir.",
+       "rota": "#/plataformas",
+       "botao": "Ver plataformas"
+      }
+     ]
+    },
+    "tipo": null,
+    "cabecalhos": null
+   }
+  }
+ ]
+}

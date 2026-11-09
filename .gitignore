@@ -17,3 +17,13 @@ node_modules/
 # Ferramentas de desenvolvimento geradas na máquina de cada pessoa
 graphify-out/
 .claude/settings.local.json
+
+# App novo (Wails: Go + React/TS): arquivos gerados no build
+app/bin/
+app/.task/
+app/frontend/node_modules/
+app/frontend/bindings/
+app/frontend/dist/
+*.syso
+app/frontend/test-results/
+app/frontend/playwright-report/

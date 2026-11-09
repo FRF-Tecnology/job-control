@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, reescrita-go]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Central atual (Node). Continua valendo até a reescrita terminar (fase P8).
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm test
+
+  # App novo (Wails: Go + React/TS). No Windows o build não precisa de cgo nem de bibliotecas extras.
+  app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - name: Instalar wails3
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+      - name: Gerar bindings e telas
+        working-directory: app
+        run: |
+          wails3 generate bindings -clean=true -ts -i
+          cd frontend
+          npm ci
+          npm run build
+      - name: Testes das telas (Vitest)
+        working-directory: app/frontend
+        run: npm test
+      - run: go vet ./...
+      - run: go test ./...
+      - name: Compilar o app
+        run: go build -o central.exe ./app
+      - name: Jornada de usuário novo (Playwright, PC e celular)
+        working-directory: app/frontend
+        run: |
+          npx playwright install chromium
+          npm run e2e
+
+  # Repositório público: nenhum segredo pode entrar.
+  segredos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          # Checksum do gitleaks_8.28.0_checksums.txt oficial: o binário só roda se bater.
+          curl -sSfLo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tar.gz" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact --verbose .

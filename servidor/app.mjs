@@ -23,6 +23,23 @@ function lerCorpo(req) {
   });
 }
 
+// Mensagem fixa do 500: nunca leva o texto do erro.
+export const ERRO_INTERNO = 'erro interno do app; tente de novo';
+
+// tipoDoErro descreve o erro sem o texto dele: classe, código e chamada do sistema, seguindo e.cause.
+// Ex.: "Error ENOTDIR mkdir". Caminho, nome de arquivo e conteúdo ficam de fora.
+export function tipoDoErro(e) {
+  const partes = [];
+  for (let x = e, i = 0; x != null && i < 6; x = x.cause, i++) {
+    const p = [typeof x === 'object' ? (x.constructor?.name || 'Object') : typeof x];
+    if (/^[A-Z0-9_]{2,40}$/.test(String(x.code ?? ''))) p.push(x.code);
+    if (/^[a-z_]{2,20}$/.test(String(x.syscall ?? ''))) p.push(x.syscall);
+    partes.push(p.join(' '));
+    if (typeof x !== 'object') break;
+  }
+  return partes.join(' > ');
+}
+
 export function criarServidor({ dir, hoje = () => hojeISO(), armazem = criarArmazem(dir, { hoje }) } = {}) {
   const api = criarApi({ armazem, dir, hoje });
   // Chave local: só quem lê dados/.chave (o Claude, nesta máquina) consegue importar de outros sites.
@@ -96,8 +113,10 @@ export function criarServidor({ dir, hoje = () => hojeISO(), armazem = criarArma
     } catch (e) {
       const r = respostaDeErro(e);
       if (r) return enviar(res, r.status, r.corpo);
-      console.error(e);
-      enviar(res, 500, { erro: e.message });
+      // O texto do erro pode ter caminho da pasta (com o nome do usuário) ou dado do pedido: não vai para a
+      // resposta nem para o log. O log fica com método, caminho sem query e o tipo do erro.
+      console.error(`api: erro 500 em ${req.method} ${String(req.url ?? '').split('?')[0]} (${tipoDoErro(e)})`);
+      enviar(res, 500, { erro: ERRO_INTERNO });
     }
   });
 }

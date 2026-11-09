@@ -238,3 +238,119 @@ for (const p of PROVEDORES) {
     }
   });
 }
+
+// ---------- erro do provedor não repete a chave (jc-a2y.18) ----------
+import * as provAnthropic from '../nucleo/ia/provedores/anthropic.mjs';
+import * as provOpenai from '../nucleo/ia/provedores/openai.mjs';
+import * as provGoogle from '../nucleo/ia/provedores/google.mjs';
+import { mensagemHttp } from '../nucleo/ia/provedores/http.mjs';
+
+const SEGREDO = 'FICTICIAqwerty0123456789/abcdefXYZ+fim=9876'; // fictício; gitleaks:allow
+const FORMAS = {
+  exata: SEGREDO,
+  'json-escapada': SEGREDO.replaceAll('/', '\/'),
+  'url-encoded': encodeURIComponent(SEGREDO),
+  'prefixo+final': SEGREDO.slice(0, 16) + '...' + SEGREDO.slice(-4),
+  'ultimos-20': SEGREDO.slice(-20),
+};
+const semPedaco = (msg) => {
+  for (const f of Object.values(FORMAS)) for (let i = 0; i + 4 <= f.length; i++) assert.ok(!msg.includes(f.slice(i, i + 4)), `trecho da chave na mensagem: ${msg}`);
+};
+
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: erro HTTP e falha de rede não repetem a chave em nenhuma forma`, async () => {
+    for (const [nome, eco] of Object.entries(FORMAS)) {
+      for (const status of [400, 401, 403, 429, 500]) {
+        const fetch = async () => new Response(JSON.stringify({ error: { type: 'authentication_error', message: `Incorrect API key provided: ${eco}` } }), { status });
+        await assert.rejects(prov.chamar({ fetch, chave: SEGREDO, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+          semPedaco(e.message);
+          assert.equal(e.tipo, 'provedor', nome);
+          assert.equal(e.status, status);
+          assert.equal(e.message, `${prov.nome}: HTTP ${status} ${mensagemHttp(status)}`);
+          return true;
+        });
+      }
+    }
+    const rede = async (url) => { throw new TypeError(`fetch failed ${url} ${SEGREDO}`, { cause: { code: 'ECONNREFUSED' } }); };
+    await assert.rejects(prov.chamar({ fetch: rede, chave: SEGREDO, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+      semPedaco(e.message);
+      assert.equal(e.message, `${prov.nome}: falha de rede (conexão recusada)`);
+      return e.reintentavel === true;
+    });
+  });
+}
+
+// Nenhum valor do corpo de erro entra na mensagem: 8 ecos × 3 campos × 3 provedores (revisão CyberSec do PR #15, v2).
+const SENTINELA = 'sk-ant-api03-SENTINELAvazaKEYfragmento_ABC-123xyz'; // fictícia; gitleaks:allow
+const RUN = 'SENTINELAvazaKEYfragmento_ABC';
+const ECOS = { exato: RUN, 'caixa-baixa': RUN.toLowerCase(), 'caixa-alta': RUN.toUpperCase(), prefixado: 'x' + RUN, 'err_prefixo': 'err_' + RUN,
+  sufixado: RUN + '_err', 'trecho+caixa': RUN.slice(0, 12).toLowerCase() + '_code', inicio: 'sk_ant_api' };
+const semLetrasDaSentinela = (msg) => {
+  const baixa = msg.toLowerCase();
+  for (const t of SENTINELA.match(/[A-Za-z]{4,}/g)) for (let i = 0; i + 4 <= t.length; i++) assert.ok(!baixa.includes(t.slice(i, i + 4).toLowerCase()), `letras da chave na mensagem: ${msg}`);
+  assert.ok(!/sk[_-]ant/.test(baixa), `começo da chave na mensagem: ${msg}`);
+};
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: nenhum valor do corpo de erro (code, type, status) entra na mensagem`, async () => {
+    for (const campo of ['code', 'type', 'status']) {
+      for (const [nome, eco] of Object.entries(ECOS)) {
+        const fetch = async () => new Response(JSON.stringify({ error: { [campo]: eco, message: 'x' } }), { status: 401 });
+        await assert.rejects(prov.chamar({ fetch, chave: SENTINELA, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+          semLetrasDaSentinela(e.message);
+          assert.equal(e.message, `${prov.nome}: HTTP 401 ${mensagemHttp(401)}`, `${campo}/${nome}`);
+          return true;
+        });
+      }
+    }
+  });
+}
+
+// ---------- redirecionamento não é seguido (jc-a2y.22) ----------
+// fetch de verdade contra servidores locais: o destino do redirecionamento não recebe pedido nem chave.
+import { createServer } from 'node:http';
+const ouvirLocal = (h) => new Promise(r => { const s = createServer(h); s.listen(0, '127.0.0.1', () => r(s)); });
+const CHAVE_REDIRECT = 'sk-ant-api03-SENTINELAredirect-123xyz'; // fictícia; gitleaks:allow
+
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: redirecionamento (301, 302, 303, 307, 308) não é seguido e o destino não recebe a chave`, async () => {
+    let noDestino = 0, comChave = 0, naOrigem = 0, status = 0;
+    const destino = await ouvirLocal((req, res) => {
+      noDestino++;
+      if (JSON.stringify(req.headers).includes('SENTINELA') || req.url.includes('SENTINELA')) comChave++;
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}');
+    });
+    const origem = await ouvirLocal((req, res) => { naOrigem++; res.writeHead(status, { location: `http://localhost:${destino.address().port}${req.url}` }); res.end(); });
+    try {
+      for (status of [301, 302, 303, 307, 308]) {
+        naOrigem = 0;
+        await assert.rejects(prov.chamar({ fetch, chave: CHAVE_REDIRECT, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u', opcoes: { url: `http://127.0.0.1:${origem.address().port}` } }), (e) => {
+          assert.equal(e.tipo, 'provedor');
+          assert.equal(e.status, status);
+          assert.equal(e.message, `${prov.nome}: HTTP ${status} ${mensagemHttp(status)}`);
+          return e.reintentavel === false;
+        });
+        assert.equal(naOrigem, 1, `status ${status}`);
+      }
+      assert.equal(noDestino, 0, 'o destino recebeu pedido');
+      assert.equal(comChave, 0, 'o destino recebeu a chave');
+    } finally { destino.close(); origem.close(); }
+  });
+}
+
+// ---------- recusa do Google com lista fechada de motivos (jc-a2y.21) ----------
+import { motivoBloqueio } from '../nucleo/ia/provedores/google.mjs';
+
+test('google: motivo de bloqueio passa por lista fechada; qualquer outro valor vira "motivo não informado"', async () => {
+  const conhecidos = { SAFETY: 'segurança', BLOCKLIST: 'termos proibidos', PROHIBITED_CONTENT: 'conteúdo proibido', IMAGE_SAFETY: 'segurança de imagem' };
+  for (const [m, texto] of Object.entries(conhecidos)) assert.equal(motivoBloqueio(m), texto);
+  const estranhos = ['OTHER', 'BLOCK_REASON_UNSPECIFIED', 'safety', 'SAFETY_', 'SK_ANT_SENTINELA', 'sk_ant_api', 'fulano.ficticio@exemplo.com',
+    'C:\Users\Usuario Exemplo', 'toString', 'constructor', '__proto__', 'hasOwnProperty', 3, true, null, {}];
+  for (const m of estranhos) assert.equal(motivoBloqueio(m), 'motivo não informado', String(m));
+  for (const eco of estranhos.filter(e => typeof e === 'string')) {
+    const fetch = async () => new Response(JSON.stringify({ promptFeedback: { blockReason: eco } }), { status: 200 });
+    await assert.rejects(provGoogle.chamar({ fetch, chave: 'chave-ficticia', modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+      assert.equal(e.message, 'google: bloqueado (motivo não informado)');
+      return e.tipo === 'provedor' && e.reintentavel === false;
+    });
+  }
+});
