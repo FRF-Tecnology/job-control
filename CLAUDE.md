@@ -116,6 +116,11 @@ O teste `testes/golden.test.mjs` falha se o golden estiver desatualizado.
 - `App.tsx` é a casca (rotas por hash, atualização a cada 5 s com proteção de edição, diálogo, avisos);
 - `dominio/*.ts` é o mesmo código de `nucleo/`.
 
+Preparar o ambiente do front (uma vez por clone, e sempre que os bindings mudarem):
+- `go` e `wails3` precisam estar no PATH. No Windows ficam em `C:\Program Files\Go\bin` e `%USERPROFILE%\go\bin`; se faltar o `wails3`, instale com `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`.
+- `cd app && wails3 generate bindings -clean=true -ts -i` gera `app/frontend/bindings`. Sem essa pasta, o Vitest e o build do Vite param com `Event bindings module not found` (plugin `wails-typed-events`). A pasta fica fora do git, e o CI gera a dela.
+- `cd app/frontend && npm ci` instala as dependências.
+
 Testes das telas:
 - `cd app/frontend && npm test` roda o Vitest. As funções de domínio em TS são conferidas contra o golden do Node.
 - `npm run build && npm run e2e` roda o Playwright: a jornada de usuário novo no PC e no celular, contra `cmd/central-dev` com uma pasta vazia.

@@ -20,14 +20,15 @@ Escrito pelo agente de front-end para o PO. Sem dados pessoais; só o que o repo
 
 - O Vitest falha com `Event bindings module not found` se `app/frontend/bindings` não existir.
   A pasta é gerada por `wails3 generate bindings -clean=true -ts -i` dentro de `app/`, como o CI faz.
-  Isso não é bug do código: é um passo de preparação que o `CLAUDE.md` ainda não cita na seção das telas.
+  Isso não é bug do código: é um passo de preparação, agora descrito no `CLAUDE.md` na seção das telas (bead `jc-zgg`).
 - `go` e `wails3` podem estar instalados e fora do PATH da sessão. Caminhos usuais no Windows:
   `C:\Program Files\Go\bin` e `%USERPROFILE%\go\bin`.
 - O Graphify avisa que `tree_sitter_sql` não está instalado; as 3 migrações `.sql` ficam fora do grafo.
 
 ## Propostas de tarefas pequenas de front para a P5 (sem implementar ainda)
 
-Todas dependem de o back-end publicar as rotas em `api/openapi.yaml` primeiro (contrato antes do código).
+Ordem decidida: P5 antes da P7. No Gas Town, o front da P5 é o bead `jc-a2y.6.3`, que espera o contrato (`jc-a2y.6.1`) e a fila do navegador (`jc-a2y.6.2`) do back-end.
+As rotas abaixo são sugestões até o contrato entrar em `api/openapi.yaml` (contrato antes do código).
 
 | # | Tarefa | Aceite | Depende de |
 |---|---|---|---|
