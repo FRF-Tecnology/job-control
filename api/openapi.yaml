@@ -1,12 +1,15 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.2.0
+  version: 0.3.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
     gravada em internal/api/testdata/golden-api.json. Erros: 400 validação ({erro, erros}),
-    404 não encontrado, 409 duplicata ({erro, existente}), 415 sem JSON, 403 gravação de outro site.
+    404 não encontrado, 409 duplicata ({erro, existente}), 415 sem JSON, 403 gravação de outro site,
+    413 corpo grande demais. Rotas /ia (só no app Go): 422 saída da IA fora do contrato ou bloqueada
+    pela guarda, 502 provedor fora ({erro, tipo, regra}). O teste internal/api/contrato_test.go
+    confere este arquivo contra as rotas da API.
 servers:
   - url: /api/v1
 paths:
@@ -49,3 +52,197 @@ paths:
   /historico.md: { get: { summary: Histórico em Markdown } }
   /exportar.csv: { get: { summary: 'Vagas em CSV (; e BOM para o Excel)' } }
   /backup: { post: { summary: 'Backup do dia ({criado, data})' } }
+
+  # IA da pessoa (internal/api/ia.go). A chave de API só entra (PUT) e vai para o cofre do sistema;
+  # nenhuma resposta traz a chave, só o final ("…" + 4 últimos caracteres).
+  /ia:
+    get:
+      summary: 'O que está conectado, CLIs detectadas, chaves salvas (só o final) e uso dos últimos 30 dias'
+      responses:
+        '200': { description: Estado da IA, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoIA' } } } }
+  /ia/config:
+    get:
+      summary: 'Só o que está conectado (rápido: não procura CLIs)'
+      responses:
+        '200': { description: Conexão atual, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
+    put:
+      summary: 'Escolhe o provedor; "nenhum" desconecta. Modelo vazio usa o padrão do provedor'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provedor]
+              properties:
+                provedor: { type: string, enum: [nenhum, anthropic, openai, google, claude-cli, codex-cli, gemini-cli] }
+                modelo: { type: string, description: 'Obrigatório para openai e google (sem padrão)' }
+                url: { type: string, pattern: '^https://', description: 'Endereço compatível (ex.: OpenRouter); só https' }
+      responses:
+        '200': { description: Conexão gravada, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+  /ia/chaves/{provedor}:
+    parameters:
+      - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google] } }
+    put:
+      summary: 'Salva a chave de API no cofre do sistema'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chave]
+              properties:
+                chave: { type: string, minLength: 10, writeOnly: true, description: 'Espaços nas pontas são tirados' }
+      responses:
+        '200': { description: Chave salva, content: { application/json: { schema: { $ref: '#/components/schemas/ChaveSalva' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+    delete:
+      summary: 'Apaga a chave do cofre'
+      responses:
+        '200': { description: 'Chave apagada (final: null)', content: { application/json: { schema: { $ref: '#/components/schemas/ChaveSalva' } } } }
+        '400': { $ref: '#/components/responses/Erro' }
+  /ia/testar:
+    post:
+      summary: 'Triagem de uma vaga fictícia para ver se a IA responde (não grava nada além do uso)'
+      responses:
+        '200':
+          description: A IA respondeu dentro do contrato
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, ms, saida]
+                properties:
+                  ok: { type: boolean, const: true }
+                  ms: { type: integer, description: Tempo da chamada }
+                  saida: { $ref: '#/components/schemas/Triagem' }
+        '400': { $ref: '#/components/responses/ErroIAConfig' }
+        '422': { $ref: '#/components/responses/ErroIAContrato' }
+        '502': { $ref: '#/components/responses/ErroIAProvedor' }
+  /ia/triar/{vagaId}:
+    parameters:
+      - { name: vagaId, in: path, required: true, schema: { type: string } }
+    post:
+      summary: 'Opinião da IA sobre a vaga (não muda a vaga)'
+      responses:
+        '200': { description: Opinião, content: { application/json: { schema: { $ref: '#/components/schemas/Triagem' } } } }
+        '400': { $ref: '#/components/responses/ErroIAConfig' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '422': { $ref: '#/components/responses/ErroIAContrato' }
+        '502': { $ref: '#/components/responses/ErroIAProvedor' }
+  /ia/mensagem/{vagaId}:
+    parameters:
+      - { name: vagaId, in: path, required: true, schema: { type: string } }
+    post:
+      summary: 'Rascunho de follow-up no idioma da vaga (nunca é enviado sozinho)'
+      responses:
+        '200':
+          description: Rascunho
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [texto]
+                additionalProperties: false
+                properties:
+                  assunto: { type: string }
+                  texto: { type: string }
+        '400': { $ref: '#/components/responses/ErroIAConfig' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '422': { $ref: '#/components/responses/ErroIAContrato' }
+        '502': { $ref: '#/components/responses/ErroIAProvedor' }
+
+components:
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties: { erro: { type: string } }
+    ErroValidacao:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string }
+        erros: { type: array, items: { type: string } }
+    ErroIA:
+      type: object
+      required: [erro, tipo, regra]
+      properties:
+        erro: { type: string }
+        tipo: { type: string, description: 'config ou entrada (400), provedor (502), regra ou esquema (422)' }
+        regra: { type: [string, 'null'], description: Regra da guarda que bloqueou }
+    ConfigIA:
+      type: object
+      required: [configurada]
+      properties:
+        configurada: { type: boolean }
+        provedor: { type: string }
+        modelo: { type: string }
+    ChaveSalva:
+      type: object
+      required: [provedor, final]
+      properties:
+        provedor: { type: string }
+        final: { type: [string, 'null'], description: '"…" + 4 últimos caracteres; null sem chave' }
+    EstadoCLI:
+      type: object
+      properties:
+        provedor: { type: string }
+        comando: { type: string }
+        nome: { type: string }
+        plano: { type: string }
+        instalar: { type: string }
+        verificada: { type: boolean, description: Testada de verdade pelo projeto }
+        instalada: { type: boolean }
+        logada: { type: [boolean, 'null'], description: null quando não dá para saber sem chamar a IA }
+        versao: { type: string }
+    EstadoIA:
+      type: object
+      required: [configurada, chaves, clis, gratis, uso]
+      properties:
+        configurada: { type: boolean }
+        provedor: { type: string }
+        modelo: { type: string }
+        url: { type: string }
+        chaves:
+          type: object
+          description: 'Um campo por provedor com chave (anthropic, openai, google): final ou null'
+          additionalProperties: { type: [string, 'null'] }
+        clis: { type: array, items: { $ref: '#/components/schemas/EstadoCLI' } }
+        gratis:
+          type: object
+          properties: { disponivel: { type: boolean, description: 'Modelos gratuitos: false até a P7' } }
+        uso:
+          type: object
+          description: Só contagens e custo; nenhum conteúdo
+          properties:
+            chamadas: { type: integer }
+            falhas: { type: integer }
+            custoEstimadoUSD: { type: number }
+    Triagem:
+      type: object
+      required: [decisao, aderencia, motivo]
+      additionalProperties: false
+      properties:
+        decisao: { type: string, enum: [aplicar, pular, perguntar] }
+        aderencia: { type: string, enum: [A, B, C] }
+        motivo: { type: string }
+        motivoPulo: { type: string, enum: [Sênior, Inglês, Diploma, Stack, Presencial/Local, Documento, Duplicada, Vaga fechada, Outro] }
+  responses:
+    Erro:
+      description: '{erro}'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } }
+    Validacao:
+      description: 'Entrada inválida ({erro, erros}) ou provedor sem chave ({erro})'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroValidacao' } } }
+    ErroIAConfig:
+      description: 'Nenhuma IA conectada, CLI ausente, sem chave ou entrada inválida (tipo config ou entrada)'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
+    ErroIAContrato:
+      description: 'Saída da IA fora do contrato (tipo esquema) ou bloqueada pela guarda (tipo regra); não troca de modelo'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
+    ErroIAProvedor:
+      description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor)'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
