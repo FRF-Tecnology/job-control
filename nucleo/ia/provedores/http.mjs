@@ -6,6 +6,7 @@ import { ErroIA } from '../erro.mjs';
 const TEMPO_LIMITE_MS = 120_000;
 
 export function mensagemHttp(status) {
+  if (status >= 300 && status <= 399) return 'o provedor mandou para outro endereço, e o app não segue (confira o endereço)';
   if (status === 400) return 'pedido recusado (confira o modelo e as opções)';
   if (status === 401) return 'chave recusada (confira a chave de API)';
   if (status === 403) return 'acesso negado (confira a chave e o plano da conta)';
@@ -34,6 +35,8 @@ export async function postarJSON({ fetch, url, headers, corpo, chave, provedor }
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(corpo),
+      // Nunca segue redirecionamento: seguir mandaria a chave (x-api-key, x-goog-api-key) para outro endereço.
+      redirect: 'manual',
       signal: AbortSignal.timeout(TEMPO_LIMITE_MS),
     });
   } catch (e) {

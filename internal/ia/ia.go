@@ -47,7 +47,7 @@ type IA struct {
 
 // Nova cria a IA com os provedores HTTP e de CLI.
 func Nova(cfg Config, chave func(string) string, registrar func(Uso)) *IA {
-	cliente := &http.Client{Timeout: tempoLimite}
+	cliente := &http.Client{Timeout: tempoLimite, CheckRedirect: semRedirecionamento}
 	return &IA{
 		Config: cfg, Chave: chave, RegistrarUso: registrar, Agora: time.Now,
 		Provedores: map[string]Provedor{
