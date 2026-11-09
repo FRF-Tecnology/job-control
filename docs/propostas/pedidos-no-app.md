@@ -12,10 +12,11 @@ Hoje o texto da caixa "Seus pedidos" só vira fila para o `/pedidos` do Claude C
    - a saída da IA.
 
    A IA só **propõe**: ela devolve **uma** ação do catálogo em JSON estrito, e o servidor valida o esquema, a guarda e as regras de cada ação.
-2. **Nada grava sem a pessoa** (o CyberSec sugeriu a tela chamar a rota que já existe com o payload mostrado; aqui a tela confirma a proposta **guardada no servidor**, conferida pela impressão, o que dá a mesma garantia e ainda impede o cliente de mandar outro payload):
-   - a proposta fica guardada no servidor, com uma impressão (o texto que a tela mostra);
-   - a gravação só acontece em `POST /pedidos/{id}/confirmar`, da tela (`x-so-tela`), com a mesma impressão;
-   - o que roda é a proposta guardada, nunca o que o cliente mandar.
+2. **Nada grava sem a pessoa** (desenho decidido pelo PO, a partir do CyberSec):
+   - a proposta traz a **chamada exata à rota que já existe** (`POST /vagas` ou `POST /vagas/{id}/mover`), montada pelo servidor a partir da ação validada, e uma **impressão**: o sha256 do método, do caminho e do corpo canônico;
+   - a tela mostra o resumo (o que muda, em qual vaga) e, ao confirmar, chama essa rota com o corpo mostrado e os cabeçalhos `X-Pedido` e `X-Impressao`, com autor `eu`;
+   - o servidor recalcula a impressão da chamada recebida. Se for diferente da guardada no pedido, ou se a chamada vier do assistente, dá 409/403 e nada muda. Se for igual, a rota faz o que já faz, e o pedido vira `feito`;
+   - sem confirmação, só leitura e resposta.
 3. **Fora do catálogo para sempre, recusado no servidor**, porque nenhuma ação do catálogo chega lá:
    - aprovar, retomar o envio, abrir janela, entrar nas plataformas;
    - ligar o modo direto, mover para `aplicar`;
@@ -47,15 +48,15 @@ sequenceDiagram
   A->>I: interpretarPedido(pedido, vagas mínimas)
   I-->>A: {acao, parametros} (JSON)
   A->>A: esquema + guarda + regras da ação
-  A-->>T: 200 pedido (proposta: acao, impressao, falta)
-  T->>A: POST /pedidos/{id}/confirmar {impressao}
-  A->>A: executa a proposta guardada (autor eu)
-  A-->>T: 200 pedido (feito, resultado)
+  A-->>T: 200 pedido (proposta: acao, resumo, chamada, impressao, falta)
+  T->>A: chamada (POST /vagas ou /vagas/{id}/mover) + X-Pedido + X-Impressao
+  A->>A: impressão da chamada = a guardada? (autor eu)
+  A-->>T: resposta da rota; pedido feito
 ```
 
 Os estados do pedido são:
 - `aberto`;
-- `proposta`, que pode ser **descartada** (volta a `aberto`) ou **confirmada** (vira `feito`);
+- `proposta`, que pode ser **descartada** (volta a `aberto`) ou **confirmada** pela chamada da proposta (vira `feito`); `preparar-pacote` é confirmada só pela navegação da tela para a Fila;
 - `recusado`, quando a IA respondeu `recusar` ou a ação não passou nas regras;
 - `feito`.
 
@@ -65,8 +66,8 @@ O `/pedidos/{id}/concluir`, do Claude Code, continua igual.
 
 | Ação | Parâmetros | O que o servidor confere | Ao confirmar | Precisa confirmar? |
 |---|---|---|---|---|
-| `adicionar-vaga` | `url`, `empresa?`, `titulo?` | `https`; sem usuário nem senha na URL; até 500 caracteres; empresa e título até 120, sem CPF/RG; duplicata pelo mesmo `dup` da CLI | cria a vaga em **`descoberta`** (`AdicionarVaga`) com a plataforma tirada do host (lista fechada; senão, `outra`) | sim |
-| `registrar-etapa` | `vagaId`, `etapa`, `motivo?`, `sub?` | a vaga existe; `etapa` ∈ {`enviada`, `em-processo`, `oferta`, `encerrada`, `pulada`}, **nunca `aplicar`**; `motivo` da lista fechada (pulada/encerrada); `sub` da lista de `em-processo` | `MoverVaga` com autor `eu` (evento na linha do tempo) | sim |
+| `adicionar-vaga` | `url`, `empresa?`, `titulo?` | `https`; sem usuário nem senha na URL; até 500 caracteres; empresa e título até 120, sem CPF/RG; duplicata pelo mesmo `dup` da CLI | a tela chama `POST /vagas` `{link, empresa?, titulo?}`: a vaga entra em **`descoberta`**, com a plataforma tirada do host (lista fechada; senão, `outra`) | sim |
+| `registrar-etapa` | `vagaId`, `etapa`, `motivo?`, `sub?` | a vaga existe; `etapa` ∈ {`enviada`, `em-processo`, `oferta`, `encerrada`, `pulada`}, **nunca `aplicar`**; `motivo` da lista fechada (pulada/encerrada); `sub` da lista de `em-processo` | a tela chama `POST /vagas/{id}/mover` `{etapa, motivo?, subEtapa?}` com autor `eu` (evento na linha do tempo) | sim |
 | `preparar-pacote` | `vagaId` | a vaga existe e está em `aplicar` (aprovada pela pessoa) | **não grava nada**: devolve `abrir: "#/fila?preparar=<vagaId>"`, e a pessoa prepara e salva o pacote na Fila, como hoje | sim (só navega) |
 | `responder` | `texto` | até 1500 caracteres; passa na guarda (sem documento nem senha); sem `<` ou `>` | **não grava nada**: mostra o texto | não |
 | `recusar` | `motivo` ∈ {`so-a-pessoa`, `fora-do-app`, `nao-entendi`} | — | **não grava nada**: mostra uma frase fixa por motivo | não |
@@ -87,7 +88,7 @@ O pedido que a IA não consegue mapear vira `recusar/nao-entendi`. Pedidos como 
 | Rota | Quem | Respostas |
 |---|---|---|
 | `POST /pedidos/{id}/interpretar` | qualquer autor (não grava nada no domínio) | 200 pedido com `proposta`; 404; 409 se o pedido não está `aberto`, ou se já há uma interpretação em andamento; 400 sem IA conectada; 422 IA fora do contrato; 502 provedor fora |
-| `POST /pedidos/{id}/confirmar` `{impressao}` | **só a tela** (`x-so-tela`) | 200 pedido `feito` com `resultado`; 403; 404; 409 se o estado ou a impressão mudaram, ou se a regra da ação recusou na hora (a vaga sumiu, duplicata) |
+| `POST /vagas` e `POST /vagas/{id}/mover`, que já existem, com `X-Pedido` e `X-Impressao` | **só a tela** com esses cabeçalhos (vindo do assistente dá 403) | a resposta normal da rota, e o pedido vira `feito`; 409 se o pedido não está em `proposta` ou se a impressão da chamada recebida é diferente da guardada (nada muda) |
 | `POST /pedidos/{id}/descartar` | qualquer autor (só reduz o risco) | 200 pedido `aberto`, sem a proposta |
 
 ## Testes previstos
@@ -109,7 +110,7 @@ O pedido que a IA não consegue mapear vira `recusar/nao-entendi`. Pedidos como 
   - saída com campos a mais.
 
   Todos viram `recusar`, 422 ou 400, sem nada gravado.
-- `confirmar` só da tela; impressão diferente dá 409; confirmar duas vezes não grava duas vezes.
+- Confirmação só da tela; uma chamada diferente da proposta (outra vaga, outra etapa, campo a mais) dá 409 com nada gravado; confirmar duas vezes não grava duas vezes; uma chamada sem os cabeçalhos segue sendo a rota de sempre.
 - `adicionar-vaga` cai em `descoberta` (nunca em outra etapa); `registrar-etapa` grava um evento com autor `eu`.
 - O log só tem o tipo e o resultado, sem o texto do pedido nem os parâmetros.
 - Mutações em cada regra do servidor.

@@ -24,12 +24,12 @@ paths:
   /resumo: { get: { summary: Números do dia } }
   /vagas:
     get: { summary: 'Lista de vagas (?etapa=, ?plataforma=)' }
-    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28)' }
+    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta adicionar-vaga de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^[0-9a-f]{64}$' }, description: 'sha256 da chamada proposta (método, caminho, corpo canônico); diferente da guardada no pedido dá 409 e nada muda' }] }
   /vagas/importar: { post: { summary: 'Importa vagas de fora: só cria em Descoberta (etapa, envio e datas são ignorados)' } }
   /vagas/{id}:
     get: { summary: Vaga com os eventos dela }
     patch: { summary: 'Muda campos editáveis (notasAntes recusa edição em conflito)' }
-  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28)' } }
+  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^[0-9a-f]{64}$' }, description: 'sha256 da chamada proposta (método, caminho, corpo canônico); diferente da guardada no pedido dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
@@ -65,27 +65,6 @@ paths:
         '409': { description: 'O pedido não está aberto, ou já há uma interpretação em andamento: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
         '422': { description: 'A IA respondeu fora do contrato, ou com uma ação fora do catálogo: {erro, tipo, regra}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
         '502': { description: 'Provedor da IA fora: {erro, tipo}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
-  /pedidos/{id}/confirmar:
-    post:
-      x-proposta: true
-      x-so-tela: true
-      summary: 'A pessoa confirma a proposta mostrada: o app executa a proposta guardada (nunca parâmetros do cliente), com autor eu, e o pedido vira feito com o resultado. Só a tela'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [impressao]
-              properties:
-                impressao: { type: string, description: 'A impressão da proposta que a tela mostrou; diferente da guardada dá 409' }
-      responses:
-        '200': { description: 'Pedido feito, com o resultado', content: { application/json: { schema: { $ref: '#/components/schemas/PedidoComProposta' } } } }
-        '400': { $ref: '#/components/responses/Validacao' }
-        '403': { $ref: '#/components/responses/SoTela' }
-        '404': { description: 'Pedido não encontrado: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
-        '409': { description: 'Sem proposta, impressão diferente, ou a regra da ação recusou agora (vaga sumiu, duplicata): {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /pedidos/{id}/descartar:
     post:
       x-proposta: true
@@ -743,7 +722,7 @@ components:
     PropostaPedido:
       type: object
       additionalProperties: false
-      required: [acao, parametros, impressao, falta, criadaEm]
+      required: [acao, parametros, resumo, chamada, impressao, falta, criadaEm]
       properties:
         acao: { type: string, enum: [adicionar-vaga, registrar-etapa, preparar-pacote, responder, recusar] }
         parametros:
@@ -784,7 +763,19 @@ components:
               required: [motivo]
               properties:
                 motivo: { type: string, enum: [so-a-pessoa, fora-do-app, nao-entendi] }
-        impressao: { type: string, description: 'Texto da proposta que a tela mostra e a pessoa confirma' }
+        resumo: { type: string, description: 'O que muda, em qual vaga (empresa e título), em frase fixa: a tela mostra antes de confirmar' }
+        chamada:
+          description: 'A chamada à rota que já existe que a tela faz ao confirmar (só adicionar-vaga e registrar-etapa; null nas outras). Montada pelo servidor a partir da ação validada; nunca uma rota fora destas duas'
+          oneOf:
+            - type: 'null'
+            - type: object
+              additionalProperties: false
+              required: [metodo, caminho, corpo]
+              properties:
+                metodo: { type: string, enum: [POST] }
+                caminho: { type: string, pattern: '^/vagas(/[A-Za-z0-9._-]{1,80}/mover)?$' }
+                corpo: { type: object, description: 'POST /vagas: {link, empresa?, titulo?} (descoberta). /mover: {etapa, motivo?, subEtapa?}' }
+        impressao: { type: [string, 'null'], pattern: '^[0-9a-f]{64}$', description: 'sha256 da chamada (método, caminho e corpo canônico). A tela manda em X-Impressao com X-Pedido; null sem chamada' }
         falta: { type: array, items: { type: string }, description: 'O que ainda fica com a pessoa (frases fixas)' }
         criadaEm: { type: string }
     ErroLogin:
