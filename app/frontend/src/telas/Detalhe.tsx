@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/contexto';
 import { ETAPAS } from '../dominio/modelo';
-import { EtapaChip } from '../componentes';
+import { EtapaChip, LinkExterno } from '../componentes';
 import { dataCurta, encode, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
 import { extrasPara } from './Quadro';
 
@@ -71,7 +71,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
       </div>
       {v.motivoClaude && <div className="ficha" style={{ padding: '12px 14px', boxShadow: 'none', background: 'var(--superficie-2)' }}><div><b>Observação do Claude: </b>{v.motivoClaude}</div></div>}
       <div className="acoes">
-        {v.link && <a className="botao" href={v.link} target="_blank" rel="noopener">Abrir vaga</a>}
+        <LinkExterno url={v.link} className="botao">Abrir vaga</LinkExterno>
         <label className="campo" style={{ minWidth: '200px' }}><span>Mover para</span>
           <select value="" onChange={ev => { const e = ev.target.value; if (e) moverPara(e); }}>
             <option value="">{nomeEtapa(v.etapa)}</option>
