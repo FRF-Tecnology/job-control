@@ -1,6 +1,7 @@
 // Funções de negócio da IA: contrato de entrada e saída (JSON), prompt de sistema e mensagem.
 // O núcleo só conhece estas funções; o provedor (Claude, GPT, Gemini, assistente local) é detalhe.
 import { MOTIVOS_PULO } from '../modelo.mjs';
+import { conferirEsquema } from './erro.mjs';
 
 const texto = { type: 'string' };
 const textos = { type: 'array', items: texto };
@@ -124,6 +125,9 @@ Tom profissional e direto, sem exageros. Não afirme experiência que não está
     mensagem: e => `Tipo: ${e.tipo}\nIdioma: ${e.idioma}\n\nVaga:\n${json(e.vaga)}\n\nPerfil:\n${json(resumoPerfil(e.perfil))}`,
   },
 };
+
+// Contrato que o validador não aplicaria por inteiro falha ao carregar (jc-a2y.60), como no Go.
+for (const f of Object.values(FUNCOES)) { conferirEsquema(f.entrada); conferirEsquema(f.saida); }
 
 // Prompt completo: regras fixas + instrução da função + esquema (o assistente local não tem saída estruturada).
 export function montarPrompt(funcao, ent) {
