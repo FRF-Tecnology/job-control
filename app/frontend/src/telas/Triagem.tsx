@@ -1,7 +1,7 @@
 // Triagem: uma vaga por vez. Arraste o cartão (direita aplica, esquerda pula) ou use os botões / teclas A, P, →.
 // Porte de web/telas/triagem.mjs.
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, type App } from '../app/contexto';
 import { MOTIVOS_PULO, mercadoDe, noFoco } from '../dominio/modelo';
 import { Icone, LinkExterno } from '../componentes';
 import { dataCurta, encode, nomePlataforma, plural } from '../util';
@@ -35,6 +35,30 @@ export function TelaTriagem() {
   });
   const depois = () => { if (v) { puladasNestaSessao.add(v.id); redesenhar(n => n + 1); } };
 
+  // Aprovar todas do grupo A (jc-a2y.31): a pessoa vê a lista e a contagem e confirma. Pela tela, o autor é "eu".
+  const aprovarGrupoA = umaVez(async () => {
+    const lista = grupoA;
+    const quantas = plural(lista.length, 'vaga', 'vagas');
+    const ok = await app.perguntar({
+      titulo: `Aprovar ${quantas} do grupo A?`,
+      texto: 'Elas vão para a fila do Claude aplicar. As outras continuam aqui.',
+      itens: lista.map((x: any) => `${x.empresa} — ${x.titulo}`),
+      confirmar: `Aprovar ${quantas}`,
+    });
+    if (ok === null) return;
+    try {
+      const r = await aprovarLista(app, lista);
+      await app.recarregar();
+      if (r.aprovadas || r.mudaram) {
+        const feito = r.aprovadas ? `${plural(r.aprovadas, 'vaga foi', 'vagas foram')} para a fila do Claude.` : 'Nenhuma vaga foi aprovada.';
+        app.aviso(r.mudaram ? `${feito} ${plural(r.mudaram, 'mudou antes e ficou como estava', 'mudaram antes e ficaram como estavam')}.` : feito);
+      }
+      r.falhas.forEach(f => app.aviso(f, true));
+    } catch (e) {
+      app.aviso((e as Error).message, true);
+    }
+  });
+
   useEffect(() => {
     if (!v) return;
     const ouvinte = (ev: KeyboardEvent) => {
@@ -57,10 +81,7 @@ export function TelaTriagem() {
           : 'Nenhuma vaga esperando decisão.'}</p>
       </div>
       {grupoA.length > 1 && (
-        <button className="botao-fantasma" type="button" onClick={async () => {
-          const ok = await app.perguntar({ titulo: `Aprovar as ${grupoA.length} vagas do grupo A?`, texto: 'Elas vão para a fila do Claude aplicar.', confirmar: 'Aprovar todas' });
-          if (ok !== null) for (const x of grupoA) await app.mover(x.id, 'aplicar', {});
-        }}>{`Aprovar todo o grupo A (${grupoA.length})`}</button>
+        <button className="botao-fantasma" type="button" onClick={aprovarGrupoA}>{`Aprovar todas do grupo A (${grupoA.length})`}</button>
       )}
     </header>
   );
@@ -103,6 +124,26 @@ export function TelaTriagem() {
       <p className="pequeno mudo" style={{ textAlign: 'center', marginTop: '18px' }}>{`${fila.length - 1 > 0 ? `Depois desta, mais ${fila.length - 1}.` : 'É a última.'} Aprovadas vão para a fila; o Claude envia na próxima rodada.`}</p>
     </div>
   );
+}
+
+// Reconfere o estado antes de gravar: vaga que saiu da Descoberta ou do grupo A desde a confirmação fica
+// como está (não volta para aplicar). Grava uma por vez e recarrega uma vez só no fim.
+async function aprovarLista(app: App, lista: any[]) {
+  const atuais = new Map<string, any>(((await app.api('/api/v1/estado')).vagas ?? []).map((x: any) => [x.id, x]));
+  let aprovadas = 0;
+  let mudaram = 0;
+  const falhas: string[] = [];
+  for (const x of lista) {
+    const agora = atuais.get(x.id);
+    if (!agora || agora.etapa !== 'descoberta' || agora.aderencia !== 'A') { mudaram++; continue; }
+    try {
+      await app.api(`/api/v1/vagas/${encode(x.id)}/mover`, 'POST', { etapa: 'aplicar' });
+      aprovadas++;
+    } catch (e) {
+      falhas.push(`Não deu para aprovar ${x.empresa}: ${(e as Error).message}`);
+    }
+  }
+  return { aprovadas, mudaram, falhas };
 }
 
 // O cartão da vaga. Arrastar com dedo ou mouse: a decisão vem do lado em que ele é solto.

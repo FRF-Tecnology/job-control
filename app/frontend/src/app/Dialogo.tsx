@@ -36,7 +36,7 @@ export function Dialogo({ pedido, fechar }: { pedido: PedidoDialogo | null; fech
 }
 
 function FormPergunta({ p, responder }: { p: Pergunta; responder: (v: string | null) => void }) {
-  const { titulo, texto, opcoes = [], campo, valor = '', confirmar = 'Confirmar', multilinha = false } = p;
+  const { titulo, texto, itens = [], opcoes = [], campo, valor = '', confirmar = 'Confirmar', multilinha = false } = p;
   const [entrada, setEntrada] = useState(valor);
   const campoRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const primeiro = useRef<HTMLButtonElement>(null);
@@ -57,6 +57,7 @@ function FormPergunta({ p, responder }: { p: Pergunta; responder: (v: string | n
     <form method="dialog" onSubmit={enviar} onKeyDown={teclar}>
       <h2>{titulo}</h2>
       {texto && <p className="mudo" style={{ margin: 0 }}>{texto}</p>}
+      {itens.length > 0 && <ul className="lista-dialogo">{itens.map((t, i) => <li key={i}>{t}</li>)}</ul>}
       {opcoes.length > 0 && (
         <div className="motivos">
           {opcoes.map((o, i) => (
