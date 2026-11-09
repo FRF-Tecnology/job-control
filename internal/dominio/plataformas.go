@@ -72,7 +72,13 @@ func (p Plataformas) Ativa(plataforma string, agora time.Time) bool {
 //   - qualquer outro resultado zera a contagem.
 //
 // Nunca tira a plataforma de pausada, precisa-entrar ou parada-hoje: só piora (quem retoma é a pessoa).
+//
+// Plataforma sem sessão (fora de PlataformasDoEnvio, como formulario): nada muda. Ela não tem rota de retomar, e um
+// estado gravado a travaria de vez (jc-a2y.7.2).
 func (p Plataformas) RegistrarResultado(plataforma, codigo string, agora time.Time) Plataformas {
+	if !TemSessao(plataforma) {
+		return p
+	}
 	n := p.clonar()
 	s := n.DaPlataforma(plataforma, agora)
 	switch codigo {
@@ -164,6 +170,10 @@ func (p Plataformas) Lista(agora time.Time) []Objeto {
 	}
 	return saida
 }
+
+// TemSessao: a plataforma tem sessão da pessoa no navegador do envio (está em PlataformasDoEnvio): pode cair para
+// precisa-entrar, pausar e ser retomada pela tela. formulario não tem: o login dele é do próprio formulário.
+func TemSessao(plataforma string) bool { return plataformaDoEnvio(plataforma) }
 
 func plataformaDoEnvio(plataforma string) bool {
 	for _, p := range PlataformasDoEnvio {
