@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../app/contexto';
 import { Convite, LinkExterno } from '../componentes';
 
-type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string };
+// pronta/aviso (contrato 0.4.2): instalada num formato que o app não usa (ex.: Claude .cmd no Windows) vem com
+// pronta false e um aviso fixo do back. Sem o campo (API antiga), vale como pronta.
+type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string; pronta?: boolean; aviso?: string };
+const naoPronta = (c?: CLI) => !!c && c.instalada && c.pronta === false;
+const AVISO_PADRAO = 'O app não consegue usar esta instalação. Veja como instalar a versão indicada.';
+// O aviso do back vem em minúscula (cabe no meio de uma frase); na tela ele é frase própria.
+const avisoDe = (c: CLI) => { const t = c.aviso?.trim() || AVISO_PADRAO; return t[0].toUpperCase() + t.slice(1); };
 type EstadoIA = {
   configurada: boolean; provedor?: string; modelo?: string; url?: string;
   chaves: Record<string, string | null>; clis: CLI[]; gratis: { disponivel: boolean };
@@ -45,7 +51,9 @@ export function TelaConectarIA() {
 
   if (!ia) return <div><header className="cabecalho"><div><h1>Conectar IA</h1><p>Procurando as IAs deste computador…</p></div></header></div>;
   const ativa = ia.configurada ? NOMES[ia.provedor!] ?? ia.provedor : null;
+  const cliAtiva = ia.clis.find(c => c.provedor === ia.provedor);
   const opcaoChave = CHAVES.find(c => c.provedor === escolha)!;
+  const desconectar = <button className="botao-fantasma" type="button" disabled={!!ocupado} onClick={() => fazer('nenhum', () => app.api('/api/v1/ia/config', 'PUT', { provedor: 'nenhum' }), 'IA desconectada')}>Desconectar</button>;
 
   return (
     <div className="conectar-ia">
@@ -53,11 +61,18 @@ export function TelaConectarIA() {
         <div><h1>Conectar IA</h1><p>A IA tria vagas, responde formulários e escreve rascunhos de mensagem. Você escolhe qual usar e troca quando quiser.</p></div>
       </header>
 
-      {ativa ? (
+      {ativa && naoPronta(cliAtiva) ? (
+        <Convite titulo={`Conectada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
+          <span className="acoes">
+            <LinkExterno url={cliAtiva!.instalar} className="botao p">Como instalar</LinkExterno>
+            {desconectar}
+          </span>
+        </Convite>
+      ) : ativa ? (
         <Convite azul titulo={`Conectada: ${ativa}`} texto={`${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
           <span className="acoes">
             <button className="botao" type="button" disabled={!!ocupado} onClick={testar}>{ocupado === 'testar' ? 'Testando…' : 'Testar conexão'}</button>
-            <button className="botao-fantasma" type="button" disabled={!!ocupado} onClick={() => fazer('nenhum', () => app.api('/api/v1/ia/config', 'PUT', { provedor: 'nenhum' }), 'IA desconectada')}>Desconectar</button>
+            {desconectar}
           </span>
         </Convite>
       ) : <Convite titulo="Nenhuma IA conectada" texto="Escolha um dos caminhos abaixo. Sem IA, a Central funciona, mas a triagem e as mensagens ficam por sua conta." />}
@@ -67,15 +82,16 @@ export function TelaConectarIA() {
         <p className="pequeno mudo">O app usa o programa oficial que você já tem no computador, com o seu login. Nada é cobrado à parte.</p>
         <ul className="lista-cartao">
           {ia.clis.map(c => {
-            const pronto = c.instalada && c.logada !== false;
-            const estado = !c.instalada ? 'Não instalado' : c.logada === false ? 'Faça login' : c.verificada ? 'Pronto' : 'Pronto · não testado';
+            const pronto = c.instalada && !naoPronta(c) && c.logada !== false;
+            const estado = !c.instalada ? 'Não instalado' : naoPronta(c) ? 'Não pronto' : c.logada === false ? 'Faça login' : c.verificada ? 'Pronto' : 'Pronto · não testado';
             return (
               <li key={c.provedor} className="item-acao">
                 <span className={`selo-n${pronto ? '' : ' ambar'}`}>{c.nome[0]}</span>
                 <div>
                   <strong>{c.nome}</strong>
                   <span className="sub">{`${c.plano} · ${estado}${c.versao ? ` · ${c.versao}` : ''}`}</span>
-                  {c.instalada && c.logada === false && <span className="sub">{`No terminal, rode: ${c.comando} auth login`}</span>}
+                  {naoPronta(c) && <span className="sub aviso-cli">{avisoDe(c)}</span>}
+                  {c.instalada && !naoPronta(c) && c.logada === false && <span className="sub">{`No terminal, rode: ${c.comando} auth login`}</span>}
                 </div>
                 <div className="acoes">
                   {pronto
