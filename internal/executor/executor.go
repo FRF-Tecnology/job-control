@@ -363,8 +363,8 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 	if err != nil {
 		return falhou("erro-tecnico", err)
 	}
-	if !enderecoConfere(plataforma, aprovada, final) {
-		return bloqueada("site-externo")
+	if p, parou := x.motivoDoEndereco(plataforma, aprovada, final); parou {
+		return p
 	}
 
 	// Formulário em etapas: em cada uma, confere o endereço e o bloqueio, planeja todos os campos (M1) antes de
@@ -475,10 +475,28 @@ func (x *Executor) conferirEndereco(ctx context.Context, pag Pagina, plataforma,
 	if err != nil {
 		return falhou("erro-tecnico", err), true
 	}
-	if !enderecoConfere(plataforma, aprovada, atual) {
-		return bloqueada("site-externo"), true
+	return x.motivoDoEndereco(plataforma, aprovada, atual)
+}
+
+// errPaginaEmBranco: a página do envio não navegou (about:blank): erro técnico, nunca site-externo (P0 da .6.5).
+var errPaginaEmBranco = errors.New("executor: a página não saiu do about:blank")
+
+// motivoDoEndereco decide o que fazer quando a página não está na vaga aprovada, e registra só a categoria (nunca
+// o endereço, que pode trazer dado): about:blank → falhou/erro-tecnico; login, authwall ou verificação →
+// bloqueada/login; outro host ou outra vaga → bloqueada/site-externo.
+func (x *Executor) motivoDoEndereco(plataforma, aprovada, atual string) (passo, bool) {
+	categoria := dominio.EnderecoFinal(plataforma, aprovada, atual)
+	if categoria == "" {
+		return passo{}, false
 	}
-	return passo{}, false
+	x.o.Log("executor: endereço final: %s", categoria)
+	switch categoria {
+	case dominio.EnderecoVazio:
+		return falhou("erro-tecnico", errPaginaEmBranco), true
+	case dominio.EnderecoLogin:
+		return bloqueada("login"), true
+	}
+	return bloqueada("site-externo"), true
 }
 
 type acao struct {

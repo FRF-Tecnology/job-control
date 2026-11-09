@@ -56,8 +56,8 @@ jobs:
       - name: Testes só do CI (navegador sem janela, foco e login)
         shell: bash
         run: |
-          go test -count=1 -v -run '^(TestEnvioNaoPegaFocoNemMouse|TestLoginAbreJanelaESegura)$' ./internal/navegador/ | tee navegador-ci.log
-          for t in TestEnvioNaoPegaFocoNemMouse TestLoginAbreJanelaESegura; do
+          go test -count=1 -v -run '^(TestEnvioNaoPegaFocoNemMouse|TestLoginAbreJanelaESegura|TestEnvioVisivelNavegaNaVaga)$' ./internal/navegador/ | tee navegador-ci.log
+          for t in TestEnvioNaoPegaFocoNemMouse TestLoginAbreJanelaESegura TestEnvioVisivelNavegaNaVaga; do
             grep -q -- "--- PASS: $t " navegador-ci.log || { echo "::error::$t não passou no CI (pulado ou ausente)"; exit 1; }
           done
       # Cofre do sistema de verdade (Gerenciador de Credenciais), com serviço de teste (jc-a2y.63).
