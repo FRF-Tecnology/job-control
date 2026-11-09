@@ -41,24 +41,24 @@ func re(s string) *regexp.Regexp { return regexp.MustCompile(s) }
 var (
 	quadroCaptcha = re(`recaptcha|hcaptcha|challenges\.cloudflare\.com|turnstile|arkoselabs|funcaptcha|geetest`)
 	campoCaptcha  = re(`g-recaptcha-response|h-captcha-response|cf-turnstile-response|captcha`)
-	textoCaptcha  = re(`nao sou (um )?robo|i'?m not a robot|verify (that )?you are (a )?human|verifique (que )?(voce )?(e )?humano|confirme que (voce )?(e )?humano|resolva o desafio`)
+	textoCaptcha  = re(`nao sou (um )?robo|i'?m not a robot|verify (that )?you are (a )?human|verifique (que )?(voce )?(e )?humano|confirme que (voce )?(e )?humano|resolva o desafio|no soy (un )?robot|verifica que eres humano|confirma que eres humano`)
 
-	textoCriarConta = re(`crie (sua|uma) conta|criar (sua |uma )?conta|cadastre-se|faca seu cadastro|create (an |your )?account|sign up|join now|registre-se`)
-	textoEntrar     = re(`\b(faca|fazer) (o )?login\b|\b(entre|entrar) (na|com) (sua )?conta\b|\bentrar para continuar\b|\biniciar sessao\b|\bsign in\b|\blog in\b|\bsua sessao (expirou|terminou)\b|\bsession (has )?expired\b|\bpara continuar, entre\b`)
-	textoCodigo     = re(`codigo de (verificacao|seguranca|acesso)|verification code|enviamos um codigo|we sent (you )?a code|autenticacao (em|de) (dois|duas) (fatores|etapas)|two-factor|2fa|one-time (code|password)|digite o codigo`)
+	textoCriarConta = re(`crie (sua|uma) conta|criar (sua |uma )?conta|cadastre-se|faca seu cadastro|create (an |your )?account|sign up|join now|registre-se|crea (tu|una) cuenta|crear (una |tu )?cuenta|registrate|registrarse|create a profile`)
+	textoEntrar     = re(`\b(faca|fazer) (o )?login\b|\b(entre|entrar) (na|com) (sua )?conta\b|\bentrar para continuar\b|\biniciar sessao\b|\bsign in\b|\blog in\b|\bsua sessao (expirou|terminou)\b|\bsession (has )?expired\b|\bpara continuar, entre\b|\binicia (la )?sesion\b|\biniciar sesion para\b|\bingresa (a|con) tu cuenta\b|\btu sesion (expiro|ha expirado|caduco)\b|\bpara continuar, inicia sesion\b`)
+	textoCodigo     = re(`codigo de (verificacao|seguranca|acesso)|verification code|enviamos um codigo|we sent (you )?a code|autenticacao (em|de) (dois|duas) (fatores|etapas)|two-factor|2fa|one-time (code|password)|digite o codigo|codigo de (verificacion|seguridad)|te enviamos un codigo|ingresa el codigo|autenticacion (de|en) dos (factores|pasos)`)
 
-	textoTeste  = re(`teste (comportamental|de perfil|de personalidade|cognitivo|de logica|psicologico|disc)|avaliacao (comportamental|de perfil|psicologica)|questionario (comportamental|de perfil)|entrevista (por|em) video|grave (um|seu) video|gravar (um )?video|video ?entrevista|entrevista (com|por) (ia|inteligencia artificial)|video interview|record (a|your) video|ai interview|personality (test|assessment)|cognitive (test|assessment)|psychometric|online assessment`)
+	textoTeste  = re(`teste (comportamental|de perfil|de personalidade|cognitivo|de logica|psicologico|disc)|avaliacao (comportamental|de perfil|psicologica)|questionario (comportamental|de perfil)|entrevista (por|em) video|grave (um|seu) video|gravar (um )?video|video ?entrevista|entrevista (com|por) (ia|inteligencia artificial)|video interview|record (a|your) video|ai interview|personality (test|assessment)|cognitive (test|assessment)|psychometric|online assessment|prueba (psicometrica|de personalidad|de conducta|conductual|cognitiva)|evaluacion (de personalidad|psicometrica|conductual)|entrevista (en|por) video|graba (un|tu) video|grabar (un )?video|entrevista con (ia|inteligencia artificial)`)
 	quadroTeste = re(`hirevue|pymetrics|harver|vervoe|codility|hackerrank|testgorilla|mindsight|gupy\.io/.*/(teste|test)`)
 
-	botaoExterno = re(`candidatar-se no site|candidate-se no site|continuar no site|aplicar no site|ir para o site|apply on (the )?company (website|site)|apply on company|continue to (the )?(company )?(website|site)|apply externally`)
+	botaoExterno = re(`candidatar-se no site|candidate-se no site|continuar no site|aplicar no site|ir para o site|apply on (the )?company (website|site)|apply on company|continue to (the )?(company )?(website|site)|apply externally|postular(se|me)? en el sitio|aplicar en el sitio|postularse en la web|ir al sitio|continuar en el sitio`)
 
-	rotuloCurriculo = re(`curriculo|\bcv\b|resume|curriculum`)
-	rotuloNome      = re(`^(seu )?nome( completo)?$|^full name$|^name$|^first and last name$|^nome e sobrenome$`)
-	rotuloEmail     = re(`e-?mail`)
-	rotuloTelefone  = re(`telefone|celular|whatsapp|\bphone\b|\bmobile\b|\bfone\b`)
-	rotuloCidade    = re(`^cidade|\bcity\b|localizacao|\blocation\b|onde (voce )?mora`)
-	rotuloPretensao = re(`pretensao|salari|salary|remuneracao|compensation|expectativa (salarial|de remuneracao)`)
-	rotuloMensagem  = re(`mensagem|carta de apresentacao|cover letter|apresente-se|message to`)
+	rotuloCurriculo = re(`curriculo|\bcv\b|resume|curriculum|hoja de vida`)
+	rotuloNome      = re(`^(seu )?nome( completo)?$|^full name$|^name$|^first and last name$|^nome e sobrenome$|^nombre( completo)?$|^nombre y apellidos?$|^your name$`)
+	rotuloEmail     = re(`e-?mail|correo`)
+	rotuloTelefone  = re(`telefone|celular|whatsapp|\bphone\b|\bmobile\b|\bfone\b|telefono|\bmovil\b`)
+	rotuloCidade    = re(`^cidade|\bcity\b|localizacao|\blocation\b|onde (voce )?mora|^ciudad|donde vives`)
+	rotuloPretensao = re(`pretensao|salari|salary|remuneracao|compensation|expectativa (salarial|de remuneracao)|pretension|expectativa salarial|aspiracion salarial|desired pay`)
+	rotuloMensagem  = re(`mensagem|carta de apresentacao|cover letter|apresente-se|message to|mensaje|carta de presentacion`)
 )
 
 // DetectarBloqueio devolve o motivo da lista fechada quando a página pede algo que só a pessoa faz, ou "".

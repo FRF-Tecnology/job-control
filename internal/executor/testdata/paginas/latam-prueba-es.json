@@ -1,0 +1,20 @@
+{
+ "descricao": "latam-prueba-es",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "teste-pessoal"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 2: prueba psicométrica de 20 minutos",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Comenzar"
+   ]
+  }
+ ]
+}

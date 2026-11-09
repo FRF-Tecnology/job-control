@@ -34,8 +34,8 @@ var estadosAtivos = []string{CandPreparada, CandAprovada, CandEnviando, CandBloq
 
 // PendenciaDoMotivo: lista fechada dos motivos de bloqueio e a pendência fixa de cada um (texto nosso, nada da página).
 var PendenciaDoMotivo = map[string]string{
-	"cpf":           "A página pede o CPF: digite você e envie",
-	"rg":            "A página pede o RG: digite você e envie",
+	"cpf":           "A página pede CPF ou outro número fiscal (CNPJ, RFC, CUIT, RUT, SSN…): digite você e envie",
+	"rg":            "A página pede RG ou outro documento de identidade (DNI, CURP, cédula…): digite você e envie",
 	"senha":         "A página pede uma senha: entre você e envie",
 	"dado-bancario": "A página pede dados bancários: preencha você",
 	"captcha":       "A página tem captcha: resolva você e envie",
@@ -43,7 +43,7 @@ var PendenciaDoMotivo = map[string]string{
 	"conta":         "A plataforma pede para criar conta: crie você",
 	"teste-pessoal": "A vaga pede teste pessoal (comportamental, vídeo ou entrevista por IA): faça você",
 	"documento":     "A página pede um documento além do currículo: anexe você",
-	"dado-sensivel": "A página pergunta dado sensível (raça, deficiência, saúde, religião…): responda você",
+	"dado-sensivel": "A página pergunta dado pessoal sensível (raça, deficiência, saúde, religião, data de nascimento…): responda você",
 	"termos":        "A página pede aceite de termos ou consentimento: marque você",
 	"pergunta-nova": "A página tem uma pergunta obrigatória fora do pacote aprovado: responda você",
 	"site-externo":  "A candidatura continua num site fora da plataforma: siga você",
