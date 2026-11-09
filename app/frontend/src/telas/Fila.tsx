@@ -9,6 +9,7 @@ import { Convite } from '../componentes';
 import { mercadoDe } from '../dominio/modelo';
 import { encode } from '../util';
 import { PacoteForm } from './PacoteForm';
+import { PainelEnvio } from './PainelEnvio';
 
 type EstadoCand = 'preparada' | 'aprovada' | 'enviando' | 'enviada' | 'bloqueada' | 'falhou' | 'incerta' | 'cancelada';
 type Resposta = { pergunta: string; resposta: string; origem: string };
@@ -200,9 +201,12 @@ export function TelaFila() {
   const prontas = (app.estado.vagas ?? []).filter((v: any) => !ativas.has(v.id)
     && (v.etapa === 'aplicar' || (perfil.modo === 'direto' && v.etapa === 'descoberta' && v.aderencia === 'A')));
 
+  const nomeCand = (id: string) => { const c = lista.find(x => x.id === id); const v = c && vaga(c.vagaId); return v ? `${v.empresa} — ${v.titulo}` : 'uma candidatura'; };
+
   return (
     <div className="fila">
       {cabecalho}
+      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} />
       <section className="limites" aria-label="Limite de hoje" role="region">
         {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
           <div key={p} className={`limite${limites[p].usadas >= limites[p].limite ? ' cheio' : ''}`}>
