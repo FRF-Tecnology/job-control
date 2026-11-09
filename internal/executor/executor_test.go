@@ -170,6 +170,7 @@ type cenario struct {
 	logs    []string
 	esperas []time.Duration
 	n       int
+	etapas  []string // "Ao vivo" (jc-a2y.6.9): etapa de cada passo, como o painel recebe
 }
 
 var sp = func() *time.Location { l, _ := time.LoadLocation("America/Sao_Paulo"); return l }()
@@ -200,6 +201,7 @@ func novoCenario(t *testing.T, paginas ...*paginaFalsa) *cenario {
 		Esperar:           func(ctx context.Context, d time.Duration) error { s.esperas = append(s.esperas, d); return ctx.Err() },
 		Sortear:           func() float64 { return 0.5 },
 		Log:               func(f string, a ...any) { s.logs = append(s.logs, fmt.Sprintf(f, a...)) },
+		Etapa:             func(id, etapa string) { s.etapas = append(s.etapas, etapa) },
 	})
 	return s
 }
@@ -772,5 +774,43 @@ func TestReabrirOAppVoltaPausado(t *testing.T) {
 		if o["id"] == id && o["estado"] != "aprovada" {
 			t.Fatalf("estado = %v", o["estado"])
 		}
+	}
+}
+
+// "Ao vivo" (jc-a2y.6.9): o executor conta ao painel em que passo está, só com valores da lista fechada (nada da
+// página), e termina com o desfecho. "outra" nunca abre página: nenhuma etapa.
+func TestEtapasDoAoVivo(t *testing.T) {
+	sucesso := novaPagina()
+	sucesso.final = linkLI + "/apply"
+	semConfirmar := novaPagina()
+	semConfirmar.confirma = false
+	captcha := novaPagina()
+	captcha.bloqueios = []string{"captcha"}
+	rede := novaPagina()
+	rede.errAbrir = errors.New("rede")
+	s := novoCenario(t, sucesso, semConfirmar, captcha, rede)
+	for _, c := range []struct {
+		link string
+		quer string
+	}{
+		{linkLI, "abrindo preenchendo revisando enviando confirmada"},
+		{"https://www.linkedin.com/jobs/view/9000000002", "abrindo preenchendo revisando enviando incerta"},
+		{"https://www.linkedin.com/jobs/view/9000000003", "abrindo bloqueada"}, // captcha ao abrir: antes de preencher
+		{"https://www.linkedin.com/jobs/view/9000000004", "abrindo falhou"},
+	} {
+		s.etapas = nil
+		s.enviar(s.aprovada("linkedin", c.link))
+		if got := strings.Join(s.etapas, " "); got != c.quer {
+			t.Errorf("%s: etapas %q; queria %q", c.link, got, c.quer)
+		}
+	}
+	s.etapas = nil
+	s.enviar(s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1"))
+	if len(s.etapas) != 0 {
+		t.Fatalf("outra: etapas %v", s.etapas)
+	}
+	// Sem o gancho (padrão), nada quebra.
+	if Novo(s.arm, Opcoes{}).o.Etapa == nil {
+		t.Fatal("Etapa nil no padrão")
 	}
 }

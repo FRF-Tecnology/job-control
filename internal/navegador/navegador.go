@@ -16,6 +16,8 @@ import (
 // Opcoes do navegador.
 type Opcoes struct {
 	PastaDados string // o perfil fica em <PastaDados>/navegador
+	// AoVivo (jc-a2y.6.9): recebe os quadros da aba do envio enquanto quer. nil: nenhuma aba manda quadros.
+	AoVivo Observador
 }
 
 // Erros de AbrirLogin.
@@ -48,6 +50,8 @@ type Navegador struct {
 	visivelAgora bool            // o navegador aberto agora tem janela
 	loginCtx     context.Context // navegador da janela de login da pessoa; enquanto vivo, nenhuma página do envio abre
 	abertas      int             // páginas do envio abertas agora
+
+	aoVivo Observador // "Ao vivo" (jc-a2y.6.9): só as abas do envio, nunca a janela de login
 }
 
 var _ executor.Navegador = (*Navegador)(nil)
@@ -65,7 +69,7 @@ func Novo(o Opcoes) (*Navegador, error) {
 	if err := prepararPerfil(perfil); err != nil {
 		return nil, err
 	}
-	return &Navegador{exec: exec, perfil: perfil}, nil
+	return &Navegador{exec: exec, perfil: perfil, aoVivo: o.AoVivo}, nil
 }
 
 // flags além das padrão do chromedp (que já trazem --no-first-run, --disable-sync, --disable-extensions,
@@ -147,6 +151,9 @@ func (n *Navegador) NovaPagina(ctx context.Context) (executor.Pagina, error) {
 		fechar()
 		n.paginaFechada()
 		return nil, err
+	}
+	if obs := n.aoVivo; obs != nil {
+		go assistir(aba, obs) // termina quando a aba fecha
 	}
 	var uma sync.Once
 	return &pagina{aba: aba, fechar: func() { fechar(); uma.Do(n.paginaFechada) }}, nil
