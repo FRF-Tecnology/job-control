@@ -13,6 +13,16 @@ const CONSERVADORA = /^(nao|no|none|nenhum|nenhuma|sem experiencia|0|zero|never|
 
 const bloquear = (regra, mensagem) => { throw new ErroIA('regra', mensagem, { regra }); };
 
+// Pedidos (jc-a2y.7.1). Mesmos padrões no Go (internal/ia/guarda.go).
+const INVISIVEL = /[­؜᠎​-‏‪-‮⁠-⁤⁦-⁩﻿]/;
+const ESQUEMA_PERIGOSO = /\b(javascript|data|vbscript|file):/i;
+const SEGREDO = /\b(senha|password|contrase[nñ]a)\b|dados banc|conta banc|\biban\b|\bpix\b|\bswift\b|routing number/i;
+// https, host só com letras ASCII, dígitos, ponto e hífen (IDN e homóglifo ficam de fora; punycode xn-- passa e a
+// tela mostra assim), sem usuário/senha; o caminho só com ASCII visível, sem espaço nem barra invertida; sem // depois
+// do host.
+const RE_URL_PEDIDO = /^https:\/\/[A-Za-z0-9.-]+(:\d{1,5})?(\/[!-[\]-~]*)?$/;
+const urlSegura = u => typeof u === 'string' && RE_URL_PEDIDO.test(u) && !u.slice(8).includes('//');
+
 // Resposta conservadora para experiência sem fonte: nunca inventar.
 function conservadora(e) {
   const en = EM_INGLES(e.pergunta);
@@ -97,6 +107,22 @@ export const REGRAS = [
     id: 'mensagem-rascunho', funcoes: ['escreverMensagem'],
     descricao: 'Mensagem é sempre rascunho: nunca é enviada sem aprovação da pessoa.',
     aplicar: s => ({ ...s, rascunho: true }),
+  },
+  {
+    id: 'pedido-catalogo', funcoes: ['interpretarPedido'],
+    descricao: 'Pedido (jc-a2y.7.1): vagaId só da lista enviada; url https sem usuário, barra invertida, // a mais nem host fora do ASCII; texto puro, sem HTML, esquema de link perigoso, senha ou dado bancário; nenhum caractere invisível ou de direção.',
+    aplicar: (s, e) => {
+      const p = s.parametros ?? {};
+      for (const v of Object.values(p)) if (typeof v === 'string' && INVISIVEL.test(v)) bloquear('pedido-catalogo', 'parâmetro com caractere invisível ou de direção');
+      if (p.vagaId != null && !(e.vagas ?? []).some(v => v?.id === p.vagaId)) bloquear('pedido-catalogo', 'vagaId fora da lista de vagas enviada');
+      if (s.acao === 'adicionar-vaga' && !urlSegura(p.url)) bloquear('pedido-catalogo', 'url fora do formato seguro');
+      for (const k of ['empresa', 'titulo', 'texto']) {
+        if (typeof p[k] !== 'string') continue;
+        if (/[<>]/.test(p[k]) || ESQUEMA_PERIGOSO.test(p[k])) bloquear('pedido-catalogo', 'texto com HTML ou link perigoso');
+        if (SEGREDO.test(p[k])) bloquear('pedido-catalogo', 'texto com senha ou dado bancário');
+      }
+      return s;
+    },
   },
   {
     id: 'sem-documento', funcoes: '*',
