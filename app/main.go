@@ -60,7 +60,7 @@ func main() {
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:     "Central de Candidaturas",
+		Title:     "Applyer",
 		Width:     1280,
 		Height:    820,
 		MinWidth:  380,
