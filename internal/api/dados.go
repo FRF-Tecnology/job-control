@@ -96,16 +96,16 @@ func (a *API) apagarDados(ctx context.Context, c Objeto, autor string) (Resposta
 	if autor != "eu" {
 		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa pode apagar os dados"}
 	}
-	if err := a.semEnvioEmAndamento(ctx); err != nil {
-		return Resposta{}, err
-	}
 	pasta := a.arm.Pasta()
 	if pasta == "" {
 		return Resposta{}, erroCampo("banco em memória: não há pasta de dados para apagar")
 	}
-
-	// 1) Para o executor e fecha o navegador (no build padrão, não fazem nada).
+	// 1) Para o executor: espera o ciclo acabar e o Chrome sair (no build padrão, não faz nada). Só depois confere
+	// enviando, para não haver corrida com um envio que começasse no meio. Com 409, o executor fica parado.
 	a.pararEnvio()
+	if err := a.semEnvioEmAndamento(ctx); err != nil {
+		return Resposta{}, err
+	}
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}, Fechar: true}
 
 	// 2) Chaves de IA no cofre do sistema (a que já não existe conta como apagada).
@@ -150,12 +150,15 @@ func (a *API) sairDasPlataformas(ctx context.Context, c Objeto, autor string) (R
 	if autor != "eu" {
 		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa pode sair das plataformas"}
 	}
-	if err := a.semEnvioEmAndamento(ctx); err != nil {
-		return Resposta{}, err
-	}
 	pasta := a.arm.Pasta()
 	if pasta == "" {
 		return Resposta{}, erroCampo("banco em memória: não há perfil do navegador")
+	}
+	// Nenhum ciclo novo do executor até o fim; o atual termina antes. O navegador fecha esperando o processo sair.
+	soltar := a.suspenderEnvio()
+	defer soltar()
+	if err := a.semEnvioEmAndamento(ctx); err != nil {
+		return Resposta{}, err
 	}
 	a.fecharNavegador()
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}}

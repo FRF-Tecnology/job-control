@@ -60,9 +60,10 @@ type API struct {
 	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
 	cacheCLIs        cacheDeteccao
 
-	pararEnvio      func() // apagar meus dados: para o executor e fecha o navegador
-	fecharNavegador func() // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
-	aoApagar        func() // depois de apagar os dados: fecha o app
+	pararEnvio      func()        // apagar meus dados: para o executor, espera o ciclo e fecha o navegador
+	suspenderEnvio  func() func() // sair das plataformas: nenhum ciclo novo até soltar
+	fecharNavegador func()        // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
+	aoApagar        func()        // depois de apagar os dados: fecha o app
 }
 
 // Opcoes configura a API.
@@ -77,6 +78,7 @@ type Opcoes struct {
 
 	// Ganchos do app (padrão: não fazem nada). PararEnvio e FecharNavegador vêm de envio.Ligar; AoApagar fecha o app.
 	PararEnvio      func()
+	SuspenderEnvio  func() (soltar func())
 	FecharNavegador func()
 	AoApagar        func()
 }
@@ -104,8 +106,11 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 			*f = nada
 		}
 	}
+	if o.SuspenderEnvio == nil {
+		o.SuspenderEnvio = func() func() { return nada }
+	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
-		pararEnvio: o.PararEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar}
+		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.

@@ -42,6 +42,7 @@ func main() {
 	var app *application.App
 	local := api.Nova(banco, api.Opcoes{
 		PararEnvio:      controleEnvio.Parar,
+		SuspenderEnvio:  controleEnvio.Suspender,
 		FecharNavegador: controleEnvio.FecharNavegador,
 		AoApagar:        func() { app.Quit() },
 	})

@@ -6,6 +6,7 @@ import (
 	"context"
 	"log"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
@@ -30,22 +31,29 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 	nav, err := navegador.Novo(navegador.Opcoes{PastaDados: pastaDados, Visivel: true})
 	if err != nil {
 		log.Printf("envio: navegador indisponível (%T); executor desligado", err)
-		return Controle{Parar: func() {}, FecharNavegador: func() {}}
+		return Controle{Parar: nada, Suspender: suspenderNada, FecharNavegador: nada}
 	}
 	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos")})
 	ctx, cancelar := context.WithCancel(ctx)
 	feito := make(chan struct{})
+	var ciclo sync.Mutex // um ciclo da fila por vez; Suspender segura até soltar
 	go func() {
 		defer close(feito)
+		ciclo.Lock()
 		if _, _, err := x.Iniciar(ctx); err != nil {
 			log.Printf("envio: ao abrir (%T)", err)
 		}
+		ciclo.Unlock()
 		t := time.NewTicker(intervaloDaFila)
 		defer t.Stop()
 		for {
-			if _, err := x.EnviarAprovadas(ctx); err != nil && ctx.Err() == nil {
-				log.Printf("envio: fila (%T)", err)
+			ciclo.Lock()
+			if ctx.Err() == nil {
+				if _, err := x.EnviarAprovadas(ctx); err != nil && ctx.Err() == nil {
+					log.Printf("envio: fila (%T)", err)
+				}
 			}
+			ciclo.Unlock()
 			select {
 			case <-ctx.Done():
 				return
@@ -59,6 +67,10 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 			<-feito
 			nav.Fechar()
 		},
-		FecharNavegador: nav.Fechar, // a próxima página abre o navegador de novo, com o perfil recriado
+		Suspender: func() func() {
+			ciclo.Lock()
+			return ciclo.Unlock
+		},
+		FecharNavegador: nav.Fechar, // espera o processo sair; a próxima página abre de novo, com o perfil recriado
 	}
 }

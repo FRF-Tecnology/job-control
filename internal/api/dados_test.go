@@ -38,7 +38,10 @@ type pastaFicticia struct {
 	srv    *httptest.Server
 	parou  atomic.Int32 // vezes que PararEnvio foi chamado
 	fechou atomic.Int32 // vezes que FecharNavegador foi chamado
-	saiu   chan struct{}
+	// Suspender: quantas vezes foi chamado e quantas suspensões ainda não foram soltas (tem de voltar a 0).
+	suspendeu atomic.Int32
+	suspenso  atomic.Int32
+	saiu      chan struct{}
 }
 
 func novaPastaFicticia(t *testing.T, cofre segredos.Cofre) *pastaFicticia {
@@ -62,7 +65,8 @@ func novaPastaFicticia(t *testing.T, cofre segredos.Cofre) *pastaFicticia {
 	f.api = Nova(arm, Opcoes{Hoje: func() string { return "2026-11-09" }, Cofre: cofre, ProvedoresIA: map[string]ia.Provedor{},
 		DetectarCLIs: func(context.Context) []ia.EstadoCLI { return nil },
 		PararEnvio:   func() { f.parou.Add(1) }, FecharNavegador: func() { f.fechou.Add(1) },
-		AoApagar: func() { f.saiu <- struct{}{} }})
+		SuspenderEnvio: func() func() { f.suspendeu.Add(1); f.suspenso.Add(1); return func() { f.suspenso.Add(-1) } },
+		AoApagar:       func() { f.saiu <- struct{}{} }})
 	f.srv = httptest.NewServer(f.api.Handler())
 	t.Cleanup(f.srv.Close)
 	f.chamar("POST", "/vagas", Objeto{"id": "li-1", "empresa": "Empresa Teste", "titulo": "Dev Go"}, 201)
@@ -174,7 +178,11 @@ func TestApagarRecusaSemMudarNada(t *testing.T) {
 			t.Errorf("%s como assistente = %d %v", p, r.Status, err)
 		}
 	}
-	// Candidatura em enviando: 409 nas duas rotas.
+	if f.parou.Load() != 0 || f.suspendeu.Load() != 0 || f.fechou.Load() != 0 {
+		t.Fatalf("400/403 mexeram no executor: parou %d, suspendeu %d, fechou %d", f.parou.Load(), f.suspendeu.Load(), f.fechou.Load())
+	}
+	// Candidatura em enviando: 409 nas duas rotas. O executor para (apagar) ou é suspenso e solto (sair) antes de
+	// conferir, para não haver corrida; nada é apagado.
 	if err := f.arm.Gravar(context.Background(), func(e dominio.Estado) (dominio.Estado, error) {
 		e.Candidaturas = append(e.Candidaturas, Objeto{"id": "cand-1", "vagaId": "li-1", "estado": dominio.CandEnviando})
 		return e, nil
@@ -188,8 +196,8 @@ func TestApagarRecusaSemMudarNada(t *testing.T) {
 	if depois := f.arquivos(); strings.Join(depois, ",") != strings.Join(antes, ",") {
 		t.Fatalf("a pasta mudou:\nantes  %v\ndepois %v", antes, depois)
 	}
-	if f.chaves() != len(comChave) || f.parou.Load() != 0 || f.fechou.Load() != 0 {
-		t.Fatalf("chaves %d, parou %d, fechou %d", f.chaves(), f.parou.Load(), f.fechou.Load())
+	if f.chaves() != len(comChave) || f.parou.Load() != 1 || f.suspendeu.Load() != 1 || f.suspenso.Load() != 0 || f.fechou.Load() != 0 {
+		t.Fatalf("chaves %d, parou %d, suspendeu %d (preso %d), fechou %d", f.chaves(), f.parou.Load(), f.suspendeu.Load(), f.suspenso.Load(), f.fechou.Load())
 	}
 	select {
 	case <-f.saiu:
@@ -204,6 +212,9 @@ func TestSairDasPlataformas(t *testing.T) {
 	res := f.chamar("POST", "/navegador/sair", Objeto{}, 200)
 	if strings.Join(lista(res["apagado"]), ",") != "navegador" || res["completo"] != true || res["fechar"] != false || f.fechou.Load() != 1 {
 		t.Fatalf("resposta = %v, fechou %d", res, f.fechou.Load())
+	}
+	if f.suspendeu.Load() != 1 || f.suspenso.Load() != 0 || f.parou.Load() != 0 {
+		t.Fatalf("executor: suspendeu %d, preso %d, parou %d", f.suspendeu.Load(), f.suspenso.Load(), f.parou.Load())
 	}
 	for _, a := range f.arquivos() {
 		if strings.HasPrefix(a, "navegador/") {
@@ -224,12 +235,42 @@ func TestApagarFalhaParcial(t *testing.T) {
 	f := novaPastaFicticia(t, segredos.Memoria{})
 	f.api.cofre = cofreQuebrado{}
 	res := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
-	if strings.Join(lista(res["faltou"]), ",") != "chaves" || res["completo"] != false || strings.Join(lista(res["apagado"]), ",") != "backups,banco,curriculos,navegador" {
+	if strings.Join(lista(res["faltou"]), ",") != "chaves" || res["completo"] != false || res["fechar"] != true || strings.Join(lista(res["apagado"]), ",") != "backups,banco,curriculos,navegador" {
 		t.Fatalf("resposta = %v", res)
 	}
 	b, _ := json.Marshal(res)
 	if strings.Contains(string(b), "cofre indisponível") || strings.Contains(string(b), f.pasta) {
 		t.Fatalf("resposta com texto do sistema: %s", b)
+	}
+}
+
+// Só os caminhos do app: um arquivo da pessoa na mesma pasta (CENTRAL_PASTA em Documentos) fica, e a raiz também.
+// Uma junção (Windows) ou link simbólico dentro de curriculos/ apontando para fora sai como link; o destino fica.
+func TestApagarSoOsCaminhosDoApp(t *testing.T) {
+	f := novaPastaFicticia(t, segredos.Memoria{})
+	os.WriteFile(filepath.Join(f.pasta, "minha-planilha.xlsx"), []byte("da pessoa"), 0o600)
+	fora := t.TempDir()
+	os.WriteFile(filepath.Join(fora, "importante.txt"), []byte("fora do app"), 0o600)
+	link := filepath.Join(f.pasta, "curriculos", "link-para-fora")
+	var err error
+	if runtime.GOOS == "windows" {
+		var out []byte
+		out, err = exec.Command("cmd", "/c", "mklink", "/J", link, fora).CombinedOutput()
+		if err != nil {
+			t.Fatalf("mklink /J: %v %s", err, out)
+		}
+	} else if err = os.Symlink(fora, link); err != nil {
+		t.Fatal(err)
+	}
+	res := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
+	if res["completo"] != true {
+		t.Fatalf("resposta = %v", res)
+	}
+	if b, err := os.ReadFile(filepath.Join(fora, "importante.txt")); err != nil || string(b) != "fora do app" {
+		t.Fatalf("o destino do link foi apagado: %v", err)
+	}
+	if got := strings.Join(f.arquivos(), ","); got != "minha-planilha.xlsx" {
+		t.Fatalf("restou na pasta %q; queria só o arquivo da pessoa", got)
 	}
 }
 

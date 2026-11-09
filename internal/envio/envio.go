@@ -6,10 +6,16 @@
 // nem botão que ligue o envio.
 package envio
 
-// Controle do envio ligado. Parar para o executor e fecha o navegador (ao fechar o app ou antes de apagar os
-// dados); FecharNavegador só fecha o navegador (antes de "sair das plataformas": o perfil não pode estar em uso).
-// No build padrão, as duas não fazem nada.
+// Controle do envio ligado. No build padrão, nada faz nada.
+//   - Parar: cancela o executor, espera o ciclo acabar e fecha o navegador esperando o processo sair (ao fechar o
+//     app ou antes de apagar os dados). Para de vez.
+//   - Suspender: impede ciclos novos e espera o atual acabar; devolve a função que solta (sair das plataformas).
+//   - FecharNavegador: fecha o navegador e espera o processo sair (o perfil não pode estar em uso ao apagar).
 type Controle struct {
 	Parar           func()
+	Suspender       func() (soltar func())
 	FecharNavegador func()
 }
+
+func nada()                 {}
+func suspenderNada() func() { return nada }

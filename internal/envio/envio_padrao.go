@@ -13,5 +13,5 @@ const Ligado = false
 
 // Ligar não faz nada no build padrão: nenhuma candidatura é enviada.
 func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
-	return Controle{Parar: func() {}, FecharNavegador: func() {}}
+	return Controle{Parar: nada, Suspender: suspenderNada, FecharNavegador: nada}
 }
