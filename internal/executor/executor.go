@@ -143,7 +143,8 @@ func (x *Executor) gravarCom(ctx context.Context, gravar func(context.Context, f
 	return res, err
 }
 
-// Iniciar roda ao abrir o app: enviando vira incerta (M3) e aprovação vencida volta a preparada, numa transação.
+// Iniciar roda ao abrir o app, numa transação: enviando sem marca gravada volta para aprovada (conta como volta,
+// jc-a2y.6.11); enviando com marca vira incerta (M3); aprovação vencida volta a preparada.
 func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err error) {
 	// Ao abrir o app, o envio começa sempre PAUSADO (recomendação do CyberSec no #59), e isso vem PRIMEIRO, sozinho:
 	// se a gravação das incertas falhar (banco ocupado pela CLI, disco), o envio já está pausado. Só a tela retoma.
@@ -151,13 +152,14 @@ func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err err
 		return 0, 0, err
 	}
 	agora := x.o.Relogio()
+	devolvidas := 0
 	err = x.arm.Gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
-		e, incertas = dominio.MarcarIncertas(e, agora)
+		e, incertas, devolvidas = dominio.RecuperarAoAbrir(e, agora)
 		e, vencidas = dominio.VencerAprovacoes(e, agora)
 		return e, nil
 	})
-	if err == nil && (incertas > 0 || vencidas > 0) {
-		x.o.Log("executor: ao abrir, %d incerta(s) e %d aprovação(ões) vencida(s)", incertas, vencidas)
+	if err == nil && (incertas > 0 || vencidas > 0 || devolvidas > 0) {
+		x.o.Log("executor: ao abrir, %d incerta(s), %d devolvida(s) e %d aprovação(ões) vencida(s)", incertas, devolvidas, vencidas)
 	}
 	return incertas, vencidas, err
 }

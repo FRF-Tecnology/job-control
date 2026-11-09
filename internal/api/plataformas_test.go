@@ -42,7 +42,7 @@ func TestPausarERetomarPlataforma(t *testing.T) {
 			chaves = append(chaves, k)
 		}
 		sort.Strings(chaves)
-		if strings.Join(chaves, ",") != "ate,estado,motivo,plataforma" {
+		if strings.Join(chaves, ",") != "ate,estado,motivo,paginasHoje,plataforma,tetoPaginas,voltasHoje" {
 			t.Fatalf("campos = %v", chaves)
 		}
 	}

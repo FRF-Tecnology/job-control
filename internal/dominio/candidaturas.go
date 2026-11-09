@@ -538,7 +538,12 @@ func conferirLimite(e Estado, plataforma string, agora time.Time, limites map[st
 
 // AberturasNoDia: páginas abertas hoje na plataforma, contando as tentativas devolvidas (retentativas).
 func AberturasNoDia(e Estado, plataforma string, agora time.Time) int {
-	n := UsadasNoDia(e, plataforma, agora)
+	return UsadasNoDia(e, plataforma, agora) + VoltasNoDia(e, plataforma, agora)
+}
+
+// VoltasNoDia: voltas automáticas para aprovada hoje na plataforma (o GET /envio mostra).
+func VoltasNoDia(e Estado, plataforma string, agora time.Time) int {
+	n := 0
 	for _, o := range e.Candidaturas {
 		if !igual(o["plataforma"], plataforma) {
 			continue
@@ -932,8 +937,30 @@ func TornarIncerta(e Estado, id string, agora time.Time) (Estado, Objeto, error)
 	return novo, o, nil
 }
 
-// MarcarIncertas (M3): ao abrir o app, toda candidatura que ficou em enviando vai para incerta. Nunca há nova
-// tentativa automática; ela sai de incerta só pela pessoa (concluir-manual ou reabrir).
+// RecuperarAoAbrir (jc-a2y.6.11, revisão do CyberSec no #99): ao abrir o app, a candidatura que ficou em enviando
+// SEM marca gravada (o app caiu antes de interagir com o formulário) volta para aprovada, contando como volta
+// (DevolverAprovada: mesma versão e impressão, no máximo 3, a 4ª é falhou, vencida vira preparada). Com qualquer
+// marca (interagiuEm ou clicouEnviarEm), vira incerta, como sempre (M3).
+func RecuperarAoAbrir(e Estado, agora time.Time) (Estado, int, int) {
+	novo, devolvidas := e, 0
+	for _, o := range e.Candidaturas {
+		c, err := candidaturaDe(o)
+		if err != nil || c.Estado != CandEnviando || c.InteragiuEm != "" || c.ClicouEnviarEm != "" {
+			continue
+		}
+		depois, _, err := DevolverAprovada(novo, c.ID, c.Versao, "erro-tecnico", agora)
+		if err != nil {
+			continue // recusou (impressão mudou no banco): fica para incerta, abaixo
+		}
+		novo = depois
+		devolvidas++
+	}
+	novo, incertas := MarcarIncertas(novo, agora)
+	return novo, incertas, devolvidas
+}
+
+// MarcarIncertas (M3): toda candidatura em enviando vai para incerta. Nunca há nova tentativa automática; ela sai
+// de incerta só pela pessoa (concluir-manual ou reabrir). Ao abrir o app, o caminho é RecuperarAoAbrir.
 func MarcarIncertas(e Estado, agora time.Time) (Estado, int) {
 	novo, n := e.Clonar(), 0
 	for i, o := range novo.Candidaturas {

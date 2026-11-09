@@ -234,3 +234,38 @@ func TestTetoDePaginasNoDia(t *testing.T) {
 		t.Error("o teto não renovou à meia-noite")
 	}
 }
+
+// Revisão do CyberSec no #99: ao abrir o app, a queda ANTES da marca gravada volta (conta como volta); DEPOIS da
+// marca (interagiu ou clicou em enviar), incerta. Na 4ª queda antes da marca, falhou.
+func TestRecuperarAoAbrir(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	depois := agora.Add(time.Minute)
+
+	e, c := enviando(t, agora) // caiu antes da marca
+	novo, incertas, devolvidas := RecuperarAoAbrir(e, depois)
+	d := estadoDe(t, novo, c.ID)
+	if incertas != 0 || devolvidas != 1 || d.Estado != CandAprovada || len(d.Retentativas) != 1 || VoltasNoDia(novo, "linkedin", depois) != 1 {
+		t.Fatalf("queda antes da marca = %d %d %+v", incertas, devolvidas, d)
+	}
+
+	for _, marca := range []string{MarcaInteragiu, MarcaClicouEnviar} { // caiu depois da marca
+		e, c := enviando(t, agora)
+		e, _, _ = MarcarTentativa(e, c.ID, marca, agora)
+		novo, incertas, devolvidas := RecuperarAoAbrir(e, depois)
+		if incertas != 1 || devolvidas != 0 || estadoDe(t, novo, c.ID).Estado != CandIncerta {
+			t.Fatalf("%s: queda depois da marca = %d %d %v", marca, incertas, devolvidas, estadoDe(t, novo, c.ID).Estado)
+		}
+	}
+
+	// Já com 3 voltas desde a aprovação: a 4ª queda antes da marca é falhou.
+	e, c = enviando(t, agora)
+	for n := 0; n < MaxRetentativas; n++ {
+		e, _, _ = DevolverAprovada(e, c.ID, c.Versao, "erro-tecnico", agora)
+		c = estadoDe(t, e, c.ID)
+		e, _, _ = IniciarEnvio(e, c.ID, c.Versao, agora.Add(3*time.Hour), nil)
+		c = estadoDe(t, e, c.ID)
+	}
+	if novo, _, _ := RecuperarAoAbrir(e, agora.Add(4*time.Hour)); estadoDe(t, novo, c.ID).Estado != CandFalhou {
+		t.Fatalf("4ª queda = %v", estadoDe(t, novo, c.ID).Estado)
+	}
+}

@@ -533,19 +533,40 @@ func TestRecusaNaEntrada(t *testing.T) {
 }
 
 // Ao abrir o app: enviando vira incerta e aprovação vencida volta a preparada.
+// Ao abrir o app (M3 e jc-a2y.6.11): enviando COM marca gravada (caiu depois de interagir) vira incerta; SEM marca
+// (caiu antes) volta para aprovada, contando como volta; no dia seguinte, a aprovação vence.
 func TestIniciar(t *testing.T) {
 	s := novoCenario(t)
 	a := s.aprovada("linkedin", linkLI)
 	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	c := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000003")
 	s.gravar(func(e dominio.Estado) (dominio.Estado, error) {
-		v, _ := dominio.NumeroDe(s.cand(a)["versao"])
-		e, _, err := dominio.IniciarEnvio(e, a, int(v), s.agora, nil)
+		for _, id := range []string{a, c} {
+			v, _ := dominio.NumeroDe(s.cand(id)["versao"])
+			var err error
+			if e, _, err = dominio.IniciarEnvio(e, id, int(v), s.agora, nil); err != nil {
+				return e, err
+			}
+		}
+		e, _, err := dominio.MarcarTentativa(e, a, dominio.MarcaInteragiu, s.agora) // a caiu depois da marca
 		return e, err
 	})
-	s.agora = time.Date(2026, 11, 10, 8, 0, 0, 0, sp)
+	s.agora = s.agora.Add(time.Hour)
 	incertas, vencidas, err := s.x.Iniciar(context.Background())
-	if err != nil || incertas != 1 || vencidas != 1 || s.cand(a)["estado"] != "incerta" || s.cand(b)["estado"] != "preparada" {
+	if err != nil || incertas != 1 || vencidas != 0 || s.cand(a)["estado"] != "incerta" || s.cand(b)["estado"] != "aprovada" {
 		t.Fatalf("Iniciar = %d %d %v; %v %v", incertas, vencidas, err, s.cand(a)["estado"], s.cand(b)["estado"])
+	}
+	cc := s.cand(c)
+	if cc["estado"] != "aprovada" || len(dominio.ListaDe(cc["retentativas"])) != 1 || dominio.Texto(cc["proximaTentativaEm"]) == "" || len(dominio.ListaDe(cc["tentativas"])) != 0 {
+		t.Fatalf("sem marca, ao abrir = %v", cc)
+	}
+	if !strings.Contains(strings.Join(s.logs, "\n"), "1 incerta(s), 1 devolvida(s)") {
+		t.Errorf("logs = %v", s.logs)
+	}
+	// No dia seguinte, as aprovações vencem.
+	s.agora = time.Date(2026, 11, 10, 8, 0, 0, 0, sp)
+	if _, vencidas, _ := s.x.Iniciar(context.Background()); vencidas != 2 || s.cand(b)["estado"] != "preparada" || s.cand(c)["estado"] != "preparada" {
+		t.Fatalf("dia seguinte: vencidas %d, %v %v", vencidas, s.cand(b)["estado"], s.cand(c)["estado"])
 	}
 }
 

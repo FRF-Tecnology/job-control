@@ -162,6 +162,13 @@ func (a *API) estadoEnvio(ctx context.Context, q map[string]string) (Resposta, e
 			janela = "visivel"
 		}
 	}
-	plataformas := a.arm.Plataformas(ctx).Lista(a.relogio())
+	agora := a.relogio()
+	plataformas := a.arm.Plataformas(ctx).Lista(agora)
+	for _, p := range plataformas { // jc-a2y.6.11: as voltas e as páginas do dia, contra o teto
+		nome := dominio.Texto(p["plataforma"])
+		p["voltasHoje"] = dominio.VoltasNoDia(e, nome, agora)
+		p["paginasHoje"] = dominio.AberturasNoDia(e, nome, agora)
+		p["tetoPaginas"] = dominio.LimiteMaximo
+	}
 	return ok(Objeto{"ligado": a.envioLigado, "pausado": a.arm.EnvioPausado(ctx), "plataformas": plataformas, "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
 }
