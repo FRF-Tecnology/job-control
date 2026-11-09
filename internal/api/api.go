@@ -70,6 +70,9 @@ type Opcoes struct {
 	DetectarCLIs func(context.Context) []ia.EstadoCLI // padrão: procura claude, codex e gemini no PATH
 }
 
+// ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
+const ErroModoSoPessoa = "só a pessoa liga o modo direto (aplicar o grupo A sem Triagem)"
+
 // Nova cria a API sobre um armazém.
 func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.Hoje == nil {
@@ -429,13 +432,17 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{Status: 200, Corpo: r}, err
 
 	case p == "/perfil" && (m == "PUT" || m == "PATCH"):
+		e, err := a.arm.Carregar(ctx)
+		if err != nil {
+			return Resposta{}, err
+		}
 		novo := c
 		if m == "PATCH" {
-			e, err := a.arm.Carregar(ctx)
-			if err != nil {
-				return Resposta{}, err
-			}
 			novo = MesclarPerfil(e.Perfil, c)
+		}
+		// jc-a2y.28: o modo direto aplica o grupo A sem Triagem; só a pessoa liga. O assistente pode só voltar para revisar.
+		if autor != "eu" && dominio.Igual(novo["modo"], "direto") && !dominio.Igual(e.Perfil["modo"], "direto") {
+			return Resposta{}, &dominio.ErroValidacao{Erros: []string{ErroModoSoPessoa}}
 		}
 		if err := exigirPerfilOk(novo); err != nil {
 			return Resposta{}, err

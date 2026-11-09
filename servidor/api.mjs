@@ -12,6 +12,8 @@ import { pendentesFollowUp, sugerirMensagem } from '../nucleo/followup.mjs';
 import { hojeISO } from '../nucleo/modelo.mjs';
 
 export const PREFIXO = '/api/v1';
+export const ERRO_MODO_SO_PESSOA = 'só a pessoa liga o modo direto (aplicar o grupo A sem Triagem)';
+
 const ARQ_DADOS = ['vagas.json', 'eventos.json', 'plataformas.json', 'rodadas.json', 'perfil.json', 'pedidos.json', 'emails.json'];
 
 export class ErroApi extends Error { constructor(status, corpo) { super(corpo.erro); this.status = status; this.corpo = corpo; } }
@@ -156,7 +158,10 @@ export function criarApi({ armazem, dir = armazem.dir, hoje = () => hojeISO(), c
     }
 
     if (p === '/perfil' && (m === 'PUT' || m === 'PATCH')) {
-      const novo = m === 'PUT' ? corpo : mesclarPerfil(armazem.carregar().perfil ?? {}, corpo);
+      const atual = armazem.carregar().perfil ?? {};
+      const novo = m === 'PUT' ? corpo : mesclarPerfil(atual, corpo);
+      // jc-a2y.28: o modo direto aplica o grupo A sem Triagem; só a pessoa liga. O assistente pode só voltar para revisar.
+      if (autor !== 'eu' && novo?.modo === 'direto' && atual.modo !== 'direto') throw new ErroValidacao([ERRO_MODO_SO_PESSOA]);
       exigirPerfilOk(novo);
       gravar(e => ({ estado: { ...e, perfil: novo } }));
       return ok(novo);
