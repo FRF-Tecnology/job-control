@@ -116,14 +116,20 @@ jobs:
         shell: bash
         run: |
           ls -d "/Applications/Google Chrome.app" "/Applications/Microsoft Edge.app" 2>/dev/null || true
-          testes="TestNavegadorAbreSemJanela TestModoDaJanelaSoPorPedido TestLoginAbreJanelaESegura TestEnvioComNavegadorDeVerdade TestIntegradoTelaAPIExecutor"
+          testes="TestNavegadorAbreSemJanela TestModoDaJanelaSoPorPedido TestLoginAbreJanelaESegura TestEnvioVisivelNavegaNaVaga TestEnvioComNavegadorDeVerdade TestIntegradoTelaAPIExecutor"
           go test -count=1 -v -run "^($(echo $testes | tr ' ' '|'))\$" ./internal/navegador/ | tee navegador-macos.log
           for t in $testes; do
             grep -q -- "--- PASS: $t " navegador-macos.log || { echo "::error::$t não passou no macOS (pulado ou ausente)"; exit 1; }
           done
-      # O Taskfile gera bin/central.app (nome interno), mas copia o binário como "central", enquanto o Info.plist
-      # (travado até o jc-etv.6) aponta para central.exe: aqui o binário ganha o nome do plist e o bundle é
-      # assinado de novo, só ad-hoc local (sem identidade da Apple). O zip sai com ditto, que guarda o bit de execução, e sobe sem novo zip (archive: false).
+      # Cofre do macOS (Keychain), com serviço de teste: só o pacote internal/segredos (jc-a2y.63).
+      - name: Cofre do macOS (serviço de teste)
+        shell: bash # -eo pipefail: falha de qualquer teste do pacote não some no tee
+        run: |
+          go test -count=1 -v ./internal/segredos/ | tee cofre-ci.log
+          grep -q -- "--- PASS: TestCofreDoSistema " cofre-ci.log || { echo "::error::TestCofreDoSistema não passou no macOS"; exit 1; }
+      # O Taskfile gera bin/central.app (nome interno) com o binário "central", o nome que o Info.plist pede
+      # (jc-etv.10), e a assinatura ad-hoc local (sem identidade da Apple). O zip sai com ditto, que guarda o bit de
+      # execução, e sobe sem novo zip (archive: false).
       - name: Empacotar o .app de teste
         shell: bash
         working-directory: app
@@ -132,14 +138,12 @@ jobs:
           mkdir -p ../pacote
           ditto bin/central.app ../pacote/Applyer.app
           app=../pacote/Applyer.app
-          exe=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$app/Contents/Info.plist")
-          [ -e "$app/Contents/MacOS/$exe" ] || mv "$app/Contents/MacOS/central" "$app/Contents/MacOS/$exe"
-          codesign --force --deep --sign - "$app"
-          test -x "$app/Contents/MacOS/$exe"
-          lipo -archs "$app/Contents/MacOS/$exe" | grep -qw arm64
+          exe="$app/Contents/MacOS/central"
+          test -x "$exe"
+          lipo -archs "$exe" | grep -qw arm64
           codesign --verify --deep --strict "$app"
           # O app de teste é o build padrão: nem o gatilho de envio (envio_dev) nem o navegador (chromedp) entram.
-          go version -m "$app/Contents/MacOS/$exe" > build-info.txt
+          go version -m "$exe" > build-info.txt
           if grep -E 'envio_dev|github\.com/chromedp/' build-info.txt; then
             echo "::error::o binário do .app tem envio_dev ou chromedp; o artefato de teste é só o build padrão"; exit 1
           fi
@@ -156,23 +160,6 @@ jobs:
           archive: false
           retention-days: 7
           if-no-files-found: error
-
-  # Cofre do macOS (Keychain), com serviço de teste: só o pacote internal/segredos (jc-a2y.63).
-  segredos-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-      - name: Cofre do macOS (serviço de teste)
-        shell: bash # -eo pipefail: falha de qualquer teste do pacote não some no tee (revisão do Kauai)
-        run: |
-          go test -count=1 -v ./internal/segredos/ | tee cofre-ci.log
-          grep -q -- "--- PASS: TestCofreDoSistema " cofre-ci.log || { echo "::error::TestCofreDoSistema não passou no macOS"; exit 1; }
 
   # Repositório público: nenhum segredo pode entrar.
   segredos:
