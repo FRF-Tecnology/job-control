@@ -105,7 +105,8 @@ func TestDetectarCLIsMarcaClaudeCmdComoNaoPronto(t *testing.T) {
 	for _, e := range DetectarCLIs(context.Background()) {
 		// Codex e Gemini ficam fora do app (jc-a2y.26); o Claude .cmd fica fora por causa do cmd.exe (jc-a2y.25).
 		aviso := map[string]string{"claude": msgCmdInseguro, "codex": msgSemTrava, "gemini": msgSemTrava}[e.Comando]
-		if !e.Instalada || e.Pronta || e.Aviso != aviso {
+		motivo := map[string]string{"claude": MotivoFormato, "codex": MotivoPolitica, "gemini": MotivoPolitica}[e.Comando]
+		if !e.Instalada || e.Pronta || e.Aviso != aviso || e.Motivo != motivo {
 			t.Errorf("%s: instalada=%v pronta=%v aviso=%q", e.Comando, e.Instalada, e.Pronta, e.Aviso)
 		}
 	}

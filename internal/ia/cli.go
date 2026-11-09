@@ -50,7 +50,16 @@ type EstadoCLI struct {
 	Versao    string `json:"versao,omitempty"`
 	Pronta    bool   `json:"pronta"`          // instalada e num formato que o app usa com segurança
 	Aviso     string `json:"aviso,omitempty"` // texto fixo quando não está pronta
+	// Motivo, só quando instalada e não pronta: MotivoFormato (instalar a versão nativa resolve) ou MotivoPolitica
+	// (fora do app por regra de segurança; o caminho é a chave de API). A tela escolhe a ação por ele (jc-a2y.42).
+	Motivo string `json:"motivo,omitempty"`
 }
+
+// Motivos de uma CLI instalada que não está pronta (EstadoCLI.Motivo).
+const (
+	MotivoFormato  = "formato"
+	MotivoPolitica = "politica"
+)
 
 // aceitaCmd: CLIs cujos argumentos são sempre seguros para o cmd.exe (o pedido vai pelo stdin). O Claude leva o
 // prompt de sistema (várias linhas) e o esquema (com aspas) no argv, então instalado como .cmd não roda (jc-a2y.25).
@@ -306,9 +315,9 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 		if caminho, err := exec.LookPath(info.Comando); err == nil {
 			e.Instalada, e.Pronta = true, true
 			if msg, fora := CLIIndisponivel(info.Provedor); fora {
-				e.Pronta, e.Aviso = false, msg
+				e.Pronta, e.Aviso, e.Motivo = false, msg, MotivoPolitica
 			} else if viaCmdExe(caminho) && !aceitaCmd(info.Comando) {
-				e.Pronta, e.Aviso = false, msgCmdInseguro
+				e.Pronta, e.Aviso, e.Motivo = false, msgCmdInseguro, MotivoFormato
 			}
 			c, cancelar := context.WithTimeout(ctx, 15*time.Second)
 			if out, err := exec.CommandContext(c, info.Comando, "--version").Output(); err == nil {
