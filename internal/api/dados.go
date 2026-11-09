@@ -118,6 +118,9 @@ func (a *API) rotasDados(ctx context.Context, m, p string, c Objeto, autor strin
 	case m == "POST" && p == "/navegador/sair":
 		r, err := a.sairDasPlataformas(ctx, c, autor)
 		return r, true, err
+	case m == "POST" && p == "/navegador/entrar":
+		r, err := a.entrarNoNavegador(ctx, c, autor)
+		return r, true, err
 	}
 	return Resposta{}, false, nil
 }
