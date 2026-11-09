@@ -700,3 +700,38 @@ func TestRodarAbrePausado(t *testing.T) {
 		t.Fatalf("Rodar enviou sem retomar: %v, páginas %d", s.cand(id)["estado"], s.nav.abertas)
 	}
 }
+
+// Reabrir o app (decisão do PO no #61): a pessoa retomou e fechou; ao abrir de novo (banco reaberto do disco), o
+// estado gravado ainda é "retomado", e o Iniciar o volta a pausado antes de qualquer envio.
+func TestReabrirOAppVoltaPausado(t *testing.T) {
+	ctx := context.Background()
+	s := novoCenario(t, novaPagina()) // o cenário começa retomado
+	id := s.aprovada("linkedin", linkLI)
+	s.arm.Fechar() // fecha o app
+	arm, err := armazem.Abrir(ctx, filepath.Join(filepath.Dir(s.pastaCV), "central.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer arm.Fechar()
+	if arm.EnvioPausado(ctx) {
+		t.Fatal("o estado gravado devia continuar retomado antes do Iniciar (o teste não estaria provando nada)")
+	}
+	x := Novo(arm, Opcoes{Navegador: s.nav, PastaCurriculos: s.pastaCV, Relogio: func() time.Time { return s.agora },
+		Hoje: func() string { return s.agora.Format("2006-01-02") }, Esperar: func(ctx context.Context, d time.Duration) error { return ctx.Err() },
+		Log: func(string, ...any) {}})
+	if _, _, err := x.Iniciar(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !arm.EnvioPausado(ctx) {
+		t.Fatal("reabrir o app não voltou a pausar")
+	}
+	if ds, err := x.EnviarAprovadas(ctx); err != nil || len(ds) != 0 || s.nav.abertas != 0 {
+		t.Fatalf("enviou depois de reabrir: %v %v, páginas %d", ds, err, s.nav.abertas)
+	}
+	e, _ := arm.Carregar(ctx)
+	for _, o := range e.Candidaturas {
+		if o["id"] == id && o["estado"] != "aprovada" {
+			t.Fatalf("estado = %v", o["estado"])
+		}
+	}
+}
