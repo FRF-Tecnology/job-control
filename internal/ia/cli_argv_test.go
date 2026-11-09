@@ -106,3 +106,21 @@ func TestDetectarCLIsClaudeNativoPronto(t *testing.T) {
 		}
 	}
 }
+
+// jc-a2y.43: modelo que começa com "-" (viraria opção da CLI) ou com caractere inseguro é recusado na hora de rodar,
+// mesmo com a configuração gravada por fora da API; a CLI nem é procurada.
+func TestCLIRecusaModeloInseguroAntesDeRodar(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, m := range []string{"--dangerously-skip-permissions", "-m", `haiku" & calc`} {
+		_, err := cli{qual: "claude"}.Chamar(context.Background(), PedidoProvedor{Modelo: m, Prompt: MontarPrompt("triarVaga", entradaTriagem)})
+		var e *ErroIA
+		if !errors.As(err, &e) || e.Tipo != "config" || e.Mensagem != "claude-cli: "+MsgModeloInseguro {
+			t.Fatalf("modelo %q: erro = %v", m, err)
+		}
+	}
+	for _, m := range []string{"haiku", "claude-haiku-5-5", "a-b"} {
+		if !ModeloSeguro(m) {
+			t.Errorf("%q deveria passar", m)
+		}
+	}
+}
