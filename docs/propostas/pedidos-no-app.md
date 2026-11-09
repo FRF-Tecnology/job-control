@@ -1,6 +1,6 @@
 # Pedidos atendidos pelo próprio app
 
-Bead `jc-a2y.7.1` (P6). Status: **proposta**. As rotas entram no `api/openapi.yaml` com `x-proposta: true` (contrato 0.5.0) e ainda não são atendidas. O CyberSec revisa este catálogo antes do código.
+Bead `jc-a2y.7.1` (P6). Status: **atendida** (contrato 0.5.0); o CyberSec aprovou o catálogo (head af4db8b).
 
 Hoje o texto da caixa "Seus pedidos" só vira fila para o `/pedidos` do Claude Code. Com isto, o app interpreta o pedido com a IA que a pessoa conectou (assinatura ou chave) e faz **só** ações de uma lista fechada, sempre com confirmação na tela.
 
