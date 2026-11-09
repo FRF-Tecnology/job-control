@@ -28,6 +28,8 @@ const (
 	RecusaImpressaoMudou = "impressao-mudou"
 	RecusaVagaFora       = "vaga-fora"
 	RecusaLimite         = "limite"
+	// RecusaFaltamRespostas: formulário sem a estrutura lida ou com pergunta obrigatória sem resposta (jc-a2y.7.2).
+	RecusaFaltamRespostas = "faltam-respostas"
 )
 
 // MaxItensLote: 3 plataformas × o maior limite.
@@ -84,6 +86,8 @@ func AprovarLote(e Estado, itens []ItemLote, agora time.Time, limites map[string
 			motivo = RecusaImpressaoMudou
 		case !vagaAprovada(novo, c.VagaID):
 			motivo = RecusaVagaFora
+		case faltamRespostas(c):
+			motivo = RecusaFaltamRespostas
 		}
 		if motivo != "" {
 			recusadas = append(recusadas, Recusa{ID: it.ID, Motivo: motivo})
