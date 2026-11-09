@@ -59,6 +59,10 @@ type API struct {
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
 	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
 	cacheCLIs        cacheDeteccao
+
+	pararEnvio      func() // apagar meus dados: para o executor e fecha o navegador
+	fecharNavegador func() // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
+	aoApagar        func() // depois de apagar os dados: fecha o app
 }
 
 // Opcoes configura a API.
@@ -70,6 +74,11 @@ type Opcoes struct {
 	Cofre        segredos.Cofre                       // padrão: cofre do sistema operacional
 	ProvedoresIA map[string]ia.Provedor               // só nos testes
 	DetectarCLIs func(context.Context) []ia.EstadoCLI // padrão: procura claude, codex e gemini no PATH
+
+	// Ganchos do app (padrão: não fazem nada). PararEnvio e FecharNavegador vêm de envio.Ligar; AoApagar fecha o app.
+	PararEnvio      func()
+	FecharNavegador func()
+	AoApagar        func()
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -89,7 +98,14 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.DetectarCLIs == nil {
 		o.DetectarCLIs = ia.DetectarCLIs
 	}
-	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now}
+	nada := func() {}
+	for _, f := range []*func(){&o.PararEnvio, &o.FecharNavegador, &o.AoApagar} {
+		if *f == nil {
+			*f = nada
+		}
+	}
+	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
+		pararEnvio: o.PararEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -383,6 +399,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{}, falha(400, "envie um objeto JSON")
 	}
 	c := dominio.ObjetoDe(corpo)
+
+	if p == "/dados/apagar" || p == "/navegador/sair" {
+		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
 
 	if strings.HasPrefix(p, "/candidaturas") {
 		if r, feito, err := a.rotasCandidaturas(ctx, m, p, q, c, autor); feito {

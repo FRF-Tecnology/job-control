@@ -1,6 +1,6 @@
 # Apagar meus dados e sair das plataformas (LGPD)
 
-Bead `jc-a2y.49`. Status: **proposta**. As rotas estão no `api/openapi.yaml` 0.4.10, marcadas `x-proposta: true`. Elas estão no contrato, mas ainda não têm rota: o `contrato_test.go` exige isso até a implementação tirar a marca. Esta proposta bloqueia a `.6.5`, porque o perfil do navegador vai guardar a sessão do LinkedIn. Nada vai para a nuvem.
+Bead `jc-a2y.49`. Status: **implementada**. As rotas estão no `api/openapi.yaml` 0.4.10 e são atendidas pela API (`internal/api/dados.go`). Esta proposta bloqueia a `.6.5`, porque o perfil do navegador vai guardar a sessão do LinkedIn. Nada vai para a nuvem.
 
 ## Rotas (só a tela, `x-so-tela`)
 
@@ -45,7 +45,7 @@ Lista fechada (`ItemApagado`), que é o que volta em `apagado` e `faltou`:
 
 O log leva só o resultado por item (por exemplo `apagar: navegador ok`, `apagar: chaves faltou (tipo do erro)`). Nunca leva caminho (que traz o nome do usuário), conteúdo nem chave.
 
-## Testes (na implementação)
+## Testes (`internal/api/dados_test.go`)
 
 - Depois de apagar, a pasta de dados não tem nenhum arquivo, e o cofre falso (`segredos.Memoria`) fica sem as três chaves.
 - `sair` remove só `navegador/`: banco, currículos e chaves ficam.

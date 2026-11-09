@@ -338,7 +338,6 @@ paths:
   # sistema na resposta nem no log.
   /dados/apagar:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Apaga todos os dados do app neste computador: banco (vagas, fila, perfil, eventos, limites), currículos copiados, backups locais, perfil do navegador e chaves de IA no cofre do sistema. Depois de responder, o app fecha; ao abrir de novo, é um usuário novo'
       requestBody:
@@ -358,7 +357,6 @@ paths:
         '409': { $ref: '#/components/responses/EnvioEmAndamento' }
   /navegador/sair:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Sair das plataformas: apaga só o perfil do navegador do app (sessão e cookies de LinkedIn, Gupy e InHire). Os dados ficam; o app continua aberto'
       requestBody:

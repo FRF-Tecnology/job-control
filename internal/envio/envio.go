@@ -5,3 +5,11 @@
 // desenvolvimento com a tag envio_dev (envio_dev.go): go build -tags envio_dev ./app. Não há variável de ambiente
 // nem botão que ligue o envio.
 package envio
+
+// Controle do envio ligado. Parar para o executor e fecha o navegador (ao fechar o app ou antes de apagar os
+// dados); FecharNavegador só fecha o navegador (antes de "sair das plataformas": o perfil não pode estar em uso).
+// No build padrão, as duas não fazem nada.
+type Controle struct {
+	Parar           func()
+	FecharNavegador func()
+}
