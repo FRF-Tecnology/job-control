@@ -131,6 +131,9 @@ func (p *pagina) Preencher(ctx context.Context, c executor.Campo, valor string) 
 	if err != nil {
 		return err
 	}
+	if res == "sem-opcao" {
+		return executor.ErrSemOpcao // o executor decide se fica o que a página já marcou
+	}
 	if res != "ok" {
 		return fmt.Errorf("navegador: não preencheu (%s)", res) // só o código fixo, sem valor nem rótulo
 	}
@@ -174,7 +177,7 @@ func (p *pagina) Enviar(ctx context.Context) error {
 		return err
 	}
 	if !clicou {
-		return errors.New("navegador: botão de enviar não encontrado")
+		return executor.ErrSemBotaoEnviar // nada foi clicado: o executor bloqueia em vez de deixar incerta
 	}
 	return nil
 }
@@ -230,6 +233,13 @@ const scriptRetrato = `(() => {
     if (!t.length) { const f = el.closest('fieldset'); const lg = f && f.querySelector('legend'); if (lg) t.push(lg.innerText); }
     return limpar(t.join(' '));
   };
+  // preenchido: a página já trouxe um valor. Só sim ou não: o valor nunca sai do retrato (jc-a2y.6.5.1).
+  const preenchido = (el, tipo) => {
+    if (tipo === 'checkbox') return el.checked;
+    if (tipo === 'file') return !!(el.files && el.files.length);
+    if (tipo === 'select') { const o = el.options[el.selectedIndex]; return !!o && !o.disabled && o.value !== ''; }
+    return (el.value || '').trim() !== '';
+  };
   const campos = []; const grupos = new Set();
   for (const el of document.querySelectorAll('input, select, textarea')) {
     const tipo = (el.tagName === 'INPUT' ? (el.getAttribute('type') || 'text') : el.tagName).toLowerCase();
@@ -240,10 +250,10 @@ const scriptRetrato = `(() => {
       grupos.add(el.name);
       const f = el.closest('fieldset'); const lg = f && f.querySelector('legend');
       const todos = Array.from(document.getElementsByName(el.name));
-      campos.push({ id: 'input[type="radio"][name="' + CSS.escape(el.name) + '"]', tipo, rotulo: lg ? limpar(lg.innerText) : rotulo(el), nome: el.name, placeholder: '', autocomplete: '', obrigatorio: todos.some(r => r.required) });
+      campos.push({ id: 'input[type="radio"][name="' + CSS.escape(el.name) + '"]', tipo, rotulo: lg ? limpar(lg.innerText) : rotulo(el), nome: el.name, placeholder: '', autocomplete: '', obrigatorio: todos.some(r => r.required), preenchido: todos.some(r => r.checked) });
       continue;
     }
-    campos.push({ id: seletor(el), tipo, rotulo: rotulo(el), nome: el.name || '', placeholder: el.getAttribute('placeholder') || '', autocomplete: el.getAttribute('autocomplete') || '', obrigatorio: !!el.required || el.getAttribute('aria-required') === 'true' });
+    campos.push({ id: seletor(el), tipo, rotulo: rotulo(el), nome: el.name || '', placeholder: el.getAttribute('placeholder') || '', autocomplete: el.getAttribute('autocomplete') || '', obrigatorio: !!el.required || el.getAttribute('aria-required') === 'true', preenchido: preenchido(el, tipo) });
   }
   const quadros = Array.from(document.querySelectorAll('iframe')).map(f => f.getAttribute('src') || '').filter(Boolean).slice(0, 50);
   const botoes = Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], [role=button]')).filter(visivel).map(b => limpar(b.innerText || b.value || b.getAttribute('aria-label'))).filter(Boolean).slice(0, 100);

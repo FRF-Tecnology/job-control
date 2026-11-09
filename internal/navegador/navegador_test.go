@@ -96,6 +96,8 @@ func novoServidor(t *testing.T) *servidorFicticio {
 		"www.linkedin.com GET /jobs/view/9000000001":        pagina("linkedin-vaga.html"),
 		"www.linkedin.com POST /jobs/view/9000000001/apply": receber(true),
 		"www.linkedin.com GET /jobs/view/9000000004":        pagina("linkedin-sem-confirmacao.html"),
+		"www.linkedin.com GET /jobs/view/9000000005":        pagina("linkedin-preenchido.html"),
+		"www.linkedin.com POST /jobs/view/9000000005/apply": receber(true),
 		"www.linkedin.com POST /jobs/view/9000000004/apply": receber(false),
 		"empresa-teste.gupy.io GET /jobs/9000001":           pagina("gupy-cpf.html"),
 		"empresa-teste.gupy.io POST /jobs/9000001/apply":    receber(true),
@@ -280,6 +282,30 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 		}
 		if !bytes.Equal(e.arquivo, pdf) {
 			t.Errorf("arquivo recebido = %q", e.arquivo)
+		}
+	})
+
+	t.Run("Campos que a página já preencheu ficam como estão (jc-a2y.6.5.1)", func(t *testing.T) {
+		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000005"))
+		if d.Estado != dominio.CandEnviada {
+			t.Fatalf("desfecho = %+v", d)
+		}
+		var e *envioRecebido
+		for _, x := range srv.envios() {
+			if x.caminho == "/jobs/view/9000000005/apply" {
+				x := x
+				e = &x
+			}
+		}
+		if e == nil {
+			t.Fatal("o servidor fictício não recebeu a candidatura")
+		}
+		// Do pacote: nome e telefone. Da página, sem alteração: o e-mail da conta e o código do país.
+		quer := map[string]string{"nome": "Pessoa Teste", "tel": "11900000000", "email": "conta@exemplo.com", "ddi": "+55"}
+		for k, v := range quer {
+			if e.campos.Get(k) != v {
+				t.Errorf("campo %s = %q; queria %q", k, e.campos.Get(k), v)
+			}
 		}
 	})
 

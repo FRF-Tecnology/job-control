@@ -369,6 +369,12 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 
 	// Formulário em etapas: em cada uma, confere o endereço e o bloqueio, planeja todos os campos (M1) antes de
 	// digitar, preenche, confere de novo e só então avança. Nunca avança com campo sem plano.
+	pelaPagina := 0 // obrigatórios que a página já trouxe preenchidos e o app não alterou (só a contagem vai para o log)
+	defer func() {
+		if pelaPagina > 0 {
+			x.o.Log("executor: %d campo(s) obrigatório(s) preenchido(s) pela página, sem alteração", pelaPagina)
+		}
+	}()
 	for etapa := 0; ; etapa++ {
 		if etapa >= MaxEtapas {
 			return bloqueada("outro")
@@ -383,7 +389,8 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 		if err != nil {
 			return falhou("erro-tecnico", err)
 		}
-		plano, motivo := planejar(conteudo, campos)
+		plano, motivo, mantidos := planejar(conteudo, campos)
+		pelaPagina += mantidos
 		if motivo != "" {
 			return bloqueada(motivo)
 		}
@@ -397,6 +404,13 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 				err = pag.Preencher(ctx, a.campo, a.valor)
 			}
 			if err != nil {
+				// Contato num select que a página já marcou, sem a opção do pacote (ex.: código do país, e-mail da
+				// conta): fica o que a página marcou, sem alterar (jc-a2y.6.5.1). Pergunta e pretensão não: a resposta
+				// aprovada não caberia, e outra não pode ir no lugar.
+				if errors.Is(err, ErrSemOpcao) && a.campo.Preenchido && !a.campo.Livre && ehContato(a.campo.Tipo) {
+					pelaPagina++
+					continue
+				}
 				return falhou("erro-tecnico", err)
 			}
 		}
@@ -424,6 +438,10 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 		return falhou("erro-tecnico", ctx.Err())
 	}
 	if err := pag.Enviar(ctx); err != nil {
+		// Sem o botão final, nada foi clicado: bloqueada (a pessoa confere), não incerta (jc-a2y.6.5.1).
+		if errors.Is(err, ErrSemBotaoEnviar) {
+			return bloqueada("outro")
+		}
 		return passo{dominio.CandIncerta, "", err}
 	}
 	if err := x.pausa(context.WithoutCancel(ctx), x.o.EntreAcoes); err != nil {
@@ -462,20 +480,27 @@ type acao struct {
 
 // planejar decide o que fazer com cada campo da etapa, antes de digitar qualquer coisa (M1). Um campo que bloqueia
 // devolve o motivo e nada é preenchido.
-func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
-	var plano []acao
+func planejar(conteudo dominio.Objeto, campos []Campo) (plano []acao, motivo string, mantidos int) {
 	for _, campo := range campos {
 		valor, motivo := valorDoCampo(conteudo, campo)
 		switch {
 		case motivo != "":
-			return nil, motivo
+			return nil, motivo, 0
+		case valor == "" && campo.Obrigatorio && campo.Preenchido && campo.Tipo != CampoCurriculo:
+			mantidos++ // a página já trouxe o valor; o app não mexe
 		case campo.Tipo == CampoCurriculo:
 			plano = append(plano, acao{campo: campo, anexar: true})
 		case valor != "":
 			plano = append(plano, acao{campo: campo, valor: valor})
 		}
 	}
-	return plano, ""
+	return plano, "", mantidos
+}
+
+// ehContato: campos de contato do pacote (nome, e-mail, telefone, cidade). Só eles podem ficar com o que a página
+// já marcou quando o select não tem a opção do pacote.
+func ehContato(tipo string) bool {
+	return tipo == CampoNome || tipo == CampoEmail || tipo == CampoTelefone || tipo == CampoCidade
 }
 
 func (x *Executor) conferirBloqueio(ctx context.Context, pag Pagina) (passo, bool) {
@@ -569,6 +594,11 @@ func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
 	}
 	if strings.TrimSpace(valor) == "" {
 		if c.Obrigatorio {
+			// A página já trouxe o valor (o rótulo não é sensível: isso foi barrado acima): conta como respondido, e o
+			// app não altera. Texto longo, não (jc-a2y.6.5.1).
+			if c.Preenchido && !c.Livre {
+				return "", ""
+			}
 			return "", "pergunta-nova"
 		}
 		return "", ""

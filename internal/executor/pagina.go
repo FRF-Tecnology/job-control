@@ -1,6 +1,17 @@
 package executor
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// Erros fixos que a Pagina devolve para o executor decidir sem olhar texto (jc-a2y.6.5.1).
+var (
+	// ErrSemBotaoEnviar: o botão final não foi achado; nada foi clicado.
+	ErrSemBotaoEnviar = errors.New("navegador: botão de enviar não encontrado")
+	// ErrSemOpcao: o valor não é uma das opções do select ou do grupo de rádio.
+	ErrSemOpcao = errors.New("navegador: valor fora das opções do campo")
+)
 
 // Navegador abre páginas. O navegador de verdade (chromedp, com perfil próprio na pasta de dados) chega no
 // jc-a2y.6.2.5; o detector dos motivos de bloqueio, no jc-a2y.6.2.4. Aqui só o contrato e as regras do envio.
@@ -53,4 +64,8 @@ type Campo struct {
 	Tipo        string
 	Rotulo      string
 	Obrigatorio bool
+	// Preenchido: a página já trouxe um valor (texto, opção marcada, rádio ou caixa). O valor não é lido.
+	Preenchido bool
+	// Livre: texto longo (textarea). Já preenchido pela página, ainda assim não conta como respondido.
+	Livre bool
 }

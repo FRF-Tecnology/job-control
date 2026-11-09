@@ -31,6 +31,7 @@ type CampoDaPagina struct {
 	Placeholder  string `json:"placeholder"`
 	Autocomplete string `json:"autocomplete"`
 	Obrigatorio  bool   `json:"obrigatorio"`
+	Preenchido   bool   `json:"preenchido"` // a página já trouxe um valor (o valor não vem no retrato)
 }
 
 func (c CampoDaPagina) texto() string { return c.Rotulo + " " + c.Placeholder + " " + c.Nome }
@@ -146,7 +147,8 @@ func motivoDoCampo(c Campo) string {
 func ClassificarCampos(r Retrato) []Campo {
 	saida := make([]Campo, 0, len(r.Campos))
 	for _, c := range r.Campos {
-		saida = append(saida, Campo{ID: c.ID, Tipo: tipoDoCampo(c), Rotulo: c.Rotulo, Obrigatorio: c.Obrigatorio})
+		saida = append(saida, Campo{ID: c.ID, Tipo: tipoDoCampo(c), Rotulo: c.Rotulo, Obrigatorio: c.Obrigatorio,
+			Preenchido: c.Preenchido, Livre: strings.EqualFold(c.Tipo, "textarea")})
 	}
 	return saida
 }

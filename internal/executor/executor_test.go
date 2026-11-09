@@ -30,6 +30,7 @@ type paginaFalsa struct {
 	bloqueios    []string // um por chamada de Bloqueio
 	campos       []Campo
 	errPreencher error
+	errPorCampo  map[string]error // erro do Preencher só naquele campo (ex.: ErrSemOpcao)
 	errEnviar    error
 	confirma     bool
 	aoPreencher  func()
@@ -88,6 +89,9 @@ func (p *paginaFalsa) Preencher(ctx context.Context, c Campo, v string) error {
 	}
 	if p.errPreencher != nil {
 		return p.errPreencher
+	}
+	if err := p.errPorCampo[c.ID]; err != nil {
+		return err
 	}
 	p.preenchidos[c.ID] = v
 	return nil

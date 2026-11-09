@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Página fictícia (jc-a2y.6.5.1): candidatura simplificada em que a plataforma já traz campos obrigatórios
+     preenchidos, como o LinkedIn faz com o e-mail da conta e o código do país. Empresa, vaga e e-mails inventados. -->
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Dev Go - Empresa Teste</title></head>
+<body>
+  <h1>Dev Go</h1>
+  <p>Empresa Teste. Trabalho remoto.</p>
+  <button type="button" id="abrir" onclick="document.getElementById('modal').style.display='block'; this.style.display='none'">Candidatura simplificada</button>
+  <div id="modal" style="display:none">
+    <form id="f" method="post" action="/jobs/view/9000000005/apply" enctype="multipart/form-data">
+      <h2>Informações de contato</h2>
+      <label for="nome">Nome completo</label><input id="nome" name="nome" required>
+      <label for="email">E-mail</label>
+      <select id="email" name="email" required><option value="">Selecione</option><option value="conta@exemplo.com" selected>conta@exemplo.com</option></select>
+      <label for="ddi">Código do país</label>
+      <select id="ddi" name="ddi" required><option value="">Selecione</option><option value="+55" selected>Brasil (+55)</option><option value="+351">Portugal (+351)</option></select>
+      <label for="tel">Telefone celular</label><input id="tel" name="tel" type="tel" required>
+      <label for="cv">Currículo (PDF)</label><input id="cv" name="cv" type="file" accept=".pdf" required>
+      <button type="submit">Enviar candidatura</button>
+    </form>
+  </div>
+</body>
+</html>
