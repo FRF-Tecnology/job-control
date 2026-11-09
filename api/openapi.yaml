@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.3.0
+  version: 0.4.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -10,8 +10,9 @@ info:
     413 corpo grande demais. Rotas /ia (só no app Go): 422 saída da IA fora do contrato ou bloqueada
     pela guarda, 502 provedor fora ({erro, tipo, regra}). 500 erro inesperado: sempre
     {erro: "erro interno do app; tente de novo"}, sem detalhe do erro; o log registra só método, caminho
-    sem query e o tipo do erro (jc-a2y.13). O teste internal/api/contrato_test.go
-    confere este arquivo contra as rotas da API.
+    sem query e o tipo do erro (jc-a2y.13). 429 limite diário da plataforma ({erro, plataforma, limite,
+    usadas, renovaEm}). O teste internal/api/contrato_test.go confere este arquivo contra as rotas da API;
+    operações com x-proposta: true estão no contrato, mas ainda não são atendidas (fila da P5).
 servers:
   - url: /api/v1
 paths:
@@ -159,6 +160,170 @@ paths:
         '422': { $ref: '#/components/responses/ErroIAContrato' }
         '502': { $ref: '#/components/responses/ErroIAProvedor' }
 
+
+  # Fila de candidaturas (P5, jc-a2y.6.1; proposta em docs/propostas/p5-contrato-fila.md).
+  # x-proposta: true = no contrato, mas ainda não atendida pela API; o contrato_test.go exige que continue sem rota
+  # até a implementação, que tira a marca. x-so-tela: true = na P6, MCP e CLI recebem 403 (só a tela chama).
+  # Uma candidatura é o pacote exato que vai para a vaga. A aprovação vale para aquela impressão, uma vez, até o fim
+  # do dia local. Só a pessoa (tela) e o executor interno (sem rota HTTP) mudam o estado; texto de vaga, página ou IA nunca.
+  /candidaturas:
+    get:
+      x-proposta: true
+      summary: 'Fila de candidaturas (?estado=)'
+      parameters:
+        - { name: estado, in: query, required: false, schema: { $ref: '#/components/schemas/EstadoCandidatura' } }
+      responses:
+        '200': { description: Lista, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Candidatura' } } } } }
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Cria a candidatura de uma vaga na etapa aplicar (ou grupo A em descoberta no modo direto) → preparada (201)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vagaId, conteudo]
+              properties:
+                vagaId: { type: string }
+                conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
+      responses:
+        '201': { description: Criada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: '^cand-' } }
+    get:
+      x-proposta: true
+      summary: Uma candidatura
+      responses:
+        '200': { description: Candidatura, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+  /candidaturas/{id}/conteudo:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Troca o conteúdo em preparada ou aprovada; aprovada volta a preparada e perde a aprovação'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conteudo, versao]
+              properties:
+                conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
+                versao: { type: integer, description: 'Versão que a tela leu; diferente da atual dá 409' }
+      responses:
+        '200': { description: Candidatura atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/aprovar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'preparada → aprovada, só se a impressão enviada for a atual; vale uma vez, até o fim do dia local'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [impressao]
+              properties:
+                impressao: { type: string, pattern: '^sha256:v1:', description: 'A impressão que a tela mostrou' }
+      responses:
+        '200': { description: Aprovada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+        '429': { $ref: '#/components/responses/LimiteDiario' }
+  /candidaturas/{id}/revogar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-proposta: true
+      summary: 'aprovada → preparada (tira a aprovação)'
+      responses:
+        '200': { description: Revogada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/cancelar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-proposta: true
+      summary: 'preparada, aprovada, bloqueada ou falhou → cancelada (incerta não pode ser cancelada)'
+      responses:
+        '200': { description: Cancelada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/reabrir:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'bloqueada, falhou ou incerta → preparada; enviar de novo exige nova aprovação'
+      responses:
+        '200': { description: Reaberta, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/concluir-manual:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'bloqueada ou incerta → enviada: a pessoa enviou sozinha ou conferiu na plataforma; a vaga vai para enviada na mesma transação'
+      responses:
+        '200': { description: Enviada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/limites:
+    get:
+      x-proposta: true
+      summary: 'Limite diário por plataforma (linkedin, gupy, inhire), quantas já entraram em enviando hoje e quando renova'
+      responses:
+        '200':
+          description: Limites
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [linkedin, gupy, inhire]
+                properties:
+                  linkedin: { $ref: '#/components/schemas/LimiteDiario' }
+                  gupy: { $ref: '#/components/schemas/LimiteDiario' }
+                  inhire: { $ref: '#/components/schemas/LimiteDiario' }
+  /candidaturas/limites/{plataforma}:
+    parameters:
+      - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
+    put:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Muda o limite diário da plataforma (padrão 30, de 1 a 40)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [limite]
+              properties:
+                limite: { type: integer, minimum: 1, maximum: 40 }
+      responses:
+        '200': { description: Limite gravado, content: { application/json: { schema: { $ref: '#/components/schemas/LimiteDiario' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+
 components:
   schemas:
     Erro:
@@ -235,6 +400,105 @@ components:
         aderencia: { type: string, enum: [A, B, C] }
         motivo: { type: string }
         motivoPulo: { type: string, enum: [Sênior, Inglês, Diploma, Stack, Presencial/Local, Documento, Duplicada, Vaga fechada, Outro] }
+    EstadoCandidatura:
+      type: string
+      enum: [preparada, aprovada, enviando, enviada, bloqueada, falhou, incerta, cancelada]
+      description: 'enviando e incerta só o executor põe; incerta sai só pela tela (concluir-manual ou reabrir)'
+    PlataformaCandidatura:
+      type: string
+      enum: [linkedin, gupy, inhire, outra]
+      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo'
+    ConteudoCandidatura:
+      type: object
+      description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. CPF ou RG em qualquer texto dá 400'
+      required: [curriculo, idioma, respostas]
+      properties:
+        curriculo:
+          type: object
+          required: [arquivo]
+          properties:
+            arquivo: { type: string, description: 'Nome dentro da pasta de currículos, nunca caminho' }
+            sha256: { type: string, readOnly: true, description: 'Calculado pelo servidor; o executor confere de novo antes de anexar' }
+        idioma: { type: string, enum: [pt, en] }
+        contato:
+          type: [object, 'null']
+          properties: { nome: { type: string }, email: { type: string }, telefone: { type: string }, cidade: { type: string } }
+        pretensao:
+          type: [object, 'null']
+          properties:
+            valor: { type: number }
+            moeda: { type: string, enum: [BRL, USD, EUR] }
+            tipo: { type: string, enum: [CLT, PJ, contractor] }
+        respostas:
+          type: array
+          items:
+            type: object
+            required: [pergunta, resposta, origem]
+            properties:
+              pergunta: { type: string }
+              resposta: { type: string }
+              origem: { type: string, enum: [respostasPadrao, pessoa, ia] }
+        mensagem: { type: [string, 'null'] }
+    Candidatura:
+      type: object
+      required: [id, vagaId, plataforma, url, estado, conteudo, impressao, aprovacao, bloqueio, resultado, versao, criadaEm, atualizadaEm]
+      properties:
+        id: { type: string, pattern: '^cand-' }
+        vagaId: { type: string }
+        plataforma: { $ref: '#/components/schemas/PlataformaCandidatura' }
+        url: { type: string, pattern: '^https://', description: 'Host da plataforma (linkedin.com, gupy.io, inhire.app e subdomínios), conferido depois de analisar a URL' }
+        estado: { $ref: '#/components/schemas/EstadoCandidatura' }
+        conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
+        impressao: { type: string, pattern: '^sha256:v1:', description: 'sha256 do JSON canônico (RFC 8785) de {vagaId, plataforma, url, conteudo}' }
+        aprovacao:
+          type: [object, 'null']
+          properties:
+            em: { type: string }
+            impressao: { type: string }
+            validaAte: { type: string, description: 'Fim do dia local, com offset (ex.: 2026-11-09T23:59:59-03:00)' }
+            fuso: { type: string, description: 'Ex.: America/Sao_Paulo' }
+        bloqueio:
+          type: [object, 'null']
+          properties:
+            motivo: { $ref: '#/components/schemas/MotivoBloqueio' }
+            pendencia: { type: string, description: 'Texto fixo nosso por motivo; nada da página' }
+            em: { type: string }
+        resultado:
+          type: [object, 'null']
+          properties:
+            em: { type: string }
+            tipo: { type: string, enum: [enviada, falhou, incerto, manual] }
+            detalhe: { type: string, description: 'Texto fixo nosso' }
+        versao: { type: integer }
+        criadaEm: { type: string }
+        atualizadaEm: { type: string }
+    MotivoBloqueio:
+      type: string
+      enum: [cpf, rg, senha, dado-bancario, captcha, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
+    LimiteDiario:
+      type: object
+      required: [limite, usadas, renovaEm]
+      properties:
+        limite: { type: integer, minimum: 1, maximum: 40, description: 'Padrão 30' }
+        usadas: { type: integer, description: 'Candidaturas que entraram em enviando hoje (falha e incerta contam)' }
+        renovaEm: { type: string, description: 'Início do próximo dia local, com offset' }
+    ErroLimite:
+      type: object
+      required: [erro, plataforma, limite, usadas, renovaEm]
+      properties:
+        erro: { type: string }
+        plataforma: { type: string }
+        limite: { type: integer }
+        usadas: { type: integer }
+        renovaEm: { type: string }
+    ErroConflitoCandidatura:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoCandidatura' }
+        impressaoAtual: { type: string, description: 'Só quando a impressão enviada não é a atual' }
+        existente: { type: string, description: 'Só na duplicata: id da candidatura ativa ou da vaga já enviada' }
   responses:
     Erro:
       description: '{erro}'
@@ -251,3 +515,9 @@ components:
     ErroIAProvedor:
       description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor). Provedores por chave: "<provedor>: HTTP <status> <texto fixo do status>" ou "<provedor>: falha de rede (<motivo fixo>)", sem valor do corpo do provedor. CLIs: "<cli>: <texto fixo da classe da falha>" (sem login, saiu com código N, não rodou, sem resposta, respondeu com erro, tempo esgotado). Google bloqueado: "google: bloqueado (<motivo de uma lista fechada>)"'
       content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
+    ConflitoCandidatura:
+      description: 'Estado não permite a ação ({erro, estado}), impressão mudou ({erro, impressaoAtual}), versão velha, duplicata ({erro, existente}) ou vaga fora da etapa'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroConflitoCandidatura' } } }
+    LimiteDiario:
+      description: 'Limite diário da plataforma atingido'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroLimite' } } }

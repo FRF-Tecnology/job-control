@@ -22,7 +22,9 @@ import (
 //   - toda operação do contrato é atendida pela API, sem erro inesperado;
 //   - num caminho do contrato, método fora do contrato dá "rota não encontrada";
 //   - rotas escritas em api.go e ia.go têm caminho no contrato;
-//   - na sessão gravada do Node, o que a API atendeu está no contrato e o que deu "rota não encontrada" não está.
+//   - na sessão gravada do Node, o que a API atendeu está no contrato e o que deu "rota não encontrada" não está;
+//   - operação marcada x-proposta: true (contrato primeiro, ainda sem implementação) continua sem rota; quando a
+//     implementação chegar, este teste falha até a marca sair.
 //
 // Limites (o que este teste NÃO garante):
 //   - a busca de rotas no código só olha api.go e ia.go e só reconhece os formatos de hoje:
@@ -42,8 +44,16 @@ type operacoes map[string]map[string]bool // caminho do contrato → métodos
 
 var reParam = regexp.MustCompile(`\{([^}/]+)\}`)
 
-// lerContrato lê a seção paths do openapi.yaml com um parser YAML de verdade.
+// lerContrato devolve as operações já atendidas (sem x-proposta).
 func lerContrato(t *testing.T) operacoes {
+	t.Helper()
+	ativas, _ := lerContratoCompleto(t)
+	return ativas
+}
+
+// lerContratoCompleto lê a seção paths do openapi.yaml com um parser YAML de verdade e separa as operações
+// marcadas x-proposta: true (no contrato, ainda sem implementação).
+func lerContratoCompleto(t *testing.T) (ativas, propostas operacoes) {
 	t.Helper()
 	b, err := os.ReadFile(caminhoContrato)
 	if err != nil {
@@ -55,18 +65,31 @@ func lerContrato(t *testing.T) operacoes {
 	if err := yaml.Unmarshal(b, &doc); err != nil {
 		t.Fatalf("openapi.yaml inválido: %v", err)
 	}
-	ops := operacoes{}
+	ativas, propostas = operacoes{}, operacoes{}
 	for caminho, itens := range doc.Paths {
-		ops[caminho] = map[string]bool{}
-		for chave := range itens {
+		for chave, no := range itens {
 			for _, m := range metodosHTTP {
-				if strings.ToUpper(chave) == m {
-					ops[caminho][m] = true
+				if strings.ToUpper(chave) != m {
+					continue
 				}
+				var op struct {
+					Proposta bool `yaml:"x-proposta"`
+				}
+				if err := no.Decode(&op); err != nil {
+					t.Fatalf("%s %s: %v", m, caminho, err)
+				}
+				destino := ativas
+				if op.Proposta {
+					destino = propostas
+				}
+				if destino[caminho] == nil {
+					destino[caminho] = map[string]bool{}
+				}
+				destino[caminho][m] = true
 			}
 		}
 	}
-	return ops
+	return ativas, propostas
 }
 
 func concreto(caminho string) string {
@@ -167,6 +190,28 @@ func TestContratoContraRotas(t *testing.T) {
 		for _, m := range metodosHTTP {
 			if problema := conferirOperacao(ctx, a, ops, m, modelo); problema != "" {
 				t.Error(problema)
+			}
+		}
+	}
+}
+
+// Contrato primeiro: toda operação x-proposta ainda não tem rota, e nenhum outro método nesses caminhos tem.
+// Quando a implementação chegar, este teste falha até a marca sair do openapi.yaml.
+func TestPropostasAindaSemRota(t *testing.T) {
+	ativas, propostas := lerContratoCompleto(t)
+	if len(propostas) == 0 {
+		return
+	}
+	a := apiDoContrato(t, segredos.Memoria{})
+	for _, modelo := range ordenadas(propostas) {
+		if ativas[modelo] != nil {
+			t.Errorf("%s mistura operações atendidas e propostas; separe antes de implementar", modelo)
+		}
+		p := concreto(modelo)
+		for _, m := range metodosHTTP {
+			r, err := a.Chamar(context.Background(), Pedido{Metodo: m, Caminho: Prefixo + p, Corpo: Objeto{}})
+			if err != nil || !rotaInexistente(r) {
+				t.Errorf("%s %s (chamado como %s) já é atendido (status %d, erro %v): tire x-proposta do contrato", m, modelo, p, r.Status, err)
 			}
 		}
 	}

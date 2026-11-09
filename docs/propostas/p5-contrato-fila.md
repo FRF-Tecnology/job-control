@@ -1,6 +1,6 @@
 # Proposta: contrato da fila de candidaturas (P5, 1º recorte)
 
-Bead `jc-a2y.6.1`. Status: **proposta, versão 3.** Inclui a revisão do CyberSec ("aceite com mudanças", M1 a M7 e R1 a R4, [comentário no #19](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731466181)) e as 8 decisões do PO (a 4 foi revista para adotar o R1). Nada aqui está implementado; o `api/openapi.yaml` só muda quando a proposta for aceita, junto com as rotas (o teste do contrato exige rota atendida).
+Bead `jc-a2y.6.1`. Status: **proposta, versão 3.** Inclui a revisão do CyberSec ("aceite com mudanças", M1 a M7 e R1 a R4, [comentário no #19](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731466181)) e as 8 decisões do PO (a 4 foi revista para adotar o R1). Aceita pelo CyberSec ([comentário](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731504607)). As rotas já estão no `api/openapi.yaml` 0.4.0 marcadas `x-proposta: true`: estão no contrato, mas ainda não são atendidas. O `contrato_test.go` exige que continuem sem rota até a implementação tirar a marca.
 
 Escopo do 1º recorte: fila, aprovação, estados, transições, erros e as regras que o executor tem de seguir. **Fora:** o código do navegador (chromedp), a busca e a tela. Esses ficam no `jc-a2y.6.2` (executor) e no `jc-a2y.6.3` (telas). Plataforma alvo: Windows e macOS.
 
@@ -78,6 +78,7 @@ stateDiagram-v2
    Só então consome a aprovação. Antes de anexar, recalcula o sha256 do currículo no disco. Se mudou, marca `falhou` com "currículo mudou" e não envia.
 3. **Queda não reenvia (M3).** O caso já está descrito em `incerta`.
 4. **Endereço confere (M5).** A página aberta tem de ser a `url` aprovada, em https, com host da plataforma (`linkedin.com`, `gupy.io`, `inhire.app` e subdomínios), e tem de corresponder ao `vagaId`. Se a candidatura mandar para um site externo (ATS fora da plataforma) ou para outra vaga, o executor marca `bloqueada/site-externo`.
+   - **Como comparar o host (nota do CyberSec para o `.6.2`):** use o host já analisado pela biblioteca de URL, nunca prefixo ou trecho da string. Aceite só scheme `https` e `host == "linkedin.com"` ou `HasSuffix(host, ".linkedin.com")`, e o mesmo para `gupy.io` e `inhire.app`. Testes: `evil-linkedin.com`, `linkedin.com.evil.io`, `linkedin.com@evil.io`, `http://`, host com maiúsculas e host com ponto final.
 5. O intervalo mínimo entre ações (com variação) e o perfil próprio do Chrome são regras do executor e não aparecem no contrato.
 
 ## Regras de aprovação
