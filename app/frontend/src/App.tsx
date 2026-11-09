@@ -9,6 +9,7 @@ import { Detalhe } from './telas/Detalhe';
 import { TelaHoje } from './telas/Hoje';
 import { TelaTriagem } from './telas/Triagem';
 import { TelaFila } from './telas/Fila';
+import { EVENTO_ENVIO, type EstadoEnvio } from './telas/PainelEnvio';
 import { TelaQuadro } from './telas/Quadro';
 import { TelaVagas } from './telas/Vagas';
 import { TelaNumeros } from './telas/Numeros';
@@ -74,6 +75,7 @@ export default function App() {
   const { tela, vaga } = useHash();
   const [estado, setEstado] = useState<Estado | null>(null);
   const [conexao, setConexao] = useState<{ texto: string; estado: 'ok' | 'off' | '' }>({ texto: '', estado: '' });
+  const [envioAtivo, setEnvioAtivo] = useState(false); // ligado e não pausado: marca no cabeçalho (jc-a2y.51)
   const [falha, setFalha] = useState<Falha>(null);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [dialogo, setDialogo] = useState<PedidoDialogo | null>(null);
@@ -123,6 +125,21 @@ export default function App() {
     setFalha(null);
     setEstado(novo);
     setConexao({ texto: 'Dados locais', estado: 'ok' });
+  }, []);
+
+  // Envio ligado e não pausado aparece no cabeçalho em todas as telas, não só na Fila (nota do CyberSec no #60).
+  // Pausar e retomar não mudam a /versao, então a casca lê /envio a cada 5 s e ouve o painel da Fila na hora.
+  useEffect(() => {
+    const ativo = (e: Partial<EstadoEnvio> | null) => !!e && e.ligado === true && e.pausado === false;
+    const ler = async () => {
+      if (fechando.current || document.visibilityState !== 'visible') return;
+      try { setEnvioAtivo(ativo(await chamarApi('/api/v1/envio'))); } catch { setEnvioAtivo(false); }
+    };
+    const aoMudar = (ev: Event) => setEnvioAtivo(ativo((ev as CustomEvent<EstadoEnvio>).detail));
+    window.addEventListener(EVENTO_ENVIO, aoMudar);
+    const t = setInterval(ler, 5000);
+    ler();
+    return () => { window.removeEventListener(EVENTO_ENVIO, aoMudar); clearInterval(t); };
   }, []);
 
   // Atualização automática: a cada 5 s, ao voltar para a janela e ao trocar de seção.
@@ -218,6 +235,7 @@ export default function App() {
           </a>
           <Menu atual={tela.rota} contador={contador} />
           <div className="topo-pe">
+            {envioAtivo && <a className="marca-envio" href="#/fila" title="O app está enviando as candidaturas aprovadas. Abra a Fila para pausar.">Envio ligado</a>}
             <span className={`status-conexao ${conexao.estado}`} role="status">{conexao.texto}</span>
             <button className="botao-icone" type="button" aria-label="Alternar tema claro/escuro" onClick={alternarTema}>
               <Icone d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />
