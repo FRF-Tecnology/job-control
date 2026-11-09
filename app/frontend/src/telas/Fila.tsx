@@ -27,6 +27,8 @@ export type Candidatura = {
   bloqueio: { motivo: string; pendencia: string; em: string } | null;
   resultado: { em: string; tipo: string; detalhe?: string } | null;
   versao: number; criadaEm: string; atualizadaEm: string;
+  // jc-a2y.6.11: depois de uma falha técnica antes de preencher, a aprovada volta e só sai depois deste instante.
+  proximaTentativaEm?: string | null;
 };
 
 // O que pede a pessoa vem primeiro.
@@ -37,7 +39,7 @@ const NOME_ESTADO: Record<EstadoCand, string> = {
 };
 const ALERTA: EstadoCand[] = ['bloqueada', 'incerta', 'falhou'];
 const MOTIVOS: Record<string, string> = {
-  cpf: 'Número fiscal', rg: 'Documento de identidade', senha: 'Senha', 'dado-bancario': 'Dado bancário', captcha: 'Captcha', login: 'Login', conta: 'Criar conta',
+  cpf: 'Número fiscal', rg: 'Documento de identidade', senha: 'Senha', 'dado-bancario': 'Dado bancário', captcha: 'Captcha', 'aviso-conta': 'Aviso da conta', login: 'Login', conta: 'Criar conta',
   'teste-pessoal': 'Teste pessoal', documento: 'Documento', 'dado-sensivel': 'Dado sensível', termos: 'Termos',
   'pergunta-nova': 'Pergunta nova', 'site-externo': 'Site externo', outro: 'Outro',
 };
@@ -66,7 +68,11 @@ const dinheiro = (p: NonNullable<Conteudo['pretensao']>) => {
 function situacao(c: Candidatura) {
   switch (c.estado) {
     case 'preparada': return 'Revise o pacote. Ele só vai para a vaga depois que você aprovar.';
-    case 'aprovada': return 'Aprovado para um envio, hoje. Qualquer mudança no pacote desfaz a aprovação.';
+    case 'aprovada': {
+      const t = c.proximaTentativaEm ? Date.parse(c.proximaTentativaEm) : NaN;
+      if (t > Date.now()) return `Deu um problema técnico antes de preencher: nada foi enviado e não contou no limite. Tenta de novo às ${hora(c.proximaTentativaEm!)}.`;
+      return 'Aprovado para um envio, hoje. Qualquer mudança no pacote desfaz a aprovação.';
+    }
     case 'enviando': return 'O app está enviando este pacote.';
     case 'enviada': return 'Enviada.';
     case 'bloqueada': return c.bloqueio?.pendencia ?? 'Precisa de você.';
@@ -77,6 +83,7 @@ function situacao(c: Candidatura) {
 }
 function rotulo(c: Candidatura) {
   if (c.estado === 'bloqueada') return `Bloqueada · ${MOTIVOS[c.bloqueio?.motivo ?? 'outro'] ?? 'Outro'}`;
+  if (c.estado === 'aprovada' && c.proximaTentativaEm && Date.parse(c.proximaTentativaEm) > Date.now()) return `Tenta de novo às ${hora(c.proximaTentativaEm)}`;
   if (c.estado === 'aprovada' && c.aprovacao?.validaAte) return `Aprovada até ${hora(c.aprovacao.validaAte, c.aprovacao.fuso)}`;
   return NOME_ESTADO[c.estado];
 }
@@ -111,6 +118,18 @@ export function TelaFila() {
   }, [app]);
   // Relê quando a casca recarrega o estado (a versão dos dados muda a cada gravação, inclusive na fila).
   useEffect(() => { ler(); }, [app.estado]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Vindo de um pedido ("preparar-pacote", jc-a2y.7.1): #/fila?preparar=<vagaId> abre o preparo dessa vaga, ou leva ao
+  // cartão da candidatura que ela já tem. Só navega: preparar, salvar e aprovar continuam com a pessoa.
+  const pedidoPreparar = new URLSearchParams(location.hash.split('?')[1] ?? '').get('preparar');
+  useEffect(() => {
+    if (!lista || !pedidoPreparar) return;
+    history.replaceState(null, '', '#/fila');
+    if (!/^[A-Za-z0-9._-]{1,80}$/.test(pedidoPreparar)) return;
+    const cand = lista.find(c => c.vagaId === pedidoPreparar && c.estado !== 'cancelada');
+    if (cand) { requestAnimationFrame(() => document.querySelector(`[data-testid="${cand.id}"]`)?.scrollIntoView({ block: 'start' })); return; }
+    if ((app.estado.vagas ?? []).some((v: any) => v.id === pedidoPreparar)) { setEditando(null); setPreparando(pedidoPreparar); }
+  }, [lista, pedidoPreparar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!lista) return;

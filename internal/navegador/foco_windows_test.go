@@ -51,11 +51,16 @@ type processMemoryCounters struct {
 }
 
 // arvore devolve o processo e todos os descendentes dele.
-func arvore(raiz uint32) map[uint32]bool {
+//
+// O Windows reaproveita PID: um processo órfão (o pai morreu) guarda o ParentProcessID antigo, e esse número pode ser
+// o do navegador novo. Foi o que fez o CI falhar no #98 (run 42681823547: 138 processos, CPU 203 s e janela visível
+// num envio sem janela de 3,5 s), com restos do Chrome com janela de um teste anterior do mesmo job. Por isso, só
+// conta como filho o processo criado DEPOIS do pai: um filho de verdade nunca é mais velho que o pai.
+func arvore(raiz uint32) (map[uint32]bool, int) {
 	pais := map[uint32]uint32{}
 	snap, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
-		return map[uint32]bool{raiz: true}
+		return map[uint32]bool{raiz: true}, 0
 	}
 	defer windows.CloseHandle(snap)
 	var e windows.ProcessEntry32
@@ -63,16 +68,58 @@ func arvore(raiz uint32) map[uint32]bool {
 	for err := windows.Process32First(snap, &e); err == nil; err = windows.Process32Next(snap, &e) {
 		pais[e.ProcessID] = e.ParentProcessID
 	}
+	return descendentes(raiz, pais, criacao)
+}
+
+// descendentes: a raiz e os descendentes dela pelo mapa filho → pai, sem os mais velhos que o pai (PID
+// reaproveitado). criadoEm devolve o instante de criação; sem ele, o processo fica de fora quando o pai tem instante.
+// Devolve também quantos ficaram de fora (o teste registra, para um falso PASS não passar calado).
+func descendentes(raiz uint32, pais map[uint32]uint32, criadoEm func(uint32) (int64, bool)) (map[uint32]bool, int) {
+	type inst struct {
+		c  int64
+		ok bool
+	}
+	cache := map[uint32]inst{}
+	criado := func(pid uint32) (int64, bool) {
+		if v, tem := cache[pid]; tem {
+			return v.c, v.ok
+		}
+		c, ok := criadoEm(pid)
+		cache[pid] = inst{c, ok}
+		return c, ok
+	}
 	dentro := map[uint32]bool{raiz: true}
+	fora := map[uint32]bool{}
 	for mudou := true; mudou; {
 		mudou = false
 		for pid, pai := range pais {
-			if !dentro[pid] && dentro[pai] {
-				dentro[pid], mudou = true, true
+			if dentro[pid] || fora[pid] || !dentro[pai] {
+				continue
 			}
+			cPai, okPai := criado(pai)
+			cFilho, okFilho := criado(pid)
+			if okPai && (!okFilho || cFilho < cPai) {
+				fora[pid] = true // órfão com o PID antigo do pai reaproveitado: não é deste navegador
+				continue
+			}
+			dentro[pid], mudou = true, true
 		}
 	}
-	return dentro
+	return dentro, len(fora)
+}
+
+// criacao: o instante de criação do processo (FILETIME em unidades de 100 ns).
+func criacao(pid uint32) (int64, bool) {
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return 0, false
+	}
+	defer windows.CloseHandle(h)
+	var criado, saiu, kernel, usuario windows.Filetime
+	if err := windows.GetProcessTimes(h, &criado, &saiu, &kernel, &usuario); err != nil {
+		return 0, false
+	}
+	return int64(criado.HighDateTime)<<32 | int64(criado.LowDateTime), true
 }
 
 // consumo: tempo de CPU (kernel + usuário) e pico de memória (working set) de um processo.
@@ -150,7 +197,7 @@ func TestEnvioNaoPegaFocoNemMouse(t *testing.T) {
 
 	parar := make(chan struct{})
 	var mu sync.Mutex
-	var mudouFrente, mudouMouse, comJanela, amostras int
+	var mudouFrente, mudouMouse, comJanela, amostras, fora int
 	cpu := map[uint32]time.Duration{}
 	pico := map[uint32]uintptr{}
 	var raiz uint32
@@ -176,7 +223,10 @@ func TestEnvioNaoPegaFocoNemMouse(t *testing.T) {
 			}
 			if pid := pidDoNavegador(nav); pid != 0 {
 				raiz = pid
-				pids := arvore(pid)
+				pids, foraAgora := arvore(pid)
+				if foraAgora > fora {
+					fora = foraAgora
+				}
 				if janelasVisiveis(pids) > 0 {
 					comJanela++
 				}
@@ -203,6 +253,8 @@ func TestEnvioNaoPegaFocoNemMouse(t *testing.T) {
 	if comJanela > 0 {
 		t.Errorf("o navegador do envio teve janela visível em %d de %d amostras", comJanela, amostras)
 	}
+	// Nota do CyberSec no #112: quem ficou de fora da árvore (mais velho que o pai, ou sem instante) aparece no log.
+	t.Logf("processos deixados de fora da árvore do navegador (PID reaproveitado ou sem instante): até %d por amostra", fora)
 	if c, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, raiz); err == nil {
 		if classe, err := windows.GetPriorityClass(c); err == nil && classe != windows.BELOW_NORMAL_PRIORITY_CLASS {
 			t.Errorf("prioridade do navegador = 0x%x; queria abaixo do normal (0x4000)", classe)

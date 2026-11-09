@@ -28,7 +28,27 @@ const (
 	itemCurriculos = "curriculos"
 	itemBackups    = "backups"
 	itemBanco      = "banco"
+	// itemPastaAntiga: a pasta "Central de Candidaturas" que ficou ao lado da Applyer (jc-etv.7). Só aparece quando
+	// ela existe; no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador.
+	itemPastaAntiga = "pasta-antiga"
 )
+
+// limparPastaAntiga apaga na pasta antiga os mesmos itens, pelas mesmas regras (removerTudo; a pasta só sai se ficar
+// vazia). Antes, o ProtegerPasta confere o dono (no Windows, pasta de outro usuário não é tocada) e fecha a DACL.
+func limparPastaAntiga(antiga string, soNavegador bool) error {
+	if err := config.ProtegerPasta(antiga); err != nil {
+		return err
+	}
+	erros := []error{removerTudo(config.PastaNavegador(antiga))}
+	if !soNavegador {
+		erros = append(erros, removerTudo(filepath.Join(antiga, "curriculos")), removerTudo(filepath.Join(antiga, "backups")))
+		for _, sufixo := range []string{"", "-wal", "-shm", "-journal"} {
+			erros = append(erros, removerTudo(config.CaminhoBanco(antiga)+sufixo))
+		}
+		os.Remove(antiga) // só se ficou vazia
+	}
+	return errors.Join(erros...)
+}
 
 // esperaAntesDeFechar dá tempo para a resposta chegar à tela antes de o app fechar.
 const esperaAntesDeFechar = 500 * time.Millisecond
@@ -195,6 +215,11 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	// 5) A pasta de dados sai se ficou vazia (os.Remove não apaga pasta com coisa dentro).
 	os.Remove(pasta)
 
+	// 6) A pasta antiga que ficou ao lado (jc-etv.7): os mesmos itens, pelas mesmas regras.
+	if antiga := config.PastaAntigaQueFicou(pasta); antiga != "" {
+		res.item(itemPastaAntiga, limparPastaAntiga(antiga, false))
+	}
+
 	res.Completo = len(res.Faltou) == 0
 	// 6) O app fecha logo depois de a resposta chegar à tela.
 	time.AfterFunc(esperaAntesDeFechar, a.aoApagar)
@@ -221,6 +246,9 @@ func (a *API) sairDasPlataformas(ctx context.Context, c Objeto, autor string) (R
 	a.fecharNavegador()
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}}
 	res.item(itemNavegador, removerTudo(config.PastaNavegador(pasta)))
+	if antiga := config.PastaAntigaQueFicou(pasta); antiga != "" { // a sessão que ficou na pasta antiga (jc-etv.7)
+		res.item(itemPastaAntiga, limparPastaAntiga(antiga, true))
+	}
 	res.Completo = len(res.Faltou) == 0
 	return ok(res)
 }

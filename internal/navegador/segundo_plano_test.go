@@ -2,6 +2,7 @@ package navegador
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -121,11 +122,24 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	if _, err := nav.NovaPagina(context.Background()); err != ErrLoginAberto {
 		t.Fatalf("página do envio com login aberto = %v", err)
 	}
-	// A pessoa fecha a janela (o navegador sai): o envio volta, sem janela.
+	// A pessoa fecha a janela (o navegador sai): o envio volta, sem janela. Fecha pelo próprio Chrome (chromedp.Cancel,
+	// que fecha o navegador com elegância e espera; o Browser.close direto o chromedp v0.21 recusa),
+	// como fechar a janela, e não matando só o processo principal: matar deixava os filhos órfãos vivos, e eles
+	// atrapalhavam o teste de foco do mesmo job do CI (run 42681823547 do #98).
 	nav.mu.Lock()
-	proc := chromedp.FromContext(nav.navCtx).Browser.Process()
+	navCtx := nav.navCtx
 	nav.mu.Unlock()
-	if err := proc.Kill(); err != nil {
+	// E, no fim, encerra o que ainda estiver vivo da árvore do Chrome com janela (jc-a2y.6.14): nada sobra para os
+	// passos seguintes do CI. Só os mesmos processos (PID e instante de criação).
+	encerrarSobras := fotoDoNavegador(nav)
+	t.Cleanup(func() {
+		if n := encerrarSobras(); n > 0 {
+			t.Logf("limpeza: %d processo(s) do Chrome ainda vivos, encerrados", n)
+		}
+	})
+	fechar, fim := context.WithTimeout(navCtx, 15*time.Second)
+	defer fim()
+	if err := chromedp.Cancel(fechar); err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
 	prazo := time.Now().Add(20 * time.Second)

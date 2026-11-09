@@ -97,6 +97,20 @@ describe('Fila: aprovar', () => {
     expect(avisos).toContainEqual({ texto: 'O pacote mudou desde que você abriu. A fila foi atualizada; revise de novo antes de aprovar.', erro: true });
   });
 
+  it('aprovada que voltou por falha técnica: "Tenta de novo às HH:MM"; aviso da conta tem rótulo próprio (jc-a2y.6.11)', async () => {
+    const depois = new Date(Date.now() + 30 * 60_000);
+    const hh = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(depois);
+    const volta = cand('vt', 'aprovada', { proximaTentativaEm: depois.toISOString(), aprovacao: { em: '2026-11-09T10:00:00-03:00', impressao: IMP, validaAte: '2026-11-09T23:59:59-03:00', fuso: 'America/Sao_Paulo' } });
+    const passou = cand('ps', 'aprovada', { proximaTentativaEm: '2026-11-09T08:00:00-03:00', aprovacao: { em: '2026-11-09T07:00:00-03:00', impressao: IMP, validaAte: '2026-11-09T23:59:59-03:00', fuso: 'America/Sao_Paulo' } });
+    const aviso = cand('av', 'bloqueada', { bloqueio: { motivo: 'aviso-conta', pendencia: 'A plataforma mostrou um aviso sobre a sua conta: veja você antes de tentar de novo', em: '2026-11-09T11:00:00-03:00' } });
+    montar({ candidaturas: [volta, passou, aviso] });
+    const c = await cartao('vt');
+    expect(within(c).getByText(`Tenta de novo às ${hh}`)).toBeTruthy();
+    expect(within(c).getByText(new RegExp(`nada foi enviado e não contou no limite\\. Tenta de novo às ${hh}\\.`))).toBeTruthy();
+    expect(within(await cartao('ps')).queryByText(/Tenta de novo/)).toBeNull(); // horário já passou: aprovada normal
+    expect(within(await cartao('av')).getByText('Bloqueada · Aviso da conta')).toBeTruthy();
+  });
+
   it('429 (limite do dia) aparece com a plataforma, o uso e quando renova', async () => {
     const { avisos } = montar({ candidaturas: [cand('a', 'preparada')], erro: new ErroApi('limite diário atingido', 429, { erro: 'limite diário atingido', plataforma: 'linkedin', limite: 30, usadas: 30, renovaEm: '2026-11-10T00:00:00-03:00' }) });
     const c = await cartao('a');

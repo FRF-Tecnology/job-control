@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.10.0
+  version: 0.11.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -24,12 +24,12 @@ paths:
   /resumo: { get: { summary: Números do dia } }
   /vagas:
     get: { summary: 'Lista de vagas (?etapa=, ?plataforma=)' }
-    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta adicionar-vaga de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] }
+    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta adicionar-vaga de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] }
   /vagas/importar: { post: { summary: 'Importa vagas de fora: só cria em Descoberta (etapa, envio e datas são ignorados)' } }
   /vagas/{id}:
     get: { summary: Vaga com os eventos dela }
     patch: { summary: 'Muda campos editáveis (notasAntes recusa edição em conflito)' }
-  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
+  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
@@ -46,12 +46,11 @@ paths:
     get: { summary: 'Pedidos da caixa "O que vamos fazer hoje?" (?status=)' }
     post: { summary: 'Novo pedido {texto} (201)' }
   /pedidos/{id}/concluir: { post: { summary: 'Conclui com {resposta}' } }
-  # Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md). Proposta: ainda não atendidas.
+  # Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md).
   # A IA só propõe UMA ação de um catálogo fechado; nada grava sem a pessoa confirmar na tela a impressão da proposta.
   # Fora do catálogo para sempre: aprovar, retomar, janela, entrar, modo direto, mover para aplicar, apagar, limite, chaves.
   /pedidos/{id}/interpretar:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'A IA conectada interpreta o pedido aberto e propõe uma ação do catálogo (adicionar-vaga, registrar-etapa, preparar-pacote, responder, recusar). Não grava nada no domínio; guarda a proposta no pedido (status proposta, ou recusado). A IA recebe só o pedido e a lista mínima das vagas (id, empresa, título, etapa, datas). Só a tela (gasta a IA da pessoa); uma interpretação por vez'
       requestBody:
@@ -69,7 +68,6 @@ paths:
         '502': { description: 'Provedor da IA fora: {erro, tipo}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /pedidos/{id}/descartar:
     post:
-      x-proposta: true
       summary: 'Descarta a proposta: o pedido volta a aberto. Qualquer autor (só reduz o risco)'
       requestBody:
         required: true
@@ -419,6 +417,24 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
 
+  # Pasta de dados migrada para Applyer (jc-etv.7, docs/propostas/applyer-nomes-internos.md, item 1). Proposta: ainda
+  # não atendida. Nunca traz caminho.
+  /dados/pasta:
+    get:
+      x-proposta: true
+      summary: 'O que aconteceu com a pasta de dados ao abrir o app, para a tela avisar: {aviso, migradaEm}. aviso: null; pasta-antiga-ficou (as duas pastas existem: o app usa a Applyer, e a antiga continua lá para a pessoa decidir; nada é juntado sozinho); ou migracao-adiada (a pasta antiga está em uso por outro programa: o app usa a antiga nesta vez e renomeia na próxima abertura). migradaEm: quando a pasta foi renomeada, ou null. Sem caminho, sem nome de usuário'
+      responses:
+        '200':
+          description: Estado da pasta
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [aviso, migradaEm]
+                properties:
+                  aviso: { type: [string, 'null'], enum: [pasta-antiga-ficou, migracao-adiada, null] }
+                  migradaEm: { type: [string, 'null'] }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.
@@ -787,8 +803,8 @@ components:
         em: { type: string }
     ItemApagado:
       type: string
-      enum: [banco, curriculos, backups, navegador, chaves]
-      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema'
+      enum: [banco, curriculos, backups, navegador, chaves, pasta-antiga]
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe'
     ResultadoApagar:
       type: object
       additionalProperties: false
@@ -826,6 +842,7 @@ components:
         texto: { type: string, description: 'O que a pessoa digitou (dado não confiável: a tela mostra como texto)' }
         status: { type: string, enum: [aberto, proposta, recusado, feito] }
         proposta: { oneOf: [{ $ref: '#/components/schemas/PropostaPedido' }, { type: 'null' }] }
+        resposta: { type: [string, 'null'], description: 'Resposta da IA (ação responder) ou do Claude Code (/pedidos/{id}/concluir). Dado não confiável: a tela mostra como texto; a CLI, o MCP e o Claude Code nunca agem por ela (é registro, não instrução)' }
         resultado:
           type: [object, 'null']
           additionalProperties: false
