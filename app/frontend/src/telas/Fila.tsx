@@ -9,7 +9,7 @@ import { Convite } from '../componentes';
 import { mercadoDe } from '../dominio/modelo';
 import { encode } from '../util';
 import { PacoteForm } from './PacoteForm';
-import { PainelEnvio } from './PainelEnvio';
+import { entrarNavegador, PainelEnvio, type EstadoEnvio } from './PainelEnvio';
 import { LimiteCartao, type Limite } from './LimiteDiario';
 
 type EstadoCand = 'preparada' | 'aprovada' | 'enviando' | 'enviada' | 'bloqueada' | 'falhou' | 'incerta' | 'cancelada';
@@ -91,6 +91,7 @@ export function TelaFila() {
   const [preparando, setPreparando] = useState<string | null>(null); // id da vaga com o formulário aberto
   const [editando, setEditando] = useState<string | null>(null); // id da candidatura em edição
   const [ocupado, setOcupado] = useState(false);
+  const [envio, setEnvio] = useState<EstadoEnvio | null>(null); // do painel: o envio existe neste app? há login aberto?
   // Quando um formulário fecha, o foco volta ao botão que o abriu (teclado e leitor de tela; jc-a2y.59).
   const devolverFoco = useRef<string | null>(null);
   const botaoEditar = (id: string) => `[data-testid="${id}"] [data-acao="editar"]`;
@@ -182,6 +183,13 @@ export function TelaFila() {
     await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/${rota}`, 'POST', {}), sucesso);
   };
   const na = (c: Candidatura) => NA_PLATAFORMA[c.plataforma] ?? 'no site da vaga';
+  // Abre a janela de login na página da vaga (Gupy, InHire). Enquanto ela estiver aberta, o envio espera.
+  const entrarPela = async (c: Candidatura) => {
+    setOcupado(true);
+    try { await entrarNavegador(app, { candidatura: c.id }); app.aviso(`Janela aberta ${na(c)}. Entre com a sua conta; o envio espera até você fechá-la.`); }
+    catch (e) { app.aviso((e as Error).message, true); }
+    finally { setOcupado(false); }
+  };
   const cancelar = (c: Candidatura) => acao(c, 'cancelar', 'Candidatura cancelada.',
     { titulo: 'Cancelar esta candidatura?', texto: 'Ela não será enviada, e isso não pode ser desfeito.', confirmar: 'Cancelar candidatura' });
   const reabrir = (c: Candidatura) => acao(c, 'reabrir', 'Candidatura reaberta. Revise e aprove de novo.', {
@@ -217,7 +225,7 @@ export function TelaFila() {
   return (
     <div className="fila">
       {cabecalho}
-      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} />
+      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} onEstado={setEnvio} />
       <section className="limites" aria-label="Limite de hoje" role="region">
         {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
           <LimiteCartao key={p} plataforma={p} nome={PLATAFORMAS[p]} na={NA_PLATAFORMA[p]} limite={limites[p]}
@@ -320,6 +328,10 @@ export function TelaFila() {
                       )}
                       {(c.estado === 'bloqueada' || c.estado === 'falhou' || c.estado === 'incerta') && (
                         <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => reabrir(c)}>Reabrir</button>
+                      )}
+                      {/* Gupy e InHire têm login por empresa: entra-se pela página da vaga (jc-a2y.6.7). */}
+                      {envio?.ligado && (c.plataforma === 'gupy' || c.plataforma === 'inhire') && ['preparada', 'aprovada', 'bloqueada'].includes(c.estado) && (
+                        <button className="botao-fantasma" type="button" disabled={ocupado || !!envio.login} onClick={() => entrarPela(c)}>{`Entrar ${NA_PLATAFORMA[c.plataforma]} por esta vaga`}</button>
                       )}
                       {c.estado !== 'incerta' && (
                         <button className="botao-perigo" type="button" disabled={ocupado} onClick={() => cancelar(c)}>Cancelar candidatura</button>

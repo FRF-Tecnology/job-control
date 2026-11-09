@@ -485,7 +485,12 @@ dialog form { display: grid; gap: 16px; }
 @media (prefers-reduced-motion: reduce) { .enviando-agora .ponto { animation: none; } }
 .desfechos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .desfechos li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; overflow-wrap: anywhere; }
-.envio-desligado { margin: 0 0 16px; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
+.envio-desligado { margin: 0 0 16px; }
+/* Ver o envio e entrar nas plataformas (jc-a2y.6.7). */
+.envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
+.envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
+.envio-janelas h3 { margin: 0; font-size: .95rem; }
+.login-aberto { margin: 0; padding: 8px 12px; border-radius: var(--raio-p); background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
 .prontas { margin-bottom: 24px; }
 .pronta { display: grid; gap: 16px; padding: 16px 20px; }
 .pronta-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
