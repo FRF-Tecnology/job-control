@@ -141,7 +141,7 @@ export function TelaConectarIA() {
             {desconectar}
           </span>
         </Convite>
-      ) : <Convite titulo="Nenhuma IA conectada" texto="Escolha um dos caminhos abaixo. Sem IA, a Central funciona, mas a triagem e as mensagens ficam por sua conta." />}
+      ) : <Convite titulo="Nenhuma IA conectada" texto="Escolha um dos caminhos abaixo. Sem IA, o Applyer funciona, mas a triagem e as mensagens ficam por sua conta." />}
 
       <section className="bloco">
         <header><h2>Usar minha assinatura</h2></header>
@@ -172,7 +172,7 @@ export function TelaConectarIA() {
 
       <section className="bloco">
         <header><h2>Usar minha chave de API</h2></header>
-        <p className="pequeno mudo">A chave fica no cofre do sistema deste computador. A Central nunca mostra a chave inteira e não a envia para nenhum outro lugar.</p>
+        <p className="pequeno mudo">A chave fica no cofre do sistema deste computador. O Applyer nunca mostra a chave inteira e não a envia para nenhum outro lugar.</p>
         <form className="formulario" onSubmit={salvarChave}>
           <div className="duas">
             <label className="campo"><span>Provedor</span>
@@ -204,7 +204,7 @@ export function TelaConectarIA() {
 
       <section className="bloco">
         <header><h2>Modelos gratuitos</h2></header>
-        <Convite titulo="Em breve" texto="Para quem não tem assinatura nem chave. Chega junto com a conta da Central." />
+        <Convite titulo="Em breve" texto="Para quem não tem assinatura nem chave. Chega junto com a conta do Applyer." />
       </section>
     </div>
   );

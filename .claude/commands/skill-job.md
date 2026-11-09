@@ -1,12 +1,12 @@
 ---
-description: Ciclo completo de candidaturas com a Central. Confere o perfil (perguntando o que falta), busca vagas, faz a triagem, aplica sozinho e registra tudo
+description: Ciclo completo de candidaturas com a Central (Node). Confere o perfil (perguntando o que falta), busca vagas, faz a triagem, aplica sozinho e registra tudo
 argument-hint: "[máximo de envios] [dias de busca] [pode ir direto]"
 ---
-# skill-job: candidaturas automáticas ligadas à Central
+# skill-job: candidaturas automáticas ligadas à Central (Node)
 
 Argumentos: $ARGUMENTS. Padrão: até 25 envios, vagas dos últimos 3 dias. Com "pode ir direto", pule a confirmação do perfil, se ele estiver completo. Esse argumento não liga o modo `direto`.
 
-Siga o `CLAUDE.md` da Central à risca. Toda gravação passa por `node ferramentas/cli.mjs` (rode da pasta `central-candidaturas`). Nunca edite `dados/*.json` à mão.
+Siga o `CLAUDE.md` do projeto à risca. Toda gravação passa por `node ferramentas/cli.mjs` (rode da pasta `central-candidaturas`). Nunca edite `dados/*.json` à mão.
 
 ## 0. Central no ar
 1. Veja a porta em `dados/.porta` (padrão 4321) e teste `curl -s localhost:<porta>/api/versao`. O `curl` é só para ler: nunca grave pela API HTTP (regra 8 do CLAUDE.md).

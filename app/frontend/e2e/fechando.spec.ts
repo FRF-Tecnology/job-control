@@ -9,7 +9,7 @@ test('503 depois de apagar: mostra que o app está fechando e para de tentar', a
   await page.route('**/api/v1/**', r => { pedidos++; return r.fulfill({ status: 503, json: { erro: 'os dados foram apagados; o app está fechando' } }); });
   await page.evaluate(() => window.dispatchEvent(new Event('focus'))); // força uma leitura agora
   await expect(page.getByText('Dados apagados. O app está fechando.')).toBeVisible();
-  await expect(page.getByText('A Central encontrou um problema nos dados')).toHaveCount(0);
+  await expect(page.getByText('O Applyer encontrou um problema nos dados')).toHaveCount(0);
   const depois = pedidos;
   await page.waitForTimeout(6000); // mais que a atualização de 5 s
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));

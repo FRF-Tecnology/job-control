@@ -67,7 +67,7 @@ describe('Apagar meus dados', () => {
     montar();
     expect(screen.getByText(/Não apaga: o login das ferramentas de IA .*, os PDFs originais que você copiou, os dados da Central antiga \(pasta dados\/\) e o cache da janela do app\./)).toBeTruthy();
     expect((campo() as HTMLInputElement).value).toBe(''); // nunca vem preenchido
-    expect(screen.getByText('Antes, feche a CLI e o assistente (MCP) da Central')).toBeTruthy();
+    expect(screen.getByText('Antes, feche a CLI e o assistente (MCP) do Applyer')).toBeTruthy();
     for (const t of ['As vagas, a fila de candidaturas, o perfil, o histórico, os limites e as configurações', 'As chaves de IA guardadas no cofre do sistema', 'O login nas plataformas (navegador do app)'])
       expect(screen.getByText(t)).toBeTruthy();
   });

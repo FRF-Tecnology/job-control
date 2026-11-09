@@ -4,7 +4,7 @@ Atualizado em 2026-11-08. Escrito para o PO continuar o trabalho a partir daqui.
 
 ## Resumo
 
-A Central de Candidaturas está virando um **app de PC vendável**: Go no back, React + TS no front, Wails v3 por cima.
+O **Applyer** (antes Central de Candidaturas) está virando um **app de PC vendável**: Go no back, React + TS no front, Wails v3 por cima.
 A reescrita fica no branch `reescrita-go`, separado do `main`.
 
 **Fases feitas:**
@@ -37,7 +37,7 @@ P5 e P7 podem começar agora e não dependem uma da outra.
   - Go (módulo `github.com/FRF-Tecnology/job-control`) e Wails v3 (projeto em `app/`);
   - React 18 + TS + Vite (`app/frontend/`);
   - SQLite local (`modernc.org/sqlite`, sem cgo, migrações goose). **Não é Postgres:** o Vinicius cogitou e voltou atrás. Postgres só na nuvem (P7).
-- **Dados:** ficam no PC da pessoa (`UserConfigDir/Central de Candidaturas`, ou `CENTRAL_PASTA`).
+- **Dados:** ficam no PC da pessoa (`UserConfigDir/Central de Candidaturas`, ou `CENTRAL_PASTA`). Os nomes internos ainda usam "central" e só mudam com o plano do `jc-etv.6`.
 - **IA da pessoa, igual ao OpenBot**, por três caminhos:
   1. **Assinatura:** Claude Code, Codex ou Gemini CLI instalados e logados no PC;
   2. **Chave própria:** OpenAI, Anthropic, Google ou endereço compatível. A chave fica no cofre do sistema e a tela só mostra os 4 últimos caracteres;

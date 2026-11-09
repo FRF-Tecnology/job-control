@@ -1,0 +1,23 @@
+{
+  "_sobre": "jc-a2y.60: contratos que o validador não aplicaria por inteiro. Go (lerEsquema) e Node (conferirEsquema) recusam todos ao iniciar, com a mensagem contendo 'contem'. Lido por internal/ia/esquema_malformado_test.go e testes/ia.test.mjs.",
+  "recusados": [
+    { "nome": "minLength", "esquema": { "type": "string", "minLength": 1 }, "contem": "palavra-chave não tratada: minLength" },
+    { "nome": "pattern", "esquema": { "type": "string", "pattern": "^[0-9]+$" }, "contem": "palavra-chave não tratada: pattern" },
+    { "nome": "description", "esquema": { "type": "string", "description": "anotação" }, "contem": "palavra-chave não tratada: description" },
+    { "nome": "additionalProperties true", "esquema": { "type": "object", "properties": { "a": { "type": "string" } }, "additionalProperties": true }, "contem": "additionalProperties só pode ser false" },
+    { "nome": "additionalProperties objeto", "esquema": { "type": "object", "properties": { "a": { "type": "string" } }, "additionalProperties": { "type": "string" } }, "contem": "additionalProperties só pode ser false" },
+    { "nome": "additionalProperties sem properties", "esquema": { "type": "object", "additionalProperties": false }, "contem": "additionalProperties sem properties" },
+    { "nome": "required sem properties", "esquema": { "type": "object", "required": ["a"] }, "contem": "required sem properties" },
+    { "nome": "required fora de properties", "esquema": { "type": "object", "properties": { "decisao": { "type": "string" } }, "required": ["decisão"] }, "contem": "required com campo que não está em properties: decisão" },
+    { "nome": "tipo desconhecido", "esquema": { "type": "strng" }, "contem": "tipo desconhecido: strng" },
+    { "nome": "tipo desconhecido na lista", "esquema": { "type": ["string", "nul"] }, "contem": "tipo desconhecido: nul" },
+    { "nome": "aninhado em items", "esquema": { "type": "object", "properties": { "a": { "type": "array", "items": { "type": "string", "format": "email" } } } }, "contem": "$.a[]: palavra-chave não tratada: format" },
+    { "nome": "aninhado em properties", "esquema": { "type": "object", "properties": { "a": { "type": "object", "properties": { "b": { "type": "integer", "maximum": 5 } } } } }, "contem": "$.a.b: palavra-chave não tratada: maximum" }
+  ],
+  "aceitos": [
+    { "type": ["string", "null"] },
+    { "type": "string", "enum": ["aplicar", "pular"] },
+    { "type": "object", "properties": { "a": { "type": "string" }, "b": { "type": "array", "items": { "type": "integer" } } }, "required": ["a"], "additionalProperties": false },
+    { "type": "object", "properties": {} }
+  ]
+}
