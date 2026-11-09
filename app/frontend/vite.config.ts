@@ -15,6 +15,7 @@ export default defineConfig({
   plugins: [react(), wails("./bindings")],
   test: {
     environment: "jsdom",
+    include: ["src/**/*.test.{ts,tsx}"], // e2e/ é do Playwright
     env: { TZ: "America/Sao_Paulo" },
   },
 });
