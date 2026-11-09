@@ -3,7 +3,9 @@
 // violação), o quadro aparece, axe nos dois temas, 375 px, fechar desliga, e o 404 real vira frase fixa.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { ENVIO, interceptar } from './dados-fila';
+import { ENVIO, interceptar, soltarRotas } from './dados-fila';
+
+test.afterEach(async ({ page }) => { await soltarRotas(page); });
 
 async function jpeg(page: Page) {
   return page.evaluate(() => {
