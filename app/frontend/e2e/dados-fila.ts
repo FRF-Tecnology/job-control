@@ -24,7 +24,7 @@ export const LISTA = [
   cand('cand-canc', 'cancelada'),
 ];
 export const LIMITES = Object.fromEntries(['linkedin', 'gupy', 'inhire'].map(p => [p, { limite: 30, usadas: p === 'linkedin' ? 30 : 2, renovaEm: '2026-11-10T00:00:00-03:00' }]));
-export const ENVIO = { ligado: true, pausado: false, enviandoAgora: { id: 'cand-envi', desde: '2026-11-09T10:10:00-03:00' },
+export const ENVIO = { ligado: true, pausado: false, janela: 'oculta', login: false, enviandoAgora: { id: 'cand-envi', desde: '2026-11-09T10:10:00-03:00' },
   desfechos: [{ id: 'cand-bloq', estado: 'bloqueada', motivo: 'cpf', em: '2026-11-09T11:00:00-03:00' }, { id: 'cand-falh', estado: 'falhou', motivo: null, em: '2026-11-09T10:50:00-03:00' }] };
 
 // A vaga fictícia entra só na resposta do GET /estado: os testes não gravam nada na pasta de dados, que a jornada de
