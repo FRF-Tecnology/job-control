@@ -22,8 +22,16 @@ type Navegador interface {
 // Pagina é uma aba do navegador do app. Nada do que ela devolve (rótulos, textos, URL) muda a fila: o executor
 // só escolhe entre resultados de listas fechadas, e nada disso vai para o log.
 type Pagina interface {
-	// Abrir navega para o endereço aprovado e devolve o endereço onde a página parou (depois de redirecionar).
+	// Abrir navega para o endereço aprovado e devolve o endereço onde a página parou (depois de redirecionar). Só
+	// navega: não clica em nada (revisão do CyberSec no #101).
 	Abrir(ctx context.Context, url string) (final string, err error)
+	// BotaoDeCandidatura só lê: quando a página ainda não mostra o formulário, devolve o rótulo normalizado (sem
+	// acento, minúsculo) do botão da própria plataforma que o abriria; "" quando o formulário já está na página ou
+	// não há botão. Nunca devolve botão que leva para fora.
+	BotaoDeCandidatura(ctx context.Context) (rotulo string, err error)
+	// AbrirFormulario clica no botão de candidatura com exatamente esse rótulo. Na Gupy, na InHire e no LinkedIn sem
+	// Easy Apply, esse clique pode já registrar a candidatura: o executor grava a marca antes (jc-a2y.6.11).
+	AbrirFormulario(ctx context.Context, rotulo string) error
 	// Bloqueio devolve um motivo da lista fechada (PendenciaDoMotivo) quando a página pede algo que só a pessoa
 	// faz, ou "" quando não há nada. Motivo fora da lista vira "outro".
 	Bloqueio(ctx context.Context) (motivo string, err error)
