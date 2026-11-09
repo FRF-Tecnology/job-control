@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -41,6 +43,25 @@ func TestErro502NaoDevolveAChave(t *testing.T) {
 		"prefixo+final": s[:16] + "..." + s[len(s)-4:],
 		"ultimos-20":    s[len(s)-20:],
 	}
+	// O log do app (pacote log) vai para um buffer durante o teste; no fim, nenhum trecho da chave pode estar lá.
+	var registro bytes.Buffer
+	saidaAntes, flagsAntes := log.Writer(), log.Flags()
+	log.SetOutput(&registro)
+	t.Cleanup(func() { log.SetOutput(saidaAntes); log.SetFlags(flagsAntes) })
+	defer func() {
+		log.Print("marcador-do-teste")
+		texto := registro.String()
+		if !strings.Contains(texto, "marcador-do-teste") {
+			t.Fatalf("a captura do log não funcionou: %q", texto)
+		}
+		for _, f := range formas {
+			for i := 0; i+4 <= len(f); i++ {
+				if strings.Contains(texto, f[i:i+4]) {
+					t.Fatalf("o log traz um trecho da chave (%q): %s", f[i:i+4], texto)
+				}
+			}
+		}
+	}()
 	for _, prov := range []string{"anthropic", "openai", "google"} {
 		for nome, eco := range formas {
 			t.Run(prov+"/"+nome, func(t *testing.T) {
