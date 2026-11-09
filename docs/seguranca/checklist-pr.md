@@ -26,8 +26,13 @@ Todo PR que mexe em pelo menos uma destas áreas precisa da revisão do CyberSec
 - **Severidade original:** a da fonte oficial (GitHub Advisory, CVE, CVSS) ou da ferramenta. Nunca é rebaixada.
 - **Risco contextual:** o risco no nosso uso, com o motivo escrito (como o código é usado, onde roda, o que o atacante precisa ter antes).
 
-O risco contextual decide a fila de correção. Dev e CI estão no escopo: dependência só de teste não é ignorada por não ir no app.
-Achado com severidade original crítica precisa de bead com dono e de análise contextual escrita antes do merge, mesmo que o risco contextual seja menor.
+**Regra do Vinicius: achado crítico bloqueia o merge até ser corrigido.**
+- Vale para qualquer achado com severidade original **crítica** que esteja aberto no branch, seja novo ou antigo, de produção, de dev ou de CI.
+- Não há exceção automática: o risco contextual menor, o achado ser anterior ao PR ou ser só de teste **não** liberam o merge.
+- O achado só deixa de bloquear quando a correção entra no branch e a verificação (por exemplo, `npm audit`) confirma.
+- O risco contextual serve para entender o problema e ordenar as outras correções. Ele não muda o bloqueio de um crítico nem fecha o bead.
+
+Dev e CI estão no escopo: dependência só de teste não é ignorada por não ir no app.
 
 Como copiar para o PR: cole as seções que se aplicam e marque cada item. Item sem evidência (teste, comando ou linha de código) conta como não feito.
 
@@ -118,13 +123,15 @@ Diferente da API local: este servidor **escuta na rede** e recebe pedidos da int
 
 - [ ] `govulncheck ./...` sem vulnerabilidade alcançável.
 - [ ] `npm audit --omit=dev` em `app/frontend` sem alta ou crítica.
-- [ ] `npm audit` com dev: toda alta ou crítica tem bead com dono, ID oficial (GHSA/CVE) e risco contextual escrito. Achado novo trazido pelo PR bloqueia o merge.
+- [ ] `npm audit` com dev: toda alta ou crítica tem bead com dono, ID oficial (GHSA/CVE) e risco contextual escrito. Crítica aberta bloqueia o merge, mesmo se for anterior ao PR.
 - [ ] Dependência nova justificada no PR.
 - [ ] Actions fixadas por SHA (dono: Infra, bead `jc-a2y.10`). O CyberSec revisa depois que o Infra entregar.
 
 ## Linha de base (2026-11-08, commit `c62b89a`)
 
-Medida para comparar os próximos PRs. Há **2 avisos com severidade original crítica**, ambos em dependência de teste (dev/CI). Cada um tem bead com dono e análise contextual abaixo.
+Medida para comparar os próximos PRs. Há **2 avisos com severidade original crítica**, ambos em dependência de teste (dev/CI).
+
+> **Pendência aberta, não resolvida:** o bead `jc-a2y.12` (prioridade P1, dono Front-end) corrige esses dois críticos. Enquanto ele não entrar no branch, a regra acima **bloqueia o merge** no `reescrita-go`. A análise contextual abaixo explica o risco; ela não resolve nem reclassifica o problema.
 
 | Verificação | Resultado |
 |---|---|
