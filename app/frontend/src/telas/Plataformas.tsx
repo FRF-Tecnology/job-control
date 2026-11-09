@@ -34,7 +34,7 @@ export function TelaPlataformas() {
               <article key={p.id} className={`plataforma s-${p.status}`}>
                 <div className="acoes" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <h2><LinkExterno url={p.url} semLink={p.nome ?? p.id}>{p.nome ?? p.id}</LinkExterno></h2>
-                  <select aria-label={`Situação de ${p.nome}`} style={{ width: 'auto', minHeight: '30px', padding: '2px 8px' }} value={p.status ?? ''}
+                  <select className="situacao" aria-label={`Situação de ${p.nome}`} value={p.status ?? ''}
                     onChange={ev => salvar(p, { status: ev.target.value }, `${p.nome}: ${STATUS[ev.target.value]}`)}>
                     {!STATUS[p.status] && <option value={p.status ?? ''} />}
                     {Object.entries(STATUS).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
