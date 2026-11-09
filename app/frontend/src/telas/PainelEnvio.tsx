@@ -25,6 +25,10 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
   const [envio, setEnvio] = useState<EstadoEnvio | null>(null);
   const [falha, setFalha] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  // Depois de pausar ou retomar, o botão troca (Pausar ↔ Retomar): o foco segue para o novo, não para o começo da página.
+  const acao = useRef<HTMLButtonElement>(null);
+  const focarAcao = useRef(false);
+  useEffect(() => { if (focarAcao.current) { focarAcao.current = false; acao.current?.focus(); } }, [envio?.pausado]);
   const visto = useRef<number | null>(null); // instante mais novo já visto; só desfecho depois dele vira aviso
 
   const texto = (d: Desfecho) => {
@@ -53,7 +57,7 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
 
   async function pausar() {
     setOcupado(true);
-    try { aplicar(await app.api('/api/v1/envio/pausar', 'POST', {})); app.aviso(envio?.enviandoAgora ? 'Envio pausado. A candidatura que está sendo enviada agora termina; nenhuma outra sai até você retomar.' : 'Envio pausado. Nenhuma candidatura nova sai até você retomar.'); }
+    try { focarAcao.current = true; aplicar(await app.api('/api/v1/envio/pausar', 'POST', {})); app.aviso(envio?.enviandoAgora ? 'Envio pausado. A candidatura que está sendo enviada agora termina; nenhuma outra sai até você retomar.' : 'Envio pausado. Nenhuma candidatura nova sai até você retomar.'); }
     catch { app.aviso('Não deu para pausar. Tente de novo.', true); }
     finally { setOcupado(false); }
   }
@@ -65,7 +69,7 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
     });
     if (!ok) return;
     setOcupado(true);
-    try { aplicar(await app.api('/api/v1/envio/retomar', 'POST', {})); app.aviso('Envio retomado.'); }
+    try { focarAcao.current = true; aplicar(await app.api('/api/v1/envio/retomar', 'POST', {})); app.aviso('Envio retomado.'); }
     catch (e) { app.aviso(e instanceof ErroApi && e.status === 403 ? 'Só você pode retomar o envio, por esta tela.' : 'Não deu para retomar. Tente de novo.', true); }
     finally { setOcupado(false); }
   }
@@ -95,8 +99,8 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
           {!envio.pausado && <p className="pequeno mudo">Sempre que o app abrir, o envio volta pausado.</p>}
         </div>
         {envio.pausado
-          ? <button className="botao" type="button" disabled={ocupado} onClick={retomar}>Retomar envio</button>
-          : <button className="botao-fantasma" type="button" disabled={ocupado} onClick={pausar}>Pausar envio</button>}
+          ? <button ref={acao} className="botao" type="button" disabled={ocupado} onClick={retomar}>Retomar envio</button>
+          : <button ref={acao} className="botao-fantasma" type="button" disabled={ocupado} onClick={pausar}>Pausar envio</button>}
       </div>
       {agora && <p className="enviando-agora" role="status"><span className="ponto" aria-hidden="true" />{`Enviando agora: ${nome(agora.id)}, desde ${hora(agora.desde)}`}</p>}
       {envio.desfechos.length > 0 && (

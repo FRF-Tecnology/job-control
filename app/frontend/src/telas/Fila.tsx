@@ -1,7 +1,7 @@
 // Fila de candidaturas (P5, jc-a2y.6.3.1): o pacote exato que o app vai enviar a cada vaga, por estado.
 // Só leitura neste passo; aprovar e as outras ações chegam no jc-a2y.6.3.2. A impressão é recalculada aqui a
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ErroApi, useApp, type Pergunta } from '../app/contexto';
 import { impressaoCandidatura } from '../app/impressao';
 import { pacoteInicial, perguntasSensiveisDoPerfil, type Conteudo as ConteudoPacote } from '../app/pacote';
@@ -91,6 +91,15 @@ export function TelaFila() {
   const [preparando, setPreparando] = useState<string | null>(null); // id da vaga com o formulário aberto
   const [editando, setEditando] = useState<string | null>(null); // id da candidatura em edição
   const [ocupado, setOcupado] = useState(false);
+  // Quando um formulário fecha, o foco volta ao botão que o abriu (teclado e leitor de tela; jc-a2y.59).
+  const devolverFoco = useRef<string | null>(null);
+  const botaoEditar = (id: string) => `[data-testid="${id}"] [data-acao="editar"]`;
+  useEffect(() => {
+    const alvo = devolverFoco.current;
+    if (!alvo) return;
+    devolverFoco.current = null;
+    document.querySelector<HTMLElement>(alvo)?.focus();
+  });
 
   const ler = useCallback(async () => {
     try {
@@ -124,6 +133,7 @@ export function TelaFila() {
         ler();
         return app.aviso('O pacote mudou desde que você abriu. A fila foi atualizada; revise de novo antes de aprovar.', true);
       }
+      if (editando) devolverFoco.current = botaoEditar(editando);
       setEditando(null);
       ler();
       return app.aviso('O pacote mudou enquanto você editava. A fila foi atualizada; abra e edite de novo.', true);
@@ -135,6 +145,7 @@ export function TelaFila() {
     try {
       await fn();
       app.aviso(ok);
+      if (editando) devolverFoco.current = botaoEditar(editando);
       setPreparando(null); setEditando(null);
       await app.recarregar();
       await ler();
@@ -222,12 +233,12 @@ export function TelaFila() {
               <li key={v.id} className="pronta">
                 <div className="pronta-topo">
                   <strong>{`${v.empresa} — ${v.titulo}`}</strong>
-                  {preparando !== v.id && <button className="botao p" type="button" onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
+                  {preparando !== v.id && <button className="botao p" type="button" data-preparar={v.id} onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
                 </div>
                 {preparando === v.id && (
                   <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, perfil, pdfs)} pdfs={pdfs} perfil={perfil}
                     rotulo="Preparar candidatura" ocupado={ocupado} foraDoPacote={perguntasSensiveisDoPerfil(perfil)}
-                    onSalvar={k => preparar(v.id, k)} onCancelar={() => setPreparando(null)} />
+                    onSalvar={k => preparar(v.id, k)} onCancelar={() => { devolverFoco.current = `[data-preparar="${v.id}"]`; setPreparando(null); }} />
                 )}
               </li>
             ))}
@@ -258,10 +269,10 @@ export function TelaFila() {
                   <p className="situacao">{situacao(c)}</p>
                   {editando === c.id ? (
                     <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} perfil={perfil} rotulo="Salvar pacote" ocupado={ocupado}
-                      onSalvar={k => salvarEdicao(c, k)} onCancelar={() => setEditando(null)} />
+                      onSalvar={k => salvarEdicao(c, k)} onCancelar={() => { devolverFoco.current = botaoEditar(c.id); setEditando(null); }} />
                   ) : (<>
                   {(c.estado === 'preparada' || c.estado === 'aprovada') && (
-                    <div className="acoes"><button className="botao-fantasma p" type="button" onClick={() => { setPreparando(null); setEditando(c.id); }}>Editar pacote</button></div>
+                    <div className="acoes"><button className="botao-fantasma p" type="button" data-acao="editar" onClick={() => { setPreparando(null); setEditando(c.id); }}>Editar pacote</button></div>
                   )}
                   <details className="pacote" open={c.estado === 'preparada'}>
                     <summary>Pacote que vai para a vaga</summary>

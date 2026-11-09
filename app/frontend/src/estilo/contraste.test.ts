@@ -55,6 +55,9 @@ const herdados = [
   // Texto e anel de foco com --destaque sobre o fundo da página: o tom de texto continua claro no escuro.
   { regra: 'a, .mais, .abas atual (texto --destaque)', texto: 'var(--destaque)', fundo: 'var(--papel)', minimo: 4.5 },
   { regra: ':focus-visible (anel sobre a página)', texto: 'var(--destaque)', fundo: 'var(--superficie)', minimo: 3 },
+  // Textos secundários (datas, legendas, abas do celular) sobre os fundos da página e dos cartões (jc-a2y.59).
+  ...(['--papel', '--superficie', '--superficie-2'] as const).flatMap(f => (['--tinta-2', '--tinta-3'] as const).map(t =>
+    ({ regra: `texto ${t} sobre ${f}`, texto: `var(${t})`, fundo: `var(${f})`, minimo: 4.5 }))),
 ];
 
 describe('contraste nos temas claro e escuro', () => {
