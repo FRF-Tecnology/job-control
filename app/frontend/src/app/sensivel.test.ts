@@ -1,7 +1,27 @@
 // Perguntas que só a pessoa responde na página (P5, jc-a2y.6.3.3): a tela usa a mesma regra do servidor
 // (internal/dominio/sensivel.go, perguntaSensivel). Os casos são os do sensivel_test.go. Só dados fictícios.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { perguntaSensivel } from './sensivel';
+import { NOME_MOTIVO_SENSIVEL, perguntaSensivel } from './sensivel';
+
+// Vetores compartilhados com o Go (jc-a2y.6.2.6): o mesmo arquivo que o TestVetoresSensiveis lê. O motivo lá é o do
+// rótulo; para a pergunta do pacote, termos e captcha valem "" (a página bloqueia na hora).
+const vetores: { casos: { texto: string; motivo: string }[] } =
+  JSON.parse(readFileSync(resolve(process.cwd(), '../../internal/dominio/testdata/sensivel.json'), 'utf8'));
+
+describe('perguntaSensivel: vetores compartilhados com o servidor (PT, ES, EN)', () => {
+  it('o arquivo tem casos', () => expect(vetores.casos.length).toBeGreaterThan(100));
+  it.each(vetores.casos.map(c => [c.texto, c.motivo === 'termos' || c.motivo === 'captcha' ? '' : c.motivo]))(
+    '%j → %j', (texto, esperado) => expect(perguntaSensivel(texto)).toBe(esperado));
+});
+
+describe('nomes dos motivos (LATAM)', () => {
+  it('não usam a sigla brasileira', () => {
+    expect(NOME_MOTIVO_SENSIVEL.cpf).toBe('número fiscal');
+    expect(NOME_MOTIVO_SENSIVEL.rg).toBe('documento de identidade');
+  });
+});
 
 describe('perguntaSensivel (igual ao servidor)', () => {
   it.each([

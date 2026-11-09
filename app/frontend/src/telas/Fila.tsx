@@ -35,7 +35,7 @@ const NOME_ESTADO: Record<EstadoCand, string> = {
 };
 const ALERTA: EstadoCand[] = ['bloqueada', 'incerta', 'falhou'];
 const MOTIVOS: Record<string, string> = {
-  cpf: 'CPF', rg: 'RG', senha: 'Senha', 'dado-bancario': 'Dado bancário', captcha: 'Captcha', login: 'Login', conta: 'Criar conta',
+  cpf: 'Número fiscal', rg: 'Documento de identidade', senha: 'Senha', 'dado-bancario': 'Dado bancário', captcha: 'Captcha', login: 'Login', conta: 'Criar conta',
   'teste-pessoal': 'Teste pessoal', documento: 'Documento', 'dado-sensivel': 'Dado sensível', termos: 'Termos',
   'pergunta-nova': 'Pergunta nova', 'site-externo': 'Site externo', outro: 'Outro',
 };
