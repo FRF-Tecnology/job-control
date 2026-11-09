@@ -25,6 +25,10 @@ const ajuda = `Uso: central-cli <comando> [opções]
       --dry-run     só mostra o que seria importado
       --substituir  troca os dados que o app novo já tem (faz backup antes)
 
+  avaliar [--provedor claude-cli] [--modelo m] [--limite n] [--saida arquivo]
+      Roda o conjunto de avaliacao/ na IA escolhida e grava as respostas brutas; a pontuação
+      é a do avaliador Node: node ferramentas/cli.mjs avaliar --respostas <arquivo> --modelo <nome>
+
 A pasta de dados do app é a de sempre (ou CENTRAL_PASTA).`
 
 func main() {
@@ -36,6 +40,8 @@ func main() {
 	switch os.Args[1] {
 	case "importar-legado":
 		err = importarLegado(os.Args[2:])
+	case "avaliar":
+		err = avaliar(os.Args[2:])
 	default:
 		fmt.Println(ajuda)
 		return

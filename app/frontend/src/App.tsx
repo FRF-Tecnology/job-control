@@ -14,6 +14,7 @@ import { TelaNumeros } from './telas/Numeros';
 import { TelaPlataformas } from './telas/Plataformas';
 import { TelaRodadas } from './telas/Rodadas';
 import { TelaPerfil } from './telas/Perfil';
+import { TelaConectarIA } from './telas/ConectarIA';
 
 // aba: aparece na barra de baixo do celular (as outras ficam em Mais).
 const ICONES: Record<string, string> = {
@@ -32,6 +33,7 @@ const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r:
   { rota: 'plataformas', nome: 'Plataformas', Tela: TelaPlataformas },
   { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
   { rota: 'perfil', nome: 'Perfil e regras', Tela: TelaPerfil },
+  { rota: 'ia', nome: 'Conectar IA', Tela: TelaConectarIA },
 ];
 
 function lerHash() {

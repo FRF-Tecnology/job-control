@@ -19,6 +19,8 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
+	"github.com/FRF-Tecnology/job-control/internal/ia"
+	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
 
 // Prefixo de todas as rotas.
@@ -51,6 +53,10 @@ type API struct {
 	hoje      func() string
 	contaID   string
 	aleatorio func() string // só nos testes: deixa os ids previsíveis
+
+	cofre            segredos.Cofre
+	provedoresExtras map[string]ia.Provedor // só nos testes: provedor de IA falso
+	detectarCLIs     func(context.Context) []ia.EstadoCLI
 }
 
 // Opcoes configura a API.
@@ -58,6 +64,10 @@ type Opcoes struct {
 	Hoje      func() string // padrão: data local de hoje
 	ContaID   string        // padrão: "local"
 	Aleatorio func() string // padrão: sufixo aleatório de verdade
+
+	Cofre        segredos.Cofre                       // padrão: cofre do sistema operacional
+	ProvedoresIA map[string]ia.Provedor               // só nos testes
+	DetectarCLIs func(context.Context) []ia.EstadoCLI // padrão: procura claude, codex e gemini no PATH
 }
 
 // Nova cria a API sobre um armazém.
@@ -68,7 +78,13 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.ContaID == "" {
 		o.ContaID = "local"
 	}
-	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio}
+	if o.Cofre == nil {
+		o.Cofre = segredos.Sistema{}
+	}
+	if o.DetectarCLIs == nil {
+		o.DetectarCLIs = ia.DetectarCLIs
+	}
+	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -358,6 +374,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{}, falha(400, "envie um objeto JSON")
 	}
 	c := dominio.ObjetoDe(corpo)
+
+	if strings.HasPrefix(p, "/ia") {
+		if r, feito, err := a.rotasIA(ctx, m, p, c); feito {
+			return r, err
+		}
+	}
 
 	if m == "GET" {
 		if r, feito, err := a.rotasDeLeitura(ctx, p, q); feito {

@@ -1,5 +1,5 @@
 // Hoje: uma caixa "O que vamos fazer hoje?", o seletor de foco e só o que pede ação (porte de web/telas/hoje.mjs).
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
@@ -121,8 +121,18 @@ function LinkVaga({ v }: { v: any }) {
   return <button className="link-vaga" type="button" onClick={() => app.abrirVaga(v.id)}>{`${v.empresa} — ${v.titulo}`}</button>;
 }
 
+// Rascunho: escrito pela IA conectada; sem IA (ou se ela falhar), o modelo fixo com o perfil.
 async function mensagemFollowUp(app: App, v: any) {
-  const texto = await app.perguntar({ titulo: `Mensagem para ${v.empresa}`, texto: 'Ajuste se quiser e copie. Envie pelo LinkedIn ou e-mail do recrutador.', campo: 'Mensagem', valor: sugerirMensagem(v, app.estado.perfil), multilinha: true, confirmar: 'Copiar mensagem' });
+  let rascunho = sugerirMensagem(v, app.estado.perfil);
+  let daIA = false;
+  try {
+    if ((await app.api('/api/v1/ia/config')).configurada) {
+      app.aviso('A IA está escrevendo o rascunho…');
+      rascunho = (await app.api(`/api/v1/ia/mensagem/${encode(v.id)}`, 'POST', {})).texto;
+      daIA = true;
+    }
+  } catch { /* sem IA: fica o modelo fixo */ }
+  const texto = await app.perguntar({ titulo: `Mensagem para ${v.empresa}`, texto: `${daIA ? 'Rascunho escrito pela IA. ' : ''}Ajuste se quiser e copie. Envie pelo LinkedIn ou e-mail do recrutador.`, campo: 'Mensagem', valor: rascunho, multilinha: true, confirmar: 'Copiar mensagem' });
   if (!texto) return;
   try { await navigator.clipboard.writeText(texto); app.aviso('Mensagem copiada'); } catch { app.aviso('Não consegui copiar; selecione o texto manualmente', true); }
 }
@@ -157,6 +167,8 @@ export function TelaHoje() {
   const opcoesEmail = vagas.filter((v: any) => foiEnviada(v) || ['aplicar', 'bloqueada', 'em-processo', 'oferta'].includes(v.etapa)).sort((a: any, b: any) => a.empresa.localeCompare(b.empresa));
   const nome = String(perfil?.nome ?? '').trim().split(/\s+/)[0];
   const maiorFunil = Math.max(1, ...FUNIL.map(([e]) => conta(e)));
+  const [semIA, setSemIA] = useState(false);
+  useEffect(() => { app.api('/api/v1/ia/config').then(r => setSemIA(!r.configurada)).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const api = (v: any, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/vagas/${encode(v.id)}/followup`, 'POST', corpo), msg);
 
   return (
@@ -179,6 +191,15 @@ export function TelaHoje() {
         <div className="cartao-num"><span className="n">{Math.max(0, limite - linkedinHoje)}</span><span className="r">restantes no LinkedIn hoje</span></div>
         <div className="cartao-num"><span className="n">{naSemana}</span><span className="r">enviadas na semana</span></div>
       </div>
+
+      {semIA && (
+        <section className="bloco">
+          <div className="convite azul">
+            <div><strong>Conecte uma IA</strong><p style={{ margin: 0 }}>Use sua assinatura do Claude, ChatGPT ou Gemini, ou uma chave de API. Ela opina na triagem e escreve rascunhos.</p></div>
+            <a className="botao" href="#/ia">Conectar IA</a>
+          </div>
+        </section>
+      )}
 
       {faltam > 0 && (
         <section className="primeiros" aria-labelledby="primeiros-titulo">

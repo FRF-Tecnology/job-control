@@ -1,11 +1,12 @@
 // Triagem: uma vaga por vez. Arraste o cartão (direita aplica, esquerda pula) ou use os botões / teclas A, P, →.
 // Porte de web/telas/triagem.mjs.
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useApp } from '../app/contexto';
 import { MOTIVOS_PULO, mercadoDe, noFoco } from '../dominio/modelo';
 import { Icone } from '../componentes';
-import { dataCurta, nomePlataforma, plural } from '../util';
-import { useState } from 'react';
+import { dataCurta, encode, nomePlataforma, plural } from '../util';
+
+const DECISOES: Record<string, string> = { aplicar: 'Aplicar', pular: 'Pular', perguntar: 'Na dúvida' };
 
 // Fila: grupo A primeiro, depois B, C e sem grupo; dentro do grupo, as mais recentes.
 const ordem = (v: any) => ({ A: 0, B: 1, C: 2 } as Record<string, number>)[v.aderencia] ?? 3;
@@ -111,6 +112,14 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
   const sim = useRef<HTMLSpanElement>(null);
   const nao = useRef<HTMLSpanElement>(null);
   const arrasto = useRef<{ inicio: number | null; dx: number }>({ inicio: null, dx: 0 });
+  const [opiniao, setOpiniao] = useState<any>(null);
+  const [pensando, setPensando] = useState(false);
+  const pedirOpiniao = async () => {
+    setPensando(true);
+    try { setOpiniao(await app.api(`/api/v1/ia/triar/${encode(v.id)}`, 'POST', {})); }
+    catch (e: any) { app.aviso(e.status === 400 ? 'Conecte uma IA em Mais › Conectar IA para pedir opinião.' : e.message, true); }
+    finally { setPensando(false); }
+  };
 
   const mover = (x: number) => {
     if (!ficha.current) return;
@@ -156,9 +165,11 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
       </div>
       {v.motivoClaude && <div className="motivo"><b><Icone d="M12 3l1.8 4.5L18 9l-4.2 1.5L12 15l-1.8-4.5L6 9l4.2-1.5z" />Por que aparece</b>{v.motivoClaude}</div>}
       {v.notas && <div className="motivo"><b>Notas</b>{v.notas}</div>}
+      {opiniao && <div className="motivo" role="status"><b>Opinião da IA</b>{`${DECISOES[opiniao.decisao] ?? opiniao.decisao} · grupo ${opiniao.aderencia}${opiniao.motivoPulo ? ` · ${opiniao.motivoPulo}` : ''}. ${opiniao.motivo}`}</div>}
       <div className="acoes">
         {v.link && <a className="botao-fantasma p" href={v.link} target="_blank" rel="noopener">Ler a vaga completa</a>}
         <button className="botao-fantasma p" type="button" onClick={depois}>Decidir depois</button>
+        {!opiniao && <button className="botao-fantasma p" type="button" disabled={pensando} onClick={pedirOpiniao}>{pensando ? 'A IA está lendo…' : 'Opinião da IA'}</button>}
       </div>
       <p className="dica-gesto" aria-hidden="true"><Icone d="M5 12h14M15 8l4 4-4 4" />Arraste para a direita para aplicar, para a esquerda para pular</p>
     </article>
