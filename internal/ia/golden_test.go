@@ -251,7 +251,8 @@ func TestErrosHTTPeChave(t *testing.T) {
 			if c.Status == 0 {
 				chave = ""
 			}
-			_, err := anthropic{http.DefaultClient}.Chamar(context.Background(), PedidoProvedor{Modelo: "m", Chave: chave, Opcoes: OpcoesProvedor{URL: srv.URL}, Prompt: p})
+			// O cliente de verdade da IA (com a política de não seguir redirecionamento).
+			_, err := Nova(Config{}, nil, nil).Provedores["anthropic"].Chamar(context.Background(), PedidoProvedor{Modelo: "m", Chave: chave, Opcoes: OpcoesProvedor{URL: srv.URL}, Prompt: p})
 			conferirErro(t, err, c.Erro)
 		})
 	}

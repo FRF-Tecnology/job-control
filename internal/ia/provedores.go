@@ -49,6 +49,10 @@ type Provedor interface {
 
 const tempoLimite = 120 * time.Second
 
+// semRedirecionamento: o cliente nunca segue redirecionamento. As APIs de IA não precisam, e seguir mandaria
+// os cabeçalhos com a chave (x-api-key, x-goog-api-key) para outro endereço. O 3xx volta como erro do provedor.
+func semRedirecionamento(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
 func cortarUTF16(s string, n int) string {
 	u := utf16.Encode([]rune(s))
 	if len(u) <= n {
@@ -60,6 +64,8 @@ func cortarUTF16(s string, n int) string {
 // mensagemHTTP é o texto público e fixo de cada status de erro do provedor.
 func mensagemHTTP(status int) string {
 	switch {
+	case status >= 300 && status <= 399:
+		return "o provedor mandou para outro endereço, e o app não segue (confira o endereço)"
 	case status == 400:
 		return "pedido recusado (confira o modelo e as opções)"
 	case status == 401:

@@ -304,3 +304,35 @@ for (const prov of [provAnthropic, provOpenai, provGoogle]) {
     }
   });
 }
+
+// ---------- redirecionamento não é seguido (jc-a2y.22) ----------
+// fetch de verdade contra servidores locais: o destino do redirecionamento não recebe pedido nem chave.
+import { createServer } from 'node:http';
+const ouvirLocal = (h) => new Promise(r => { const s = createServer(h); s.listen(0, '127.0.0.1', () => r(s)); });
+const CHAVE_REDIRECT = 'sk-ant-api03-SENTINELAredirect-123xyz'; // fictícia; gitleaks:allow
+
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: redirecionamento (301, 302, 303, 307, 308) não é seguido e o destino não recebe a chave`, async () => {
+    let noDestino = 0, comChave = 0, naOrigem = 0, status = 0;
+    const destino = await ouvirLocal((req, res) => {
+      noDestino++;
+      if (JSON.stringify(req.headers).includes('SENTINELA') || req.url.includes('SENTINELA')) comChave++;
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end('{}');
+    });
+    const origem = await ouvirLocal((req, res) => { naOrigem++; res.writeHead(status, { location: `http://localhost:${destino.address().port}${req.url}` }); res.end(); });
+    try {
+      for (status of [301, 302, 303, 307, 308]) {
+        naOrigem = 0;
+        await assert.rejects(prov.chamar({ fetch, chave: CHAVE_REDIRECT, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u', opcoes: { url: `http://127.0.0.1:${origem.address().port}` } }), (e) => {
+          assert.equal(e.tipo, 'provedor');
+          assert.equal(e.status, status);
+          assert.equal(e.message, `${prov.nome}: HTTP ${status} ${mensagemHttp(status)}`);
+          return e.reintentavel === false;
+        });
+        assert.equal(naOrigem, 1, `status ${status}`);
+      }
+      assert.equal(noDestino, 0, 'o destino recebeu pedido');
+      assert.equal(comChave, 0, 'o destino recebeu a chave');
+    } finally { destino.close(); origem.close(); }
+  });
+}

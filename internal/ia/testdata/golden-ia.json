@@ -37874,6 +37874,30 @@
    }
   },
   {
+   "status": 307,
+   "corpo": "",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 307 o provedor mandou para outro endereço, e o app não segue (confira o endereço)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 308,
+   "corpo": "{\"error\":{\"type\":\"moved\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 308 o provedor mandou para outro endereço, e o app não segue (confira o endereço)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
    "status": 418,
    "corpo": "{\"error\":{\"code\":\"codigo com espaço\",\"message\":\"x\"}}",
    "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",

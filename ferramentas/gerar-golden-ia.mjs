@@ -145,6 +145,8 @@ for (const [status, corpo] of [
   [400, JSON.stringify({ error: { type: 'FICTICIA', message: ecos[4] } })],
   [503, `<html>${ecos[0]}</html>`],
   [408, ''],
+  [307, ''],
+  [308, JSON.stringify({ error: { type: 'moved' } })],
   [418, JSON.stringify({ error: { code: 'codigo com espaço', message: 'x' } })],
 ]) {
   const fetch = async () => new Response(corpo, { status });
