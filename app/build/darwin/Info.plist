@@ -6,7 +6,7 @@
         <key>CFBundleName</key>
             <string>Applyer</string>
         <key>CFBundleExecutable</key>
-            <string>central</string>
+            <string>central.exe</string>
         <key>CFBundleIdentifier</key>
             <string>com.frftecnology.central</string>
         <key>CFBundleVersion</key>

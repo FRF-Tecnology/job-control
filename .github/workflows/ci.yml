@@ -113,8 +113,9 @@ jobs:
           for t in $testes; do
             grep -q -- "--- PASS: $t " navegador-macos.log || { echo "::error::$t não passou no macOS (pulado ou ausente)"; exit 1; }
           done
-      # O Taskfile gera bin/central.app (nome interno) com assinatura ad-hoc local, sem identidade da Apple.
-      # O zip sai com ditto, que guarda o bit de execução, e sobe sem novo zip (archive: false).
+      # O Taskfile gera bin/central.app (nome interno), mas copia o binário como "central", enquanto o Info.plist
+      # (travado até o jc-etv.6) aponta para central.exe: aqui o binário ganha o nome do plist e o bundle é
+      # assinado de novo, só ad-hoc local (sem identidade da Apple). O zip sai com ditto, que guarda o bit de execução, e sobe sem novo zip (archive: false).
       - name: Empacotar o .app de teste
         shell: bash
         working-directory: app
@@ -122,9 +123,13 @@ jobs:
           wails3 package
           mkdir -p ../pacote
           ditto bin/central.app ../pacote/Applyer.app
-          test -x ../pacote/Applyer.app/Contents/MacOS/central
-          lipo -archs ../pacote/Applyer.app/Contents/MacOS/central | grep -qw arm64
-          codesign --verify --deep --strict ../pacote/Applyer.app
+          app=../pacote/Applyer.app
+          exe=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$app/Contents/Info.plist")
+          [ -e "$app/Contents/MacOS/$exe" ] || mv "$app/Contents/MacOS/central" "$app/Contents/MacOS/$exe"
+          codesign --force --deep --sign - "$app"
+          test -x "$app/Contents/MacOS/$exe"
+          lipo -archs "$app/Contents/MacOS/$exe" | grep -qw arm64
+          codesign --verify --deep --strict "$app"
           cd ../pacote && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64.zip
           ls -l Applyer-macos-arm64.zip
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
