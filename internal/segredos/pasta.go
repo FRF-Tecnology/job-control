@@ -12,7 +12,8 @@ import (
 
 // ServicoDaPasta é o nome no cofre do sistema das chaves de uma pasta de dados (jc-a2y.65). Antes, todas as pastas
 // usavam o mesmo nome, e "apagar meus dados" numa pasta de teste (CENTRAL_PASTA) apagava as chaves da pessoa.
-//   - pasta padrão (a de sempre, também quando CENTRAL_PASTA aponta para ela): o nome de sempre, sem migração;
+//   - pasta padrão (a de sempre, também quando uma variável aponta para ela): o nome de sempre, sem migração. Vale
+//     para a nova (Applyer) e para a antiga (Central de Candidaturas, antes do rename ou com ele adiado, jc-etv.7);
 //   - outra pasta: o nome de sempre + " - pasta " + 12 caracteres do sha256 do caminho (o caminho não vai para o
 //     cofre, que outros programas do usuário listam);
 //   - banco em memória (só testes): um nome próprio, para um teste nunca tocar nas chaves de verdade.
@@ -20,7 +21,7 @@ func ServicoDaPasta(pasta string) string {
 	if pasta == "" {
 		return servico + " - memoria"
 	}
-	if padrao, err := config.PastaPadrao(); err == nil && config.MesmaPasta(pasta, padrao) {
+	if config.EhPastaPadrao(pasta) {
 		return servico
 	}
 	caminho := filepath.Clean(pasta)

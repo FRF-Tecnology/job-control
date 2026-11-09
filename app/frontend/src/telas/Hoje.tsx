@@ -5,6 +5,7 @@ import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
 import { Icone, LinkExterno } from '../componentes';
+import { SeusPedidos, type Pedido } from './Pedidos';
 import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode } from '../util';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
@@ -34,7 +35,7 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
     if (!t) return entrada.current?.focus();
     const atalho = ATALHOS.find(([re]) => re.test(normalizar(t)));
     if (atalho && !/\b(busca|aplica|envia|manda|escreve)/.test(normalizar(t))) { location.hash = atalho[1]; return; }
-    const ok = await app.agir(() => app.api('/api/v1/pedidos', 'POST', { texto: t }), 'Anotado. No Claude Code, digite /pedidos para ele fazer.');
+    const ok = await app.agir(() => app.api('/api/v1/pedidos', 'POST', { texto: t }), 'Anotado em Seus pedidos, logo abaixo.');
     if (ok) setTexto('');
   }
   return (
@@ -166,13 +167,16 @@ export function TelaHoje() {
   const porId = new Map(vagas.map((v: any) => [v.id, v]));
   const passos: any[] = app.estado.primeirosPassos ?? [];
   const faltam = passos.filter(p => !p.feito).length;
-  const pedidos = (app.estado.pedidos ?? []).filter((p: any) => p.status === 'aberto' || p.concluidoEm === hoje).reverse();
+  // Ficam à vista os que pedem algo (aberto, proposta, recusado de hoje) e os feitos hoje.
+  const pedidos: Pedido[] = (app.estado.pedidos ?? []).filter((p: any) => p.status === 'aberto' || p.status === 'proposta'
+    || String(p.concluidoEm ?? p.proposta?.criadaEm ?? '').startsWith(hoje)).reverse();
   const semVaga = (app.estado.emails ?? []).filter((e: any) => e.status === 'sem-vaga');
   const opcoesEmail = vagas.filter((v: any) => foiEnviada(v) || ['aplicar', 'bloqueada', 'em-processo', 'oferta'].includes(v.etapa)).sort((a: any, b: any) => a.empresa.localeCompare(b.empresa));
   const nome = String(perfil?.nome ?? '').trim().split(/\s+/)[0];
   const maiorFunil = Math.max(1, ...FUNIL.map(([e]) => conta(e)));
-  const [semIA, setSemIA] = useState(false);
-  useEffect(() => { app.api('/api/v1/ia/config').then(r => setSemIA(!r.configurada)).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [iaConectada, setIAConectada] = useState<boolean | null>(null); // null: ainda não sabe
+  useEffect(() => { app.api('/api/v1/ia/config').then(r => setIAConectada(!!r.configurada)).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const semIA = iaConectada === false;
   const api = (v: any, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/vagas/${encode(v.id)}/followup`, 'POST', corpo), msg);
 
   return (
@@ -220,20 +224,7 @@ export function TelaHoje() {
         </section>
       )}
 
-      {pedidos.length > 0 && (
-        <section className="bloco">
-          <header><h2>Seus pedidos</h2><span className="num">{pedidos.filter((p: any) => p.status === 'aberto').length}</span></header>
-          <ul className="lista-cartao">
-            {pedidos.map((p: any) => (
-              <li key={p.id} className={`pedido${p.status === 'feito' ? ' feito' : ''}`}>
-                <strong>{p.texto}</strong>
-                <span className="estado">{p.status === 'feito' ? 'Feito' : 'Esperando o Claude'}</span>
-                {p.resposta ? <p>{p.resposta}</p> : p.status === 'aberto' && <p>No Claude Code, digite /pedidos.</p>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {pedidos.length > 0 && <SeusPedidos pedidos={pedidos} iaConectada={iaConectada === true} />}
 
       <div className="grade-hoje">
         <div>

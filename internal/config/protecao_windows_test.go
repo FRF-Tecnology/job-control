@@ -250,3 +250,45 @@ func TestPastaDeOutroDonoNaoAbre(t *testing.T) {
 		t.Fatalf("PastaDados = %v", err)
 	}
 }
+
+// jc-etv.7: o rename da pasta antiga para a nova mantém o dono e a DACL protegida, e o ProtegerPasta confere de novo.
+func TestRenameMantemAProtecao(t *testing.T) {
+	casaFalsa(t)
+	semVariaveis(t)
+	b := base(t)
+	antiga := filepath.Join(b, NomePastaAntiga)
+	if err := os.MkdirAll(filepath.Join(antiga, "curriculos"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	abrirHeranca(t, b, false) // a pasta-mãe deixa herdar: a proteção tem de vir da própria pasta
+	if err := ProtegerPasta(antiga); err != nil {
+		t.Fatal(err)
+	}
+	a, err := AbrirPastaDados()
+	if err != nil || !a.Migrou {
+		t.Fatalf("migração = %+v %v", a, err)
+	}
+	conferirSoDoUsuario(t, a.Caminho, true)
+	conferirSoDoUsuario(t, filepath.Join(a.Caminho, "curriculos"), false)
+}
+
+// jc-etv.7: com um arquivo aberto na pasta antiga (o app antigo, a CLI ou o MCP com o banco aberto), o rename de
+// verdade é recusado pelo Windows: o app usa a antiga nesta vez, e nada fica pela metade.
+func TestRenameRecusadoComArquivoAberto(t *testing.T) {
+	casaFalsa(t)
+	semVariaveis(t)
+	antiga := filepath.Join(base(t), NomePastaAntiga)
+	criarCom(t, antiga, "central.db")
+	f, err := os.OpenFile(filepath.Join(antiga, "central.db"), os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := AbrirPastaDados()
+	f.Close()
+	if err != nil || a.Migrou || a.Aviso != AvisoMigracaoAdiada || !MesmaPasta(a.Caminho, antiga) || existe(filepath.Join(base(t), NomePasta)) {
+		t.Fatalf("com o banco aberto = %+v %v", a, err)
+	}
+	if b, err := AbrirPastaDados(); err != nil || !b.Migrou {
+		t.Fatalf("depois de fechar = %+v %v", b, err)
+	}
+}

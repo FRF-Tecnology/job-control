@@ -46,7 +46,13 @@ type pastaFicticia struct {
 
 func novaPastaFicticia(t *testing.T, cofre segredos.Cofre) *pastaFicticia {
 	t.Helper()
-	f := &pastaFicticia{t: t, pasta: filepath.Join(t.TempDir(), "Central de Candidaturas"), cofre: cofre, saiu: make(chan struct{}, 1)}
+	return novaPastaFicticiaEm(t, cofre, filepath.Join(t.TempDir(), "Central de Candidaturas"))
+}
+
+// novaPastaFicticiaEm: a mesma pasta fictícia, num caminho escolhido (jc-etv.7: a pasta padrão de uma casa falsa).
+func novaPastaFicticiaEm(t *testing.T, cofre segredos.Cofre, pasta string) *pastaFicticia {
+	t.Helper()
+	f := &pastaFicticia{t: t, pasta: pasta, cofre: cofre, saiu: make(chan struct{}, 1)}
 	os.MkdirAll(f.pasta, 0o700)
 	arm, err := armazem.Abrir(context.Background(), config.CaminhoBanco(f.pasta))
 	if err != nil {
