@@ -1,6 +1,7 @@
 // Casca da interface: estado, rotas, atualização automática, avisos e diálogos (porte de web/app.mjs).
 import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Contexto, chamarApi, ErroApi, type App as AppApi, type Estado, type Pergunta } from './app/contexto';
+import { prepararProntas } from './app/preparoAutomatico';
 import { resumo } from './dominio/funil';
 import { Icone } from './componentes';
 import { encode } from './util';
@@ -127,6 +128,26 @@ export default function App() {
     setConexao({ texto: 'Dados locais', estado: 'ok' });
   }, []);
 
+  // Pacote preparado sozinho (jc-a2y.6.12): quando uma vaga chega a Aplicar (pela Triagem, pelo Quadro ou no modo
+  // direto), o app cria a candidatura "preparada" com o pacote do perfil. Nada é aprovado nem enviado: a pessoa revisa
+  // e aprova na Fila. Uma rodada por vez; cada vaga é tentada uma vez por abertura do app.
+  const preparando = useRef(false);
+  const tentadas = useRef(new Set<string>());
+  useEffect(() => {
+    if (!estado || fechando.current || preparando.current) return;
+    const modoDireto = (estado.perfil as any)?.modo === 'direto';
+    const talvez = (estado.vagas ?? []).some((v: any) => !tentadas.current.has(v.id)
+      && (v.etapa === 'aplicar' || (modoDireto && v.etapa === 'descoberta' && v.aderencia === 'A')));
+    if (!talvez) return;
+    preparando.current = true;
+    (async () => {
+      try {
+        const candidaturas = await chamarApi('/api/v1/candidaturas');
+        const r = await prepararProntas(chamarApi, { vagas: estado.vagas ?? [], perfil: estado.perfil, curriculos: (estado as any).curriculos ?? [] }, candidaturas, tentadas.current);
+        if (r.preparadas) aviso(r.preparadas === 1 ? 'Uma candidatura foi preparada sozinha: revise o pacote e aprove na Fila.' : `${r.preparadas} candidaturas foram preparadas sozinhas: revise os pacotes e aprove na Fila.`);
+      } catch { /* sem a lista, tenta na próxima leitura */ } finally { preparando.current = false; }
+    })();
+  }, [estado, aviso]);
   // Envio ligado e não pausado aparece no cabeçalho em todas as telas, não só na Fila (nota do CyberSec no #60).
   // Pausar e retomar não mudam a /versao, então a casca lê /envio a cada 5 s e ouve o painel da Fila na hora.
   useEffect(() => {
@@ -300,8 +321,12 @@ function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)
   }, []);
   useEffect(() => { rolado.current = false; marcar(); }, [atual, marcar]);
   useEffect(() => {
+    // A largura da faixa muda também quando algo no topo aparece (ex.: a marca "Envio ligado"), não só na janela.
+    const n = nav.current;
+    const obs = n && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(marcar) : null;
+    if (n && obs) obs.observe(n);
     window.addEventListener('resize', marcar);
-    return () => window.removeEventListener('resize', marcar);
+    return () => { obs?.disconnect(); window.removeEventListener('resize', marcar); };
   }, [marcar]);
   return (
     <nav aria-label="Seções" ref={nav} onScroll={marcar}>

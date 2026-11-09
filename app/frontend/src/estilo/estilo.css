@@ -123,6 +123,9 @@ h3 { font-size: 1.05rem; }
 /* Envio ligado e não pausado (jc-a2y.51): visível em todas as telas, leva à Fila para pausar. */
 .marca-envio { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--verde); padding: 6px 12px; border-radius: 999px; background: var(--verde-suave); text-decoration: none; white-space: nowrap; }
 .marca-envio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+/* Com o envio ligado, a marca ocupa o lugar do "Dados locais" (que só some quando está tudo bem; desconectado, ele volta),
+   para o menu caber inteiro (jc-a2y.66). */
+.topo-pe:has(.marca-envio) .status-conexao.ok { display: none; }
 .botao-icone { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 0; background: transparent; cursor: pointer; color: var(--tinta-2); }
 .botao-icone:hover { background: var(--superficie-2); color: var(--tinta); }
 .botao-icone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -490,6 +493,7 @@ dialog form { display: grid; gap: 16px; }
 .envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
 .envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
 .envio-janelas h3 { margin: 0; font-size: .95rem; }
+.envio-proxima { display: grid; gap: 2px; } .envio-proxima p { margin: 0; } .envio-proxima p:first-child { font-weight: 600; overflow-wrap: anywhere; } /* jc-a2y.6.10 */
 .login-aberto { margin: 0; padding: 8px 12px; border-radius: var(--raio-p); background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
 .prontas { margin-bottom: 24px; }
 .pronta { display: grid; gap: 16px; padding: 16px 20px; }
