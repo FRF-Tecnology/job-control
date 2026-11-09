@@ -47,6 +47,7 @@ func (p *paginaDeRetratos) Preencher(ctx context.Context, c Campo, v string) err
 	p.preenchidos[c.ID] = v
 	return nil
 }
+func (p *paginaDeRetratos) Igual(context.Context, Campo, string) (bool, error) { return false, nil }
 func (p *paginaDeRetratos) Anexar(ctx context.Context, c Campo, caminho string) error {
 	p.anexos++
 	return nil

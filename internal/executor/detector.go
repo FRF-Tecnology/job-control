@@ -31,6 +31,7 @@ type CampoDaPagina struct {
 	Placeholder  string `json:"placeholder"`
 	Autocomplete string `json:"autocomplete"`
 	Obrigatorio  bool   `json:"obrigatorio"`
+	Preenchido   bool   `json:"preenchido"` // a página já trouxe um valor (o valor não vem no retrato)
 }
 
 func (c CampoDaPagina) texto() string { return c.Rotulo + " " + c.Placeholder + " " + c.Nome }
@@ -55,6 +56,7 @@ var (
 	rotuloCurriculo = re(`curriculo|\bcv\b|resume|curriculum|hoja de vida`)
 	rotuloNome      = re(`^(seu )?nome( completo)?$|^full name$|^name$|^first and last name$|^nome e sobrenome$|^nombre( completo)?$|^nombre y apellidos?$|^your name$`)
 	rotuloEmail     = re(`e-?mail|correo`)
+	rotuloDDI       = re(`codigo (do|de) pais|country code|\bddi\b|prefixo (do|de) pais|codigo telefonico|indicativo|prefijo`)
 	rotuloTelefone  = re(`telefone|celular|whatsapp|\bphone\b|\bmobile\b|\bfone\b|telefono|\bmovil\b`)
 	rotuloCidade    = re(`^cidade|\bcity\b|localizacao|\blocation\b|onde (voce )?mora|^ciudad|donde vives`)
 	rotuloPretensao = re(`pretensao|salari|salary|remuneracao|compensation|expectativa (salarial|de remuneracao)|pretension|expectativa salarial|aspiracion salarial|desired pay`)
@@ -146,7 +148,7 @@ func motivoDoCampo(c Campo) string {
 func ClassificarCampos(r Retrato) []Campo {
 	saida := make([]Campo, 0, len(r.Campos))
 	for _, c := range r.Campos {
-		saida = append(saida, Campo{ID: c.ID, Tipo: tipoDoCampo(c), Rotulo: c.Rotulo, Obrigatorio: c.Obrigatorio})
+		saida = append(saida, Campo{ID: c.ID, Tipo: tipoDoCampo(c), Rotulo: c.Rotulo, Obrigatorio: c.Obrigatorio, Preenchido: c.Preenchido})
 	}
 	return saida
 }
@@ -165,6 +167,8 @@ func tipoDoCampo(c CampoDaPagina) string {
 			return CampoCurriculo
 		}
 		return "documento"
+	case c.Autocomplete == "tel-country-code" || rotuloDDI.MatchString(rotulo): // antes do telefone: "phone country code"
+		return CampoDDI
 	case tipoHTML == "email" || c.Autocomplete == "email" || rotuloEmail.MatchString(rotulo):
 		return CampoEmail
 	case tipoHTML == "tel" || strings.HasPrefix(c.Autocomplete, "tel") || rotuloTelefone.MatchString(rotulo):

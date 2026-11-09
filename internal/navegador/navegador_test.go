@@ -112,6 +112,10 @@ func novoServidor(t *testing.T) *servidorFicticio {
 			w.Write(pdf)
 		},
 	}
+	for _, v := range variantesPreenchidas { // jc-a2y.6.5.1
+		rotas["www.linkedin.com GET /jobs/view/"+v.id] = paginaPreenchida(v)
+		rotas["www.linkedin.com POST /jobs/view/"+v.id+"/apply"] = receber(true)
+	}
 	s.Server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host := strings.Split(r.Host, ":")[0]
 		if h, ok := rotas[host+" "+r.Method+" "+r.URL.Path]; ok {
@@ -280,6 +284,42 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 		}
 		if !bytes.Equal(e.arquivo, pdf) {
 			t.Errorf("arquivo recebido = %q", e.arquivo)
+		}
+	})
+
+	t.Run("Campos que a página já trouxe preenchidos (jc-a2y.6.5.1)", func(t *testing.T) {
+		for _, v := range variantesPreenchidas {
+			antes := len(srv.envios())
+			d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/"+v.id))
+			if !v.enviada {
+				if d.Estado != dominio.CandBloqueada || d.Motivo != v.motivo || len(srv.envios()) != antes {
+					t.Errorf("%s: desfecho = %+v, envios %d → %d", v.descricao, d, antes, len(srv.envios()))
+				}
+				continue
+			}
+			var e *envioRecebido
+			for _, x := range srv.envios() {
+				if x.caminho == "/jobs/view/"+v.id+"/apply" {
+					x := x
+					e = &x
+				}
+			}
+			if d.Estado != dominio.CandEnviada || e == nil {
+				t.Errorf("%s: desfecho = %+v, recebido %v", v.descricao, d, e != nil)
+				continue
+			}
+			// Só o pacote: nome, e-mail e telefone dele e o país do código +55 do telefone dele; nada a mais.
+			quer := map[string]string{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com", "tel": "11900000000", "ddi": "BR"}
+			for k, q := range quer {
+				if e.campos.Get(k) != q {
+					t.Errorf("%s: campo %s = %q; queria %q", v.descricao, k, e.campos.Get(k), q)
+				}
+			}
+			for k := range e.campos {
+				if _, ok := quer[k]; !ok {
+					t.Errorf("%s: chegou campo fora do pacote: %s", v.descricao, k)
+				}
+			}
 		}
 	})
 

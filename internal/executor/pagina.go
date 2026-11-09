@@ -1,6 +1,17 @@
 package executor
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// Erros fixos que a Pagina devolve para o executor decidir sem olhar texto (jc-a2y.6.5.1).
+var (
+	// ErrSemBotaoEnviar: o botão final não foi achado; nada foi clicado.
+	ErrSemBotaoEnviar = errors.New("navegador: botão de enviar não encontrado")
+	// ErrSemOpcao: o valor não é uma das opções do select ou do grupo de rádio.
+	ErrSemOpcao = errors.New("navegador: valor fora das opções do campo")
+)
 
 // Navegador abre páginas. O navegador de verdade (chromedp, com perfil próprio na pasta de dados) chega no
 // jc-a2y.6.2.5; o detector dos motivos de bloqueio, no jc-a2y.6.2.4. Aqui só o contrato e as regras do envio.
@@ -19,6 +30,9 @@ type Pagina interface {
 	// Campos lista os campos do formulário de candidatura.
 	Campos(ctx context.Context) ([]Campo, error)
 	Preencher(ctx context.Context, c Campo, valor string) error
+	// Igual confere, dentro da página, se o valor que o campo já tem é o esperado (e-mail sem diferença de caixa,
+	// telefone pelos dígitos, código do país pelo número). O valor da página nunca volta (jc-a2y.6.5.1).
+	Igual(ctx context.Context, c Campo, esperado string) (bool, error)
 	// Anexar põe o arquivo do caminho no campo (o executor passa uma cópia já conferida, nunca o original).
 	Anexar(ctx context.Context, c Campo, caminho string) error
 	// URLAtual é onde a página está agora (o executor confere a cada etapa e logo antes do clique).
@@ -39,6 +53,7 @@ const (
 	CampoNome      = "nome"
 	CampoEmail     = "email"
 	CampoTelefone  = "telefone"
+	CampoDDI       = "ddi" // código do país do telefone
 	CampoCidade    = "cidade"
 	CampoPretensao = "pretensao"
 	CampoMensagem  = "mensagem"
@@ -53,4 +68,6 @@ type Campo struct {
 	Tipo        string
 	Rotulo      string
 	Obrigatorio bool
+	// Preenchido: a página já trouxe um valor (texto, opção marcada, rádio ou caixa). O valor não é lido.
+	Preenchido bool
 }
