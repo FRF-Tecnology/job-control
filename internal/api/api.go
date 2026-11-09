@@ -72,6 +72,7 @@ type API struct {
 	suspenderEnvio  func() func() // sair das plataformas: nenhum ciclo novo até soltar
 	fecharNavegador func()        // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
 	aoApagar        func()        // depois de apagar os dados: fecha o app
+	envioLigado     bool          // este build traz o executor (envio.Ligado)
 }
 
 // Opcoes configura a API.
@@ -89,6 +90,8 @@ type Opcoes struct {
 	SuspenderEnvio  func() (soltar func())
 	FecharNavegador func()
 	AoApagar        func()
+	// EnvioLigado: este build traz o executor (envio.Ligado, só o envio_dev). A API não importa o envio.
+	EnvioLigado bool
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -118,7 +121,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 		o.SuspenderEnvio = func() func() { return nada }
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
-		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar}
+		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -427,6 +430,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{}, falha(400, "envie um objeto JSON")
 	}
 	c := dominio.ObjetoDe(corpo)
+
+	if strings.HasPrefix(p, "/envio") {
+		if r, feito, err := a.rotasEnvio(ctx, m, p, q, c, autor); feito {
+			return r, err
+		}
+	}
 
 	if p == "/dados/apagar" || p == "/navegador/sair" {
 		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {

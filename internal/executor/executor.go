@@ -117,8 +117,18 @@ func (x *Executor) ctx(e dominio.Estado) dominio.Ctx {
 // gravar roda a operação do domínio numa transação. Usa um contexto que não cancela: o desfecho de um envio que já
 // começou tem de ficar gravado mesmo se o app estiver fechando.
 func (x *Executor) gravar(ctx context.Context, op func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error)) (dominio.Objeto, error) {
+	return x.gravarCom(ctx, x.arm.Gravar, op)
+}
+
+// gravarSeLiberado: o mesmo, mas com o envio pausado nada é gravado (armazem.ErrEnvioPausado), na mesma transação.
+// É o caminho de toda ação que começa um envio (jc-a2y.51).
+func (x *Executor) gravarSeLiberado(ctx context.Context, op func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error)) (dominio.Objeto, error) {
+	return x.gravarCom(ctx, x.arm.GravarSeEnvioLiberado, op)
+}
+
+func (x *Executor) gravarCom(ctx context.Context, gravar func(context.Context, func(dominio.Estado) (dominio.Estado, error)) error, op func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error)) (dominio.Objeto, error) {
 	var res dominio.Objeto
-	err := x.arm.Gravar(context.WithoutCancel(ctx), func(e dominio.Estado) (dominio.Estado, error) {
+	err := gravar(context.WithoutCancel(ctx), func(e dominio.Estado) (dominio.Estado, error) {
 		novo, o, err := op(e, x.ctx(e))
 		res = o
 		return novo, err
@@ -160,7 +170,7 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 	semLimite := map[string]bool{}
 	abriuPagina := false
 	for _, o := range fila {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || x.arm.EnvioPausado(ctx) { // pausado: para a fila na hora (e de novo na transação)
 			break
 		}
 		plataforma := dominio.Texto(o["plataforma"])
@@ -189,6 +199,9 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 		case errors.As(err, &ec):
 			x.o.Log("executor: %s pulada (conflito)", o["id"])
 			continue
+		case errors.Is(err, armazem.ErrEnvioPausado):
+			x.o.Log("executor: envio pausado")
+			return desfechos, nil
 		case err != nil:
 			return desfechos, err
 		}
@@ -233,7 +246,7 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 
 	// "outra": sem envio automático, nem abre a página.
 	if _, automatico := dominio.LimiteDe(nil, plataforma); !automatico {
-		if _, err := x.gravar(ctx, func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
+		if _, err := x.gravarSeLiberado(ctx, func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
 			return dominio.EncaminharExterna(e, id, agora, d)
 		}); err != nil {
 			return Desfecho{}, err
@@ -248,7 +261,7 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 		return Desfecho{}, err
 	}
 	versao, _ := dominio.NumeroDe(c["versao"])
-	if _, err := x.gravar(ctx, func(e dominio.Estado, _ dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
+	if _, err := x.gravarSeLiberado(ctx, func(e dominio.Estado, _ dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
 		return dominio.IniciarEnvio(e, id, int(versao), agora, limites)
 	}); err != nil {
 		return Desfecho{}, err

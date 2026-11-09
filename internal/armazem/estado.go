@@ -115,12 +115,17 @@ func (a *Armazem) Carregar(ctx context.Context) (dominio.Estado, error) {
 // Gravar roda fn sobre o estado atual numa transação: grava o que mudou e sobe a versão.
 // Se fn devolver erro, nada muda. Vale entre processos (app, CLI e MCP abertos juntos).
 func (a *Armazem) Gravar(ctx context.Context, fn func(dominio.Estado) (dominio.Estado, error)) error {
+	return a.gravarCom(ctx, func(_ *sql.Tx, e dominio.Estado) (dominio.Estado, error) { return fn(e) })
+}
+
+// gravarCom é o Gravar com acesso à transação (para ler a meta na mesma transação).
+func (a *Armazem) gravarCom(ctx context.Context, fn func(*sql.Tx, dominio.Estado) (dominio.Estado, error)) error {
 	return a.Transacao(ctx, func(tx *sql.Tx) error {
 		antes, f, err := carregar(ctx, tx)
 		if err != nil {
 			return err
 		}
-		novo, err := fn(antes)
+		novo, err := fn(tx, antes)
 		if err != nil {
 			return err
 		}
