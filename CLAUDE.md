@@ -94,6 +94,13 @@ Até a P8, o código Node atual continua sendo a Central em uso, e a API dele é
 - `cd app && wails3 build` gera `app/bin/central.exe`. Ele também gera os bindings e as telas.
 - `cd app && wails3 dev` abre o modo de desenvolvimento.
 
+**Domínio em Go:** `internal/dominio` é o porte de `nucleo/`. Ele é conferido contra respostas gravadas do Node em `internal/dominio/testdata/golden.json`.
+Ao mudar uma regra de `nucleo/`:
+- regrave com `node ferramentas/gerar-golden-dominio.mjs`;
+- ajuste o Go até `go test ./internal/dominio/` passar.
+
+O teste `testes/golden.test.mjs` falha se o golden estiver desatualizado.
+
 **Pasta de dados:** `os.UserConfigDir()/Central de Candidaturas`. A variável `CENTRAL_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
 
 ## Ferramentas de desenvolvimento
