@@ -580,8 +580,8 @@ func TestBloqueioEReabrir(t *testing.T) {
 	if _, _, err := BloquearCandidatura(e, c.ID, "Digite seu CPF aqui", agora, eu); err == nil {
 		t.Fatal("motivo fora da lista aceito")
 	}
-	if len(PendenciaDoMotivo) != 14 {
-		t.Fatalf("motivos = %d; queria 14", len(PendenciaDoMotivo))
+	if len(PendenciaDoMotivo) != 15 { // 15 com aviso-conta (jc-a2y.6.11)
+		t.Fatalf("motivos = %d; queria 15", len(PendenciaDoMotivo))
 	}
 	e2, o, err := BloquearCandidatura(e, c.ID, "captcha", agora, eu)
 	if err != nil {

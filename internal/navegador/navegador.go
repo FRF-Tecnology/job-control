@@ -49,6 +49,16 @@ type Navegador struct {
 	visivelAgora bool            // o navegador aberto agora tem janela
 	loginCtx     context.Context // navegador da janela de login da pessoa; enquanto vivo, nenhuma página do envio abre
 	abertas      int             // páginas do envio abertas agora
+	// aoFecharLogin roda quando a PESSOA fecha a janela de login (não quando o app fecha o navegador): as plataformas
+	// em precisa-entrar podem voltar (jc-a2y.6.11).
+	aoFecharLogin func()
+}
+
+// QuandoFecharLogin registra o que fazer quando a pessoa fecha a janela "Entrar nas plataformas".
+func (n *Navegador) QuandoFecharLogin(f func()) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.aoFecharLogin = f
 }
 
 var _ executor.Navegador = (*Navegador)(nil)
@@ -229,12 +239,17 @@ func (n *Navegador) AbrirLogin(endereco string) error {
 	go func() {
 		<-navCtx.Done() // a pessoa fechou a janela (o navegador saiu) ou o app fechou o navegador
 		n.mu.Lock()
-		defer n.mu.Unlock()
 		if n.navCtx == navCtx {
 			n.fecharSemTrava()
 		}
+		var avisar func()
 		if n.loginCtx == navCtx { // um login novo, aberto depois, não é desfeito
 			n.loginCtx = nil
+			avisar = n.aoFecharLogin // Fechar (o app) já zerou loginCtx: aí não avisa
+		}
+		n.mu.Unlock()
+		if avisar != nil {
+			avisar()
 		}
 	}()
 	return nil

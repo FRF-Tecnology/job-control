@@ -1,0 +1,20 @@
+{
+ "descricao": "linkedin-aviso-conta",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "aviso-conta"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "We've restricted your account temporarily because of unusual activity. Verify your identity to continue.",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Continue"
+   ]
+  }
+ ]
+}

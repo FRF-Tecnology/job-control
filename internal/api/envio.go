@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -45,8 +46,45 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 	case m == "POST" && p == "/envio/janela":
 		r, err := a.mudarJanela(ctx, c, autor)
 		return r, true, err
+	case m == "POST" && strings.HasPrefix(p, "/envio/plataformas/"):
+		partes := strings.Split(strings.TrimPrefix(p, "/envio/plataformas/"), "/")
+		if len(partes) != 2 || (partes[1] != "pausar" && partes[1] != "retomar") {
+			return Resposta{}, false, nil
+		}
+		r, err := a.mudarPlataforma(ctx, partes[0], partes[1] == "retomar", c, autor)
+		return r, true, err
 	}
 	return Resposta{}, false, nil
+}
+
+// mudarPlataforma (jc-a2y.6.11): pausar só esta plataforma (qualquer autor, só reduz o risco) ou retomar (só a
+// pessoa, pela tela). Gravado no banco, numa transação.
+func (a *API) mudarPlataforma(ctx context.Context, plataforma string, retomar bool, c Objeto, autor string) (Resposta, error) {
+	if err := soCampos(c); err != nil {
+		return Resposta{}, err
+	}
+	if !a.envioLigado {
+		return Resposta{}, falha(404, msgSemEnvio)
+	}
+	if retomar && autor != "eu" {
+		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa retoma a plataforma"}
+	}
+	agora := a.relogio()
+	_, err := a.arm.MudarPlataformas(ctx, func(p dominio.Plataformas, _ bool) (dominio.Plataformas, error) {
+		if retomar {
+			return p.RetomarPlataforma(plataforma, agora)
+		}
+		return p.PausarPlataforma(plataforma, agora)
+	})
+	if err != nil {
+		return Resposta{}, err
+	}
+	if retomar {
+		log.Printf("envio: plataforma %s retomada (%s)", plataforma, autor) // só códigos e o autor
+	} else {
+		log.Printf("envio: plataforma %s pausada (%s)", plataforma, autor)
+	}
+	return a.estadoEnvio(ctx, nil)
 }
 
 func (a *API) mudarPausa(ctx context.Context, pausado bool) (Resposta, error) {
@@ -124,5 +162,13 @@ func (a *API) estadoEnvio(ctx context.Context, q map[string]string) (Resposta, e
 			janela = "visivel"
 		}
 	}
-	return ok(Objeto{"ligado": a.envioLigado, "pausado": a.arm.EnvioPausado(ctx), "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
+	agora := a.relogio()
+	plataformas := a.arm.Plataformas(ctx).Lista(agora)
+	for _, p := range plataformas { // jc-a2y.6.11: as voltas e as páginas do dia, contra o teto
+		nome := dominio.Texto(p["plataforma"])
+		p["voltasHoje"] = dominio.VoltasNoDia(e, nome, agora)
+		p["paginasHoje"] = dominio.AberturasNoDia(e, nome, agora)
+		p["tetoPaginas"] = dominio.LimiteMaximo
+	}
+	return ok(Objeto{"ligado": a.envioLigado, "pausado": a.arm.EnvioPausado(ctx), "plataformas": plataformas, "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
 }

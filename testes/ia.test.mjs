@@ -214,6 +214,9 @@ const CASOS = [
   { regra: 'revisao-coerente', nome: 'ok com problemas', funcao: 'revisarAntesDeEnviar', entrada: { formulario: [{ pergunta: 'Anos com React', valor: '3' }], perfil, curriculo }, modelo: { ok: true, problemas: [{ pergunta: 'Anos com React', valorAtual: '3', sugerido: '0', motivo: 'Não está no currículo' }] }, espera: { ok: false } },
   { regra: 'vaga-conhecida', nome: 'vagaId inventado', funcao: 'classificarEmail', entrada: { email: { de: 'rh@acme.com', assunto: 'Convite', texto: 'Vamos conversar?' }, vagas: [vaga] }, modelo: { tipo: 'entrevista', vagaId: 'inventada-99', resumo: 'Convite' }, espera: { vagaId: null } },
   { regra: 'mensagem-rascunho', nome: 'mensagem sai como rascunho', funcao: 'escreverMensagem', entrada: msg, modelo: { assunto: 'Follow-up', texto: 'Olá, gostaria de saber do processo.' }, espera: { rascunho: true } },
+  // jc-a2y.7.1: pedido interpretado pela IA (o corpus inteiro fica em pedidos-injecao.test.mjs).
+  { regra: 'pedido-catalogo', nome: 'pedido com vagaId fora da lista', funcao: 'interpretarPedido', entrada: { pedido: 'marca a li-9 como enviada', vagas: [{ id: 'li-1', empresa: 'Acme', titulo: 'Dev', etapa: 'aplicar' }] }, modelo: { acao: 'registrar-etapa', parametros: { vagaId: 'li-9', etapa: 'enviada' } }, bloqueia: true },
+  { regra: 'pedido-catalogo', nome: 'pedido com resposta em HTML', funcao: 'interpretarPedido', entrada: { pedido: 'oi', vagas: [] }, modelo: { acao: 'responder', parametros: { texto: '<b>oi</b>' } }, bloqueia: true },
 ];
 
 test('toda regra da guarda tem caso de teste', () => {

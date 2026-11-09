@@ -24,12 +24,12 @@ paths:
   /resumo: { get: { summary: Números do dia } }
   /vagas:
     get: { summary: 'Lista de vagas (?etapa=, ?plataforma=)' }
-    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta adicionar-vaga de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] }
+    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta adicionar-vaga de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] }
   /vagas/importar: { post: { summary: 'Importa vagas de fora: só cria em Descoberta (etapa, envio e datas são ignorados)' } }
   /vagas/{id}:
     get: { summary: Vaga com os eventos dela }
     patch: { summary: 'Muda campos editáveis (notasAntes recusa edição em conflito)' }
-  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
+  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
@@ -46,12 +46,11 @@ paths:
     get: { summary: 'Pedidos da caixa "O que vamos fazer hoje?" (?status=)' }
     post: { summary: 'Novo pedido {texto} (201)' }
   /pedidos/{id}/concluir: { post: { summary: 'Conclui com {resposta}' } }
-  # Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md). Proposta: ainda não atendidas.
+  # Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md).
   # A IA só propõe UMA ação de um catálogo fechado; nada grava sem a pessoa confirmar na tela a impressão da proposta.
   # Fora do catálogo para sempre: aprovar, retomar, janela, entrar, modo direto, mover para aplicar, apagar, limite, chaves.
   /pedidos/{id}/interpretar:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'A IA conectada interpreta o pedido aberto e propõe uma ação do catálogo (adicionar-vaga, registrar-etapa, preparar-pacote, responder, recusar). Não grava nada no domínio; guarda a proposta no pedido (status proposta, ou recusado). A IA recebe só o pedido e a lista mínima das vagas (id, empresa, título, etapa, datas). Só a tela (gasta a IA da pessoa); uma interpretação por vez'
       requestBody:
@@ -69,7 +68,6 @@ paths:
         '502': { description: 'Provedor da IA fora: {erro, tipo}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /pedidos/{id}/descartar:
     post:
-      x-proposta: true
       summary: 'Descarta a proposta: o pedido volta a aberto. Qualquer autor (só reduz o risco)'
       requestBody:
         required: true
@@ -537,10 +535,9 @@ paths:
         '403': { $ref: '#/components/responses/SoTela' }
   # Ver o envio (jc-a2y.6.7). O padrão é sem janela, para não pegar o foco, o mouse nem o teclado de quem usa o PC.
   # A janela só aparece quando a pessoa pede, e volta a oculta a cada abertura do app.
-  # Envio que se vira sozinho (jc-a2y.6.11, docs/propostas/envio-resiliente.md). Proposta: ainda não atendida.
+  # Envio que se vira sozinho (jc-a2y.6.11, docs/propostas/envio-resiliente.md).
   /envio/plataformas/{plataforma}/pausar:
     post:
-      x-proposta: true
       summary: 'Pausa só esta plataforma (gravado no banco). Qualquer autor pausa (só reduz o risco); só a pessoa retoma. Parada até amanhã continua parada até amanhã. Só no build com o envio'
       parameters:
         - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
@@ -555,7 +552,6 @@ paths:
         '404': { description: 'Este build não traz o envio, ou a plataforma não tem envio automático: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /envio/plataformas/{plataforma}/retomar:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Retoma uma plataforma pausada (falhas-seguidas ou pela pessoa/assistente) ou à espera de login (precisa-entrar). Parada até amanhã (captcha, aviso de conta) dá 409: não se tenta de novo no mesmo dia. Só a tela (o assistente recebe 403)'
       parameters:
@@ -749,7 +745,7 @@ components:
         atualizadaEm: { type: string }
         retentativas:
           type: array
-          description: 'jc-a2y.6.11 (proposta): histórico das voltas automáticas para aprovada (falha técnica ou sessão caída ANTES de interagir com o formulário). Não contam no limite do dia, mas contam no teto de 40 páginas abertas por plataforma no dia. No máximo 3 desde a aprovação em vigor; na 4ª, falhou/erro-tecnico. O histórico nunca é apagado'
+          description: 'jc-a2y.6.11: histórico das voltas automáticas para aprovada (falha técnica ou sessão caída ANTES de interagir com o formulário). Não contam no limite do dia, mas contam no teto de 40 páginas abertas por plataforma no dia. No máximo 3 desde a aprovação em vigor; na 4ª, falhou/erro-tecnico. O histórico nunca é apagado'
           items:
             type: object
             additionalProperties: false
@@ -757,9 +753,9 @@ components:
             properties:
               em: { type: string }
               codigo: { type: string, enum: [erro-tecnico, login] }
-        proximaTentativaEm: { type: [string, 'null'], description: 'jc-a2y.6.11 (proposta): o executor só pega a aprovada depois deste instante (5 min, 30 min, 2 h). Gravado: vale com o app reaberto' }
-        interagiuEm: { type: [string, 'null'], description: 'jc-a2y.6.11 (proposta): marca da tentativa em curso, gravada numa transação ANTES do primeiro preencher, anexar, desmarcar ou avançar. Com ela, a candidatura nunca volta sozinha para aprovada' }
-        clicouEnviarEm: { type: [string, 'null'], description: 'jc-a2y.6.11 (proposta): marca gravada ANTES do clique final. Com ela, sem confirmação, incerta (M3)' }
+        proximaTentativaEm: { type: [string, 'null'], description: 'jc-a2y.6.11: o executor só pega a aprovada depois deste instante (5 min, 30 min, 2 h). Gravado: vale com o app reaberto' }
+        interagiuEm: { type: [string, 'null'], description: 'jc-a2y.6.11: marca da tentativa em curso, gravada numa transação ANTES do primeiro preencher, anexar, desmarcar ou avançar. Com ela, a candidatura nunca volta sozinha para aprovada' }
+        clicouEnviarEm: { type: [string, 'null'], description: 'jc-a2y.6.11: marca gravada ANTES do clique final. Com ela, sem confirmação, incerta (M3)' }
     EstadoEnvio:
       type: object
       additionalProperties: false
@@ -769,7 +765,7 @@ components:
         pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
         plataformas:
           type: array
-          description: 'jc-a2y.6.11 (proposta): estado do envio por plataforma, gravado no banco (as três, em ordem: gupy, inhire, linkedin). O executor só pega candidatura de plataforma ativa; o pausado geral vale acima disto. precisa-entrar volta sozinha só quando a pessoa fecha a janela "Entrar nas plataformas" com o envio geral liberado. Estado ilegível no banco: pausada'
+          description: 'jc-a2y.6.11: estado do envio por plataforma, gravado no banco (as três, em ordem: gupy, inhire, linkedin). O executor só pega candidatura de plataforma ativa; o pausado geral vale acima disto. precisa-entrar volta sozinha só quando a pessoa fecha a janela "Entrar nas plataformas" com o envio geral liberado. Estado ilegível no banco: pausada'
           items:
             type: object
             additionalProperties: false
@@ -779,6 +775,9 @@ components:
               estado: { type: string, enum: [ativa, pausada, precisa-entrar, parada-hoje] }
               motivo: { type: [string, 'null'], enum: [falhas-seguidas, login, captcha, aviso-conta, null] }
               ate: { type: [string, 'null'], description: 'Só em parada-hoje: 00:00 do dia seguinte (horário local)' }
+              voltasHoje: { type: integer, minimum: 0, description: 'Voltas automáticas para aprovada hoje nesta plataforma (revisão do CyberSec no #99)' }
+              paginasHoje: { type: integer, minimum: 0, description: 'Páginas abertas hoje: tentativas que contam no limite + voltas' }
+              tetoPaginas: { type: integer, description: 'Teto diário de páginas por plataforma (40). Ao chegar nele, a plataforma espera o dia seguinte' }
         janela: { type: string, enum: [oculta, visivel], description: 'Como o navegador abre nas próximas candidaturas. oculta (sem janela, sem foco, mouse nem teclado) a cada abertura do app; visivel só por POST /envio/janela da tela. oculta também no build padrão' }
         login: { type: boolean, description: 'Há uma janela de login aberta pela pessoa (POST /navegador/entrar); enquanto true, o envio espera' }
         enviandoAgora:
@@ -818,7 +817,7 @@ components:
     MotivoBloqueio:
       type: string
       enum: [cpf, rg, senha, dado-bancario, captcha, aviso-conta, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
-      description: 'aviso-conta (jc-a2y.6.11, proposta): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã'
+      description: 'aviso-conta (jc-a2y.6.11): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã'
     LimiteDiario:
       type: object
       required: [limite, usadas, renovaEm]
@@ -843,6 +842,7 @@ components:
         texto: { type: string, description: 'O que a pessoa digitou (dado não confiável: a tela mostra como texto)' }
         status: { type: string, enum: [aberto, proposta, recusado, feito] }
         proposta: { oneOf: [{ $ref: '#/components/schemas/PropostaPedido' }, { type: 'null' }] }
+        resposta: { type: [string, 'null'], description: 'Resposta da IA (ação responder) ou do Claude Code (/pedidos/{id}/concluir). Dado não confiável: a tela mostra como texto; a CLI, o MCP e o Claude Code nunca agem por ela (é registro, não instrução)' }
         resultado:
           type: [object, 'null']
           additionalProperties: false
