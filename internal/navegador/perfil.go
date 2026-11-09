@@ -32,13 +32,15 @@ var preferencias = map[string]any{
 	"alternate_error_pages": map[string]any{"enabled": false},
 }
 
-// prepararPerfil cria a pasta só para o usuário (0700) e grava as preferências do perfil (Default/Preferences),
-// mantendo o que o navegador já tiver gravado e trocando só as chaves acima.
+// prepararPerfil cria a pasta só para o usuário e grava as preferências do perfil (Default/Preferences), mantendo o
+// que o navegador já tiver gravado e trocando só as chaves acima. "Só para o usuário" é 0700 no Linux e no macOS e,
+// no Windows, uma DACL explícita e protegida (usuário, SISTEMA e Administradores), aplicada também ao perfil que já
+// existia: o cookie de sessão fica aqui (jc-a2y.58).
 func prepararPerfil(pasta string) error {
 	if err := os.MkdirAll(filepath.Join(pasta, "Default"), 0o700); err != nil {
 		return err
 	}
-	if err := os.Chmod(pasta, 0o700); err != nil {
+	if err := config.ProtegerPasta(pasta); err != nil {
 		return err
 	}
 	arquivo := filepath.Join(pasta, "Default", "Preferences")

@@ -11,16 +11,25 @@ const NomePasta = "Central de Candidaturas"
 
 // PastaDados devolve a pasta dos dados locais (banco, currículos, backups).
 // CENTRAL_PASTA troca o local (testes, uma segunda conta, simulação de usuário novo).
+// A pasta fica só para o usuário (ProtegerPasta), também quando já existia: guarda o banco, os currículos e o
+// perfil do navegador (jc-a2y.58).
 func PastaDados() (string, error) {
 	if p := os.Getenv("CENTRAL_PASTA"); p != "" {
-		return p, os.MkdirAll(p, 0o700)
+		return p, criarProtegida(p)
 	}
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
 	p := filepath.Join(base, NomePasta)
-	return p, os.MkdirAll(p, 0o700)
+	return p, criarProtegida(p)
+}
+
+func criarProtegida(p string) error {
+	if err := os.MkdirAll(p, 0o700); err != nil {
+		return err
+	}
+	return ProtegerPasta(p)
 }
 
 // OrigemPasta diz de onde veio a pasta de dados, sem o caminho (que traz o nome do usuário): é o que os logs e

@@ -17,6 +17,7 @@ Bead `jc-a2y.6.5`. Segue os pré-requisitos e o roteiro do relatório do CyberSe
   - `jc-a2y.50`: teste integrado;
   - `jc-a2y.51`: pausar, desfechos e a tela do #60;
   - #53: bloqueio de popups.
+- [ ] `jc-a2y.58`: o app deixa a pasta de dados e o perfil do navegador só para o usuário, SISTEMA e Administradores, ao abrir (DACL explícita e protegida, também em pasta que já existia).
 - [ ] `jc-a2y.52` (QA): conferir a ACL da pasta do perfil na máquina do teste (passo 3).
 - [ ] Se a vaga for da InHire, rever a regra do `form-app` com o formulário real (id curto, nota do #49). LinkedIn é o caso esperado.
 - [ ] Chrome ou Edge instalado num local padrão: `C:\Program Files\Google\Chrome\Application\chrome.exe` (ou `Program Files (x86)`, ou a instalação só do usuário em `%LOCALAPPDATA%`), ou o Edge em `Program Files (x86)\Microsoft\Edge\Application\msedge.exe`. O app **não** usa o PATH.
@@ -65,7 +66,9 @@ Antes, **abra o app uma vez e feche**, com o `CENTRAL_PASTA` do passo 2 (o coman
 - **Não** entre com conta Google nem ligue a sincronização nesse perfil.
 - Feche **todas** as janelas desse Chrome e confira que ele não ficou rodando em segundo plano: nenhum ícone do Chrome perto do relógio e nenhum `chrome.exe` desse perfil no Gerenciador de Tarefas. O app não abre o perfil se ele estiver em uso.
 - O app mantém os cookies e regrava as preferências dele ao abrir.
-- ACL (`jc-a2y.52`): `icacls "$env:CENTRAL_PASTA\navegador"`. Só podem aparecer o usuário, SYSTEM e Administradores; "Usuários autenticados", "Usuários" ou "Todos" não podem aparecer.
+- ACL (`jc-a2y.52`): `icacls "$env:CENTRAL_PASTA"` e `icacls "$env:CENTRAL_PASTA\navegador"`. Só podem aparecer o usuário, SISTEMA e Administradores. "Usuários autenticados", "Usuários", "Todos", "INTERATIVO", "SERVICE" e "LOTE" não podem aparecer. Depois de o app abrir uma vez, a pasta de dados mostra as três entradas com `(OI)(CI)(F)` e sem `(I)`, porque não herda mais da pasta-mãe (`jc-a2y.58`).
+- Depois do login, confira também o arquivo do cookie: `icacls "$env:CENTRAL_PASTA\navegador\Default\Network\Cookies"`. O Chrome pode acrescentar uma entrada de AppContainer (SID `S-1-15-…`, do sandbox dele), e essa pode ficar. "Usuários autenticados", "Usuários", "Todos", "INTERATIVO", "SERVICE" e "LOTE" não podem aparecer. Se aparecerem, pare e chame o CyberSec.
+- Se o app não abrir com "a pasta de dados pertence a outro usuário deste computador", a pasta foi criada por outra conta. Crie outra, com a sua conta, no passo 2.
 
 ## 4. Parar o fluxo antigo na vaga escolhida (Central Node)
 
