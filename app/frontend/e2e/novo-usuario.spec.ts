@@ -71,6 +71,38 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect(page.locator('.cartao-num', { hasText: 'enviadas hoje' }).locator('.n')).toHaveText('1');
   await ir(page, 'numeros');
   await expect(page.getByText('1 enviadas, 0 com retorno (0%)')).toBeVisible();
+
+  // 8. Triagem: "Aprovar todas do grupo A" mostra a lista e a contagem; cancelar não muda nada;
+  //    confirmar aprova só as A, com autor "eu" (jc-a2y.31). Vagas fictícias criadas pela API.
+  const novas: [string, string][] = [['ext-grupo-a-1', 'A'], ['ext-grupo-a-2', 'A'], ['ext-grupo-b-1', 'B']];
+  for (const [id, aderencia] of novas) {
+    const r = await page.request.post('/api/v1/vagas', { data: { id, empresa: `Empresa ${id}`, titulo: 'Pessoa Dev Exemplo', link: `https://vagas.exemplo.com/${id}`, plataforma: 'externo', aderencia } });
+    expect(r.status(), await r.text()).toBe(201);
+  }
+  const etapas = async () => {
+    const e = await (await page.request.get('/api/v1/estado')).json();
+    return Object.fromEntries(novas.map(([id]) => [id, e.vagas.find((v: any) => v.id === id)?.etapa]));
+  };
+  await ir(page, 'triagem');
+  const aprovarTodas = page.getByRole('button', { name: 'Aprovar todas do grupo A (2)' });
+  const dlg = page.locator('dialog#dialogo');
+  await aprovarTodas.click();
+  await expect(dlg.getByRole('heading')).toHaveText('Aprovar 2 vagas do grupo A?');
+  await expect(dlg.getByRole('listitem')).toHaveCount(2);
+  await expect(dlg.getByRole('list')).toContainText('Empresa ext-grupo-a-1 — Pessoa Dev Exemplo');
+  await expect(dlg.getByRole('list')).toContainText('Empresa ext-grupo-a-2 — Pessoa Dev Exemplo');
+  await expect(dlg.getByRole('list')).not.toContainText('ext-grupo-b-1');
+  await dlg.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(dlg).toBeHidden();
+  expect(await etapas()).toEqual({ 'ext-grupo-a-1': 'descoberta', 'ext-grupo-a-2': 'descoberta', 'ext-grupo-b-1': 'descoberta' });
+
+  await aprovarTodas.click();
+  await dlg.getByRole('button', { name: 'Aprovar 2 vagas' }).click();
+  await expect(page.getByText('2 vagas foram para a fila do Claude.')).toBeVisible();
+  await expect(page.locator('.ficha .empresa')).toHaveText('Empresa ext-grupo-b-1');
+  expect(await etapas()).toEqual({ 'ext-grupo-a-1': 'aplicar', 'ext-grupo-a-2': 'aplicar', 'ext-grupo-b-1': 'descoberta' });
+  const eventos = (await (await page.request.get('/api/v1/estado')).json()).eventos.filter((e: any) => e.tipo === 'aplicar' && e.vagaId.startsWith('ext-grupo-'));
+  expect(eventos.map((e: any) => `${e.vagaId}:${e.autor}`).sort()).toEqual(['ext-grupo-a-1:eu', 'ext-grupo-a-2:eu']);
 });
 
 test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ page }, info) => {
