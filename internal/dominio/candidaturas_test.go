@@ -657,3 +657,50 @@ func TestEstadoSemFilaIgualAoNode(t *testing.T) {
 		t.Fatal("Clonar compartilhou a fila")
 	}
 }
+
+// "outra" nunca entra em enviando: IniciarEnvio recusa sem mexer em nada, e EncaminharExterna bloqueia em site-externo.
+func TestOutraPlataformaNaoEnvia(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	base := comVaga(t, EstadoVazio(), "ou-1", "Site da empresa", "https://carreiras.exemplo.com/1", true)
+	e, c := aprovada(t, base, "ou-1", agora, nil)
+	antes := emJSONTeste(e)
+	novo, _, err := IniciarEnvio(e, c.ID, c.Versao, agora, nil)
+	if cf := conflito(t, err); cf.Estado != CandAprovada {
+		t.Fatalf("conflito = %+v", cf)
+	}
+	if emJSONTeste(novo) != antes || emJSONTeste(e) != antes || estadoDe(t, e, c.ID).Aprovacao.UsadaEm != "" {
+		t.Fatal("a recusa mexeu no estado ou consumiu a aprovação")
+	}
+	e2, o, err := EncaminharExterna(e, c.ID, agora, eu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := candidaturaDe(o)
+	if b.Estado != CandBloqueada || b.Bloqueio.Motivo != "site-externo" || b.Aprovacao.UsadaEm != "" || len(b.Tentativas) != 0 || etapaDe(e2, "ou-1") != "bloqueada" {
+		t.Fatalf("encaminhada = %+v", b)
+	}
+	if _, _, err := ConcluirManual(e2, c.ID, agora, eu); err != nil {
+		t.Fatalf("concluir-manual depois do site externo = %v", err)
+	}
+	// LinkedIn não é encaminhado.
+	el, cl := aprovada(t, comVaga(t, EstadoVazio(), "li-1", "linkedin", linkLI("1"), true), "li-1", agora, nil)
+	if _, _, err := EncaminharExterna(el, cl.ID, agora, eu); conflito(t, err) == nil {
+		t.Fatal("encaminhou candidatura do LinkedIn")
+	}
+}
+
+func TestTornarIncerta(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	e, c := aprovada(t, comVaga(t, EstadoVazio(), "li-1", "linkedin", linkLI("1"), true), "li-1", agora, nil)
+	if _, _, err := TornarIncerta(e, c.ID, agora); conflito(t, err) == nil {
+		t.Fatal("aprovada virou incerta")
+	}
+	e, _, _ = IniciarEnvio(e, c.ID, c.Versao, agora, nil)
+	e, o, err := TornarIncerta(e, c.ID, agora)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if x, _ := candidaturaDe(o); x.Estado != CandIncerta || x.Resultado.Tipo != "incerto" {
+		t.Fatalf("incerta = %+v", x)
+	}
+}
