@@ -229,10 +229,9 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
         '409': { $ref: '#/components/responses/ConflitoCandidatura' }
-  # Aprovar em lote (jc-a2y.6.13, docs/propostas/aprovar-lote.md). Proposta: ainda não atendida.
+  # Aprovar em lote (jc-a2y.6.13, docs/propostas/aprovar-lote.md).
   /candidaturas/aprovar-lote:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Aprova de uma vez a "Lista do dia": cada item com a impressão que a tela mostrou. Numa transação só, cada item passa pela mesma conferência do aprovar de uma (preparada, impressão atual, vaga em aplicar, limite do dia contando as já aprovadas no lote). Item recusado não afeta os outros. Vale até o fim do dia local. Só a tela (o assistente recebe 403, e nada é aprovado)'
       requestBody:

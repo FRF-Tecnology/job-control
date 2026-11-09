@@ -27,7 +27,10 @@ Resposta `200`:
   - a vaga continua em `aplicar` e não foi enviada (senão, `vaga-fora`);
   - o id existe (senão, `nao-encontrada`).
 - **Limite do dia, contando o que já vai sair.** Por plataforma, as já enviadas hoje mais as aprovadas que ainda não saíram (válidas hoje, contando as aprovadas no próprio lote) não passam do limite. Os itens que passam, na ordem do pedido, são recusados (`limite`). A tela já faz essa conta; o servidor faz a mesma.
-  - **Proposta:** o aprovar de uma também passa a contar as aprovadas que ainda não saíram. Hoje ele só conta as que já entraram em `enviando`; o executor segura o excesso na hora de enviar, mas a pessoa veria "aprovada" a mais.
+  - **Decidido (PO e CyberSec no #102):** o aprovar de uma conta igual ao lote, e o excesso dá 429 (`usadas` continua sendo as tentativas, como em `GET /candidaturas/limites`). O executor, na hora de enviar, conta só as tentativas, para a candidatura não contar contra ela mesma, e continua sendo a 2ª barreira se o limite baixar depois da aprovação.
+  - **Volta automática (`.6.11`):** a tentativa devolvida sai de `tentativas`, e a candidatura volta a `aprovada`. Ela conta uma vez só, como aprovada pendente, mesmo com a aprovação marcada como usada.
+  - `outra` não tem limite: no lote ela é aprovada como no aprovar de uma.
+  - Um lote todo recusado não grava nada (não sobe a versão).
 - **Uma transação só** para o lote inteiro. Cada item aprovado sobe a versão e grava o evento, como hoje. A ordem do pedido decide quem entra no limite.
 - **Validade:** até o fim do dia local, como no aprovar de uma. Uma aprovação vencida volta a `preparada` (`VencerAprovacoes`).
 - **Corpo estrito:**
@@ -56,5 +59,8 @@ Resposta `200`:
   - não conferir a impressão;
   - não contar as aprovadas no limite;
   - aceitar autor que não é a pessoa;
-  - aceitar id repetido.
+  - aceitar id repetido;
+  - o aprovar de uma não contar as aprovadas pendentes;
+  - o executor contar a própria candidatura (somar as pendentes no `IniciarEnvio`);
+  - a volta automática não contar (filtrar pela marca de uso).
 - **Tela (Jarvis):** Vitest e e2e da "Lista do dia" contra a rota de verdade.

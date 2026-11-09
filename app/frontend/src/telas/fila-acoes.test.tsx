@@ -104,6 +104,14 @@ describe('Fila: aprovar', () => {
     await clicar(botao(c, 'Aprovar este pacote')!);
     expect(avisos).toContainEqual({ texto: 'Limite de hoje no LinkedIn atingido (30 de 30). Renova amanhã às 00:00.', erro: true });
   });
+
+  it('429 com o limite cheio de aprovadas que ainda não saíram: diz enviadas e aprovadas esperando (jc-a2y.6.13)', async () => {
+    const { avisos } = montar({ candidaturas: [cand('a', 'preparada'), cand('b', 'aprovada')], erro: new ErroApi('limite diário atingido', 429, { erro: 'limite diário atingido', plataforma: 'linkedin', limite: 1, usadas: 0, renovaEm: '2026-11-10T00:00:00-03:00' }) });
+    const c = await cartao('a');
+    await conferida(c);
+    await clicar(botao(c, 'Aprovar este pacote')!);
+    expect(avisos).toContainEqual({ texto: 'Limite de hoje no LinkedIn cheio: 0 enviadas e 1 aprovada esperando envio, de 1. Renova amanhã às 00:00.', erro: true });
+  });
 });
 
 describe('Fila: outras ações', () => {
