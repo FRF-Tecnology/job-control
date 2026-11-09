@@ -135,13 +135,16 @@ main:focus, main:focus-visible { outline: none; }
 .botao[disabled], .botao-fantasma[disabled] { opacity: .5; cursor: default; }
 .botao.p, .botao-fantasma.p { min-height: 34px; padding: 4px 14px; font-size: .84rem; }
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-input[type=text], input[type=search], input[type=number], input[type=url], input[type=email], select, textarea {
+input[type=text], input[type=search], input[type=number], input[type=url], input[type=email], input[type=password], select, textarea {
   background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio-p); padding: 9px 12px; min-height: 44px; width: 100%; transition: border-color .15s, box-shadow .15s;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--destaque); box-shadow: 0 0 0 4px var(--destaque-suave); }
 textarea { min-height: 88px; resize: vertical; }
 label.campo { display: grid; gap: 6px; font-size: .88rem; color: var(--tinta-2); }
 label.campo > span { font-weight: 600; color: var(--tinta); }
+.destino-chave { font-size: .85rem; color: var(--tinta-2); overflow-wrap: anywhere; } /* para onde a chave vai (jc-a2y.40) */
+.destino-chave strong { color: var(--tinta); font-weight: 600; }
+.destino-chave.proprio, .destino-chave.proprio strong { color: var(--ambar); } /* endereço fora do padrão: chama atenção */
 
 /* ---------- etapas e selos ---------- */
 .etapa { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--tinta-2); white-space: nowrap; }
