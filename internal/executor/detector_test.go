@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -33,6 +34,12 @@ type paginaDeRetratos struct {
 
 func (p *paginaDeRetratos) Abrir(ctx context.Context, u string) (string, error) {
 	return p.etapas[0].URL, nil
+}
+
+// As páginas fictícias já começam no formulário: sem botão de candidatura.
+func (p *paginaDeRetratos) BotaoDeCandidatura(ctx context.Context) (string, error) { return "", nil }
+func (p *paginaDeRetratos) AbrirFormulario(ctx context.Context, rotulo string) error {
+	return errors.New("sem botão de candidatura")
 }
 func (p *paginaDeRetratos) URLAtual(ctx context.Context) (string, error) {
 	return p.etapas[p.i].URL, nil
@@ -90,7 +97,7 @@ func lerPaginas(t *testing.T) []paginaFicticia {
 }
 
 // Cada página fictícia, do começo ao fim pelo executor: o desfecho bate, e nada é enviado quando bloqueia.
-// Juntas, as páginas cobrem os 14 motivos.
+// Juntas, as páginas cobrem os 15 motivos.
 func TestPaginasFicticias(t *testing.T) {
 	cobertos := map[string]bool{}
 	for _, pf := range lerPaginas(t) {
