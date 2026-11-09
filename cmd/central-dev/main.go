@@ -3,7 +3,10 @@
 //
 //	CENTRAL_PASTA=<pasta de teste> go run ./cmd/central-dev        (PORT muda a porta; padrão 4500)
 //
-// Com -tags envio_dev, liga o executor como o app (começa pausado; só a tela retoma). No build padrão, não envia.
+// O central-dev NUNCA roda o executor real (revisão do CyberSec no #61): ele escuta numa porta TCP, e o Handler
+// trata como a pessoa todo pedido sem Sec-Fetch-Site, então qualquer processo local poderia aprovar e retomar. Com
+// -tags envio_dev, só o painel do envio aparece ligado (para testar a tela), sempre começando pausado; nada é
+// enviado. O envio de verdade só existe no app compilado com a tag (a janela do Wails, sem porta).
 package main
 
 import (
@@ -17,7 +20,6 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/api"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/config"
-	"github.com/FRF-Tecnology/job-control/internal/envio"
 	modelodados "github.com/FRF-Tecnology/job-control/modelo-dados"
 )
 
@@ -38,17 +40,14 @@ func main() {
 	if telas == "" {
 		telas = "app/frontend/dist"
 	}
-	// Envio: igual ao app. No build padrão não faz nada; com -tags envio_dev, o executor roda (abre pausado).
-	controle := envio.Ligar(context.Background(), arm, pasta)
-	defer controle.Parar()
+	// Painel do envio sem executor: no build envio_dev, aparece ligado e abre pausado (como o app); no padrão, desligado.
+	if painelDoEnvio {
+		if err := arm.GravarEnvioPausado(context.Background(), true); err != nil {
+			log.Fatalf("envio: %v", err)
+		}
+	}
 	// Depois de "apagar meus dados", o processo sai (o banco já foi fechado e apagado).
-	apiLocal := api.Nova(arm, api.Opcoes{
-		PararEnvio:      controle.Parar,
-		SuspenderEnvio:  controle.Suspender,
-		FecharNavegador: controle.FecharNavegador,
-		AoApagar:        func() { os.Exit(0) },
-		EnvioLigado:     envio.Ligado,
-	}).Handler()
+	apiLocal := api.Nova(arm, api.Opcoes{AoApagar: func() { os.Exit(0) }, EnvioLigado: painelDoEnvio}).Handler()
 	arquivos := http.FileServer(http.Dir(telas))
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)
