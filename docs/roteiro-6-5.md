@@ -7,6 +7,8 @@ Bead `jc-a2y.6.5`. Segue os pré-requisitos e o roteiro do relatório do CyberSe
 > - O binário `envio_dev` fica **só na máquina do teste**: nunca é distribuído nem vai para o git, e é apagado no fim (passo 8).
 > - O fluxo antigo (Claude in Chrome, `/aplicar` do Node) fica **parado** nessa vaga, para não candidatar duas vezes.
 > - O login no LinkedIn é feito pela **própria pessoa**, no perfil do app. Nenhum agente digita senha.
+> - **Só o Vinicius** aprova a candidatura e aperta Retomar. Nenhum agente controla a janela do app nem a do navegador, e nenhum agente roda a CLI (`central-cli`, `cli.mjs`) na pasta do teste durante o dia.
+> - **A pasta do teste e o log ficam em `%LOCALAPPDATA%`**, nunca na raiz de `C:\`. Na raiz, as pastas herdam acesso de "Usuários autenticados", e outro usuário da máquina leria ou mudaria a sessão do LinkedIn (revisão do CyberSec no #62).
 
 ## 0. Antes do dia
 
@@ -18,7 +20,7 @@ Bead `jc-a2y.6.5`. Segue os pré-requisitos e o roteiro do relatório do CyberSe
 - [ ] `jc-a2y.52` (QA): conferir a ACL da pasta do perfil na máquina do teste (passo 3).
 - [ ] Se a vaga for da InHire, rever a regra do `form-app` com o formulário real (id curto, nota do #49). LinkedIn é o caso esperado.
 - [ ] Chrome ou Edge instalado num local padrão: `C:\Program Files\Google\Chrome\Application\chrome.exe` (ou `Program Files (x86)`, ou a instalação só do usuário em `%LOCALAPPDATA%`), ou o Edge em `Program Files (x86)\Microsoft\Edge\Application\msedge.exe`. O app **não** usa o PATH.
-- [ ] **A conferir antes do dia: o log.** O app é compilado como janela (`-H windowsgui`), então não tem console. O log vai para a saída de erro do processo. Ensaiar a captura no passo 5, com o build padrão e o `CENTRAL_PASTA` de teste, e confirmar que o arquivo de log recebe a linha `envio: executor LIGADO`. Se não receber, o CyberSec decide outro jeito antes do dia.
+- [ ] **Ensaiar o log antes do dia.** O app é compilado como janela (`-H windowsgui`), então não tem console. O log vai para a saída de erro do processo. Ensaiar a captura do passo 5 com o build `envio_dev` e uma pasta de ensaio, e confirmar que o arquivo recebe a linha `envio: executor LIGADO`. Se o `Start-Process` não servir, a alternativa vai no passo 5.
 
 ## 1. Compilar o app com o envio (Windows, PowerShell, na raiz do repositório)
 
@@ -37,7 +39,9 @@ Tem de aparecer `build -tags=production,envio_dev` e `dep github.com/chromedp/ch
 A pasta normal do app fica intacta. Tudo do teste vai para uma pasta própria, pelo `CENTRAL_PASTA`:
 
 ```powershell
-$env:CENTRAL_PASTA = "C:\central-teste-6.5"
+$env:CENTRAL_PASTA = "$env:LOCALAPPDATA\central-teste-6.5"   # nunca na raiz de C:\
+New-Item -ItemType Directory -Force $env:CENTRAL_PASTA | Out-Null
+icacls $env:CENTRAL_PASTA   # não pode listar "Usuários autenticados", "Usuários" nem "Todos"
 go run ./cmd/central-cli importar-legado --dir dados --dry-run   # mostra o que viria da Central antiga
 go run ./cmd/central-cli importar-legado --dir dados             # importa vagas, perfil e currículos
 ```
@@ -45,18 +49,22 @@ go run ./cmd/central-cli importar-legado --dir dados             # importa vagas
 - O importador recusa CPF e RG, e só sobrescreve com `--substituir`.
 - Faça a importação **antes** do passo 4: no passo 4, a vaga sai de `aplicar` no Node.
 - Use a mesma janela do PowerShell, com o `CENTRAL_PASTA`, em todos os passos seguintes.
+- Se o `icacls` listar algum desses grupos, pare e chame o CyberSec antes de seguir: a pasta tem de ser só do usuário.
 
 ## 3. Login no LinkedIn no perfil do app (a pessoa)
 
-Antes de abrir o app, o Vinicius entra no LinkedIn **no perfil próprio do app**, nunca no perfil pessoal:
+Antes, **abra o app uma vez e feche**, com o `CENTRAL_PASTA` do passo 2 (o comando do passo 5). Assim ele cria o perfil já com as preferências: sem salvar senha, sem autofill, sem downloads. Depois, o Vinicius entra no LinkedIn **no perfil próprio do app**, nunca no perfil pessoal:
 
 ```powershell
 & "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="$env:CENTRAL_PASTA\navegador" https://www.linkedin.com/login
 ```
 
-- A pessoa entra, resolve o 2FA se houver e fecha **todas** as janelas desse Chrome. O app não abre o perfil se ele estiver em uso.
-- O app mantém os cookies e regrava as preferências dele ao abrir (sem senhas, autofill nem downloads).
-- ACL (`jc-a2y.52`): `icacls "$env:CENTRAL_PASTA\navegador"`. Só o usuário (e SYSTEM e Administradores, se for o padrão da máquina) pode ter acesso; outro usuário da máquina não.
+- A pessoa entra e resolve o 2FA, se houver.
+- Quando o Chrome oferecer **salvar a senha**, escolha **"Nunca"**.
+- **Não** entre com conta Google nem ligue a sincronização nesse perfil.
+- Feche **todas** as janelas desse Chrome e confira que ele não ficou rodando em segundo plano: nenhum ícone do Chrome perto do relógio e nenhum `chrome.exe` desse perfil no Gerenciador de Tarefas. O app não abre o perfil se ele estiver em uso.
+- O app mantém os cookies e regrava as preferências dele ao abrir.
+- ACL (`jc-a2y.52`): `icacls "$env:CENTRAL_PASTA\navegador"`. Só podem aparecer o usuário, SYSTEM e Administradores; "Usuários autenticados", "Usuários" ou "Todos" não podem aparecer.
 
 ## 4. Parar o fluxo antigo na vaga escolhida (Central Node)
 
@@ -71,10 +79,11 @@ node ferramentas/cli.mjs mover <id> bloqueada --pendencia "Teste .6.5 no app nov
 ## 5. Abrir o app e preparar a candidatura
 
 ```powershell
-Start-Process -FilePath .\app\bin\central.exe -RedirectStandardError "C:\central-teste-6.5-log.txt"
+$log = "$env:LOCALAPPDATA\central-teste-6.5-log.txt"
+Start-Process -FilePath .\app\bin\central.exe -RedirectStandardError $log
 ```
 
-O log fica **fora** da pasta de dados, para não ser apagado no passo 8. Confira se a captura funciona (passo 0).
+O log fica **fora** da pasta de dados, para não ser apagado no passo 8, e em `%LOCALAPPDATA%`, nunca na raiz de `C:\`. Se o ensaio do passo 0 mostrar que o `Start-Process` não grava o log, use `cmd /c "app\bin\central.exe 2> %LOCALAPPDATA%\central-teste-6.5-log.txt"`.
 
 | Passo | O que conferir |
 |---|---|
@@ -115,4 +124,4 @@ O desfecho também aparece no painel do envio ("Últimos envios").
 2. Decidir com o Vinicius se a pasta de teste fica, para rever, ou sai com **"Apagar meus dados"**. Apagar também testa o `jc-a2y.49` de verdade: o app fecha e a pasta fica sem os arquivos dele.
 3. Recompilar o padrão, que apaga o binário de envio: `cd app; wails3 build`. Depois, `go version -m app\bin\central.exe` não pode mostrar `envio_dev` nem chromedp.
 4. Na Central Node, se a vaga não foi enviada, voltar com ela para onde estava (`mover <id> aplicar` só pela pessoa, na Triagem).
-5. O CyberSec registra o resultado no bead `jc-a2y.6.5`, com o log de `C:\central-teste-6.5-log.txt`, sem conteúdo.
+5. O CyberSec registra o resultado no bead `jc-a2y.6.5`, a partir do log em `%LOCALAPPDATA%\central-teste-6.5-log.txt`, sem conteúdo. **Depois do registro, apague o log** (`Remove-Item $log`).
