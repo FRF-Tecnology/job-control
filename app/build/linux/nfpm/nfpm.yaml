@@ -10,7 +10,7 @@ version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "Applyer"
+description: "Busca, triagem e acompanhamento de candidaturas"
 vendor: "FRF Tecnology"
 homepage: "https://wails.io"
 license: "MIT"

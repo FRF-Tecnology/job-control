@@ -10,7 +10,7 @@ info:
   productIdentifier: "com.frftecnology.central" # The unique product identifier
   description: "Busca, triagem e acompanhamento de candidaturas" # The application description
   copyright: "(c) 2026, FRF Tecnology" # Copyright text
-  comments: "Applyer" # Comments
+  comments: "Busca, triagem e acompanhamento de candidaturas" # Comments
   version: "0.1.0" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension
