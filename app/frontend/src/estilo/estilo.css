@@ -490,6 +490,7 @@ dialog form { display: grid; gap: 16px; }
 .envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
 .envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
 .envio-janelas h3 { margin: 0; font-size: .95rem; }
+.envio-proxima { display: grid; gap: 2px; } .envio-proxima p { margin: 0; } .envio-proxima p:first-child { font-weight: 600; overflow-wrap: anywhere; } /* jc-a2y.6.10 */
 .login-aberto { margin: 0; padding: 8px 12px; border-radius: var(--raio-p); background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
 .prontas { margin-bottom: 24px; }
 .pronta { display: grid; gap: 16px; padding: 16px 20px; }
