@@ -112,6 +112,9 @@ h3 { font-size: 1.05rem; }
 .status-conexao.off { color: var(--erro); }
 .status-conexao.off::before { background: var(--erro); }
 .status-conexao:empty { display: none; }
+/* Envio ligado e não pausado (jc-a2y.51): visível em todas as telas, leva à Fila para pausar. */
+.marca-envio { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--verde); padding: 6px 12px; border-radius: 999px; background: var(--verde-suave); text-decoration: none; white-space: nowrap; }
+.marca-envio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .botao-icone { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 0; background: transparent; cursor: pointer; color: var(--tinta-2); }
 .botao-icone:hover { background: var(--superficie-2); color: var(--tinta); }
 .botao-icone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -490,7 +493,7 @@ dialog form { display: grid; gap: 16px; }
 @media (any-pointer: coarse) {
   .botao.p, .botao-fantasma.p, .seletor button, .sugestoes button, .item-acao select, .plataforma select.situacao { min-height: 44px; }
   .botao-icone { width: 44px; height: 44px; }
-  .marca, .plataforma h2 a { min-height: 44px; }
+  .marca, .plataforma h2 a, .marca-envio { min-height: 44px; }
   .plataforma h2 a { display: inline-flex; align-items: center; }
   .funil-barras a { min-height: 44px; }
 }

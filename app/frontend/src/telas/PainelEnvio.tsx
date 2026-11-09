@@ -10,7 +10,14 @@ type Desfecho = { id: string; estado: 'enviada' | 'bloqueada' | 'falhou' | 'ince
 export type EstadoEnvio = { ligado: boolean; pausado: boolean; enviandoAgora: { id: string; desde: string } | null; desfechos: Desfecho[] };
 
 const NOME_DESFECHO: Record<Desfecho['estado'], string> = { enviada: 'Enviada', bloqueada: 'Bloqueada', falhou: 'Falhou', incerta: 'Incerta' };
-const hora = (iso: string) => new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+// Datas do servidor comparadas como instante (Date.parse), não como texto; data inválida não quebra a tela.
+const instante = (iso: string) => { const n = Date.parse(iso); return Number.isNaN(n) ? -Infinity : n; };
+const hora = (iso: string) => {
+  const n = Date.parse(iso);
+  return Number.isNaN(n) ? '—' : new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(n));
+};
+// A casca escuta este evento para mostrar a marca "Envio ligado" na hora, sem esperar a próxima leitura.
+export const EVENTO_ENVIO = 'central:envio';
 
 // nome(id): "Empresa — Título" da candidatura; motivo(m): rótulo do motivo de bloqueio (os mesmos da fila).
 export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; motivo: (m: string) => string }) {
@@ -18,7 +25,7 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
   const [envio, setEnvio] = useState<EstadoEnvio | null>(null);
   const [falha, setFalha] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const visto = useRef<string | null>(null); // "em" mais novo já visto; só desfecho depois dele vira aviso
+  const visto = useRef<number | null>(null); // instante mais novo já visto; só desfecho depois dele vira aviso
 
   const texto = (d: Desfecho) => {
     const v = nome(d.id);
@@ -31,11 +38,11 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
   };
 
   const aplicar = (e: EstadoEnvio) => {
-    const novos = visto.current === null ? [] : e.desfechos.filter(d => d.em > visto.current!);
+    const novos = visto.current === null ? [] : e.desfechos.filter(d => instante(d.em) > visto.current!);
     for (const d of [...novos].reverse()) app.aviso(texto(d), d.estado !== 'enviada');
-    const maisNovo = e.desfechos.reduce<string | null>((m, d) => (!m || d.em > m ? d.em : m), visto.current);
-    visto.current = maisNovo ?? visto.current ?? '';
+    visto.current = e.desfechos.reduce((m, d) => Math.max(m, instante(d.em)), visto.current ?? -Infinity);
     setEnvio(e); setFalha(false);
+    window.dispatchEvent(new CustomEvent(EVENTO_ENVIO, { detail: e }));
   };
 
   const ler = async () => {
@@ -66,8 +73,11 @@ export function PainelEnvio({ nome, motivo }: { nome: (id: string) => string; mo
   if (falha) return (
     <section className="envio" aria-labelledby="envio-titulo">
       <h2 id="envio-titulo">Envio</h2>
-      <p className="mudo">Não deu para ler o estado do envio.</p>
-      <div><button className="botao-fantasma" type="button" onClick={ler}>Tentar de novo</button></div>
+      <p className="mudo">Não deu para ler o estado do envio. Pausar continua disponível: só reduz o risco.</p>
+      <div className="acoes">
+        <button className="botao-fantasma" type="button" onClick={ler}>Tentar de novo</button>
+        <button className="botao-fantasma" type="button" disabled={ocupado} onClick={pausar}>Pausar envio</button>
+      </div>
     </section>
   );
   if (!envio) return <p className="mudo" role="status">Lendo o envio…</p>;

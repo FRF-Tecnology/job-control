@@ -36,6 +36,47 @@ function montar({ estado = BASE, resposta = 'ok' as string | null, erroRetomar =
 }
 const clicar = async (nome: string) => { await act(async () => { fireEvent.click(screen.getByRole('button', { name: nome })); }); };
 
+describe('Painel de envio: notas do CyberSec no #60', () => {
+  it('leitura falhou: "Pausar envio" continua disponível e manda {}', async () => {
+    const gravacoes: any[] = [];
+    const app: any = { estado: {}, aviso: () => {}, perguntar: async () => 'ok',
+      api: vi.fn(async (caminho: string, metodo = 'GET', corpo?: any) => {
+        if (metodo === 'GET') throw new Error('sem rota');
+        gravacoes.push({ caminho, corpo }); return { ...BASE, pausado: true };
+      }) };
+    render(<Contexto.Provider value={app}><PainelEnvio nome={() => 'x'} motivo={() => 'x'} /></Contexto.Provider>);
+    await screen.findByText(/Não deu para ler o estado do envio/);
+    await clicar('Pausar envio');
+    expect(gravacoes).toEqual([{ caminho: '/api/v1/envio/pausar', corpo: {} }]);
+    expect(screen.getByRole('heading', { name: 'Envio pausado' })).toBeTruthy();
+  });
+
+  it('compara o "em" como instante: desfecho em outro fuso, mais novo, vira aviso', async () => {
+    const { avisos, reler } = montar({ estado: { ...BASE, pausado: false, desfechos: [D2] } }); // 10:05 -03:00 = 13:05Z
+    await screen.findByRole('heading', { name: 'Envio ligado' });
+    const novo = { id: 'cand-1', estado: 'enviada' as const, motivo: null, em: '2026-11-09T09:06:00-04:00' }; // 13:06Z
+    await reler({ ...BASE, pausado: false, desfechos: [novo, D2] });
+    expect(avisos).toEqual([{ texto: 'Enviada: Empresa Exemplo — Pessoa Dev React.', erro: false }]);
+  });
+
+  it('data inválida não quebra: a hora vira "—"', async () => {
+    montar({ estado: { ...BASE, enviandoAgora: { id: 'cand-1', desde: 'não é data' }, desfechos: [{ ...D1, em: 'x' }] } });
+    await screen.findByRole('heading', { name: 'Envio pausado' });
+    expect(screen.getByRole('status').textContent).toBe('Enviando agora: Empresa Exemplo — Pessoa Dev React, desde —');
+  });
+
+  it('avisa a casca (evento) a cada estado novo, para a marca "Envio ligado"', async () => {
+    const recebidos: any[] = [];
+    const ouvir = (e: Event) => recebidos.push((e as CustomEvent).detail);
+    window.addEventListener('central:envio', ouvir);
+    try {
+      montar({ estado: { ...BASE, pausado: true } });
+      await screen.findByRole('heading', { name: 'Envio pausado' });
+      await clicar('Retomar envio');
+      expect(recebidos.map(r => r.pausado)).toEqual([true, false]);
+    } finally { window.removeEventListener('central:envio', ouvir); }
+  });
+});
 describe('Painel de envio', () => {
   it('desligado no build: diz que nada é enviado e não mostra botão', async () => {
     montar({ estado: { ...BASE, ligado: false } });
