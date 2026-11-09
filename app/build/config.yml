@@ -6,11 +6,11 @@ version: '3'
 # This information is used to generate the build assets.
 info:
   companyName: "FRF Tecnology" # The name of the company
-  productName: "Central de Candidaturas" # The name of the application
+  productName: "Applyer" # The name of the application
   productIdentifier: "com.frftecnology.central" # The unique product identifier
   description: "Busca, triagem e acompanhamento de candidaturas" # The application description
   copyright: "(c) 2026, FRF Tecnology" # Copyright text
-  comments: "Central de Candidaturas" # Comments
+  comments: "Applyer" # Comments
   version: "0.1.0" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension

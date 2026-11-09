@@ -10,7 +10,7 @@ version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "Central de Candidaturas"
+description: "Applyer: candidaturas de emprego no seu PC"
 vendor: "FRF Tecnology"
 homepage: "https://wails.io"
 license: "MIT"

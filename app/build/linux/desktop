@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Name=Central de Candidaturas
-Comment=Central de Candidaturas
+Name=Applyer
+Comment=Applyer: candidaturas de emprego no seu PC
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/central.exe %u
 Terminal=false

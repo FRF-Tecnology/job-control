@@ -8,10 +8,10 @@
 			"FileVersion": "0.1.0",
 			"ProductVersion": "0.1.0",
 			"CompanyName": "FRF Tecnology",
-			"FileDescription": "Central de Candidaturas",
+			"FileDescription": "Applyer",
 			"LegalCopyright": "FRF Tecnology",
-			"ProductName": "Central de Candidaturas",
-			"Comments": "This is a comment"
+			"ProductName": "Applyer",
+			"Comments": "Applyer: candidaturas de emprego no seu PC"
 		}
 	}
 }
