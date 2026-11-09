@@ -41,7 +41,8 @@ const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r:
 ];
 
 function lerHash() {
-  const [, rota = 'hoje', vaga] = location.hash.split('/');
+  // "?..." no fim (ex.: #/fila?preparar=<vagaId>, vindo de um pedido) é da tela, não muda a rota.
+  const [, rota = 'hoje', vaga] = location.hash.split('?')[0].split('/');
   const tela = TELAS.find(t => t.rota === rota) ?? TELAS[0];
   let id: string | null = null;
   try { id = vaga ? decodeURIComponent(vaga) : null; } catch { id = null; }
@@ -187,7 +188,7 @@ export default function App() {
 
   const app: AppApi | null = useMemo(() => {
     if (!estado) return null;
-    const api = (caminho: string, metodo = 'GET', corpo?: unknown) => chamarApi(caminho, metodo, corpo);
+    const api = (caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) => chamarApi(caminho, metodo, corpo, cabecalhos);
     const agir = async (fn: () => Promise<unknown>, mensagem?: string) => {
       try {
         await fn();
