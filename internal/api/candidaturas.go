@@ -299,11 +299,11 @@ var errLoteSemMudanca = errors.New("lote sem aprovação")
 // aprovarLote (jc-a2y.6.13): aprova a "Lista do dia" de uma vez, só pela tela. Cada item com a impressão que a tela
 // mostrou; numa transação só; item recusado não afeta os outros. O log leva só os números.
 func (a *API) aprovarLote(ctx context.Context, c Objeto, autor string) (Resposta, error) {
+	if autor != "eu" { // antes de tudo, inclusive do corpo: o assistente sempre leva 403
+		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa pode aprovar candidaturas"}
+	}
 	if err := soCampos(c, "itens"); err != nil {
 		return Resposta{}, err
-	}
-	if autor != "eu" {
-		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa pode aprovar candidaturas"}
 	}
 	lista, eLista := c["itens"].([]any)
 	if !eLista || len(lista) == 0 || len(lista) > dominio.MaxItensLote {

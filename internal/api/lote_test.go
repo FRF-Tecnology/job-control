@@ -36,6 +36,19 @@ func TestAprovarLotePelaAPI(t *testing.T) {
 	if r := f.comoAssistente("POST", "/candidaturas/aprovar-lote", Objeto{"itens": []any{}}); r.Status != 403 {
 		t.Fatalf("assistente com lista vazia = %d; queria 403", r.Status)
 	}
+	// O autor vem antes de tudo, inclusive do corpo estrito (nota do CyberSec no #104).
+	for nome, corpo := range map[string]Objeto{
+		"campo a mais":      {"itens": []any{item(c1)}, "todos": true},
+		"sem itens":         {},
+		"itens não é lista": {"itens": "todos"},
+	} {
+		if r := f.comoAssistente("POST", "/candidaturas/aprovar-lote", corpo); r.Status != 403 {
+			t.Fatalf("assistente com corpo inválido (%s) = %d; queria 403", nome, r.Status)
+		}
+	}
+	if f.versao() != antes {
+		t.Fatal("o assistente gravou")
+	}
 
 	// Corpo estrito: nada aprovado.
 	for nome, corpo := range map[string]Objeto{
