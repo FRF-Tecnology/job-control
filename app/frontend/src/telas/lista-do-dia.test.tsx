@@ -143,6 +143,16 @@ describe('Lista do dia', () => {
     cartao.remove();
   });
 
+  it('formulário sem leitura ou com pendente fica fora; recusa "faltam-respostas" em frase fixa (jc-a2y.7.2.4)', async () => {
+    const sem = { ...cand('a', 'gupy', 'preparada', 1), plataforma: 'formulario', estrutura: null, pendentes: [] };
+    const pend = { ...cand('b', 'gupy', 'preparada', 2), plataforma: 'formulario', estrutura: { hash: 'h', urlFinal: 'u', perguntas: [] }, pendentes: ['q1'] };
+    const pronto = { ...cand('c', 'gupy', 'preparada', 3), plataforma: 'formulario', estrutura: { hash: 'h', urlFinal: 'u', perguntas: [] }, pendentes: [] };
+    const { avisos } = montar({ candidaturas: [sem, pend, pronto], calculadas: { a: IMP(1), b: IMP(2), c: IMP(3) }, retorno: { aprovadas: [], recusadas: [{ id: 'c', motivo: 'faltam-respostas' }] } });
+    expect(screen.getAllByRole('checkbox').map(c => (c.closest('label') as HTMLElement).querySelector('strong')!.textContent)).toEqual(['Empresa C — Dev']);
+    await clicar(aprovarLista());
+    expect(avisos).toContainEqual({ texto: 'Empresa C — Dev ficou de fora: o formulário tem pergunta obrigatória sem resposta.', erro: true });
+  });
+
   it('nada preparado e conferido: a seção não aparece', () => {
     montar({ candidaturas: [cand('a', 'linkedin', 'aprovada', 1)], calculadas: {} });
     expect(screen.queryByRole('region', { name: 'Lista do dia' })).toBeNull();
