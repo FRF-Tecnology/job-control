@@ -101,6 +101,13 @@ func novoServidor(t *testing.T) *servidorFicticio {
 		"empresa-teste.gupy.io POST /jobs/9000001/apply":    receber(true),
 		"ats.exemplo.io GET /form/1":                        pagina("ats-externo.html"),
 		"ats.exemplo.io POST /form/1/enviar":                receber(true),
+		// P0 da .6.5: a sessão caiu e o LinkedIn manda para o authwall.
+		"www.linkedin.com GET /jobs/view/9000000015": func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/authwall?trk=ficticio", http.StatusFound)
+		},
+		"www.linkedin.com GET /authwall": func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `<!doctype html><html><body><h1>Entre para ver esta vaga</h1></body></html>`)
+		},
 		"www.linkedin.com GET /jobs/view/9000000003": func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "https://ats.exemplo.io/form/1", http.StatusFound)
 		},
@@ -323,6 +330,17 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 					t.Errorf("%s: chegou campo fora do pacote: %s", v.descricao, k)
 				}
 			}
+		}
+	})
+
+	t.Run("LinkedIn manda para o authwall: bloqueada por login, sem enviar (P0 da .6.5)", func(t *testing.T) {
+		antes := len(srv.envios())
+		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000015"))
+		if d.Estado != dominio.CandBloqueada || d.Motivo != "login" || len(srv.envios()) != antes {
+			t.Fatalf("desfecho = %+v, envios %d → %d", d, antes, len(srv.envios()))
+		}
+		if strings.Contains(saida.String(), "authwall") {
+			t.Error("o endereço foi para o log")
 		}
 	})
 
