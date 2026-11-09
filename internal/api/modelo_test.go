@@ -13,10 +13,10 @@ func TestModeloSoComCaracteresSeguros(t *testing.T) {
 	if st, c := chamarHTTP(t, a, "PUT", Prefixo+"/ia/config", `{"provedor":"claude-cli","modelo":"haiku"}`); st != 200 {
 		t.Fatalf("modelo válido = %d %s", st, c)
 	}
-	for _, modelo := range []string{`haiku\" & calc & rem \"`, "haiku\nopus", "haiku|x", "haiku^x", "%PATH%", "haiku>x", "a(b)", "haiku!", "haʺiku"} {
+	for _, modelo := range []string{`haiku\" & calc & rem \"`, "haiku\nopus", "haiku|x", "haiku^x", "%PATH%", "haiku>x", "a(b)", "haiku!", "haʺiku", "--dangerously-skip-permissions", "-m", "--x"} {
 		corpo, _ := json.Marshal(map[string]string{"provedor": "claude-cli", "modelo": modelo})
 		st, c := chamarHTTP(t, a, "PUT", Prefixo+"/ia/config", string(corpo))
-		if st != 400 || !strings.Contains(c, "o nome do modelo") {
+		if st != 400 || !strings.Contains(c, "o nome do modelo não pode começar com -") {
 			t.Fatalf("modelo %q = %d %s", modelo, st, c)
 		}
 	}
