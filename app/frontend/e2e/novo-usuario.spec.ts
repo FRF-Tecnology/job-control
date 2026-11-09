@@ -149,6 +149,25 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect(naFila.getByText(editada.impressao)).toBeVisible();
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Limite de hoje' }).getByText('LinkedIn')).toBeVisible();
+
+  // 10. Aprovar (jc-a2y.6.3.2): a tela manda a impressão que ela calculou; o servidor só aceita se for a atual.
+  //     Depois tira a aprovação e cancela, cada um com o efeito conferido na API.
+  const estadoNaApi = async () => (await (await page.request.get(`/api/v1/candidaturas/${criada.id}`)).json()).estado;
+  await naFila.getByRole('button', { name: 'Aprovar este pacote' }).click();
+  const dlgFila = page.locator('dialog#dialogo');
+  await expect(dlgFila.getByRole('heading')).toHaveText('Aprovar e enviar este pacote?');
+  await dlgFila.getByRole('button', { name: 'Aprovar e enviar' }).click();
+  await expect(page.getByText('Aprovado. O app envia este pacote hoje, uma vez.')).toBeVisible();
+  expect(await estadoNaApi()).toBe('aprovada');
+  await expect(naFila.getByText(/Aprovada até/)).toBeVisible();
+  await naFila.getByRole('button', { name: 'Tirar aprovação' }).click();
+  await expect(page.getByText('Aprovação retirada. O pacote voltou para revisão.')).toBeVisible();
+  expect(await estadoNaApi()).toBe('preparada');
+  await naFila.getByRole('button', { name: 'Cancelar candidatura' }).click();
+  await dlgFila.getByRole('button', { name: 'Cancelar candidatura' }).click();
+  await expect(page.getByText('Candidatura cancelada.')).toBeVisible();
+  expect(await estadoNaApi()).toBe('cancelada');
+  await expect(naFila.getByText('Cancelada', { exact: true })).toBeVisible();
 });
 
 test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ page }, info) => {
