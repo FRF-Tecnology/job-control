@@ -89,7 +89,7 @@ O pedido que a IA não consegue mapear vira `recusar/nao-entendi`. Pedidos como 
 
 | Rota | Quem | Respostas |
 |---|---|---|
-| `POST /pedidos/{id}/interpretar` | qualquer autor (não grava nada no domínio) | 200 pedido com `proposta`; 404; 409 se o pedido não está `aberto`, ou se já há uma interpretação em andamento; 400 sem IA conectada; 422 IA fora do contrato; 502 provedor fora |
+| `POST /pedidos/{id}/interpretar` | **só a tela** (`x-so-tela`: gasta a IA da pessoa; não grava nada no domínio; vindo do assistente dá 403) | 200 pedido com `proposta`; 404; 409 se o pedido não está `aberto`, ou se já há uma interpretação em andamento; 400 sem IA conectada; 403 vindo do assistente; 422 IA fora do contrato; 502 provedor fora |
 | `POST /vagas` e `POST /vagas/{id}/mover`, que já existem, com `X-Pedido` e `X-Impressao` | **só a tela** com esses cabeçalhos (vindo do assistente dá 403) | a resposta normal da rota, e o pedido vira `feito`; 409 se o pedido não está em `proposta` ou se a impressão da chamada recebida é diferente da guardada (nada muda) |
 | `POST /pedidos/{id}/descartar` | qualquer autor (só reduz o risco) | 200 pedido `aberto`, sem a proposta |
 
