@@ -10,8 +10,8 @@ afterEach(cleanup);
 
 const IMP = (n: number) => 'sha256:v1:' + String(n).repeat(64).slice(0, 64);
 const cand = (id: string, plataforma: string, estado: string, n: number, criadaEm = `2026-11-09T10:0${n}:00-03:00`) => ({
-  id, plataforma, estado, impressao: IMP(n), criadaEm,
-  conteudo: { curriculo: { arquivo: 'curriculo-exemplo.pdf' }, contato: { nome: 'Ana Exemplo' }, pretensao: null, respostas: [{}, {}], mensagem: null },
+  id, plataforma, estado, impressao: IMP(n), criadaEm, url: `https://vagas.exemplo.com/${id}`,
+  conteudo: { curriculo: { arquivo: 'curriculo-exemplo.pdf' }, contato: { nome: 'Ana Exemplo' }, pretensao: null as any, respostas: [{ origem: 'respostasPadrao' }, { origem: 'respostasPadrao' }] as { origem?: string }[], mensagem: null as string | null },
 });
 const NOMES: Record<string, string> = { a: 'Empresa A — Dev', b: 'Empresa B — Dev', c: 'Empresa C — Dev', d: 'Empresa D — Dev', e: 'Empresa E — Dev' };
 
@@ -46,7 +46,7 @@ describe('Lista do dia', () => {
     const lista = screen.getByRole('region', { name: 'Lista do dia' });
     expect(within(lista).getAllByRole('checkbox')).toHaveLength(1);
     expect(within(lista).getByText('Empresa A — Dev')).toBeTruthy();
-    expect(within(lista).getByText('LinkedIn · curriculo-exemplo.pdf · 2 respostas')).toBeTruthy();
+    expect(within(lista).getByText('LinkedIn (vagas.exemplo.com) · curriculo-exemplo.pdf · 2 respostas · sem pretensão')).toBeTruthy();
     expect(within(lista).getByText(/1 pacote está fora da lista: ainda conferindo, ou a impressão não bate/)).toBeTruthy();
     expect(aprovarLista().textContent).toBe('Aprovar a lista do dia (1)');
   });
@@ -110,6 +110,39 @@ describe('Lista do dia', () => {
     expect(avisos).toContainEqual({ texto: 'Empresa B — Dev ficou de fora: não está mais na fila.', erro: true });
     expect(avisos).toContainEqual({ texto: 'Empresa C — Dev ficou de fora: a vaga saiu de Aplicar ou já foi enviada.', erro: true });
   });
+
+  it('com mensagem ou resposta fora das padrão começa desmarcado, com aviso; marcar de volta inclui', async () => {
+    const comMsg = cand('a', 'linkedin', 'preparada', 1); comMsg.conteudo.mensagem = 'Olá, tenho interesse.';
+    const editada = cand('b', 'linkedin', 'preparada', 2); editada.conteudo.respostas = [{ origem: 'respostasPadrao' }, { origem: 'editada' }];
+    const semOrigem = cand('c', 'gupy', 'preparada', 3); semOrigem.conteudo.respostas = [{}];
+    const limpa = cand('d', 'gupy', 'preparada', 4);
+    const { gravacoes } = montar({ candidaturas: [comMsg, editada, semOrigem, limpa], calculadas: { a: IMP(1), b: IMP(2), c: IMP(3), d: IMP(4) } });
+    const marcados = () => screen.getAllByRole('checkbox').map(c => (c as HTMLInputElement).checked);
+    expect(marcados()).toEqual([false, false, false, true]);
+    expect(screen.getAllByText('Tem mensagem ou resposta que não veio do perfil: revise antes de aprovar.')).toHaveLength(3);
+    expect(aprovarLista().textContent).toBe('Aprovar a lista do dia (1)');
+    await clicar(screen.getByRole('checkbox', { name: /Empresa B/ }));
+    await clicar(aprovarLista());
+    expect(gravacoes[0].corpo.itens.map((i: any) => i.id)).toEqual(['b', 'd']);
+  });
+
+  it('o resumo mostra o valor da pretensão; "Ver pacote" abre o pacote inteiro do cartão na fila', async () => {
+    const a = cand('a', 'gupy', 'preparada', 1); a.conteudo.pretensao = { valor: 9000, moeda: 'BRL', tipo: 'CLT' };
+    const b = cand('b', 'gupy', 'preparada', 2); b.conteudo.pretensao = { valor: 5000.5, moeda: 'BRL', tipo: 'PJ' };
+    montar({ candidaturas: [a, b], calculadas: { a: IMP(1), b: IMP(2) } });
+    expect(screen.getByText(/^Gupy \(vagas\.exemplo\.com\) · curriculo-exemplo\.pdf · 2 respostas · pretensão R\$\s9\.000 CLT$/)).toBeTruthy();
+    expect(screen.getByText(/pretensão R\$\s5\.000,50 PJ$/)).toBeTruthy(); // centavos não somem nem arredondam
+    const cartao = document.createElement('article');
+    cartao.dataset.testid = 'a';
+    cartao.innerHTML = '<details class="pacote"><summary>Pacote</summary><p>conteúdo</p></details>';
+    cartao.scrollIntoView = vi.fn();
+    document.body.appendChild(cartao);
+    await clicar(screen.getByRole('button', { name: 'Ver o pacote de Empresa A — Dev' }));
+    expect((cartao.querySelector('details') as HTMLDetailsElement).open).toBe(true);
+    expect(document.activeElement).toBe(cartao.querySelector('summary'));
+    cartao.remove();
+  });
+
   it('nada preparado e conferido: a seção não aparece', () => {
     montar({ candidaturas: [cand('a', 'linkedin', 'aprovada', 1)], calculadas: {} });
     expect(screen.queryByRole('region', { name: 'Lista do dia' })).toBeNull();

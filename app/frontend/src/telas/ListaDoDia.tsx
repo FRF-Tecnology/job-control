@@ -7,8 +7,8 @@ import { useMemo, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 
 type Cand = {
-  id: string; plataforma: string; estado: string; impressao: string; criadaEm: string;
-  conteudo: { curriculo: { arquivo: string }; contato?: object | null; pretensao?: { valor?: number; moeda?: string; tipo?: string } | null; respostas: unknown[]; mensagem?: string | null };
+  id: string; plataforma: string; url: string; estado: string; impressao: string; criadaEm: string;
+  conteudo: { curriculo: { arquivo: string }; contato?: object | null; pretensao?: { valor?: number; moeda?: string; tipo?: string } | null; respostas: { origem?: string }[]; mensagem?: string | null };
 };
 type Limite = { limite: number; usadas: number };
 
@@ -22,12 +22,34 @@ const MOTIVO: Record<string, string> = {
 };
 const MAXIMO_ITENS = 120; // corpo estrito do contrato: de 1 a 120 itens
 
+// Pacote com mensagem, ou com resposta que não veio das respostas padrão (editada ou nova), começa desmarcado: a
+// pessoa revê um a um (revisão do CyberSec no #102).
+const precisaRever = (c: Cand) => !!c.conteudo.mensagem || c.conteudo.respostas.some(r => r.origem !== 'respostasPadrao');
+const host = (url: string) => { try { return new URL(url).host; } catch { return ''; } };
+const dinheiro = (p: NonNullable<Cand['conteudo']['pretensao']>) => {
+  // Sem centavos só quando o valor é inteiro: arredondar mudaria o que a pessoa aprova.
+  const casas = Number.isInteger(p.valor ?? 0) ? 0 : 2;
+  const valor = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: p.moeda ?? 'BRL', minimumFractionDigits: casas, maximumFractionDigits: casas }).format(p.valor ?? 0);
+  return p.tipo ? `${valor} ${p.tipo}` : valor;
+};
+
+// Leva ao cartão da candidatura na fila e abre o pacote inteiro.
+function verPacote(id: string) {
+  const cartao = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+  if (!cartao) return;
+  const pacote = cartao.querySelector<HTMLDetailsElement>('details.pacote');
+  if (pacote) pacote.open = true;
+  cartao.scrollIntoView({ block: 'start' });
+  (pacote?.querySelector<HTMLElement>('summary') ?? cartao).focus();
+}
+
 export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma, onFeito }: {
   candidaturas: Cand[]; calculadas: Record<string, string>; limites: Record<string, Limite>;
   nome: (c: Cand) => string; plataforma: (p: string) => string; onFeito: () => void;
 }) {
   const app = useApp();
-  const [tiradas, setTiradas] = useState<Set<string>>(new Set());
+  const [escolha, setEscolha] = useState<Record<string, boolean>>({}); // o que a pessoa marcou ou desmarcou
+  const marcado = (c: Cand) => escolha[c.id] ?? !precisaRever(c);
   const [ocupado, setOcupado] = useState(false);
 
   const { cabem, ficam, foraDaConferencia } = useMemo(() => {
@@ -45,9 +67,9 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
   }, [candidaturas, calculadas, limites]);
 
   if (!cabem.length && !ficam.length) return null; // nada preparado e conferido: o painel de envio já diz o que fazer
-  const escolhidas = cabem.filter(c => !tiradas.has(c.id));
+  const escolhidas = cabem.filter(marcado);
 
-  const alternar = (id: string) => setTiradas(t => { const n = new Set(t); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const alternar = (c: Cand) => setEscolha(e => ({ ...e, [c.id]: !marcado(c) }));
 
   async function aprovar() {
     // Na ordem da tela: é a ordem em que o servidor aplica o limite do dia.
@@ -70,7 +92,7 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
         const c = lista.find(i => i.c.id === x.id)?.c;
         app.aviso(`${c ? nome(c) : 'Uma candidatura'} ficou de fora: ${MOTIVO[x.motivo ?? ''] ?? MOTIVO['impressao-mudou']}.`, true);
       }
-      setTiradas(new Set());
+      setEscolha({});
       onFeito();
     } catch (e) {
       app.aviso(e instanceof ErroApi && e.status === 403 ? 'Só você pode aprovar a lista, por esta tela.' : 'Não deu para aprovar a lista. Tente de novo.', true);
@@ -79,8 +101,8 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
 
   const resumo = (c: Cand) => {
     const k = c.conteudo;
-    const pret = k.pretensao?.valor ? ` · pretensão ${k.pretensao.tipo ?? ''}`.trimEnd() : '';
-    return `${plataforma(c.plataforma)} · ${k.curriculo.arquivo} · ${k.respostas.length} ${k.respostas.length === 1 ? 'resposta' : 'respostas'}${pret}${k.mensagem ? ' · com mensagem' : ''}`;
+    const pret = k.pretensao?.valor ? ` · pretensão ${dinheiro(k.pretensao)}` : ' · sem pretensão';
+    return `${plataforma(c.plataforma)} (${host(c.url)}) · ${k.curriculo.arquivo} · ${k.respostas.length} ${k.respostas.length === 1 ? 'resposta' : 'respostas'}${pret}${k.mensagem ? ' · com mensagem' : ''}`;
   };
 
   return (
@@ -88,7 +110,7 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
       <div className="lista-topo">
         <div>
           <h2 id="lista-do-dia-titulo">Lista do dia</h2>
-          <p className="mudo">Revise o resumo, tire o que não quiser e aprove tudo de uma vez. Cada pacote abaixo, na fila, mostra o conteúdo inteiro.</p>
+          <p className="mudo">Revise o resumo, tire o que não quiser e aprove tudo de uma vez. "Ver pacote" mostra o conteúdo inteiro.</p>
         </div>
         <button className="botao" type="button" disabled={ocupado || !escolhidas.length} onClick={aprovar}>
           {`Aprovar a lista do dia (${escolhidas.length})`}
@@ -99,9 +121,14 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
           {cabem.map(c => (
             <li key={c.id}>
               <label>
-                <input type="checkbox" checked={!tiradas.has(c.id)} onChange={() => alternar(c.id)} />
-                <span><strong>{nome(c)}</strong><span className="pequeno mudo">{resumo(c)}</span></span>
+                <input type="checkbox" checked={marcado(c)} onChange={() => alternar(c)} />
+                <span>
+                  <strong>{nome(c)}</strong>
+                  <span className="pequeno mudo">{resumo(c)}</span>
+                  {precisaRever(c) && <span className="pequeno rever">Tem mensagem ou resposta que não veio do perfil: revise antes de aprovar.</span>}
+                </span>
               </label>
+              <button className="botao-fantasma p" type="button" aria-label={`Ver o pacote de ${nome(c)}`} onClick={() => verPacote(c.id)}>Ver pacote</button>
             </li>
           ))}
         </ul>
