@@ -3,7 +3,9 @@
 // nos dois temas, 375 px sem rolagem lateral, os cabeçalhos do Confirmar e "Abrir a Fila" até o cartão da vaga.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { interceptar } from './dados-fila';
+import { alterarEstado, interceptar, soltarRotas } from './dados-fila';
+
+test.afterEach(async ({ page }) => { await soltarRotas(page); });
 
 const IMP = 'sha256:v1:' + 'ab'.repeat(32);
 const CHAMADA = { metodo: 'POST', caminho: '/vagas', corpo: { link: 'https://vagas.exemplo.com/1', empresa: 'Empresa Nova Exemplo', titulo: 'Pessoa Dev' } };
@@ -21,11 +23,9 @@ const pedidos = (hoje: string) => [
 
 async function preparar(page: Page) {
   await interceptar(page); // a vaga ext-exemplo-1 (Aplicar) e a fila falsa, que tem a candidatura dela
-  await page.route('**/api/v1/estado', async r => {
-    const res = await r.fetch();
-    const estado = await res.json();
+  await alterarEstado(page, estado => {
     const vaga = { id: 'ext-exemplo-1', empresa: 'Empresa Exemplo', titulo: 'Pessoa Dev React', link: 'https://www.linkedin.com/jobs/view/123', plataforma: 'linkedin', etapa: 'aplicar', aderencia: 'A' };
-    r.fulfill({ response: res, json: { ...estado, vagas: [...estado.vagas, vaga], pedidos: [...(estado.pedidos ?? []), ...pedidos(estado.hoje)] } });
+    return { ...estado, vagas: [...estado.vagas, vaga], pedidos: [...(estado.pedidos ?? []), ...pedidos(estado.hoje)] };
   });
   await page.route('**/api/v1/ia/config', r => r.fulfill({ json: { configurada: true, provedor: 'claude-cli' } }));
   await page.goto('/#/hoje');

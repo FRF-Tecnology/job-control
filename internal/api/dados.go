@@ -141,8 +141,30 @@ func (a *API) rotasDados(ctx context.Context, m, p string, c Objeto, autor strin
 	case m == "POST" && p == "/navegador/entrar":
 		r, err := a.entrarNoNavegador(ctx, c, autor)
 		return r, true, err
+	case m == "GET" && p == "/dados/pasta":
+		r, err := a.estadoDaPasta(ctx)
+		return r, true, err
 	}
 	return Resposta{}, false, nil
+}
+
+// avisosDaPasta: lista fechada do contrato (o mesmo texto de config.AvisoAntigaFicou e config.AvisoMigracaoAdiada).
+var avisosDaPasta = map[string]bool{config.AvisoAntigaFicou: true, config.AvisoMigracaoAdiada: true}
+
+// estadoDaPasta (jc-etv.14): {aviso, migradaEm}, sem caminho. O aviso é o desta abertura (Opcoes.AvisoPasta); fora
+// da lista, null. migradaEm vem da meta "pasta" que o app grava no rename; só texto passa.
+func (a *API) estadoDaPasta(ctx context.Context) (Resposta, error) {
+	o := Objeto{"aviso": nil, "migradaEm": nil}
+	if avisosDaPasta[a.avisoPasta] {
+		o["aviso"] = a.avisoPasta
+	}
+	var meta map[string]any
+	if achou, err := a.arm.LerMeta(ctx, "pasta", &meta); err == nil && achou {
+		if em, ok := meta["migradaEm"].(string); ok && em != "" {
+			o["migradaEm"] = em
+		}
+	}
+	return ok(o)
 }
 
 // semEnvioEmAndamento: com candidatura em enviando, o executor está numa página: nada é apagado (409).
@@ -179,6 +201,10 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	// 1) Para o executor: espera o ciclo acabar e o Chrome sair (no build padrão, não faz nada). Só depois confere
 	// enviando, para não haver corrida com um envio que começasse no meio. Com 409, o executor fica parado.
 	a.pararEnvio()
+	if a.aoVivo != nil { // apagar os dados desliga o ao vivo e apaga o quadro (jc-a2y.6.9)
+		a.aoVivo.Ligar(false)
+		a.aoVivo.Limpar()
+	}
 	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora: nada foi apagado, e o envio ficou parado até você abrir o app de novo"); err != nil {
 		return Resposta{}, err
 	}
@@ -244,6 +270,7 @@ func (a *API) sairDasPlataformas(ctx context.Context, c Objeto, autor string) (R
 		return Resposta{}, err
 	}
 	a.fecharNavegador()
+	a.limparAoVivo() // sair das plataformas apaga o quadro (jc-a2y.6.9)
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}}
 	res.item(itemNavegador, removerTudo(config.PastaNavegador(pasta)))
 	if antiga := config.PastaAntigaQueFicou(pasta); antiga != "" { // a sessão que ficou na pasta antiga (jc-etv.7)

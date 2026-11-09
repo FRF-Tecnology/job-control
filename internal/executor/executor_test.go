@@ -195,6 +195,7 @@ type cenario struct {
 	logs    []string
 	esperas []time.Duration
 	n       int
+	etapas  []string // "Ao vivo" (jc-a2y.6.9): etapa de cada passo, como o painel recebe
 }
 
 var sp = func() *time.Location { l, _ := time.LoadLocation("America/Sao_Paulo"); return l }()
@@ -225,6 +226,7 @@ func novoCenario(t *testing.T, paginas ...*paginaFalsa) *cenario {
 		Esperar:           func(ctx context.Context, d time.Duration) error { s.esperas = append(s.esperas, d); return ctx.Err() },
 		Sortear:           func() float64 { return 0.5 },
 		Log:               func(f string, a ...any) { s.logs = append(s.logs, fmt.Sprintf(f, a...)) },
+		Etapa:             func(id, etapa string) { s.etapas = append(s.etapas, etapa) },
 	})
 	return s
 }
@@ -826,5 +828,40 @@ func TestReabrirOAppVoltaPausado(t *testing.T) {
 		if o["id"] == id && o["estado"] != "aprovada" {
 			t.Fatalf("estado = %v", o["estado"])
 		}
+	}
+}
+
+// "Ao vivo" (jc-a2y.6.9): o executor conta ao painel em que passo está, só com valores da lista fechada (nada da
+// página), e termina com o desfecho. "outra" nunca abre página: nenhuma etapa.
+func TestEtapasDoAoVivo(t *testing.T) {
+	// Um cenário por caso: com o .6.11, um captcha para a plataforma até amanhã, e o próximo envio não sairia.
+	for _, c := range []struct {
+		nome   string
+		ajuste func(p *paginaFalsa)
+		quer   string
+	}{
+		{"enviada", func(p *paginaFalsa) { p.final = linkLI + "/apply" }, "abrindo preenchendo revisando enviando confirmada"},
+		{"sem confirmação", func(p *paginaFalsa) { p.confirma = false }, "abrindo preenchendo revisando enviando incerta"},
+		{"captcha ao abrir", func(p *paginaFalsa) { p.bloqueios = []string{"captcha"} }, "abrindo bloqueada"}, // antes de preencher
+		// .6.11: falha técnica antes de interagir devolve a candidatura para aprovada; o painel volta a sem envio.
+		{"erro ao abrir", func(p *paginaFalsa) { p.errAbrir = errors.New("rede") }, "abrindo sem-envio"},
+		{"erro ao preencher", func(p *paginaFalsa) { p.errPreencher = errors.New("campo sumiu") }, "abrindo preenchendo falhou"},
+	} {
+		p := novaPagina()
+		c.ajuste(p)
+		s := novoCenario(t, p)
+		s.enviar(s.aprovada("linkedin", linkLI))
+		if got := strings.Join(s.etapas, " "); got != c.quer {
+			t.Errorf("%s: etapas %q; queria %q", c.nome, got, c.quer)
+		}
+	}
+	s := novoCenario(t)
+	s.enviar(s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1"))
+	if len(s.etapas) != 0 {
+		t.Fatalf("outra: etapas %v", s.etapas)
+	}
+	// Sem o gancho (padrão), nada quebra.
+	if Novo(s.arm, Opcoes{}).o.Etapa == nil {
+		t.Fatal("Etapa nil no padrão")
 	}
 }

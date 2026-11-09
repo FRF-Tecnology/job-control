@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.13.0
+  version: 0.14.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -276,8 +276,8 @@ paths:
                         id: { type: string, pattern: '^cand-' }
                         motivo:
                           type: string
-                          enum: [nao-encontrada, estado, impressao-mudou, vaga-fora, limite]
-                          description: 'Lista fechada, sem texto da candidatura: nao-encontrada; estado (não está mais em preparada); impressao-mudou (o pacote mudou depois que a tela mostrou: revise de novo); vaga-fora (a vaga saiu de aplicar ou já foi enviada); limite (o limite do dia da plataforma acabou)'
+                          enum: [nao-encontrada, estado, impressao-mudou, vaga-fora, limite, faltam-respostas]
+                          description: 'Lista fechada, sem texto da candidatura: nao-encontrada; estado (não está mais em preparada); impressao-mudou (o pacote mudou depois que a tela mostrou: revise de novo); vaga-fora (a vaga saiu de aplicar ou já foi enviada); limite (o limite do dia da plataforma acabou). faltam-respostas (jc-a2y.7.2): formulário sem a estrutura lida ou com pergunta obrigatória sem resposta'
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
   /candidaturas/{id}:
@@ -438,11 +438,10 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
 
-  # Pasta de dados migrada para Applyer (jc-etv.7, docs/propostas/applyer-nomes-internos.md, item 1). Proposta: ainda
-  # não atendida. Nunca traz caminho.
+  # Pasta de dados migrada para Applyer (jc-etv.7, docs/propostas/applyer-nomes-internos.md, item 1; rota no jc-etv.14).
+  # Nunca traz caminho. Só leitura: qualquer autor.
   /dados/pasta:
     get:
-      x-proposta: true
       summary: 'O que aconteceu com a pasta de dados ao abrir o app, para a tela avisar: {aviso, migradaEm}. aviso: null; pasta-antiga-ficou (as duas pastas existem: o app usa a Applyer, e a antiga continua lá para a pessoa decidir; nada é juntado sozinho); ou migracao-adiada (a pasta antiga está em uso por outro programa: o app usa a antiga nesta vez e renomeia na próxima abertura). migradaEm: quando a pasta foi renomeada, ou null. Sem caminho, sem nome de usuário'
       responses:
         '200':
@@ -554,6 +553,35 @@ paths:
         '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
+  # "Ao vivo" (jc-a2y.6.9, docs/propostas/ao-vivo.md): a imagem do navegador do envio dentro do app, só para ver.
+  # Só no app com o envio (build envio_dev, pelo Handler da janela do Wails, sem porta
+  # de rede); 404 no build padrão e no central-dev.
+  /envio/ao-vivo:
+    get:
+      x-so-tela: true
+      summary: 'Etapa do envio agora e o último quadro do navegador do envio (só a aba do envio; a janela de login nunca). Só a tela da janela do app: o Handler exige Sec-Fetch-Site same-origin e o Host da janela; o assistente, a CLI, o MCP e programas de fora recebem 403. Ler mantém o "ao vivo" ligado: sem leitura por 10 s, desliga sozinho (painel fechado)'
+      responses:
+        '200': { description: Estado do ao vivo, content: { application/json: { schema: { $ref: '#/components/schemas/AoVivo' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+    post:
+      x-so-tela: true
+      summary: 'Liga (só a pessoa, pela tela) ou desliga (qualquer autor) o ao vivo. Ligado: o navegador do envio manda quadros (CDP Page.startScreencast) só enquanto há candidatura em enviando; desligado: para (stopScreencast) e o quadro em memória é apagado. Começa desligado a cada abertura do app'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ligado]
+              properties:
+                ligado: { type: boolean }
+      responses:
+        '200': { description: Estado do ao vivo, content: { application/json: { schema: { $ref: '#/components/schemas/AoVivo' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   # Ver o envio (jc-a2y.6.7). O padrão é sem janela, para não pegar o foco, o mouse nem o teclado de quem usa o PC.
   # A janela só aparece quando a pessoa pede, e volta a oculta a cada abertura do app.
   # Envio que se vira sozinho (jc-a2y.6.11, docs/propostas/envio-resiliente.md).
@@ -801,6 +829,28 @@ components:
                   opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
         pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2 (proposta): ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
         preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (proposta, decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
+    AoVivo:
+      type: object
+      additionalProperties: false
+      required: [ligado, etapa, candidatura, quadro]
+      description: 'jc-a2y.6.9. Só visualização: não há rota de clique nem de tecla'
+      properties:
+        ligado: { type: boolean }
+        etapa:
+          type: string
+          enum: [desligado, sem-envio, abrindo, preenchendo, revisando, enviando, confirmada, bloqueada, falhou, incerta, login-aberto, pausado]
+          description: 'Lista fechada, sem texto da página. login-aberto: a janela "Entrar nas plataformas" está aberta (sem quadro). pausado: o envio geral está pausado (sem quadro). confirmada, bloqueada, falhou e incerta ficam até a próxima candidatura ou até 30 s'
+        candidatura: { type: [string, 'null'], pattern: '^cand-', description: 'A candidatura em enviando (ou a que acabou de terminar); null sem envio' }
+        quadro:
+          type: [object, 'null']
+          additionalProperties: false
+          required: [imagem, em, largura, altura]
+          description: 'Só o último quadro, só em memória (nunca disco, temp, log, banco ou backup), apagado ao terminar a candidatura, pausar, sair das plataformas, apagar os dados, desligar o ao vivo e fechar o app. null sem envio, com login aberto, pausado ou desligado'
+          properties:
+            imagem: { type: string, pattern: '^data:image/jpeg;base64,[A-Za-z0-9+/=]+$', maxLength: 400000, description: 'JPEG de qualidade baixa (no máximo 1280×800), para <img src> (a CSP da tela libera img-src data:). Nunca vai para innerHTML' }
+            em: { type: string, description: 'Quando o quadro chegou' }
+            largura: { type: integer, maximum: 1280 }
+            altura: { type: integer, maximum: 800 }
     EstadoEnvio:
       type: object
       additionalProperties: false

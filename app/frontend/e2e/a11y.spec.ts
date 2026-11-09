@@ -3,7 +3,9 @@
 // o envio vêm interceptados com dados fictícios, para cobrir os estados que o central-dev não produz.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { interceptar } from './dados-fila';
+import { interceptar, soltarRotas } from './dados-fila';
+
+test.afterEach(async ({ page }) => { await soltarRotas(page); });
 
 const axe = async (page: Page) => {
   await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
