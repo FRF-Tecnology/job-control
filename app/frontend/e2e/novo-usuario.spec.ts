@@ -108,8 +108,9 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   const eventos = (await (await page.request.get('/api/v1/estado')).json()).eventos.filter((e: any) => e.tipo === 'aplicar' && e.vagaId.startsWith('ext-grupo-'));
   expect(eventos.map((e: any) => `${e.vagaId}:${e.autor}`).sort()).toEqual(['ext-grupo-a-1:eu', 'ext-grupo-a-2:eu']);
 
-  // 9. Fila (P5, jc-a2y.6.3.1): uma candidatura criada no servidor aparece com o pacote exato, e a impressão que a
-  //    tela calcula bate com a do servidor ("Conferida nesta tela"). Currículo e dados fictícios.
+  // 9. Fila (P5, jc-a2y.6.3.1 e .6.3.3): a pessoa prepara a candidatura pela tela, com o pacote vindo do perfil e
+  //    da pasta de currículos; a impressão que a tela calcula bate com a do servidor ("Conferida nesta tela");
+  //    depois edita o pacote. Currículo e dados fictícios.
   const pasta = process.env.CENTRAL_E2E_PASTA!;
   mkdirSync(join(pasta, 'curriculos'), { recursive: true });
   writeFileSync(join(pasta, 'curriculos', 'curriculo-exemplo.pdf'), '%PDF-1.4\n% curriculo ficticio para teste\n');
@@ -118,18 +119,34 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   expect(nova.status(), await nova.text()).toBe(201);
   const movida = await page.request.post(`/api/v1/vagas/${vagaFila}/mover`, { data: { etapa: 'aplicar' } });
   expect(movida.ok(), await movida.text()).toBe(true);
-  const r = await page.request.post('/api/v1/candidaturas', { data: { vagaId: vagaFila, conteudo: {
-    curriculo: { arquivo: 'curriculo-exemplo.pdf' }, idioma: 'pt', contato: { nome: 'Ana Teste', email: 'ana@exemplo.com' },
-    pretensao: { valor: 5000, moeda: 'BRL', tipo: 'CLT' }, respostas: [{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }], mensagem: null,
-  } } });
-  expect(r.status(), await r.text()).toBe(201);
-  const criada = await r.json();
   await ir(page, 'fila');
+  const pronta = page.getByRole('region', { name: 'Prontas para preparar' }).getByRole('listitem').filter({ hasText: 'Empresa Fila Exemplo — Pessoa Dev Fila' });
+  await pronta.getByRole('button', { name: 'Preparar candidatura' }).click();
+  const form = pronta.getByRole('form', { name: 'Pacote da candidatura' });
+  await expect(form.getByLabel('Currículo')).toHaveValue('curriculo-exemplo.pdf');
+  await expect(form.getByLabel('Nome')).toHaveValue('Ana Teste'); // do perfil (passo 2)
+  await form.getByRole('button', { name: 'Adicionar resposta' }).click();
+  await form.getByLabel('Pergunta 1', { exact: true }).fill('Anos com React?');
+  await form.getByLabel('Resposta 1', { exact: true }).fill('3');
+  await form.getByRole('button', { name: 'Preparar candidatura' }).click();
+  await expect(page.getByText('Candidatura preparada. Revise o pacote e aprove.')).toBeVisible();
+  const cands = await (await page.request.get('/api/v1/candidaturas')).json();
+  const criada = cands.find((c: any) => c.vagaId === vagaFila);
+  expect(criada.conteudo.curriculo.arquivo).toBe('curriculo-exemplo.pdf');
+  expect(criada.conteudo.respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }]);
   const naFila = page.getByTestId(criada.id);
   await expect(naFila.getByText('Para revisar')).toBeVisible();
-  await expect(naFila.getByText('Empresa Fila Exemplo — Pessoa Dev Fila')).toBeVisible();
-  await expect(naFila.getByText('Ana Teste · ana@exemplo.com')).toBeVisible();
   await expect(naFila.getByText(criada.impressao)).toBeVisible();
+  await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
+  // Editar: a mensagem muda, a impressão muda e continua conferida.
+  await naFila.getByRole('button', { name: 'Editar pacote' }).click();
+  await naFila.getByLabel('Mensagem').fill('Olá, tenho interesse na vaga.');
+  await naFila.getByRole('button', { name: 'Salvar pacote' }).click();
+  await expect(page.getByText('Pacote atualizado.')).toBeVisible();
+  const editada = (await (await page.request.get(`/api/v1/candidaturas/${criada.id}`)).json());
+  expect(editada.conteudo.mensagem).toBe('Olá, tenho interesse na vaga.');
+  expect(editada.impressao).not.toBe(criada.impressao);
+  await expect(naFila.getByText(editada.impressao)).toBeVisible();
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Limite de hoje' }).getByText('LinkedIn')).toBeVisible();
 });
