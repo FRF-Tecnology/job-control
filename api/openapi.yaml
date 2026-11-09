@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.11.0
+  version: 0.13.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -380,9 +380,30 @@ paths:
         '403': { $ref: '#/components/responses/SoTela' }
         '404': { $ref: '#/components/responses/Erro' }
         '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  # Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). Proposta: ainda não atendida. Só no app com o
+  # envio (build envio_dev); 404 no build padrão e no central-dev.
+  /candidaturas/{id}/ler-formulario:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Formulário (Google Forms ou Typeform): o executor abre a URL canônica no navegador do envio, sem janela, e lê a estrutura SEM interagir (perguntas de todas as páginas, com texto, tipo, obrigatória e opções, em ordem). O destino tem de estar na lista exata de hosts (forms.gle é resolvido só no navegador; o servidor nunca busca a URL). Monta as respostas só do perfil e das respostasPadrao com casamento exato da pergunta; o resto vai para pendentes. Não envia nada e não conta no limite do dia (conta no teto de 40 páginas abertas). Estrutura que não dá para ler inteira sem interagir: bloqueada/outro'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'A candidatura com estrutura e pendentes (ou bloqueada, com o motivo)', content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Candidatura não encontrada, ou este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+        '429': { description: 'Teto de 40 páginas abertas na plataforma hoje: {erro, plataforma, limite, usadas, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLimite' } } } }
   /candidaturas/limites:
     get:
-      summary: 'Limite diário por plataforma (linkedin, gupy, inhire), quantas já entraram em enviando hoje e quando renova'
+      summary: 'Limite diário por plataforma (linkedin, gupy, inhire), quantas já entraram em enviando hoje e quando renova. jc-a2y.7.2 (proposta): formulario entra aqui e em PUT /candidaturas/limites/{plataforma}, com padrão 30'
       responses:
         '200':
           description: Limites
@@ -673,7 +694,7 @@ components:
     PlataformaCandidatura:
       type: string
       enum: [linkedin, gupy, inhire, outra]
-      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo'
+      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo. jc-a2y.7.2 (proposta): formulario, para Google Forms (docs.google.com/forms/d/e/<id>/viewform, docs.google.com/forms/d/<id>/viewform, forms.gle/<id>) e Typeform (<conta>.typeform.com/to/<id>, form.typeform.com/to/<id>), por lista exata de hosts e caminhos, nunca endsWith; URL guardada sem query nem fragmento (sem entry.* nem campos ocultos); conta no limite do dia (padrão 30) e no teto de 40'
     ConteudoCandidatura:
       type: object
       description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. Campo a mais em qualquer nível dá 400 (nada é gravado). CPF ou RG em qualquer texto dá 400'
@@ -701,6 +722,7 @@ components:
             tipo: { type: string, enum: [CLT, PJ, contractor] }
         respostas:
           type: array
+          description: 'jc-a2y.7.2 (proposta): em formulario, cada item ganha perguntaId (o id da pergunta em estrutura), e a resposta casa com a pergunta pelo texto exato normalizado; sem par, fica em pendentes. Sem IA no primeiro recorte'
           items:
             type: object
             additionalProperties: false
@@ -756,6 +778,29 @@ components:
         proximaTentativaEm: { type: [string, 'null'], description: 'jc-a2y.6.11: o executor só pega a aprovada depois deste instante (5 min, 30 min, 2 h). Gravado: vale com o app reaberto' }
         interagiuEm: { type: [string, 'null'], description: 'jc-a2y.6.11: marca da tentativa em curso, gravada numa transação ANTES do primeiro preencher, anexar, desmarcar ou avançar. Com ela, a candidatura nunca volta sozinha para aprovada' }
         clicouEnviarEm: { type: [string, 'null'], description: 'jc-a2y.6.11: marca gravada ANTES do clique final. Com ela, sem confirmação, incerta (M3)' }
+        estrutura:
+          type: [object, 'null']
+          description: 'jc-a2y.7.2 (proposta): só em formulario, lida por POST /candidaturas/{id}/ler-formulario. Entra na impressão ({vagaId, plataforma, url, conteudo, estrutura}); no envio, o executor relê e compara o hash, e estrutura diferente dá bloqueada/pergunta-nova. Texto da página: dado não confiável, a tela mostra como texto. Nunca guarda a URL nem o link "Editar sua resposta" da página final'
+          additionalProperties: false
+          required: [hash, urlFinal, perguntas]
+          properties:
+            hash: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$', description: 'sha256 do JSON canônico das perguntas, em ordem' }
+            urlFinal: { type: string, pattern: '^https://', description: 'O destino canônico na lista exata (o do forms.gle, depois de resolvido no navegador), sem query nem fragmento; o envio exige o mesmo' }
+            perguntas:
+              type: array
+              maxItems: 200
+              items:
+                type: object
+                additionalProperties: false
+                required: [id, texto, tipo, obrigatoria]
+                properties:
+                  id: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$' }
+                  texto: { type: string, maxLength: 500 }
+                  tipo: { type: string, enum: [texto-curto, texto-longo, escolha-unica, multipla-escolha, lista, data, numero, email, telefone, escala, outro] }
+                  obrigatoria: { type: boolean }
+                  opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
+        pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2 (proposta): ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
+        preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (proposta, decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
     EstadoEnvio:
       type: object
       additionalProperties: false
@@ -816,8 +861,8 @@ components:
         fechar: { type: boolean, description: 'true em /dados/apagar: o app fecha logo depois de responder' }
     MotivoBloqueio:
       type: string
-      enum: [cpf, rg, senha, dado-bancario, captcha, aviso-conta, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
-      description: 'aviso-conta (jc-a2y.6.11): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã'
+      enum: [cpf, rg, senha, dado-bancario, captcha, aviso-conta, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, varias-etapas, outro]
+      description: 'aviso-conta (jc-a2y.6.11): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã. varias-etapas (jc-a2y.7.2, proposta): Google Forms com mais de uma seção, fora do primeiro recorte (pendência fixa "Formulário em várias etapas: envie à mão."; o segundo recorte é o jc-a2y.7.2.1)'
     LimiteDiario:
       type: object
       required: [limite, usadas, renovaEm]
