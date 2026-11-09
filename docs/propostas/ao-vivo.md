@@ -1,6 +1,13 @@
 # "Ao vivo": ver o envio dentro do app
 
-Bead `jc-a2y.6.9` (P1). Status: **proposta**. O contrato vai para 0.8.0, com `GET` e `POST /envio/ao-vivo` em `x-proposta`. O CyberSec revisa antes do código; os 8 requisitos dele (msg 1dda89e8) são critério de aceite. A tela é do Jarvis.
+Bead `jc-a2y.6.9` (P1). Status: **no código** (contrato 0.8.0, aprovado pelo CyberSec no #103). Os 8 requisitos dele (msg 1dda89e8) são critério de aceite. A tela é do Jarvis.
+
+**Onde está no código:**
+- `internal/aovivo`: o último quadro e a etapa, só em memória. Desliga sozinho sem leitura por 10 s, e a etapa final some em 30 s.
+- `internal/api/aovivo.go`: as rotas. Ler e ligar exigem autor `eu` **e** o pedido marcado pelo Handler como da janela (`Sec-Fetch-Site: same-origin` e Host `wails.localhost` ou `localhost`, sem porta). Desligar: qualquer autor. Pausar, abrir o login, sair das plataformas e apagar os dados apagam o quadro.
+- `internal/navegador/aovivo.go`: o screencast, só nas abas do `NovaPagina` (a janela de login não passa por ali).
+- `internal/executor`: `Opcoes.Etapa` com os passos (abrindo, preenchendo, revisando, enviando e o desfecho).
+- `internal/envio/envio_dev.go` e `app/main.go`: ligam tudo só no build `envio_dev`. No padrão e no `central-dev`, a rota dá 404.
 
 O pedido do Vini: deixar evidente, dentro do app, que a candidatura está sendo aplicada. Em vez de uma janela separada, a Fila mostra um painel "Ao vivo" com a imagem do navegador do envio e a etapa. O painel é só para ver: não clica, não digita e não controla nada.
 
