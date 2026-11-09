@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.13
+  version: 0.4.14
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -393,7 +393,7 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
         '404': { description: 'Este build não traz o envio, ou a candidatura não existe: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
-        '409': { description: 'Há candidatura em enviando ({erro, estado: enviando}) ou já há uma janela de login aberta ({erro})', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'Não abriu a janela: {erro, motivo}. motivo enviando (há candidatura em enviando; também estado: enviando), login-aberto (já há uma janela de login aberta) ou sem-navegador (não há Chrome nem Edge, ou este processo não abre navegador, como o central-dev)', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLogin' } } } }
 
   # Envio (jc-a2y.51; achado 2 da revisão integrada jc-a2y.6.4). O executor só existe no build envio_dev; no build
   # padrão, ligado é false e nada é enviado. Começa PAUSADO (por padrão, depois de apagar os dados e quando o estado
@@ -672,6 +672,14 @@ components:
         limite: { type: integer }
         usadas: { type: integer }
         renovaEm: { type: string }
+    ErroLogin:
+      type: object
+      additionalProperties: false
+      required: [erro, motivo]
+      properties:
+        erro: { type: string, description: 'Texto pronto para a tela' }
+        motivo: { type: string, enum: [enviando, login-aberto, sem-navegador] }
+        estado: { type: string, enum: [enviando], description: 'Só com motivo enviando' }
     ErroConflitoCandidatura:
       type: object
       required: [erro]

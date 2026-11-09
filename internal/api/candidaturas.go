@@ -348,7 +348,7 @@ func respostaDaFila(err error) (Resposta, bool) {
 		return Resposta{Status: 403, Corpo: Objeto{"erro": es.Error()}}, true
 	case errors.As(err, &ec):
 		corpo := Objeto{"erro": ec.Error()}
-		for k, v := range map[string]string{"estado": ec.Estado, "impressaoAtual": ec.ImpressaoAtual, "existente": ec.Existente} {
+		for k, v := range map[string]string{"estado": ec.Estado, "impressaoAtual": ec.ImpressaoAtual, "existente": ec.Existente, "motivo": ec.Motivo} {
 			if v != "" {
 				corpo[k] = v
 			}
