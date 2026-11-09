@@ -2,24 +2,20 @@ package api
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"io"
 	"math"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"time"
 
+	"github.com/FRF-Tecnology/job-control/internal/curriculos"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
 // Rotas da fila de candidaturas (P5, jc-a2y.6.2.2; contrato 0.4.8). Só a tela grava com autor "eu"; o assistente
 // (CLI, MCP) recebe 403 nas ações só da pessoa. O envio (enviando, enviada, bloqueada, falhou, incerta) é do
 // executor interno e não tem rota: nenhuma função daqui chama IniciarEnvio, MarcarEnviada, BloquearCandidatura,
-// FalharCandidatura, MarcarIncertas ou VencerAprovacoes (candidaturas_test.go confere).
+// FalharCandidatura, MarcarIncertas, VencerAprovacoes, EncaminharExterna ou TornarIncerta (candidaturas_test.go confere).
 //
 // Log (M7): estas rotas não registram nada; o 500 genérico do http.go leva só método, caminho sem query e tipo do erro.
 
@@ -27,7 +23,6 @@ var (
 	reCandidatura       = regexp.MustCompile(`^/candidaturas/([^/]+)$`)
 	reCandidaturaAcao   = regexp.MustCompile(`^/candidaturas/([^/]+)/(conteudo|aprovar|revogar|cancelar|reabrir|concluir-manual)$`)
 	reLimitePlataforma  = regexp.MustCompile(`^/candidaturas/limites/([^/]+)$`)
-	maxBytesCurriculo   = int64(20 << 20) // 20 MB: currículo maior que isso não é PDF de currículo
 	erroCurriculoFora   = "conteudo.curriculo.arquivo: não está na pasta de currículos"
 	erroCurriculoGrande = "conteudo.curriculo.arquivo: maior que 20 MB"
 )
@@ -185,38 +180,19 @@ func (a *API) prepararConteudo(v any) (Objeto, error) {
 	return conteudo, nil
 }
 
-// sha256Curriculo lê o PDF da pasta de currículos. Só arquivo comum bem dentro da pasta (nada de atalho, pasta ou
-// caminho que saia dela), de até 20 MB.
+// sha256Curriculo lê o PDF da pasta de currículos (curriculos.Ler: arquivo comum, bem dentro da pasta, o mesmo
+// depois de aberto, até 20 MB) e devolve o sha256.
 func (a *API) sha256Curriculo(nome string) (string, error) {
-	pasta := a.pastaCurriculos()
-	if pasta == "" || !dominio.NomeDeCurriculoValido(nome) {
-		return "", erroCampo(erroCurriculoFora)
-	}
-	caminho := filepath.Join(pasta, nome)
-	if filepath.Dir(caminho) != filepath.Clean(pasta) {
-		return "", erroCampo(erroCurriculoFora)
-	}
-	info, err := os.Lstat(caminho)
-	if err != nil || !info.Mode().IsRegular() {
-		return "", erroCampo(erroCurriculoFora)
-	}
-	if info.Size() > maxBytesCurriculo {
+	b, err := curriculos.Ler(a.pastaCurriculos(), nome)
+	switch {
+	case errors.Is(err, curriculos.ErrGrande):
 		return "", erroCampo(erroCurriculoGrande)
-	}
-	f, err := os.Open(caminho)
-	if err != nil {
+	case errors.Is(err, curriculos.ErrFora):
 		return "", erroCampo(erroCurriculoFora)
-	}
-	defer f.Close()
-	h := sha256.New()
-	n, err := io.Copy(h, io.LimitReader(f, maxBytesCurriculo+1))
-	if err != nil {
+	case err != nil:
 		return "", err
 	}
-	if n > maxBytesCurriculo {
-		return "", erroCampo(erroCurriculoGrande)
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return curriculos.SHA256(b), nil
 }
 
 func (a *API) criarCandidatura(ctx context.Context, c Objeto, autor string) (Resposta, error) {

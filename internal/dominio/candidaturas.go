@@ -608,6 +608,10 @@ func IniciarEnvio(e Estado, id string, versao int, agora time.Time, limites map[
 	if c.Estado != CandAprovada || c.Aprovacao == nil || c.Aprovacao.UsadaEm != "" {
 		return e, nil, conflitoEstado(c, "enviar")
 	}
+	// "outra" não tem envio automático: recusa antes de qualquer mudança (a aprovação continua sem uso).
+	if _, temEnvio := LimiteDe(nil, c.Plataforma); !temEnvio {
+		return e, nil, &ErroConflito{Msg: "candidatura fora de LinkedIn, Gupy e InHire não tem envio automático", Estado: c.Estado}
+	}
 	if versao != c.Versao {
 		return e, nil, &ErroConflito{Msg: "a candidatura mudou depois de lida", Estado: c.Estado}
 	}
@@ -717,6 +721,48 @@ func FalharCandidatura(e Estado, id, codigo string, agora time.Time) (Estado, Ob
 	}
 	c.Estado = CandFalhou
 	c.Resultado = &Resultado{Em: agora.Format(time.RFC3339), Tipo: "falhou", Detalhe: detalhe}
+	novo, o := salvarCandidatura(e, i, c, agora)
+	return novo, o, nil
+}
+
+// EncaminharExterna: aprovada de "outra" plataforma → bloqueada/site-externo, sem abrir página nem contar no limite.
+// A pessoa envia sozinha e usa concluir-manual. A aprovação fica como estava (sem uso).
+func EncaminharExterna(e Estado, id string, agora time.Time, ctx Ctx) (Estado, Objeto, error) {
+	i, c, err := acharCandidatura(e, id)
+	if err != nil {
+		return e, nil, err
+	}
+	if c.Estado != CandAprovada {
+		return e, nil, conflitoEstado(c, "encaminhar")
+	}
+	if _, temEnvio := LimiteDe(nil, c.Plataforma); temEnvio {
+		return e, nil, &ErroConflito{Msg: "a plataforma tem envio automático", Estado: c.Estado}
+	}
+	pendencia := PendenciaDoMotivo["site-externo"]
+	c.Estado = CandBloqueada
+	c.Bloqueio = &Bloqueio{Motivo: "site-externo", Pendencia: pendencia, Em: agora.Format(time.RFC3339)}
+	novo, o := salvarCandidatura(e, i, c, agora)
+	if v := vagaDe(novo, c.VagaID); v != nil && !FoiEnviada(v) {
+		movido, _, err := MoverVaga(novo, c.VagaID, "bloqueada", Objeto{"pendencia": pendencia}, ctx)
+		if err != nil {
+			return e, nil, err
+		}
+		novo = movido
+	}
+	return novo, o, nil
+}
+
+// TornarIncerta (M3): enviando → incerta quando o executor clicou em enviar e não sabe se foi. Nunca reenvia.
+func TornarIncerta(e Estado, id string, agora time.Time) (Estado, Objeto, error) {
+	i, c, err := acharCandidatura(e, id)
+	if err != nil {
+		return e, nil, err
+	}
+	if c.Estado != CandEnviando {
+		return e, nil, conflitoEstado(c, "marcar como incerta")
+	}
+	c.Estado = CandIncerta
+	c.Resultado = &Resultado{Em: agora.Format(time.RFC3339), Tipo: "incerto"}
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
