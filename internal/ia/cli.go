@@ -65,7 +65,12 @@ func (c cli) Nome() string { return c.qual + "-cli" }
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
 func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
-	if alvo, err := exec.LookPath(comando); err == nil && viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
+	// O arquivo conferido é o mesmo que roda: o caminho resolvido pelo LookPath vai para o CommandContext.
+	alvo, err := exec.LookPath(comando)
+	if err != nil {
+		alvo = comando // o exec devolve o erro de "não achei" na hora de rodar
+	}
+	if viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
 		return nil, "", &ErroIA{Tipo: "config", Mensagem: comando + "-cli: " + msgCmdInseguro, Provedor: comando + "-cli"}
 	}
 	ctx, cancelar := context.WithTimeout(ctx, tempoLimite)
@@ -75,7 +80,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 		return nil, "", err
 	}
 	defer os.RemoveAll(pasta)
-	cmd := exec.CommandContext(ctx, comando, args...)
+	cmd := exec.CommandContext(ctx, alvo, args...)
 	cmd.Dir = pasta
 	cmd.Stdin = strings.NewReader(entrada)
 	var saida, erro limitado
@@ -102,6 +107,10 @@ func viaCmdExe(caminho string) bool {
 func argsSegurosParaCmd(args []string) bool {
 	for _, a := range args {
 		for _, r := range a {
+			// Letra modificadora (Lm) e símbolo modificador (Sk), como ʺ e ˆ, podem virar " e ^ na conversão para ANSI.
+			if unicode.Is(unicode.Lm, r) || unicode.Is(unicode.Sk, r) {
+				return false
+			}
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune(` .,_:/\=+@~-`, r)) {
 				return false
 			}
