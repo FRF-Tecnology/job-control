@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.14
+  version: 0.7.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -197,6 +197,58 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
         '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  # Aprovar em lote (jc-a2y.6.13, docs/propostas/aprovar-lote.md). Proposta: ainda não atendida.
+  /candidaturas/aprovar-lote:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Aprova de uma vez a "Lista do dia": cada item com a impressão que a tela mostrou. Numa transação só, cada item passa pela mesma conferência do aprovar de uma (preparada, impressão atual, vaga em aplicar, limite do dia contando as já aprovadas no lote). Item recusado não afeta os outros. Vale até o fim do dia local. Só a tela (o assistente recebe 403, e nada é aprovado)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [itens]
+              properties:
+                itens:
+                  type: array
+                  minItems: 1
+                  maxItems: 120
+                  description: 'Na ordem em que a tela mostrou (o limite vale nessa ordem). id repetido dá 400 e nada é aprovado. 120 = 3 plataformas × 40 (o maior limite)'
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, impressao]
+                    properties:
+                      id: { type: string, pattern: '^cand-' }
+                      impressao: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$', description: 'A impressão que a tela mostrou para este item' }
+      responses:
+        '200':
+          description: 'Resultado por item. Nenhum aprovado também é 200 (todos em recusadas)'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [aprovadas, recusadas]
+                properties:
+                  aprovadas: { type: array, items: { type: string, pattern: '^cand-' }, description: 'ids aprovados, na ordem do pedido' }
+                  recusadas:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, motivo]
+                      properties:
+                        id: { type: string, pattern: '^cand-' }
+                        motivo:
+                          type: string
+                          enum: [nao-encontrada, estado, impressao-mudou, vaga-fora, limite]
+                          description: 'Lista fechada, sem texto da candidatura: nao-encontrada; estado (não está mais em preparada); impressao-mudou (o pacote mudou depois que a tela mostrou: revise de novo); vaga-fora (a vaga saiu de aplicar ou já foi enviada); limite (o limite do dia da plataforma acabou)'
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
   /candidaturas/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, pattern: '^cand-' } }
