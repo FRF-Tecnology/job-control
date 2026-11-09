@@ -114,7 +114,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	if o.Cofre == nil {
 		// Cada pasta de dados tem as chaves dela no cofre (jc-a2y.65): apagar uma pasta não apaga as de outra.
-		o.Cofre = segredos.Sistema{Servico: segredos.ServicoDaPasta(arm.Pasta())}
+		o.Cofre = segredos.Sistema{} // MUTAÇÃO DE TESTE (#93): não integrar
 	}
 	// Erro do cofre sempre com texto fixo, venha de onde vier: nada do que foi gravado sai numa resposta (jc-a2y.63).
 	o.Cofre = segredos.Seguro{Cofre: o.Cofre}
