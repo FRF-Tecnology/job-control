@@ -22,6 +22,13 @@ Todo PR que mexe em pelo menos uma destas áreas precisa da revisão do CyberSec
 | Média | log com conteúdo pessoal, falta de limite de tamanho ou tempo | bead com prazo |
 | Baixa | erro ignorado sem impacto de segurança | bead opcional |
 
+**Dois números por achado, sempre separados:**
+- **Severidade original:** a da fonte oficial (GitHub Advisory, CVE, CVSS) ou da ferramenta. Nunca é rebaixada.
+- **Risco contextual:** o risco no nosso uso, com o motivo escrito (como o código é usado, onde roda, o que o atacante precisa ter antes).
+
+O risco contextual decide a fila de correção. Dev e CI estão no escopo: dependência só de teste não é ignorada por não ir no app.
+Achado com severidade original crítica precisa de bead com dono e de análise contextual escrita antes do merge, mesmo que o risco contextual seja menor.
+
 Como copiar para o PR: cole as seções que se aplicam e marque cada item. Item sem evidência (teste, comando ou linha de código) conta como não feito.
 
 ## 1. Aprovação humana de envios
@@ -45,12 +52,22 @@ Como copiar para o PR: cole as seções que se aplicam e marque cada item. Item 
 
 ## 3. Cofre e segredos
 
-- [ ] Chave de API e token da nuvem só no cofre do sistema (`internal/segredos`). Nunca em SQLite, JSON, arquivo de config, variável persistida ou log.
+São dois tipos de segredo, com lugares diferentes:
+
+| Tipo | Exemplos | Onde fica | Onde nunca fica |
+|---|---|---|---|
+| **Segredo local da pessoa** (app de PC) | chave de API da IA, token da conta na nuvem | cofre do sistema (`internal/segredos`) | SQLite, JSON, config, log, variável de ambiente persistida, repo |
+| **Segredo de infraestrutura** (`cmd/nuvem`) | senha do Postgres, segredo do cliente OAuth Google, chave de assinatura de token, chave do OpenRouter, SMTP | variável de ambiente do servidor, definida pelo dono da infra | código, repo, imagem, log, app de PC |
+
+- [ ] Segredo local só no cofre do sistema. Nunca em SQLite, JSON, arquivo de config, variável persistida ou log.
   - Verificar: `grep` no diff por `apiKey`, `token`, `secret`, `Authorization` fora de `internal/segredos` e dos provedores.
 - [ ] A API devolve só os 4 últimos caracteres da chave. Nenhuma rota devolve a chave inteira.
   - Verificar: teste em `internal/api` que salva uma chave fictícia e confere a resposta de `GET /ia`.
 - [ ] Mensagens de erro dos provedores não repetem a chave nem o cabeçalho `Authorization`.
 - [ ] CLIs de assinatura rodam sem shell (`exec.CommandContext` com lista de argumentos), numa pasta temporária, com tempo limite e sem chave de API no ambiente.
+- [ ] Segredo de infraestrutura só por variável de ambiente no servidor. O app de PC nunca recebe nenhum deles.
+  - Verificar: o binário do app e `app/frontend/dist` não contêm segredo da nuvem (busca por nome de variável e por gitleaks no artefato).
+- [ ] Faltou variável de ambiente obrigatória: `cmd/nuvem` não sobe, e a mensagem de erro diz o nome da variável sem mostrar o valor.
 - [ ] gitleaks passou no CI.
 
 ## 4. Dados sensíveis e LGPD
@@ -66,9 +83,12 @@ Como copiar para o PR: cole as seções que se aplicam e marque cada item. Item 
 - [ ] Nenhum arquivo de `dados/` entrou no diff. Nenhum caminho de máquina com nome de usuário.
 - [ ] Páginas salvas do LinkedIn ou da Gupy (P5) foram limpas: sem nome, foto, ID de perfil, cookie ou token.
 
-## 6. API local
+## 6. API local (app de PC e `cmd/central-dev`)
 
-- [ ] Servidor só em `127.0.0.1`; `Host` diferente de `localhost`, `127.0.0.1` ou `[::1]` é recusado.
+Vale só para a API que roda no PC da pessoa. A nuvem (`cmd/nuvem`) é outro servidor, com outras regras (seção 8).
+
+- [ ] Servidor só em loopback (`127.0.0.1`); nunca `0.0.0.0` nem IP da rede. `Host` diferente de `localhost`, `127.0.0.1` ou `[::1]` é recusado.
+  - Verificar: teste que manda `Host: exemplo.com` e espera recusa; `grep` no diff por `0.0.0.0` e `:porta` sem IP.
 - [ ] Toda rota que grava recusa `Sec-Fetch-Site` diferente de `same-origin` ou `none` e exige `Content-Type: application/json`.
 - [ ] Nenhum cabeçalho CORS que libere outra origem.
 - [ ] Rota nova entrou antes no `api/openapi.yaml`.
@@ -81,8 +101,14 @@ Como copiar para o PR: cole as seções que se aplicam e marque cada item. Item 
 - [ ] A IA não recebe ferramentas que gravam, enviam ou abrem URLs.
 - [ ] Cota e tempo limite por chamada.
 
-## 8. Nuvem (P7)
+## 8. Nuvem (P7, `cmd/nuvem`)
 
+Diferente da API local: este servidor **escuta na rede** e recebe pedidos da internet. A checagem de Host do loopback não serve aqui.
+
+- [ ] Endereço e porta vêm de variável de ambiente; TLS no servidor ou no proxy da frente, com HTTP redirecionado para HTTPS.
+- [ ] Toda rota, menos login e saúde, exige token de conta válido; o token é curto e verificado no servidor.
+- [ ] CORS só para as origens do produto; nada de `*` com credenciais.
+- [ ] Tempos limite e limite de corpo em todas as rotas; erro não devolve detalhe interno.
 - [ ] Login Google com OIDC + PKCE e `state`; link por email com token de uso único, 15 minutos, guardado só como hash.
 - [ ] Limite de tentativas por IP e por conta no login e no proxy de modelos.
 - [ ] Usuário do Postgres com privilégio mínimo; segredos só por variável de ambiente.
@@ -92,28 +118,51 @@ Como copiar para o PR: cole as seções que se aplicam e marque cada item. Item 
 
 - [ ] `govulncheck ./...` sem vulnerabilidade alcançável.
 - [ ] `npm audit --omit=dev` em `app/frontend` sem alta ou crítica.
+- [ ] `npm audit` com dev: toda alta ou crítica tem bead com dono, ID oficial (GHSA/CVE) e risco contextual escrito. Achado novo trazido pelo PR bloqueia o merge.
 - [ ] Dependência nova justificada no PR.
 - [ ] Actions fixadas por SHA (dono: Infra, bead `jc-a2y.10`). O CyberSec revisa depois que o Infra entregar.
 
 ## Linha de base (2026-11-08, commit `c62b89a`)
 
-Medida para comparar os próximos PRs. Nenhum achado crítico.
+Medida para comparar os próximos PRs. Há **2 avisos com severidade original crítica**, ambos em dependência de teste (dev/CI). Cada um tem bead com dono e análise contextual abaixo.
 
 | Verificação | Resultado |
 |---|---|
 | `go test ./...` | passa |
 | `govulncheck ./...` | nenhuma vulnerabilidade |
 | `npm audit --omit=dev` (`app/frontend`) | 0 vulnerabilidades |
-| `npm audit` com dev (`app/frontend`) | 3: 2 críticas (`tinypool`, via vitest) e 1 moderada (`@vitest/mocker`); só teste e CI, não vão no app |
-| `gosec ./...` | 24 avisos, nenhum crítico depois da triagem (abaixo) |
+| `npm audit` com dev (`app/frontend`) | 3 pacotes: `tinypool` (crítica), `vitest` (crítica, herdada do `tinypool`), `@vitest/mocker` (moderada) |
+| `gosec ./...` | 24 avisos, triados abaixo |
 
-**Achados para virar bead:**
+### Dependências de teste (bead `jc-a2y.12`, dono Front-end)
 
-1. **Alta, só dev/CI:** `vitest` antigo puxa `tinypool` com falha crítica. Correção: subir o `vitest` e conferir o Vitest verde.
-2. **Média:** `internal/api/http.go` grava no log o caminho com a query string quando dá erro 500. A query pode ter empresa e título da vaga. Correção: logar só método, rota sem query e tipo do erro.
-3. **Média:** `api/openapi.yaml` não descreve as rotas `/ia/...` que já existem em `internal/api/ia.go`. Correção: incluir no contrato.
-4. **Baixa:** `cmd/central-dev` usa `http.ListenAndServe` sem tempos limite. É só de desenvolvimento e ouve em 127.0.0.1. Correção: `http.Server` com `ReadHeaderTimeout`.
-5. **Baixa:** vários erros ignorados (G104) em `internal/ia` e `internal/armazem`; revisar se algum esconde falha de gravação.
+Cadeia: `app/frontend/package.json` declara `vitest ^3.2.7` (dev) → o `package-lock.json` trava `vitest 3.2.7`, que traz `tinypool 1.1.1` e `@vitest/mocker 3.2.7`. Nenhum deles vai no app final.
+
+| Aviso oficial | CVE | Pacote e versões afetadas | Corrigido em | Severidade original | Risco contextual |
+|---|---|---|---|---|---|
+| [GHSA-5gmw-xhrv-c9v3](https://github.com/advisories/GHSA-5gmw-xhrv-c9v3) | CVE-2026-104848 | `tinypool <= 2.1.0` | 2.1.1 | Crítica (CVSS 4.0: 9.5) | Média |
+| [GHSA-85c8-ppgw-ccpr](https://github.com/advisories/GHSA-85c8-ppgw-ccpr) | CVE-2026-104849 | `tinypool < 2.1.2` | 2.1.2 | Crítica (CVSS 4.0: 9.5) | Média |
+| [GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9) | CVE-2026-84373 | `vitest` e `@vitest/mocker >= 2.1.0, < 4.1.11` | 4.1.11 | Moderada (CVSS 3.1: 5.9) | Baixa |
+| [GHSA-qxg6-89mg-rqv8](https://github.com/advisories/GHSA-qxg6-89mg-rqv8) | CVE-2026-112949 | `@vitest/mocker >= 2.1.0-beta.7, < 4.1.12` | 4.1.12 | Moderada (CVSS 3.1: 4.7) | Baixa |
+
+**Como explora e por que o risco contextual é menor** (resumo dos avisos oficiais):
+- **tinypool (as duas críticas):** o atacante precisa antes **poluir o `Object.prototype` dentro do mesmo processo Node** (por exemplo, por outra biblioteca vulnerável). Aí o `tinypool` passa `execArgv`, `env` ou `filename` herdados para o worker, que carrega um script do atacante.
+  - No nosso uso, quem roda o `tinypool` é o Vitest, executando os nossos testes em `jsdom`. Não há entrada de rede nem dado externo nesse processo.
+  - No CI, o gatilho é `pull_request` (não `pull_request_target`), com `permissions: contents: read` e sem segredos. Um PR malicioso já roda código no runner pelos próprios testes; a falha não dá acesso a mais nada.
+  - Fica **média**, não baixa: num ataque à cadeia de suprimentos (dependência de teste comprometida), a falha vira um caminho para executar código na máquina do dev, onde há sessões e chaves.
+- **@vitest/mocker (as duas moderadas):** exige alcançar o WebSocket do servidor de dev do Vite e usar `mockerPlugin`/`interceptorPlugin` direto ou o modo navegador do Vitest. Não usamos nenhum dos dois (`vite.config.ts`: `environment: "jsdom"`), e o servidor de dev ouve só em `127.0.0.1`. Fica **baixa**.
+
+**Correção:** subir o `vitest` até uma versão que traga `tinypool >= 2.1.2` e `@vitest/mocker >= 4.1.12`. O npm indica `vitest 5.1.0`, que é versão major: conferir o Vitest verde. Pronto quando `npm audit` (com dev) não tiver alta nem crítica.
+
+### Código Go
+
+| Bead | Dono | Achado | Severidade | Correção |
+|---|---|---|---|---|
+| `jc-a2y.13` | Back-end | `internal/api/http.go:50` grava no log o caminho com a query string no erro 500. A query pode ter empresa e título da vaga (gosec G706). | Média | Logar só método, rota sem query e tipo do erro, com teste. |
+| `jc-a2y.14` | Back-end | `cmd/central-dev/main.go:61` usa `http.ListenAndServe` sem tempos limite (gosec G114). Só dev, ouve em 127.0.0.1. | Baixa | `http.Server` com `ReadHeaderTimeout`. |
+| `jc-a2y.15` | CyberSec | 12 erros ignorados (gosec G104) em `internal/ia`, `internal/armazem`, `internal/api`, `internal/legado` e `cmd/central-cli`. | **Triagem pendente**, não é vulnerabilidade provada | Classificar cada um; o que tiver impacto vira bead do Back-end. |
+
+As rotas `/ia/...` fora do `api/openapi.yaml` ficam com o bead `jc-a2y.6.1` (contrato da P5), sem bead novo.
 
 **Triados como sem risco:** G204 em `internal/ia/cli.go` (comando vem da lista fixa de CLIs, sem shell); G304 e G703 em `legado`, `config` e `central-cli` (caminho escolhido pela própria pessoa no PC dela).
 
