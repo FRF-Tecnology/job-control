@@ -137,6 +137,8 @@ jobs:
           fi
           cd ../pacote && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64.zip
           ls -l Applyer-macos-arm64.zip
+          # Com archive: false, o digest do artefato é o sha256 deste arquivo; fica no resumo do run para conferir.
+          echo "Applyer-macos-arm64.zip sha256: \`$(shasum -a 256 Applyer-macos-arm64.zip | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
       # Só sobe em push no repo oficial (reescrita-go ou main): PR, inclusive de fork, testa o pacote mas não publica
       # um .app que alguém poderia baixar e abrir.
       - if: github.event_name == 'push' && github.repository == 'FRF-Tecnology/job-control'
