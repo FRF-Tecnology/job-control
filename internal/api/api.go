@@ -85,6 +85,8 @@ type API struct {
 	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
 	janela          func() (visivel, login bool) // estado da janela do envio
 	aoVivo          *aovivo.AoVivo               // "Ao vivo" (jc-a2y.6.9): nil fora do app com envio (404)
+	// lerFormulario (jc-a2y.7.2): o leitor do executor; nil fora do app com envio (404).
+	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 }
 
 // Opcoes configura a API.
@@ -111,6 +113,9 @@ type Opcoes struct {
 	// AoVivo (jc-a2y.6.9): o último quadro do navegador do envio, em memória. Só o app com o envio passa; sem ele,
 	// /envio/ao-vivo dá 404 (build padrão e central-dev).
 	AoVivo *aovivo.AoVivo
+	// LerFormulario (jc-a2y.7.2): lê a estrutura do formulário no navegador do envio, sem interagir. Só o app com o
+	// envio passa; sem ele, POST /candidaturas/{id}/ler-formulario dá 404.
+	LerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -155,7 +160,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.

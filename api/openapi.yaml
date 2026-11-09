@@ -380,13 +380,12 @@ paths:
         '403': { $ref: '#/components/responses/SoTela' }
         '404': { $ref: '#/components/responses/Erro' }
         '409': { $ref: '#/components/responses/ConflitoCandidatura' }
-  # Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). Proposta: ainda não atendida. Só no app com o
+  # Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). Só no app com o
   # envio (build envio_dev); 404 no build padrão e no central-dev.
   /candidaturas/{id}/ler-formulario:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Formulário (Google Forms ou Typeform): o executor abre a URL canônica no navegador do envio, sem janela, e lê a estrutura SEM interagir (perguntas de todas as páginas, com texto, tipo, obrigatória e opções, em ordem). O destino tem de estar na lista exata de hosts (forms.gle é resolvido só no navegador; o servidor nunca busca a URL). Monta as respostas só do perfil e das respostasPadrao com casamento exato da pergunta; o resto vai para pendentes. Não envia nada e não conta no limite do dia (conta no teto de 40 páginas abertas). Estrutura que não dá para ler inteira sem interagir: bloqueada/outro'
       requestBody:
@@ -830,6 +829,7 @@ components:
                   opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
         pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2 (proposta): ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
         preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (proposta, decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
+        leituras: { type: array, items: { type: string }, description: 'jc-a2y.7.2: instantes das leituras do formulário (POST /candidaturas/{id}/ler-formulario). Cada uma abre uma página no navegador do envio e conta no teto de 40 páginas abertas por plataforma no dia, não no limite do dia' }
     AoVivo:
       type: object
       additionalProperties: false
