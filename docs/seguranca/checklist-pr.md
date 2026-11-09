@@ -17,7 +17,7 @@ Todo PR que mexe em pelo menos uma destas áreas precisa da revisão do CyberSec
 
 | Severidade | Exemplo | Efeito no merge |
 |---|---|---|
-| Crítica | chave em log ou banco, envio sem aprovação, CPF/senha preenchido, API ouvindo fora do 127.0.0.1 | **bloqueia** até corrigir |
+| Crítica | chave ou token exposto (em log, banco, arquivo ou **resposta da API**, inteiro ou em forma que dá para reverter, como escapada ou codificada), envio sem aprovação, CPF/senha preenchido, API ouvindo fora do 127.0.0.1 | **bloqueia** até corrigir, e também segura os merges que não são a correção |
 | Alta | saída da IA sem passar pela guarda, rota que grava sem checar `Sec-Fetch-Site` | corrige no mesmo PR ou abre bead antes do merge |
 | Média | log com conteúdo pessoal, falta de limite de tamanho ou tempo | bead com prazo |
 | Baixa | erro ignorado sem impacto de segurança | bead opcional |
@@ -70,6 +70,9 @@ São dois tipos de segredo, com lugares diferentes:
 - [ ] A API devolve só os 4 últimos caracteres da chave. Nenhuma rota devolve a chave inteira.
   - Verificar: teste em `internal/api` que salva uma chave fictícia e confere a resposta de `GET /ia`.
 - [ ] Mensagens de erro dos provedores não repetem a chave nem o cabeçalho `Authorization`.
+  - A resposta da API usa mensagem pública fixa por tipo de erro; o texto bruto do provedor não volta para a tela.
+  - Verificar: teste de regressão com provedor falso (httptest) e chave fictícia, nos 3 provedores, em que o provedor ecoa a chave de 5 formas (exata, JSON-escapada, URL-encoded, prefixo + final, últimos 20). Nenhuma delas aparece na resposta HTTP nem no log.
+  - **Nunca** testar com chave real.
 - [ ] CLIs de assinatura rodam sem shell (`exec.CommandContext` com lista de argumentos), numa pasta temporária, com tempo limite e sem chave de API no ambiente.
 - [ ] Segredo de infraestrutura só por variável de ambiente no servidor. O app de PC nunca recebe nenhum deles.
   - Verificar: o binário do app e `app/frontend/dist` não contêm segredo da nuvem (busca por nome de variável e por gitleaks no artefato).
