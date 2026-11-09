@@ -3,7 +3,7 @@
  "plataforma": "linkedin",
  "url": "https://www.linkedin.com/jobs/view/9000000001",
  "esperado": {
-  "estado": "bloqueada",
+  "estado": "aprovada",
   "motivo": "login"
  },
  "etapas": [
