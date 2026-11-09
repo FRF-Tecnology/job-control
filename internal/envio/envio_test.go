@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
 // No build padrão o envio está desligado: Ligar não faz nada e o binário não traz o gatilho, nem o executor, nem o
@@ -26,6 +28,14 @@ func TestBuildPadraoSemGatilho(t *testing.T) {
 	}
 	if err := c.Entrar("https://www.linkedin.com/login"); err != ErrSemNavegador {
 		t.Fatalf("Entrar no build padrão = %v", err)
+	}
+	for _, e := range []struct {
+		err    error
+		motivo string
+	}{{ErrSemNavegador, "sem-navegador"}, {ErrLoginAberto, "login-aberto"}, {ErrEnviando, "enviando"}} {
+		if c, ok := e.err.(*dominio.ErroConflito); !ok || c.Motivo != e.motivo {
+			t.Errorf("motivo de %v = %+v; queria %s", e.err, e.err, e.motivo)
+		}
 	}
 	c.Parar()
 
