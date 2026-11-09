@@ -19,6 +19,9 @@ export const ITENS: Record<string, string> = {
   navegador: 'O login nas plataformas (navegador do app)',
   chaves: 'As chaves de IA guardadas no cofre do sistema',
 };
+// O que pode sobrar depois de apagar: os itens acima e a pasta antiga, que só existe se ficou ao lado da nova
+// (jc-etv.7, #113). Fica fora da lista de "o que apaga" porque nem sempre existe; aqui, para a pessoa saber que ficou.
+const SOBRAS: Record<string, string> = { ...ITENS, 'pasta-antiga': 'A pasta antiga (Central de Candidaturas) com os dados de antes' };
 
 interface Resultado { apagado?: string[]; faltou?: string[]; completo?: boolean; fechar?: boolean }
 type Feito = { tipo: 'saiu' } | { tipo: 'apagou'; fechar: boolean; faltou: string[] } | null;
@@ -67,7 +70,7 @@ export function SeusDados() {
     setOcupado(true); setErro('');
     try {
       const r: Resultado = (await app.api(ROTAS.apagar, 'POST', { confirmacao: FRASE })) ?? {};
-      const faltou = (r.faltou ?? []).filter(i => i in ITENS);
+      const faltou = (r.faltou ?? []).filter(i => i in SOBRAS);
       setDigitado('');
       setFeito({ tipo: 'apagou', fechar: !!r.fechar, faltou });
       // Com fechar, o servidor fecha o app; não adianta reler. Sem fechar, relê para mostrar o app vazio.
@@ -86,7 +89,7 @@ export function SeusDados() {
           <p className={feito.faltou.length ? 'feito parcial' : 'feito'}>{(feito.faltou.length ? 'Parte dos dados foi apagada.' : 'Dados apagados.') + (feito.fechar ? ' O app vai fechar.' : '')}</p>
           {feito.faltou.length > 0 && (<>
             <p className="erro-resposta">Não deu para apagar tudo. Ficou:</p>
-            <ul>{feito.faltou.map(i => <li key={i}>{ITENS[i]}</li>)}</ul>
+            <ul>{feito.faltou.map(i => <li key={i}>{SOBRAS[i]}</li>)}</ul>
             <p className="mudo">Abra o app de novo e repita, ou apague esses itens à mão.</p>
           </>)}
         </div>
