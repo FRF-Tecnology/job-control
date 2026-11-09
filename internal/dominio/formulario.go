@@ -272,3 +272,63 @@ func temCampoDeFora(u *url.URL) bool {
 	}
 	return false
 }
+
+// LeituraFormulario: o que o executor leu da página do formulário, sem interagir. Bloqueio vem de uma lista fechada
+// (PendenciaDoMotivo): login, termos, site-externo, varias-etapas, documento, outro...; com bloqueio, as perguntas
+// não são usadas.
+type LeituraFormulario struct {
+	Perguntas []PerguntaFormulario
+	URLFinal  string
+	Bloqueio  string
+}
+
+// LeiturasNoDia: leituras de formulário hoje na plataforma. Cada uma abre uma página no navegador do envio e conta no
+// teto de páginas abertas (AberturasNoDia), não no limite do dia.
+func LeiturasNoDia(e Estado, plataforma string, agora time.Time) int {
+	n := 0
+	for _, o := range e.Candidaturas {
+		if !igual(o["plataforma"], plataforma) {
+			continue
+		}
+		for _, l := range lista(o["leituras"]) {
+			if quando, err := time.Parse(time.RFC3339, texto(l)); err == nil && mesmoDia(quando.In(agora.Location()), agora) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// RegistrarLeitura: antes de abrir o formulário para ler, a leitura fica gravada (conta no teto de 40 páginas abertas
+// por plataforma no dia). Só formulário em preparada; no teto, ErroLimite e nada muda.
+func RegistrarLeitura(e Estado, id string, agora time.Time) (Estado, Objeto, error) {
+	i, c, err := acharCandidatura(e, id)
+	if err != nil {
+		return e, nil, err
+	}
+	if c.Plataforma != PlataformaFormulario {
+		return e, nil, &ErroConflito{Msg: "a candidatura não é de formulário", Estado: c.Estado}
+	}
+	if c.Estado != CandPreparada {
+		return e, nil, conflitoEstado(c, "ler o formulário de")
+	}
+	if abertas := AberturasNoDia(e, c.Plataforma, agora); abertas >= LimiteMaximo {
+		return e, nil, &ErroLimite{Plataforma: c.Plataforma, Limite: LimiteMaximo, Usadas: abertas, RenovaEm: RenovaEm(agora).Format(time.RFC3339)}
+	}
+	c.Leituras = append(c.Leituras, agora.Format(time.RFC3339))
+	novo, o := salvarCandidatura(e, i, c, agora)
+	return novo, o, nil
+}
+
+// BloquearLeitura: a leitura achou um bloqueio (login, e-mail registrado, termos, iframe, várias etapas...): a
+// candidatura vai de preparada para bloqueada, com a pendência fixa, e a vaga junto.
+func BloquearLeitura(e Estado, id, motivo string, agora time.Time, ctx Ctx) (Estado, Objeto, error) {
+	_, c, err := acharCandidatura(e, id)
+	if err != nil {
+		return e, nil, err
+	}
+	if c.Plataforma != PlataformaFormulario {
+		return e, nil, &ErroConflito{Msg: "a candidatura não é de formulário", Estado: c.Estado}
+	}
+	return bloquear(e, id, motivo, CandPreparada, agora, ctx)
+}

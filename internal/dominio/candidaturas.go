@@ -48,6 +48,7 @@ var PendenciaDoMotivo = map[string]string{
 	"termos":        "A página pede aceite de termos ou consentimento: marque você",
 	"pergunta-nova": "A página tem uma pergunta obrigatória fora do pacote aprovado: responda você",
 	"site-externo":  "A candidatura continua num site fora da plataforma: siga você",
+	"varias-etapas": "Formulário em várias etapas: envie à mão",
 	"outro":         "O envio parou: confira a página",
 }
 
@@ -96,6 +97,7 @@ type Candidatura struct {
 	// Estrutura lida do formulário (entra na impressão) e as obrigatórias ainda sem resposta (aprovar dá conflito).
 	Estrutura    *EstruturaFormulario `json:"estrutura,omitempty"`
 	Pendentes    []string             `json:"pendentes,omitempty"`
+	Leituras     []string             `json:"leituras,omitempty"` // instantes das leituras (contam no teto de páginas)
 	Versao       int                  `json:"versao"`
 	CriadaEm     string               `json:"criadaEm"`
 	AtualizadaEm string               `json:"atualizadaEm"`
@@ -564,7 +566,7 @@ func conferirLimite(e Estado, plataforma string, agora time.Time, limites map[st
 
 // AberturasNoDia: páginas abertas hoje na plataforma, contando as tentativas devolvidas (retentativas).
 func AberturasNoDia(e Estado, plataforma string, agora time.Time) int {
-	return UsadasNoDia(e, plataforma, agora) + VoltasNoDia(e, plataforma, agora)
+	return UsadasNoDia(e, plataforma, agora) + VoltasNoDia(e, plataforma, agora) + LeiturasNoDia(e, plataforma, agora)
 }
 
 // VoltasNoDia: voltas automáticas para aprovada hoje na plataforma (o GET /envio mostra).
@@ -894,6 +896,11 @@ func MarcarEnviada(e Estado, id string, agora time.Time, ctx Ctx) (Estado, Objet
 // BloquearCandidatura: enviando → bloqueada, com motivo da lista fechada e pendência fixa; a vaga vai para
 // bloqueada com a mesma pendência, na mesma transação.
 func BloquearCandidatura(e Estado, id, motivo string, agora time.Time, ctx Ctx) (Estado, Objeto, error) {
+	return bloquear(e, id, motivo, CandEnviando, agora, ctx)
+}
+
+// bloquear: de estadoDe para bloqueada, com a pendência fixa do motivo e a vaga junto, na mesma transação.
+func bloquear(e Estado, id, motivo, estadoDe string, agora time.Time, ctx Ctx) (Estado, Objeto, error) {
 	pendencia, ok := PendenciaDoMotivo[motivo]
 	if !ok {
 		return e, nil, validacao("motivo de bloqueio desconhecido: " + motivo)
@@ -902,7 +909,7 @@ func BloquearCandidatura(e Estado, id, motivo string, agora time.Time, ctx Ctx) 
 	if err != nil {
 		return e, nil, err
 	}
-	if c.Estado != CandEnviando {
+	if c.Estado != estadoDe {
 		return e, nil, conflitoEstado(c, "bloquear")
 	}
 	c.Estado = CandBloqueada
