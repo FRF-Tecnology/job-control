@@ -83,14 +83,19 @@ func (a *API) entrarNoNavegador(ctx context.Context, c Objeto, autor string) (Re
 		endereco = url
 	}
 	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora; espere terminar"); err != nil {
+		if c, conflito := err.(*dominio.ErroConflito); conflito {
+			com := *c
+			com.Motivo = "enviando"
+			return Resposta{}, &com
+		}
 		return Resposta{}, err
 	}
 	// O envio devolve um ErroConflito com texto fixo (login já aberto, envio em andamento, sem navegador).
 	if err := a.entrar(endereco); err != nil {
-		if _, conflito := err.(*dominio.ErroConflito); conflito {
+		if c, conflito := err.(*dominio.ErroConflito); conflito && c.Motivo != "" {
 			return Resposta{}, err
 		}
-		return Resposta{}, &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador"}
+		return Resposta{}, &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador", Motivo: "sem-navegador"}
 	}
 	log.Printf("navegador: janela de login aberta (%s)", autor) // sem endereço (M7)
 	return a.estadoEnvio(ctx, nil)
