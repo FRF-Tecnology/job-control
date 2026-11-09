@@ -5,6 +5,7 @@
 // tela usa a resposta do POST. Os desfechos mudam a /versao, e a tela relê junto com a fila.
 import { useEffect, useRef, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
+import { AoVivo } from './AoVivo';
 
 // Envio sem atrapalhar o PC (jc-a2y.6.7, contrato 0.4.13): o navegador do envio roda sem janela. A pessoa pode ver o
 // envio numa janela (POST /envio/janela, vale a partir da próxima candidatura) e entrar nas plataformas
@@ -275,6 +276,7 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
           <button className="botao-fantasma p" type="button" disabled={ocupado || !!envio.login} onClick={entrarLinkedin}>Entrar no LinkedIn</button>
         </div>
       </div>
+      <AoVivo nome={nome} />
       {agora && <p className="enviando-agora" role="status"><span className="ponto" aria-hidden="true" />{`Enviando agora: ${nome(agora.id)}, desde ${hora(agora.desde)}`}</p>}
       {envio.desfechos.length > 0 && (
         <details className="tecnicos">
