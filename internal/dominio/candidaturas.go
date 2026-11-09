@@ -309,6 +309,9 @@ func ValidarConteudo(c Objeto) []string {
 				ruim("conteudo.respostas[%d].%s: texto", i, k)
 			}
 		}
+		if m := perguntaSensivel(texto(o["pergunta"])); m != "" {
+			ruim("conteudo.respostas[%d].pergunta: só a pessoa responde na página (%s)", i, m)
+		}
 		if !contem([]string{"respostasPadrao", "pessoa", "ia"}, texto(o["origem"])) {
 			ruim("conteudo.respostas[%d].origem: respostasPadrao, pessoa ou ia", i)
 		}

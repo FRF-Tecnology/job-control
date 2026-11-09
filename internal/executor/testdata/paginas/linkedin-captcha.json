@@ -1,0 +1,22 @@
+{
+ "descricao": "linkedin-captcha",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "captcha"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Verificação de segurança",
+   "campos": [],
+   "quadros": [
+    "https://www.google.com/recaptcha/api2/anchor?k=ficticia"
+   ],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

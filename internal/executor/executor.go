@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/rand/v2"
 	"net/url"
 	"os"
@@ -305,54 +306,62 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 	if err != nil {
 		return falhou("erro-tecnico", err)
 	}
-	if !dominio.URLDaPlataforma(plataforma, final) || !mesmaVaga(aprovada, final) {
+	if !enderecoConfere(plataforma, aprovada, final) {
 		return bloqueada("site-externo")
 	}
-	if p, parou := x.conferirBloqueio(ctx, pag); parou {
-		return p
-	}
 
-	// M1: planeja tudo antes de digitar; qualquer campo que só a pessoa responde bloqueia sem preencher nada.
-	campos, err := pag.Campos(ctx)
-	if err != nil {
-		return falhou("erro-tecnico", err)
-	}
-	type acao struct {
-		campo  Campo
-		valor  string
-		anexar bool
-	}
-	var plano []acao
-	for _, campo := range campos {
-		if campo.Tipo == CampoCurriculo {
-			plano = append(plano, acao{campo: campo, anexar: true})
-			continue
+	// Formulário em etapas: em cada uma, confere o endereço e o bloqueio, planeja todos os campos (M1) antes de
+	// digitar, preenche, confere de novo e só então avança. Nunca avança com campo sem plano.
+	for etapa := 0; ; etapa++ {
+		if etapa >= MaxEtapas {
+			return bloqueada("outro")
 		}
-		valor, motivo := valorDoCampo(conteudo, campo)
-		if motivo != "" {
-			return bloqueada(motivo)
+		if p, parou := x.conferirEndereco(ctx, pag, plataforma, aprovada); parou {
+			return p
 		}
-		if valor != "" {
-			plano = append(plano, acao{campo: campo, valor: valor})
+		if p, parou := x.conferirBloqueio(ctx, pag); parou {
+			return p
 		}
-	}
-	for _, a := range plano {
-		if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
-			return falhou("erro-tecnico", err)
-		}
-		if a.anexar {
-			err = pag.Anexar(ctx, a.campo, copia)
-		} else {
-			err = pag.Preencher(ctx, a.campo, a.valor)
-		}
+		campos, err := pag.Campos(ctx)
 		if err != nil {
 			return falhou("erro-tecnico", err)
 		}
-	}
-	if p, parou := x.conferirBloqueio(ctx, pag); parou {
-		return p
+		plano, motivo := planejar(conteudo, campos)
+		if motivo != "" {
+			return bloqueada(motivo)
+		}
+		for _, a := range plano {
+			if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
+				return falhou("erro-tecnico", err)
+			}
+			if a.anexar {
+				err = pag.Anexar(ctx, a.campo, copia)
+			} else {
+				err = pag.Preencher(ctx, a.campo, a.valor)
+			}
+			if err != nil {
+				return falhou("erro-tecnico", err)
+			}
+		}
+		if p, parou := x.conferirBloqueio(ctx, pag); parou {
+			return p
+		}
+		if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
+			return falhou("erro-tecnico", err)
+		}
+		mais, err := pag.Proxima(ctx)
+		if err != nil {
+			return falhou("erro-tecnico", err)
+		}
+		if !mais {
+			break
+		}
 	}
 
+	// Logo antes do clique: ainda no site da plataforma e na mesma vaga.
+	if p, parou := x.conferirEndereco(ctx, pag, plataforma, aprovada); parou {
+		return p
+	}
 	// M3: do clique em diante, sem confirmação, fica incerta.
 	if ctx.Err() != nil {
 		return falhou("erro-tecnico", ctx.Err())
@@ -368,6 +377,48 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 		return passo{dominio.CandIncerta, "", err}
 	}
 	return passo{estado: dominio.CandEnviada}
+}
+
+// MaxEtapas: formulário com mais etapas que isso para em bloqueada/outro (a pessoa confere).
+const MaxEtapas = 10
+
+func enderecoConfere(plataforma, aprovada, atual string) bool {
+	return dominio.URLDaPlataforma(plataforma, atual) && mesmaVaga(aprovada, atual)
+}
+
+func (x *Executor) conferirEndereco(ctx context.Context, pag Pagina, plataforma, aprovada string) (passo, bool) {
+	atual, err := pag.URLAtual(ctx)
+	if err != nil {
+		return falhou("erro-tecnico", err), true
+	}
+	if !enderecoConfere(plataforma, aprovada, atual) {
+		return bloqueada("site-externo"), true
+	}
+	return passo{}, false
+}
+
+type acao struct {
+	campo  Campo
+	valor  string
+	anexar bool
+}
+
+// planejar decide o que fazer com cada campo da etapa, antes de digitar qualquer coisa (M1). Um campo que bloqueia
+// devolve o motivo e nada é preenchido.
+func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
+	var plano []acao
+	for _, campo := range campos {
+		valor, motivo := valorDoCampo(conteudo, campo)
+		switch {
+		case motivo != "":
+			return nil, motivo
+		case campo.Tipo == CampoCurriculo:
+			plano = append(plano, acao{campo: campo, anexar: true})
+		case valor != "":
+			plano = append(plano, acao{campo: campo, valor: valor})
+		}
+	}
+	return plano, ""
 }
 
 func (x *Executor) conferirBloqueio(ctx context.Context, pag Pagina) (passo, bool) {
@@ -445,13 +496,23 @@ func mesmaVaga(aprovada, final string) bool {
 // valorDoCampo devolve o valor do pacote para o campo (M1) ou o motivo de bloqueio. Valor e motivo vazios: campo
 // opcional sem resposta no pacote, que fica em branco.
 func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
+	// Rótulo sensível vence o tipo que o adaptador deu ao campo (senha, CPF, agência/conta...).
+	if m := dominio.MotivoDoRotulo(c.Rotulo); m != "" {
+		c.Tipo = m
+	}
+	if c.Tipo == "termos" && !c.Obrigatorio {
+		return "", "" // aceite opcional fica sem marcar
+	}
+	if c.Tipo == CampoCurriculo {
+		return "", ""
+	}
 	contato := dominio.ObjetoDe(conteudo["contato"])
 	switch c.Tipo {
 	case CampoNome, CampoEmail, CampoTelefone, CampoCidade:
 		valor, _ = contato[c.Tipo].(string)
 	case CampoPretensao:
 		if v, ok := dominio.ObjetoDe(conteudo["pretensao"])["valor"].(float64); ok {
-			valor = strconv.FormatFloat(v, 'f', -1, 64) // só dígitos (campo numérico)
+			valor = strconv.FormatFloat(math.Round(v), 'f', 0, 64) // só dígitos, sem ponto decimal (campo numérico)
 		}
 	case CampoMensagem:
 		valor, _ = conteudo["mensagem"].(string)

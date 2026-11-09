@@ -1,0 +1,20 @@
+{
+ "descricao": "gupy-teste",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "teste-pessoal"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Etapa 2: teste de perfil comportamental. Reserve 20 minutos",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Iniciar teste"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "descricao": "linkedin-externo",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "site-externo"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001",
+   "texto": "Dev Go na Empresa Teste. Trabalho remoto. Dúvidas? Entre em contato com o time. Faça parte do nosso time de dados.",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Candidatar-se no site da empresa",
+    "Salvar"
+   ]
+  }
+ ]
+}
