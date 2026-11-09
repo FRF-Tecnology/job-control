@@ -152,7 +152,8 @@ func (a *API) rotasDados(ctx context.Context, m, p string, c Objeto, autor strin
 var avisosDaPasta = map[string]bool{config.AvisoAntigaFicou: true, config.AvisoMigracaoAdiada: true}
 
 // estadoDaPasta (jc-etv.14): {aviso, migradaEm}, sem caminho. O aviso é o desta abertura (Opcoes.AvisoPasta); fora
-// da lista, null. migradaEm vem da meta "pasta" que o app grava no rename; só texto passa.
+// da lista, null. migradaEm vem da meta "pasta" que o app grava no rename; só passa texto que é data RFC3339 (o
+// formato que o app grava), nunca outro texto que a meta tenha.
 func (a *API) estadoDaPasta(ctx context.Context) (Resposta, error) {
 	o := Objeto{"aviso": nil, "migradaEm": nil}
 	if avisosDaPasta[a.avisoPasta] {
@@ -160,11 +161,16 @@ func (a *API) estadoDaPasta(ctx context.Context) (Resposta, error) {
 	}
 	var meta map[string]any
 	if achou, err := a.arm.LerMeta(ctx, "pasta", &meta); err == nil && achou {
-		if em, ok := meta["migradaEm"].(string); ok && em != "" {
+		if em, ok := meta["migradaEm"].(string); ok && dataRFC3339(em) {
 			o["migradaEm"] = em
 		}
 	}
 	return ok(o)
+}
+
+func dataRFC3339(s string) bool {
+	_, err := time.Parse(time.RFC3339, s)
+	return err == nil
 }
 
 // semEnvioEmAndamento: com candidatura em enviando, o executor está numa página: nada é apagado (409).
