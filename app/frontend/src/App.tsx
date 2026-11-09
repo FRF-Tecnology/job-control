@@ -8,6 +8,7 @@ import { Dialogo, type PedidoDialogo } from './app/Dialogo';
 import { Detalhe } from './telas/Detalhe';
 import { TelaHoje } from './telas/Hoje';
 import { TelaTriagem } from './telas/Triagem';
+import { TelaFila } from './telas/Fila';
 import { TelaQuadro } from './telas/Quadro';
 import { TelaVagas } from './telas/Vagas';
 import { TelaNumeros } from './telas/Numeros';
@@ -27,12 +28,13 @@ type R = ReturnType<typeof resumo>;
 const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
   { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
   { rota: 'triagem', nome: 'Triagem', Tela: TelaTriagem, contador: r => r.descoberta, aba: true },
+  { rota: 'fila', nome: 'Fila', Tela: TelaFila },
   { rota: 'quadro', nome: 'Quadro', Tela: TelaQuadro },
   { rota: 'vagas', nome: 'Vagas', Tela: TelaVagas, aba: true },
   { rota: 'numeros', nome: 'Números', Tela: TelaNumeros },
   { rota: 'plataformas', nome: 'Plataformas', Tela: TelaPlataformas },
   { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
-  { rota: 'perfil', nome: 'Perfil e regras', Tela: TelaPerfil },
+  { rota: 'perfil', nome: 'Perfil', Tela: TelaPerfil }, // no menu, "Perfil"; o título da tela segue "Perfil e regras"
   { rota: 'ia', nome: 'Conectar IA', Tela: TelaConectarIA },
 ];
 

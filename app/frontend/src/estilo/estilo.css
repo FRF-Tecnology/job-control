@@ -417,6 +417,37 @@ dialog form { display: grid; gap: 16px; }
 .item-acao .selo-n svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .item-acao select { width: auto; flex: 1 1 220px; min-height: 34px; padding: 4px 10px; }
 
+/* Fila de candidaturas (P5, jc-a2y.6.3.1): limites por plataforma e o pacote exato de cada candidatura. */
+.limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.limite { display: grid; gap: 4px; padding: 16px 20px; border-radius: var(--raio-m); background: var(--superficie-2); }
+.limite .num { font: 700 1.5rem var(--fonte-display); letter-spacing: -.02em; }
+.limite.cheio { background: var(--ambar-suave); }
+.limite.cheio .num { color: var(--ambar); }
+.fila-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.cand { display: grid; gap: 12px; padding: 20px 24px; border-radius: var(--raio); background: var(--superficie); box-shadow: var(--sombra); border: 1px solid var(--linha-2); }
+.cand.alerta { border-color: var(--ambar); }
+.cand > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 8px 16px; }
+.cand h2 { margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.cand .situacao { margin: 0; color: var(--tinta-2); overflow-wrap: anywhere; }
+.chip.cand-bloqueada, .chip.cand-incerta, .chip.cand-falhou { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+.chip.cand-aprovada, .chip.cand-enviada { background: var(--verde-suave); color: var(--verde); font-weight: 600; }
+.chip.cand-preparada { background: var(--destaque-suave); color: var(--destaque); font-weight: 600; }
+.pacote summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.pacote dl { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 8px 16px; margin: 8px 0 0; }
+.pacote dt { color: var(--tinta-2); font-size: .9rem; }
+.pacote dd { margin: 0; overflow-wrap: anywhere; }
+.pacote .respostas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pacote .respostas li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.pacote .pergunta { color: var(--tinta-2); }
+.impressao { display: block; font: .82rem ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; padding: 8px 12px; border-radius: var(--raio-p); background: var(--superficie-2); }
+.conferida { display: block; margin-top: 4px; font-size: .88rem; font-weight: 600; }
+.conferida.ok { color: var(--verde); }
+.conferida.diferente { color: var(--erro); }
+@media (max-width: 600px) {
+  .cand { padding: 16px; }
+  .pacote dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .pacote dd { margin-bottom: 8px; }
+}
 /* Alvos de toque (jc-a2y.39): com ponteiro grosso (tela de toque), todo controle tem pelo menos 44 px.
    Com mouse, o tamanho compacto do desktop continua. */
 @media (any-pointer: coarse) {

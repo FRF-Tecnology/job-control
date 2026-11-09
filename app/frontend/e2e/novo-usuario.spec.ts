@@ -2,6 +2,8 @@
 // Roda no PC e no celular (playwright.config.ts). Cada projeto usa a mesma pasta de dados, então
 // a jornada é feita uma vez (PC) e o celular confere as telas com os dados que ela deixou.
 import { expect, test, type Page } from '@playwright/test';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const ir = async (page: Page, rota: string) => {
   await page.goto(`/#/${rota}`);
@@ -105,11 +107,36 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   expect(await etapas()).toEqual({ 'ext-grupo-a-1': 'aplicar', 'ext-grupo-a-2': 'aplicar', 'ext-grupo-b-1': 'descoberta' });
   const eventos = (await (await page.request.get('/api/v1/estado')).json()).eventos.filter((e: any) => e.tipo === 'aplicar' && e.vagaId.startsWith('ext-grupo-'));
   expect(eventos.map((e: any) => `${e.vagaId}:${e.autor}`).sort()).toEqual(['ext-grupo-a-1:eu', 'ext-grupo-a-2:eu']);
+
+  // 9. Fila (P5, jc-a2y.6.3.1): uma candidatura criada no servidor aparece com o pacote exato, e a impressão que a
+  //    tela calcula bate com a do servidor ("Conferida nesta tela"). Currículo e dados fictícios.
+  const pasta = process.env.CENTRAL_E2E_PASTA!;
+  mkdirSync(join(pasta, 'curriculos'), { recursive: true });
+  writeFileSync(join(pasta, 'curriculos', 'curriculo-exemplo.pdf'), '%PDF-1.4\n% curriculo ficticio para teste\n');
+  const vagaFila = 'li-fila-exemplo-1';
+  const nova = await page.request.post('/api/v1/vagas', { data: { id: vagaFila, empresa: 'Empresa Fila Exemplo', titulo: 'Pessoa Dev Fila', link: 'https://www.linkedin.com/jobs/view/987654321', plataforma: 'linkedin' } });
+  expect(nova.status(), await nova.text()).toBe(201);
+  const movida = await page.request.post(`/api/v1/vagas/${vagaFila}/mover`, { data: { etapa: 'aplicar' } });
+  expect(movida.ok(), await movida.text()).toBe(true);
+  const r = await page.request.post('/api/v1/candidaturas', { data: { vagaId: vagaFila, conteudo: {
+    curriculo: { arquivo: 'curriculo-exemplo.pdf' }, idioma: 'pt', contato: { nome: 'Ana Teste', email: 'ana@exemplo.com' },
+    pretensao: { valor: 5000, moeda: 'BRL', tipo: 'CLT' }, respostas: [{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }], mensagem: null,
+  } } });
+  expect(r.status(), await r.text()).toBe(201);
+  const criada = await r.json();
+  await ir(page, 'fila');
+  const naFila = page.getByTestId(criada.id);
+  await expect(naFila.getByText('Para revisar')).toBeVisible();
+  await expect(naFila.getByText('Empresa Fila Exemplo — Pessoa Dev Fila')).toBeVisible();
+  await expect(naFila.getByText('Ana Teste · ana@exemplo.com')).toBeVisible();
+  await expect(naFila.getByText(criada.impressao)).toBeVisible();
+  await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Limite de hoje' }).getByText('LinkedIn')).toBeVisible();
 });
 
 test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ page }, info) => {
   test.skip(info.project.name !== 'celular', 'conferência de layout no celular');
-  for (const rota of ['hoje', 'triagem', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil']) {
+  for (const rota of ['hoje', 'triagem', 'fila', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil']) {
     await ir(page, rota);
     const rolaDeLado = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
     expect(rolaDeLado, `${rota} rola para o lado`).toBe(false);

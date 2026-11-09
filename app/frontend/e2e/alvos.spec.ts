@@ -2,7 +2,7 @@
 // Fora da conta: links dentro de um parágrafo (exceção da WCAG para link em texto) e o "Ir para o conteúdo".
 import { expect, test } from '@playwright/test';
 
-const TELAS = ['hoje', 'triagem', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil', 'ia'];
+const TELAS = ['hoje', 'triagem', 'fila', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil', 'ia'];
 
 test('celular: controles com alvo de toque de 44 px', async ({ page }, info) => {
   test.skip(info.project.name !== 'celular', 'alvo de toque é do celular (ponteiro grosso)');
@@ -34,4 +34,7 @@ test('PC com mouse: botões compactos seguem compactos', async ({ page }, info) 
   await expect(page.locator('main#conteudo')).not.toBeEmpty();
   const altura = await page.locator('.seletor button').first().evaluate(el => el.getBoundingClientRect().height);
   expect(altura).toBeLessThan(44);
+  // O menu do topo cabe inteiro no desktop (um item novo não pode esconder o último atrás do esmaecido).
+  const menu = await page.locator('.topo-app nav').evaluate(n => ({ total: n.scrollWidth, visivel: n.clientWidth }));
+  expect(menu.total, 'menu do topo passa da largura').toBeLessThanOrEqual(menu.visivel + 1);
 });
