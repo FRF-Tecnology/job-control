@@ -26,6 +26,9 @@ const (
 	CandCancelada = "cancelada"
 )
 
+// EstadosCandidatura: todos os estados, na ordem do contrato.
+var EstadosCandidatura = []string{CandPreparada, CandAprovada, CandEnviando, CandEnviada, CandBloqueada, CandFalhou, CandIncerta, CandCancelada}
+
 // Estados em que a candidatura ainda ocupa a vaga (só uma por vaga).
 var estadosAtivos = []string{CandPreparada, CandAprovada, CandEnviando, CandBloqueada, CandFalhou, CandIncerta}
 
@@ -225,6 +228,9 @@ var (
 	reSHA256           = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
+// NomeDeCurriculoValido: só o nome de um PDF, sem pasta, barra, drive nem fluxo alternativo (:).
+func NomeDeCurriculoValido(nome string) bool { return reArquivoCurriculo.MatchString(nome) }
+
 // ValidarConteudo confere o pacote com o esquema fechado do contrato (additionalProperties: false em todo nível)
 // e recusa CPF/RG em qualquer texto. O sha256 do currículo é calculado pela API antes de chegar aqui.
 func ValidarConteudo(c Objeto) []string {
@@ -246,10 +252,9 @@ func ValidarConteudo(c Objeto) []string {
 		ruim("conteudo.curriculo: obrigatório")
 	} else {
 		soCampos(cv, "conteudo.curriculo", "arquivo", "sha256")
-		if a, _ := cv["arquivo"].(string); !reArquivoCurriculo.MatchString(a) {
+		if a, _ := cv["arquivo"].(string); !NomeDeCurriculoValido(a) {
 			ruim("conteudo.curriculo.arquivo: nome de um PDF da pasta de currículos, sem caminho")
-		}
-		if s, _ := cv["sha256"].(string); !reSHA256.MatchString(s) {
+		} else if s, _ := cv["sha256"].(string); !reSHA256.MatchString(s) {
 			ruim("conteudo.curriculo.sha256: ausente")
 		}
 	}
@@ -388,6 +393,9 @@ func CriarCandidatura(e Estado, vagaID string, conteudo Objeto, agora time.Time,
 	if err := soPessoa(ctx, "criar"); err != nil {
 		return e, nil, err
 	}
+	if erros := ValidarConteudo(conteudo); len(erros) > 0 { // entrada primeiro: 400 antes de 404/409
+		return e, nil, &ErroValidacao{erros}
+	}
 	vaga := vagaDe(e, vagaID)
 	if vaga == nil {
 		return e, nil, &ErroNaoEncontrado{"vaga não encontrada: " + vagaID}
@@ -407,9 +415,6 @@ func CriarCandidatura(e Estado, vagaID string, conteudo Objeto, agora time.Time,
 	}
 	if !vagaAprovada(e, vagaID) {
 		return e, nil, &ErroConflito{Msg: "a vaga não está aprovada para aplicar (Triagem)"}
-	}
-	if erros := ValidarConteudo(conteudo); len(erros) > 0 {
-		return e, nil, &ErroValidacao{erros}
 	}
 	plataforma := PlataformaDaVaga(vaga)
 	link := strings.TrimSpace(texto(vaga["link"]))
