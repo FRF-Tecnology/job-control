@@ -78,6 +78,14 @@ describe('Aprovar todas do grupo A', () => {
     expect(avisos[0].texto).toBe('1 vaga foi para a fila do Claude. 1 mudou antes e ficou como estava.');
   });
 
+  it('vaga com empresa ou título trocados depois da confirmação não é aprovada (a pessoa aprovou o que viu)', async () => {
+    const depois = [vaga('a1', 'A', { titulo: 'Outra vaga' }), vaga('b1', 'B'), vaga('a2', 'A', { empresa: 'Outra empresa' }), vaga('c1', 'C')];
+    const { movidas, avisos } = montar({ vagas: [...VAGAS, vaga('a3', 'A')], depois: [...depois, vaga('a3', 'A')] });
+    await clicarAprovarTodas();
+    expect(movidas.map(m => m.id)).toEqual(['a3']);
+    expect(avisos[0].texto).toBe('1 vaga foi para a fila do Claude. 2 mudaram antes e ficaram como estavam.');
+  });
+
   it('falha numa vaga não para as outras e é avisada', async () => {
     const { movidas, avisos } = montar({ vagas: VAGAS, falhar: ['a1'] });
     await clicarAprovarTodas();

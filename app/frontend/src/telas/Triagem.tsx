@@ -126,8 +126,8 @@ export function TelaTriagem() {
   );
 }
 
-// Reconfere o estado antes de gravar: vaga que saiu da Descoberta ou do grupo A desde a confirmação fica
-// como está (não volta para aplicar). Grava uma por vez e recarrega uma vez só no fim.
+// Reconfere o estado antes de gravar: vaga que saiu da Descoberta ou do grupo A, ou cuja empresa ou título
+// mudou desde a confirmação, fica como está (a pessoa aprovou o que viu). Grava uma por vez e recarrega uma vez só.
 async function aprovarLista(app: App, lista: any[]) {
   const atuais = new Map<string, any>(((await app.api('/api/v1/estado')).vagas ?? []).map((x: any) => [x.id, x]));
   let aprovadas = 0;
@@ -135,7 +135,8 @@ async function aprovarLista(app: App, lista: any[]) {
   const falhas: string[] = [];
   for (const x of lista) {
     const agora = atuais.get(x.id);
-    if (!agora || agora.etapa !== 'descoberta' || agora.aderencia !== 'A') { mudaram++; continue; }
+    const igual = agora && agora.etapa === 'descoberta' && agora.aderencia === 'A' && agora.empresa === x.empresa && agora.titulo === x.titulo;
+    if (!igual) { mudaram++; continue; }
     try {
       await app.api(`/api/v1/vagas/${encode(x.id)}/mover`, 'POST', { etapa: 'aplicar' });
       aprovadas++;
