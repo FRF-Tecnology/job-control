@@ -44,7 +44,10 @@ test('script inline e script de fora do app são barrados', async ({ page }) => 
 
 test('todas as telas abrem sem violação de CSP nem erro no console', async ({ page }) => {
   const erros: string[] = [];
-  page.on('console', m => { if (m.type() === 'error') erros.push(m.text()); });
+  // Exceção única (jc-a2y.6.12): o preparo automático pode rodar em duas abas ao mesmo tempo (aqui, os projetos pc e
+  // celular contra o mesmo servidor); a segunda recebe 409 "já existe", que o app trata, mas o navegador registra.
+  const corridaDoPreparo = (m: { text(): string; location(): { url: string } }) => m.text().includes('409') && m.location().url.endsWith('/api/v1/candidaturas');
+  page.on('console', m => { if (m.type() === 'error' && !corridaDoPreparo(m)) erros.push(m.text()); });
   page.on('pageerror', e => erros.push(e.message));
   for (const rota of TELAS) {
     await page.goto(`/#/${rota}`);

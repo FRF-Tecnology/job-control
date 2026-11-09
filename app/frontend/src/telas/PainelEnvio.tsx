@@ -47,8 +47,13 @@ const hora = (iso: string) => {
 export const EVENTO_ENVIO = 'central:envio';
 
 // nome(id): "Empresa — Título" da candidatura; motivo(m): rótulo do motivo de bloqueio (os mesmos da fila).
+// O que a Fila tem para enviar (jc-a2y.6.10): as aprovadas, com a hora da aprovação (o envio vai da mais antiga para
+// a mais nova), quantas candidaturas esperam revisão e quantas vagas estão prontas para preparar.
+export type ResumoFila = { aprovadas: { id: string; em: string }[]; paraRevisar: number; prontas: number };
+const contar = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
 // onEstado: avisa a Fila do estado (ex.: se o envio existe neste app, para os botões de entrar nos cartões).
-export function PainelEnvio({ nome, motivo, onEstado }: { nome: (id: string) => string; motivo: (m: string) => string; onEstado?: (e: EstadoEnvio | null) => void }) {
+export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: string) => string; motivo: (m: string) => string; onEstado?: (e: EstadoEnvio | null) => void; fila?: ResumoFila }) {
   const app = useApp();
   const [envio, setEnvio] = useState<EstadoEnvio | null>(null);
   useEffect(() => { onEstado?.(envio); }, [envio]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -159,6 +164,18 @@ export function PainelEnvio({ nome, motivo, onEstado }: { nome: (id: string) => 
           ? <button ref={acao} className="botao" type="button" disabled={ocupado} onClick={retomar}>Retomar envio</button>
           : <button ref={acao} className="botao-fantasma" type="button" disabled={ocupado} onClick={pausar}>Pausar envio</button>}
       </div>
+      {!agora && fila && (() => {
+        const proxima = [...fila.aprovadas].sort((a, b) => instante(a.em) - instante(b.em))[0];
+        const contagem = [contar(fila.prontas, 'vaga pronta para preparar', 'vagas prontas para preparar'), contar(fila.paraRevisar, 'candidatura para revisar', 'candidaturas para revisar'), contar(fila.aprovadas.length, 'aprovada', 'aprovadas')].join(' · ');
+        return (
+          <div className="envio-proxima">
+            <p>{proxima
+              ? `Próxima a enviar${envio.pausado ? ' quando você retomar' : ''}: ${nome(proxima.id)}`
+              : 'Nada para enviar agora: prepare e aprove uma candidatura abaixo.'}</p>
+            <p className="pequeno mudo">{contagem}</p>
+          </div>
+        );
+      })()}
       {envio.login && <p className="login-aberto" role="status">Janela de login aberta. O envio espera até você fechá-la; depois, volta sozinho.</p>}
       <div className="envio-janelas">
         <div>

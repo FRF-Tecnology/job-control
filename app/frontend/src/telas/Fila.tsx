@@ -225,7 +225,11 @@ export function TelaFila() {
   return (
     <div className="fila">
       {cabecalho}
-      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} onEstado={setEnvio} />
+      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} onEstado={setEnvio} fila={{
+        aprovadas: lista.filter(c => c.estado === 'aprovada').map(c => ({ id: c.id, em: c.aprovacao?.em ?? c.atualizadaEm })),
+        paraRevisar: lista.filter(c => c.estado === 'preparada').length,
+        prontas: prontas.length,
+      }} />
       <section className="limites" aria-label="Limite de hoje" role="region">
         {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
           <LimiteCartao key={p} plataforma={p} nome={PLATAFORMAS[p]} na={NA_PLATAFORMA[p]} limite={limites[p]}
