@@ -142,8 +142,11 @@ func (p *pagina) Preencher(ctx context.Context, c executor.Campo, valor string) 
 
 // Igual confere dentro da página se o valor que o campo já tem é o esperado. Só "igual", "diferente" ou "sem-campo"
 // voltam: o valor da página nunca sai dela (jc-a2y.6.5.1).
-func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperado string) (bool, error) {
-	js, err := chamada(scriptIgual, c.ID, esperado, c.Tipo)
+func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperados []string) (bool, error) {
+	if len(esperados) == 0 {
+		return false, nil
+	}
+	js, err := chamada(scriptIgual, c.ID, esperados, c.Tipo)
 	if err != nil {
 		return false, err
 	}
@@ -158,6 +161,23 @@ func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperado string) (
 		return false, nil
 	}
 	return false, fmt.Errorf("navegador: não conferiu (%s)", res) // só o código fixo
+}
+
+// Desmarcar desmarca a caixa (clique, como a pessoa faria, para o formulário saber) e confere que ficou desmarcada.
+// Nunca marca: caixa já desmarcada fica como está (jc-a2y.6.5.2).
+func (p *pagina) Desmarcar(ctx context.Context, c executor.Campo) error {
+	js, err := chamada(scriptDesmarcar, c.ID)
+	if err != nil {
+		return err
+	}
+	res, err := rodar(ctx, p, tempoAcao, chromedp.Evaluate[string](js))
+	if err != nil {
+		return err
+	}
+	if res != "ok" {
+		return fmt.Errorf("navegador: não desmarcou (%s)", res) // só o código fixo
+	}
+	return nil
 }
 
 // Anexar põe no campo de arquivo o caminho que o executor passou (a cópia conferida, #43).
@@ -312,7 +332,14 @@ const scriptPreencher = `(sel, valor) => {
 
 // scriptIgual compara o valor atual do campo com o esperado, por tipo: e-mail e nome sem diferença de caixa e acento,
 // telefone pelos dígitos (aceita o código do país na frente), código do país pelo número. Devolve só o resultado.
-const scriptIgual = `(sel, esperado, tipo) => {
+const scriptDesmarcar = `(sel) => {
+  const el = document.querySelector(sel);
+  if (!el || el.type !== 'checkbox') return 'sem-campo';
+  if (el.checked) el.click();
+  return el.checked ? 'continua-marcada' : 'ok';
+}`
+
+const scriptIgual = `(sel, esperados, tipo) => {
   const norm = s => (s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const dig = s => (s || '').replace(/\D+/g, '');
   let atuais = [];
@@ -326,9 +353,11 @@ const scriptIgual = `(sel, esperado, tipo) => {
     else atuais = [el.value];
   }
   const igual = v => {
-    if (tipo === 'telefone') { const a = dig(v), e = dig(esperado); return e !== '' && (a === e || (a.endsWith(e) && a.length - e.length <= 3)); }
-    if (tipo === 'ddi') { const e = dig(esperado); return e !== '' && new RegExp('(^|[^0-9])\\+?' + e + '([^0-9]|$)').test(v); }
-    return norm(v) !== '' && norm(v) === norm(esperado);
+    return esperados.some(esperado => {
+      if (tipo === 'telefone') { const e = dig(esperado); return e !== '' && dig(v) === e; }
+      if (tipo === 'ddi') { const e = dig(esperado); return e !== '' && new RegExp('(^|[^0-9])\\+?' + e + '([^0-9]|$)').test(v); }
+      return norm(v) !== '' && norm(v) === norm(esperado);
+    });
   };
   return atuais.some(igual) ? 'igual' : 'diferente';
 }`

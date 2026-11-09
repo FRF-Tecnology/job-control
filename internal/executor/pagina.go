@@ -30,9 +30,11 @@ type Pagina interface {
 	// Campos lista os campos do formulário de candidatura.
 	Campos(ctx context.Context) ([]Campo, error)
 	Preencher(ctx context.Context, c Campo, valor string) error
-	// Igual confere, dentro da página, se o valor que o campo já tem é o esperado (e-mail sem diferença de caixa,
-	// telefone pelos dígitos, código do país pelo número). O valor da página nunca volta (jc-a2y.6.5.1).
-	Igual(ctx context.Context, c Campo, esperado string) (bool, error)
+	// Igual confere, dentro da página, se o valor que o campo já tem é um dos esperados (e-mail e nome sem diferença
+	// de caixa, telefone com os mesmos dígitos, código do país pelo número). O valor da página nunca volta.
+	Igual(ctx context.Context, c Campo, esperados []string) (bool, error)
+	// Desmarcar desmarca uma caixa marcada e confere que ficou desmarcada. Nunca marca (jc-a2y.6.5.2).
+	Desmarcar(ctx context.Context, c Campo) error
 	// Anexar põe o arquivo do caminho no campo (o executor passa uma cópia já conferida, nunca o original).
 	Anexar(ctx context.Context, c Campo, caminho string) error
 	// URLAtual é onde a página está agora (o executor confere a cada etapa e logo antes do clique).
@@ -53,7 +55,8 @@ const (
 	CampoNome      = "nome"
 	CampoEmail     = "email"
 	CampoTelefone  = "telefone"
-	CampoDDI       = "ddi" // código do país do telefone
+	CampoDDI       = "ddi"    // código do país do telefone
+	CampoSeguir    = "seguir" // caixa "Seguir <empresa>": o app só desmarca, nunca marca (jc-a2y.6.5.2)
 	CampoCidade    = "cidade"
 	CampoPretensao = "pretensao"
 	CampoMensagem  = "mensagem"
