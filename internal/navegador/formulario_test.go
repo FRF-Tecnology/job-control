@@ -15,6 +15,9 @@ import (
 // de verdade. O Chrome roda sem janela (o padrão do NovaPagina).
 
 const dadosUmaPagina = `[null,["Descrição fictícia",[[111,"Qual o seu e-mail?",null,0,[[1001,null,1]]],[113,"Nível de inglês",null,2,[[1003,[["Básico"],["Avançado"]],1]]]]],"/forms","Formulário fictício"]`
+
+var dadosUmaPaginaVar = dadosUmaPagina
+
 const dadosSecoes = `[null,["d",[[1,"Nome",null,0,[[10,null,1]]],[2,"Seção 2",null,8,null],[3,"Cidade",null,0,[[11,null,1]]]]]]`
 
 func paginaGoogle(dados, corpo string) string {
@@ -27,12 +30,16 @@ func servidorDeFormularios(t *testing.T) *servidorFicticio {
 	t.Helper()
 	g := "/forms/d/e/1FAIpQLSf_"
 	rotas := map[string]string{
-		"docs.google.com " + g + "ok/viewform":       paginaGoogle(dadosUmaPagina, `<form><input name="entry.1001"></form>`),
-		"docs.google.com " + g + "secoes/viewform":   paginaGoogle(dadosSecoes, ""),
-		"docs.google.com " + g + "login/viewform":    `<!doctype html><html><body><p>Você precisa fazer login para continuar.</p></body></html>`,
-		"docs.google.com " + g + "email/viewform":    paginaGoogle(dadosUmaPagina, `<p>O seu e-mail será registrado quando você enviar este formulário.</p>`),
-		"docs.google.com " + g + "iframe/viewform":   paginaGoogle(dadosUmaPagina, `<iframe src="https://exemplo.com/pagamento"></iframe>`),
-		"docs.google.com " + g + "arquivo/viewform":  paginaGoogle(dadosUmaPagina, `<input type="file" name="cv">`),
+		"docs.google.com " + g + "ok/viewform":      paginaGoogle(dadosUmaPagina, `<form><input name="entry.1001"></form>`),
+		"docs.google.com " + g + "secoes/viewform":  paginaGoogle(dadosSecoes, ""),
+		"docs.google.com " + g + "login/viewform":   `<!doctype html><html><body><p>Você precisa fazer login para continuar.</p></body></html>`,
+		"docs.google.com " + g + "email/viewform":   paginaGoogle(dadosUmaPagina, `<p>O seu e-mail será registrado quando você enviar este formulário.</p>`),
+		"docs.google.com " + g + "iframe/viewform":  paginaGoogle(dadosUmaPagina, `<iframe src="https://exemplo.com/pagamento"></iframe>`),
+		"docs.google.com " + g + "arquivo/viewform": paginaGoogle(dadosUmaPagina, `<input type="file" name="cv">`),
+		// baixas do Fallen no #124: embed e object de outro domínio, e a coleta do e-mail da conta
+		"docs.google.com " + g + "embed/viewform":    paginaGoogle(dadosUmaPagina, `<embed src="https://exemplo.com/pagamento">`),
+		"docs.google.com " + g + "object/viewform":   paginaGoogle(dadosUmaPagina, `<object data="https://exemplo.com/pagamento"></object>`),
+		"docs.google.com " + g + "coleta/viewform":   paginaGoogle(dadosUmaPagina, `<form><input type="email" name="emailAddress"></form>`),
 		"docs.google.com " + g + "semdados/viewform": `<!doctype html><html><body><p>Carregando...</p></body></html>`,
 		// com dados que o leitor do Google aceitaria: o Typeform tem de bloquear antes de ler qualquer coisa
 		"acme.typeform.com /to/AbC123": paginaGoogle(dadosUmaPagina, `<p>Typeform fictício</p>`),
@@ -83,6 +90,9 @@ func TestLerFormularioComChrome(t *testing.T) {
 		g + "email/viewform":                  "login", // e-mail registrado: nunca enviamos a identidade da conta
 		g + "iframe/viewform":                 "site-externo",
 		g + "arquivo/viewform":                "outro",
+		g + "embed/viewform":                  "site-externo",
+		g + "object/viewform":                 "site-externo",
+		g + "coleta/viewform":                 "login", // o Google coleta o e-mail da conta
 		g + "semdados/viewform":               "outro",
 		"https://acme.typeform.com/to/AbC123": "outro", // sem amostra real do formato: a pessoa envia
 		"https://forms.gle/fora":              "site-externo",
@@ -106,6 +116,7 @@ func TestLeituraDoRetrato(t *testing.T) {
 		b, _ := json.Marshal(retratoFormulario{Google: google, Texto: texto, Iframes: iframes, Arquivo: arquivo})
 		return string(b)
 	}
+	coleta, _ := json.Marshal(retratoFormulario{Google: &dadosUmaPaginaVar, Email: true})
 	ok := dadosUmaPagina
 	canon := "https://docs.google.com/forms/d/e/1FAIpQLSf_ok/viewform"
 	if l := leituraDoRetrato(retrato(&ok, "Formulário", []string{"docs.google.com", ""}, false), canon); l.Bloqueio != "" || len(l.Perguntas) != 2 {
@@ -119,6 +130,7 @@ func TestLeituraDoRetrato(t *testing.T) {
 		"will be recorded":          {retrato(&ok, "Your email will be recorded when you submit", nil, false), "login"},
 		"iframe de outro domínio":   {retrato(&ok, "", []string{"pagamentos.exemplo.com"}, false), "site-externo"},
 		"upload":                    {retrato(&ok, "", nil, true), "outro"},
+		"coleta do e-mail":          {string(coleta), "login"},
 		"estrutura fora do formato": {retrato(&ruim, "", nil, false), "outro"},
 		"retrato que não é JSON":    {"<script>", "outro"},
 		"retrato grande demais":     {retrato(&ok, strings.Repeat("a", maxRetratoFormulario), nil, false), "outro"}, // JSON bom: só o teto bloqueia
