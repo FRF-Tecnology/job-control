@@ -82,7 +82,90 @@ paths:
     get: { summary: 'Emails registrados (?status=, ?vaga=)' }
     post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica' }
   /emails/{idMensagem}/ligar: { post: { summary: 'Liga um email sem vaga: {vagaId}' } }
-  /emails/{idMensagem}/descartar: { post: { summary: Tira da lista "sem vaga" } }
+  /emails/{idMensagem}/descartar: { post: { summary: 'Tira da lista "sem vaga". jc-a2y.7.3 (proposta): também descarta um email a-confirmar, sem mudar a vaga' } }
+  # E-mails pelo navegador (jc-a2y.7.3, docs/propostas/emails-navegador.md). Gmail web, só leitura, num perfil do
+  # navegador só para e-mail. Nunca envia, responde, arquiva, apaga, marca nem abre a mensagem. Só a tela, e só no
+  # build com o envio (404 no padrão e no central-dev).
+  /emails/leitura:
+    get:
+      x-proposta: true
+      summary: 'Estado da leitura de e-mails: aceite (com o provedor e o modelo aceitos), conta do Gmail no perfil do e-mail, se há leitura em andamento, a última leitura e quando a próxima pode começar'
+      responses:
+        '200': { description: 'Estado da leitura', content: { application/json: { schema: { $ref: '#/components/schemas/EstadoLeituraEmails' } } } }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /emails/aceite:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'A pessoa aceita o aviso da leitura: remetente, assunto e trecho (até 300 caracteres, números mascarados) vão para a IA conectada agora. O aceite vale só para o provedor e o modelo informados, que têm de ser os conectados agora; trocar de IA pede aceite novo. A IA grátis pela nuvem (P7) não é aceita aqui'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [provedor, modelo]
+              properties:
+                provedor: { type: string, maxLength: 40 }
+                modelo: { type: string, maxLength: 120 }
+      responses:
+        '200': { description: 'Aceite gravado', content: { application/json: { schema: { $ref: '#/components/schemas/EstadoLeituraEmails' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'O provedor ou o modelo não são os conectados agora, ou não há IA conectada: {erro, motivo}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLeituraEmails' } } } }
+  /emails/ler:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Lê a caixa do Gmail no perfil do e-mail, sem janela, só pela lista de resultados de uma busca fixa (remetentes de ATS e palavras de processo seletivo, after: o dia do último e-mail registrado ou 30 dias atrás). Nunca abre a mensagem, nunca clica nem tecla. Até 50 resultados. E-mails de segurança da conta ou de dinheiro (código, 2FA, senha, novo login, banco, Pix, fatura, boleto) são descartados antes da IA e não ficam guardados. O resto passa pelo pré-filtro, pela classificarEmail com a guarda (vagaId só entre as candidatas) e pelo RegistrarEmail: entrevista e teste de remetente com domínio conhecido da vaga aplicam sozinhos; recusa, oferta e remetente de outro domínio ficam a-confirmar. Uma leitura por vez, intervalo mínimo de 5 minutos, tempo total de 2 minutos'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'Resultado da leitura (concluida, precisa-entrar ou outro), com as contagens e o que mudou', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoLeituraEmails' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'Não leu: {erro, motivo}. motivo lendo, login-aberto, sem-ia, sem-aceite ou sem-navegador', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLeituraEmails' } } } }
+        '429': { description: 'Intervalo mínimo entre leituras: {erro, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroIntervaloEmails' } } } }
+  /emails/{idMensagem}/confirmar:
+    parameters:
+      - { name: idMensagem, in: path, required: true, schema: { type: string, pattern: '^gmail:[0-9a-f]{1,32}$' } }
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'A pessoa confirma a mudança proposta de um e-mail a-confirmar (recusa, oferta, ou entrevista e teste de remetente de outro domínio). A transição é recalculada com o estado de agora; se não vale mais (a vaga já andou, foi encerrada ou pulada), é 409 e nada muda'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'O e-mail ligado e a etapa nova: {idMensagem, status, vagaId, transicao}', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoEmail' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'E-mail não encontrado, ou este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'O e-mail não está a-confirmar, ou a transição não vale mais: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /emails/sair:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Sair do Gmail: apaga só o perfil do navegador do e-mail (sessão e cookies do Google). Os e-mails registrados e o perfil do envio ficam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'apagado [perfil-email] ou faltou [perfil-email]; fechar false', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'Há uma leitura em andamento ou a janela de login do Gmail está aberta: {erro, motivo}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLeituraEmails' } } } }
   /curriculos: { get: { summary: PDFs na pasta de currículos } }
   /primeiros-passos: { get: { summary: Checklist da primeira vez } }
   /validar: { get: { summary: Confere todos os dados } }
@@ -506,7 +589,7 @@ paths:
               additionalProperties: false
               description: 'Exatamente um dos dois'
               properties:
-                plataforma: { type: string, enum: [linkedin], description: 'Abre https://www.linkedin.com/login' }
+                plataforma: { type: string, enum: [linkedin, gmail], description: 'linkedin abre https://www.linkedin.com/login. gmail (jc-a2y.7.3, proposta) abre o perfil do navegador só para e-mail, separado do perfil do envio, em https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/' }
                 candidatura: { type: string, pattern: '^cand-', description: 'Abre a página da vaga desta candidatura, se o endereço é de uma vaga na lista fechada da plataforma dela' }
       responses:
         '200': { description: 'Janela aberta: estado do envio com login true', content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
@@ -898,8 +981,8 @@ components:
         em: { type: string }
     ItemApagado:
       type: string
-      enum: [banco, curriculos, backups, navegador, chaves, pasta-antiga]
-      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe'
+      enum: [banco, curriculos, backups, navegador, chaves, pasta-antiga, perfil-email]
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe. perfil-email (jc-a2y.7.3, proposta) = o perfil do navegador só para e-mail (sessão do Google): sai no apagar e no POST /emails/sair'
     ResultadoApagar:
       type: object
       additionalProperties: false
@@ -1004,6 +1087,66 @@ components:
         impressao: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$', description: 'sha256 do JSON canônico (RFC 8785, como na Fila) de {pedidoId, acao, parametros}. A tela manda em X-Impressao com X-Pedido; ao confirmar, o servidor exige esta impressão E a chamada recebida igual à guardada' }
         falta: { type: array, items: { type: string }, description: 'O que ainda fica com a pessoa (frases fixas)' }
         criadaEm: { type: string }
+    EstadoLeituraEmails:
+      type: object
+      additionalProperties: false
+      required: [aceite, conta, lendo, ultimaLeitura, proximaEm]
+      description: 'jc-a2y.7.3 (proposta)'
+      properties:
+        aceite:
+          type: [object, 'null']
+          additionalProperties: false
+          required: [provedor, modelo, em]
+          description: 'null sem aceite, ou quando a IA conectada agora não é a aceita'
+          properties:
+            provedor: { type: string }
+            modelo: { type: string }
+            em: { type: string }
+        conta: { type: string, enum: [desconhecida, ok, precisa-entrar], description: 'O que a última leitura viu no perfil do e-mail; desconhecida antes da primeira' }
+        lendo: { type: boolean }
+        ultimaLeitura: { type: [string, 'null'] }
+        proximaEm: { type: [string, 'null'], description: 'Quando a próxima leitura pode começar (intervalo mínimo de 5 minutos); null se já pode' }
+    ResultadoLeituraEmails:
+      type: object
+      additionalProperties: false
+      required: [resultado, lidos, sensiveis, ignorados, duplicados, registrados, aplicados, aConfirmar, semVaga, mudancas]
+      description: 'jc-a2y.7.3 (proposta). Só contagens e ids; nenhum trecho. Os e-mails sensíveis só entram na contagem'
+      properties:
+        resultado: { type: string, enum: [concluida, precisa-entrar, outro], description: 'precisa-entrar: o Gmail pediu login ou um desafio, e nada foi lido. outro: a página não era a lista de resultados, ou saiu da lista exata de hosts' }
+        lidos: { type: integer, maximum: 50 }
+        sensiveis: { type: integer, description: 'Segurança da conta ou dinheiro: descartados antes da IA, nada guardado' }
+        ignorados: { type: integer, description: 'Fora do pré-filtro: só o id fica, para não ler de novo' }
+        duplicados: { type: integer }
+        registrados: { type: integer }
+        aplicados: { type: integer, description: 'Entrevista e teste de remetente com domínio conhecido da vaga: a etapa mudou' }
+        aConfirmar: { type: integer }
+        semVaga: { type: integer }
+        mudancas: { type: array, maxItems: 50, items: { $ref: '#/components/schemas/ResultadoEmail' } }
+    ResultadoEmail:
+      type: object
+      additionalProperties: false
+      required: [idMensagem, status, vagaId, transicao]
+      properties:
+        idMensagem: { type: string }
+        status: { type: string, enum: [ligado, sem-vaga, ignorado, descartado, duplicado, a-confirmar], description: 'a-confirmar (jc-a2y.7.3, proposta): a mudança da vaga espera a pessoa (POST /emails/{idMensagem}/confirmar)' }
+        vagaId: { type: [string, 'null'] }
+        transicao: { type: [string, 'null'], description: 'A etapa nova da vaga, quando mudou' }
+    ErroLeituraEmails:
+      type: object
+      additionalProperties: false
+      required: [erro, motivo]
+      description: 'jc-a2y.7.3 (proposta)'
+      properties:
+        erro: { type: string, description: 'Texto pronto para a tela' }
+        motivo: { type: string, enum: [lendo, login-aberto, sem-ia, sem-aceite, sem-navegador, ia-diferente] }
+    ErroIntervaloEmails:
+      type: object
+      additionalProperties: false
+      required: [erro, renovaEm]
+      description: 'jc-a2y.7.3 (proposta)'
+      properties:
+        erro: { type: string }
+        renovaEm: { type: string }
     ErroLogin:
       type: object
       additionalProperties: false
