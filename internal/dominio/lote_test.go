@@ -214,3 +214,46 @@ func TestAprovarLoteOutraSemLimite(t *testing.T) {
 		t.Fatalf("lote com outra: aprovadas %v, recusadas %v, %v", a, r, err)
 	}
 }
+
+// jc-a2y.6.11 + jc-a2y.6.13 (combinado, como o PO pediu): a volta automática de verdade (DevolverAprovada) tira a
+// tentativa de tentativas e devolve a candidatura para aprovada. No limite do dia ela conta uma vez só, como
+// aprovada pendente, no aprovar de uma e no lote. Dados fictícios.
+func TestVoltaDeVerdadeNoLimiteDoDia(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 9, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	limites := map[string]int{"linkedin": 2}
+	e := EstadoVazio()
+	var c [3]Candidatura
+	for i, n := range []string{"1", "2", "3"} {
+		e = comVaga(t, e, "li-"+n, "linkedin", linkLI(n), true)
+		e, c[i] = preparada(t, e, "li-"+n, agora)
+	}
+	var err error
+	for _, x := range c[:2] {
+		if e, _, err = AprovarCandidatura(e, x.ID, x.Impressao, agora, limites, eu); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if e, _, err = IniciarEnvio(e, c[0].ID, estadoDe(t, e, c[0].ID).Versao, agora, limites); err != nil {
+		t.Fatal(err)
+	}
+	if e, _, err = DevolverAprovada(e, c[0].ID, estadoDe(t, e, c[0].ID).Versao, "erro-tecnico", agora); err != nil {
+		t.Fatal(err)
+	}
+	if v := estadoDe(t, e, c[0].ID); v.Estado != CandAprovada {
+		t.Fatalf("devolvida = %s", v.Estado)
+	}
+	if u, p := UsadasNoDia(e, "linkedin", agora), AprovadasPendentes(e, "linkedin", agora); u != 0 || p != 2 {
+		t.Fatalf("depois da volta: usadas %d, pendentes %d; queria 0 e 2", u, p)
+	}
+	var el *ErroLimite
+	if _, _, err = AprovarCandidatura(e, c[2].ID, c[2].Impressao, agora, limites, eu); !errors.As(err, &el) {
+		t.Fatalf("3ª aprovada com uma devolvida pendente: %v", err)
+	}
+	if _, _, r, _ := AprovarLote(e, []ItemLote{{c[2].ID, c[2].Impressao}}, agora, limites, eu); len(r) != 1 || r[0].Motivo != RecusaLimite {
+		t.Fatalf("lote com uma devolvida pendente: %v", r)
+	}
+	// A devolvida sai de novo pelo executor sem contar contra ela mesma.
+	if _, _, err = IniciarEnvio(e, c[0].ID, estadoDe(t, e, c[0].ID).Versao, agora.Add(10*time.Minute), limites); err != nil {
+		t.Fatalf("a devolvida não saiu de novo: %v", err)
+	}
+}
