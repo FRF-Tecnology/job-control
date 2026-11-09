@@ -271,6 +271,10 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 			semLimite[plataforma] = true
 			x.o.Log("executor: %s pulada (plataforma %s parada)", o["id"], plataforma)
 			continue
+		case errors.Is(err, ErrSemEnvioDeFormulario):
+			semLimite[plataforma] = true
+			x.o.Log("executor: %s pulada (sem envio de formulário neste build)", o["id"])
+			continue
 		case err != nil:
 			return desfechos, err
 		}
@@ -324,6 +328,12 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 		return Desfecho{ID: id, Estado: dominio.CandBloqueada, Motivo: "site-externo"}, nil
 	}
 
+	// Formulário (jc-a2y.7.2) com um navegador que não sabe enviar formulário: nem entra em enviando. Fica aprovada,
+	// sem tentativa, sem volta e sem página (nada no limite do dia nem no teto).
+	if plataforma == dominio.PlataformaFormulario && !x.enviaFormulario() {
+		return Desfecho{}, ErrSemEnvioDeFormulario
+	}
+
 	// M2: conferência atômica e consumo da aprovação, numa transação.
 	limites, err := x.arm.LimitesCandidatura(ctx)
 	if err != nil {
@@ -343,6 +353,9 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 	t := &tentativa{x: x, id: id}
 	if v, ok := dominio.NumeroDe(o["versao"]); ok {
 		t.versao = int(v)
+	}
+	if plataforma == dominio.PlataformaFormulario { // jc-a2y.7.2: formulario.go
+		return x.concluir(ctx, plataforma, t, x.preencherFormulario(ctx, c, t))
 	}
 	return x.concluir(ctx, plataforma, t, x.preencherEEnviar(ctx, c, t))
 }
@@ -713,7 +726,9 @@ func (x *Executor) concluir(ctx context.Context, plataforma string, t *tentativa
 		switch {
 		case p.estado == dominio.CandFalhou && p.motivo == "erro-tecnico":
 			volta = "erro-tecnico"
-		case p.estado == dominio.CandBloqueada && p.motivo == "login":
+		// Plataforma sem sessão (formulario, jc-a2y.7.2): o login é do próprio formulário (nunca enviamos a
+		// identidade da conta Google). Fica bloqueada, sem voltar.
+		case p.estado == dominio.CandBloqueada && p.motivo == "login" && dominio.TemSessao(plataforma):
 			volta = "login"
 		}
 	}

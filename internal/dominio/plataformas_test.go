@@ -84,3 +84,22 @@ func TestEstadoDasPlataformas(t *testing.T) {
 		}
 	}
 }
+
+// jc-a2y.7.2 (pedido do Faker no #127): plataforma sem sessão (formulario) nunca ganha estado: sem rota de retomar,
+// uma pausa ou um precisa-entrar a travariam de vez. O limite do dia e o teto de páginas continuam valendo.
+func TestPlataformaSemSessaoNaoGanhaEstado(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	if TemSessao(PlataformaFormulario) || TemSessao("outra") || !TemSessao("linkedin") || !TemSessao("gupy") || !TemSessao("inhire") {
+		t.Fatal("TemSessao fora da lista do envio")
+	}
+	p := Plataformas{}
+	for _, codigo := range []string{"erro-tecnico", "erro-tecnico", "erro-tecnico", "site-externo", "site-externo", "login", "captcha", "aviso-conta"} {
+		p = p.RegistrarResultado(PlataformaFormulario, codigo, agora)
+	}
+	if _, tem := p[PlataformaFormulario]; tem || len(p) != 0 {
+		t.Fatalf("formulario ganhou estado: %+v", p)
+	}
+	if !p.Ativa(PlataformaFormulario, agora) {
+		t.Fatal("formulario fora de ativa")
+	}
+}
