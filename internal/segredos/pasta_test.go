@@ -17,10 +17,12 @@ func TestServicoDaPasta(t *testing.T) {
 	if padrao == "" {
 		padrao = filepath.Join(casa, ".config")
 	}
-	padrao = filepath.Join(padrao, "Central de Candidaturas")
-
-	if got := ServicoDaPasta(padrao); got != servico {
-		t.Errorf("pasta padrão = %q; queria o nome de sempre", got)
+	// jc-etv.7: a pasta padrão nova (Applyer) e a antiga (antes do rename, ou com o rename adiado) dão o mesmo nome,
+	// para as chaves de IA não sumirem na migração. O serviço do cofre só muda no PR A2.
+	for _, nome := range []string{"Applyer", "Central de Candidaturas"} {
+		if got := ServicoDaPasta(filepath.Join(padrao, nome)); got != servico {
+			t.Errorf("pasta padrão %s = %q; queria o nome de sempre", nome, got)
+		}
 	}
 	a, b := filepath.Join(casa, "teste-a"), filepath.Join(casa, "teste-b")
 	sa, sb := ServicoDaPasta(a), ServicoDaPasta(b)

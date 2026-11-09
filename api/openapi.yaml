@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.7.0
+  version: 0.11.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -385,6 +385,24 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
 
+  # Pasta de dados migrada para Applyer (jc-etv.7, docs/propostas/applyer-nomes-internos.md, item 1). Proposta: ainda
+  # não atendida. Nunca traz caminho.
+  /dados/pasta:
+    get:
+      x-proposta: true
+      summary: 'O que aconteceu com a pasta de dados ao abrir o app, para a tela avisar: {aviso, migradaEm}. aviso: null; pasta-antiga-ficou (as duas pastas existem: o app usa a Applyer, e a antiga continua lá para a pessoa decidir; nada é juntado sozinho); ou migracao-adiada (a pasta antiga está em uso por outro programa: o app usa a antiga nesta vez e renomeia na próxima abertura). migradaEm: quando a pasta foi renomeada, ou null. Sem caminho, sem nome de usuário'
+      responses:
+        '200':
+          description: Estado da pasta
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [aviso, migradaEm]
+                properties:
+                  aviso: { type: [string, 'null'], enum: [pasta-antiga-ficou, migracao-adiada, null] }
+                  migradaEm: { type: [string, 'null'] }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.

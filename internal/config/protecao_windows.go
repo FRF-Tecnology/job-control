@@ -66,7 +66,7 @@ func ProtegerPasta(pasta string) error {
 }
 
 // ErrPastaDeOutroUsuario: a pasta de dados pertence a outro usuário deste computador. Sem caminho na mensagem.
-var ErrPastaDeOutroUsuario = errors.New("a pasta de dados pertence a outro usuário deste computador: use outra pasta (CENTRAL_PASTA) criada por você")
+var ErrPastaDeOutroUsuario = errors.New("a pasta de dados pertence a outro usuário deste computador: use outra pasta (APPLYER_PASTA) criada por você")
 
 // lerDonoDe: só o teste troca (não há como criar, sem ser administrador, uma pasta com outro dono).
 var lerDonoDe = lerDono

@@ -2,37 +2,124 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 )
 
-// NomePasta é a pasta do app dentro da pasta de configuração do usuário.
-const NomePasta = "Central de Candidaturas"
+// NomePasta é a pasta do app dentro da pasta de configuração do usuário. NomePastaAntiga é a de antes do Applyer
+// (jc-etv.7): ao abrir, ela é renomeada para NomePasta, inteira e de uma vez.
+const (
+	NomePasta       = "Applyer"
+	NomePastaAntiga = "Central de Candidaturas"
+)
 
-// PastaDados devolve a pasta dos dados locais (banco, currículos, backups).
-// CENTRAL_PASTA troca o local (testes, uma segunda conta, simulação de usuário novo).
-// A pasta fica só para o usuário (ProtegerPasta), também quando já existia: guarda o banco, os currículos e o
-// perfil do navegador (jc-a2y.58).
-func PastaDados() (string, error) {
-	if p := os.Getenv("CENTRAL_PASTA"); p != "" {
-		return p, criarProtegida(p)
-	}
-	p, err := PastaPadrao()
-	if err != nil {
-		return "", err
-	}
-	return p, criarProtegida(p)
+// Avisos da abertura da pasta, para a tela (sem caminho).
+const (
+	AvisoAntigaFicou    = "pasta-antiga-ficou" // as duas existem: usa a nova, e a antiga continua lá para a pessoa decidir
+	AvisoMigracaoAdiada = "migracao-adiada"    // o rename falhou (arquivo em uso): usa a antiga nesta vez e tenta na próxima
+)
+
+// ErrDuasPastas: APPLYER_PASTA e CENTRAL_PASTA apontam para pastas diferentes. Falha fechada: abrir a pasta errada
+// seria pior que não abrir.
+var ErrDuasPastas = errors.New("defina só APPLYER_PASTA (APPLYER_PASTA e CENTRAL_PASTA apontam para pastas diferentes)")
+
+// renomear é o os.Rename; só os testes trocam, para simular a pasta em uso.
+var renomear = os.Rename
+
+// Abertura: a pasta de dados aberta e o que aconteceu, sem caminho fora de Caminho.
+type Abertura struct {
+	Caminho string
+	Migrou  bool   // a pasta antiga acabou de virar a nova
+	Aviso   string // AvisoAntigaFicou, AvisoMigracaoAdiada ou vazio
 }
 
-// PastaPadrao é a pasta de dados de sempre (sem CENTRAL_PASTA). Não cria nada.
+// PastaDados devolve a pasta dos dados locais (banco, currículos, backups). Ver AbrirPastaDados.
+func PastaDados() (string, error) {
+	a, err := AbrirPastaDados()
+	return a.Caminho, err
+}
+
+// AbrirPastaDados resolve e cria a pasta de dados.
+//   - APPLYER_PASTA troca o local (testes, uma segunda conta, simulação de usuário novo). CENTRAL_PASTA ainda vale,
+//     por duas versões; as duas definidas e diferentes: ErrDuasPastas.
+//   - Sem variável, a pasta padrão: Applyer. Se só a antiga existe, ela é renomeada (os.Rename, na mesma pasta-mãe:
+//     no mesmo disco e de uma vez; nunca copia e apaga). Se o rename falha, usa a antiga nesta vez. Se as duas
+//     existem, usa a nova e não junta nada.
+//
+// A pasta fica só para o usuário (ProtegerPasta), também quando já existia ou acabou de ser renomeada: guarda o
+// banco, os currículos e o perfil do navegador (jc-a2y.58).
+func AbrirPastaDados() (Abertura, error) {
+	p, _, err := pastaDoAmbiente()
+	if err != nil {
+		return Abertura{}, err
+	}
+	if p != "" {
+		return Abertura{Caminho: p}, criarProtegida(p)
+	}
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return Abertura{}, err
+	}
+	nova, antiga := filepath.Join(base, NomePasta), filepath.Join(base, NomePastaAntiga)
+	a := Abertura{Caminho: nova}
+	switch {
+	case existeAlgo(nova):
+		if ehPastaDeVerdade(antiga) {
+			a.Aviso = AvisoAntigaFicou
+		}
+	case ehPastaDeVerdade(antiga):
+		if err := renomear(antiga, nova); err != nil {
+			a.Caminho, a.Aviso = antiga, AvisoMigracaoAdiada
+		} else {
+			a.Migrou = true
+		}
+	}
+	return a, criarProtegida(a.Caminho)
+}
+
+// pastaDoAmbiente: a pasta das variáveis e a origem para o log (sem caminho). Nenhuma definida: "".
+func pastaDoAmbiente() (pasta, origem string, err error) {
+	nova, antiga := os.Getenv("APPLYER_PASTA"), os.Getenv("CENTRAL_PASTA")
+	switch {
+	case nova != "" && antiga != "" && !MesmaPasta(nova, antiga):
+		return "", "pasta: APPLYER_PASTA e CENTRAL_PASTA diferentes", ErrDuasPastas
+	case nova != "":
+		return nova, "pasta: APPLYER_PASTA", nil
+	case antiga != "":
+		return antiga, "pasta: CENTRAL_PASTA (obsoleta)", nil
+	}
+	return "", "pasta: padrão", nil
+}
+
+// existeAlgo: há qualquer coisa no caminho (pasta, arquivo ou atalho).
+func existeAlgo(p string) bool { _, err := os.Lstat(p); return err == nil }
+
+// ehPastaDeVerdade: uma pasta, e não um arquivo nem um atalho (um atalho nunca é renomeado sozinho).
+func ehPastaDeVerdade(p string) bool {
+	fi, err := os.Lstat(p)
+	return err == nil && fi.IsDir() && fi.Mode()&os.ModeSymlink == 0
+}
+
+// PastaPadrao é a pasta de dados de sempre (sem variável): a nova, Applyer. Não cria nada.
 func PastaPadrao() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(base, NomePasta), nil
+}
+
+// EhPastaPadrao: o caminho é a pasta padrão nova ou a antiga (antes do rename, ou com o rename adiado). O cofre usa
+// isto para dar o mesmo nome às chaves nos dois casos.
+func EhPastaPadrao(p string) bool {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return false
+	}
+	return MesmaPasta(p, filepath.Join(base, NomePasta)) || MesmaPasta(p, filepath.Join(base, NomePastaAntiga))
 }
 
 // MesmaPasta diz se dois caminhos são a mesma pasta (limpos e absolutos; no Windows, sem diferenciar maiúsculas).
@@ -61,10 +148,8 @@ func criarProtegida(p string) error {
 // OrigemPasta diz de onde veio a pasta de dados, sem o caminho (que traz o nome do usuário): é o que os logs e
 // as mensagens de partida mostram.
 func OrigemPasta() string {
-	if os.Getenv("CENTRAL_PASTA") != "" {
-		return "pasta: CENTRAL_PASTA"
-	}
-	return "pasta: padrão"
+	_, origem, _ := pastaDoAmbiente()
+	return origem
 }
 
 // OcultarCaminhos troca, num texto de erro ou de log, a pasta de dados e a pasta do usuário por marcadores
@@ -89,10 +174,12 @@ func OcultarCaminhos(texto string) string {
 			pares = append(pares, [2]string{f, marcador})
 		}
 	}
-	// Do mais específico para o mais geral: a CENTRAL_PASTA e a pasta padrão costumam ficar dentro da do usuário.
+	// Do mais específico para o mais geral: as variáveis e a pasta padrão costumam ficar dentro da do usuário.
+	trocar(os.Getenv("APPLYER_PASTA"), "<APPLYER_PASTA>")
 	trocar(os.Getenv("CENTRAL_PASTA"), "<CENTRAL_PASTA>")
 	if base, err := os.UserConfigDir(); err == nil {
 		trocar(filepath.Join(base, NomePasta), "<pasta padrão>")
+		trocar(filepath.Join(base, NomePastaAntiga), "<pasta padrão>")
 	}
 	if casa, err := os.UserHomeDir(); err == nil {
 		trocar(casa, "~")

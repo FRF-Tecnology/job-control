@@ -23,12 +23,13 @@ func casaFalsa(t *testing.T) string {
 
 func TestOrigemPastaNaoTrazOCaminho(t *testing.T) {
 	casa := casaFalsa(t)
+	t.Setenv("APPLYER_PASTA", "")
 	t.Setenv("CENTRAL_PASTA", "")
 	if got := OrigemPasta(); got != "pasta: padrão" {
-		t.Errorf("sem CENTRAL_PASTA = %q", got)
+		t.Errorf("sem variável = %q", got)
 	}
 	t.Setenv("CENTRAL_PASTA", filepath.Join(casa, "central-teste"))
-	if got := OrigemPasta(); got != "pasta: CENTRAL_PASTA" {
+	if got := OrigemPasta(); got != "pasta: CENTRAL_PASTA (obsoleta)" { // jc-etv.7: aceita por duas versões
 		t.Errorf("com CENTRAL_PASTA = %q", got)
 	}
 }
@@ -38,6 +39,7 @@ func TestOcultarCaminhosTiraAPastaEOUsuario(t *testing.T) {
 
 	// CENTRAL_PASTA dentro da pasta do usuário (como no roteiro da .6.5): vira o marcador, não "~\...".
 	teste := filepath.Join(casa, "AppData", "Local", "central-teste")
+	t.Setenv("APPLYER_PASTA", "")
 	t.Setenv("CENTRAL_PASTA", teste)
 	got := OcultarCaminhos("abrir " + CaminhoBanco(teste) + ": acesso negado")
 	if strings.Contains(got, casa) || !strings.Contains(got, "<CENTRAL_PASTA>") {
