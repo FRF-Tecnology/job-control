@@ -2,11 +2,13 @@ package executor
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 	_ "time/tzdata"
@@ -158,6 +160,10 @@ func novoCenario(t *testing.T, paginas ...*paginaFalsa) *cenario {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { arm.Fechar() })
+	// O envio começa pausado (jc-a2y.51); estes testes são do envio liberado.
+	if err := arm.GravarEnvioPausado(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
 	s := &cenario{t: t, arm: arm, pastaCV: filepath.Join(dir, "curriculos"), agora: time.Date(2026, 11, 9, 10, 0, 0, 0, sp), nav: &navegadorFalso{paginas: paginas}}
 	os.Mkdir(s.pastaCV, 0o700)
 	if err := os.WriteFile(filepath.Join(s.pastaCV, "cv-pt.pdf"), pdf, 0o600); err != nil {
@@ -573,5 +579,124 @@ func TestValorDoCampo(t *testing.T) {
 		if v, m := valorDoCampo(conteudo, k.c); v != k.valor || m != k.motivo {
 			t.Errorf("%+v = %q %q; queria %q %q", k.c, v, m, k.valor, k.motivo)
 		}
+	}
+}
+
+// jc-a2y.51: pausado, nada é enviado; a conferência é na mesma transação que entraria em enviando.
+func TestPausadoNaoEnvia(t *testing.T) {
+	s := novoCenario(t, novaPagina(), novaPagina())
+	a := s.aprovada("linkedin", linkLI)
+	ou := s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1")
+	if err := s.arm.GravarEnvioPausado(context.Background(), true); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 0 || s.nav.abertas != 0 || s.cand(a)["estado"] != "aprovada" || s.cand(ou)["estado"] != "aprovada" {
+		t.Fatalf("pausado: desfechos %v (%v), páginas %d, estados %v %v", ds, err, s.nav.abertas, s.cand(a)["estado"], s.cand(ou)["estado"])
+	}
+	// Mesmo chamando Enviar direto (sem a fila), a transação recusa e nada muda.
+	antes := fmt.Sprint(s.cand(a))
+	if _, err := s.x.Enviar(context.Background(), a); !errors.Is(err, armazem.ErrEnvioPausado) || fmt.Sprint(s.cand(a)) != antes || s.nav.abertas != 0 {
+		t.Fatalf("Enviar pausado = %v", err)
+	}
+	if _, err := s.x.Enviar(context.Background(), ou); !errors.Is(err, armazem.ErrEnvioPausado) || s.cand(ou)["estado"] != "aprovada" {
+		t.Fatalf("outra pausada = %v", err)
+	}
+	// Retomado, envia.
+	s.arm.GravarEnvioPausado(context.Background(), false)
+	if ds, err := s.x.EnviarAprovadas(context.Background()); err != nil || len(ds) != 2 {
+		t.Fatalf("retomado = %v %v", ds, err)
+	}
+}
+
+// Pausar no meio da fila: a que está em envio termina; a próxima não começa.
+func TestPausarNoMeioDaFila(t *testing.T) {
+	p1 := novaPagina()
+	s := novoCenario(t, p1, novaPagina())
+	a := s.aprovada("linkedin", linkLI)
+	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	p1.aoPreencher = func() { s.arm.GravarEnvioPausado(context.Background(), true) } // a pessoa pausa durante o 1º
+	ds, err := s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 1 || s.cand(a)["estado"] != "enviada" || s.cand(b)["estado"] != "aprovada" || s.nav.abertas != 1 {
+		t.Fatalf("desfechos %v (%v); a=%v b=%v páginas %d", ds, err, s.cand(a)["estado"], s.cand(b)["estado"], s.nav.abertas)
+	}
+}
+
+// Pausar entre "pegou a aprovada" e "entrou em enviando" (o pedido do CyberSec no #59): a transação do IniciarEnvio
+// lê o pausado e recusa; a candidatura fica aprovada e nenhum envio acontece.
+func TestPausarEntrePegarEEntrarEmEnviando(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	id := s.aprovada("linkedin", linkLI)
+	s.x.antesDeIniciar = func() { s.arm.GravarEnvioPausado(context.Background(), true) }
+	ds, err := s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 0 || s.cand(id)["estado"] != "aprovada" || s.nav.abertas != 0 || dominio.ListaDe(s.cand(id)["tentativas"]) != nil {
+		t.Fatalf("desfechos %v (%v), estado %v, páginas %d, tentativas %v", ds, err, s.cand(id)["estado"], s.nav.abertas, s.cand(id)["tentativas"])
+	}
+}
+
+// Ao abrir o app, o envio volta a ficar pausado, mesmo que a pessoa tenha retomado antes de fechar.
+func TestIniciarPausa(t *testing.T) {
+	s := novoCenario(t) // o cenário começa com o envio liberado
+	if _, _, err := s.x.Iniciar(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !s.arm.EnvioPausado(context.Background()) {
+		t.Fatal("Iniciar não pausou o envio")
+	}
+}
+
+// quebrarBanco põe uma linha estragada na tabela itens: Carregar e Gravar passam a falhar; a meta continua gravável.
+func (s *cenario) quebrarBanco() {
+	s.t.Helper()
+	if err := s.arm.Transacao(context.Background(), func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(context.Background(), `INSERT INTO itens (colecao, ordem, dados) VALUES ('vagas', 999, '{estragado')`)
+		return err
+	}); err != nil {
+		s.t.Fatal(err)
+	}
+}
+
+// Revisão do #61: com a gravação das incertas falhando ao abrir, o envio já fica pausado (vem primeiro).
+func TestIniciarPausaMesmoComFalha(t *testing.T) {
+	s := novoCenario(t) // começa liberado
+	s.quebrarBanco()
+	if _, _, err := s.x.Iniciar(context.Background()); err == nil {
+		t.Fatal("Iniciar deveria falhar com o banco estragado")
+	}
+	if !s.arm.EnvioPausado(context.Background()) {
+		t.Fatal("a falha no Iniciar deixou o envio liberado")
+	}
+}
+
+// Rodar com o Iniciar falhando não entra no laço: devolve o erro na hora e nenhuma página abre.
+func TestRodarNaoEntraNoLacoSeIniciarFalha(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	s.aprovada("linkedin", linkLI)
+	s.quebrarBanco()
+	ctx, cancelar := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancelar()
+	var ciclo sync.Mutex
+	inicio := time.Now()
+	err := s.x.Rodar(ctx, time.Millisecond, &ciclo)
+	if err == nil || time.Since(inicio) > time.Second || s.nav.abertas != 0 {
+		t.Fatalf("Rodar = %v em %v, páginas %d", err, time.Since(inicio), s.nav.abertas)
+	}
+	if !ciclo.TryLock() {
+		t.Fatal("Rodar deixou o ciclo travado")
+	}
+}
+
+// Rodar normal: abre pausado e não envia; ao cancelar, sai.
+func TestRodarAbrePausado(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	id := s.aprovada("linkedin", linkLI)
+	ctx, cancelar := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancelar()
+	var ciclo sync.Mutex
+	if err := s.x.Rodar(ctx, 10*time.Millisecond, &ciclo); err != nil {
+		t.Fatal(err)
+	}
+	if s.cand(id)["estado"] != "aprovada" || s.nav.abertas != 0 || !s.arm.EnvioPausado(context.Background()) {
+		t.Fatalf("Rodar enviou sem retomar: %v, páginas %d", s.cand(id)["estado"], s.nav.abertas)
 	}
 }

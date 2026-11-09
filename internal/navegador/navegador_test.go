@@ -172,6 +172,10 @@ func novoCenario(t *testing.T, nav executor.Navegador, dados string) *cenario {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { arm.Fechar() })
+	// O envio começa pausado (jc-a2y.51); estes testes são do envio liberado.
+	if err := arm.GravarEnvioPausado(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
 	s := &cenario{t: t, arm: arm, cv: filepath.Join(dados, "curriculos"), agora: time.Date(2026, 11, 9, 10, 0, 0, 0, time.Local)}
 	os.MkdirAll(s.cv, 0o700)
 	os.WriteFile(filepath.Join(s.cv, "cv-pt.pdf"), pdf, 0o600)

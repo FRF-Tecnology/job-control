@@ -45,6 +45,7 @@ func main() {
 		SuspenderEnvio:  controleEnvio.Suspender,
 		FecharNavegador: controleEnvio.FecharNavegador,
 		AoApagar:        func() { app.Quit() },
+		EnvioLigado:     envio.Ligado,
 	})
 
 	app = application.New(application.Options{
