@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -15,6 +16,11 @@ import (
 // jc-a2y.63: o cofre do sistema de verdade (Gerenciador de Credenciais no Windows, Keychain no macOS), cada um no
 // seu sistema. Usa um serviço de TESTE com nome aleatório, nunca o real, e apaga o que gravou. Chaves fictícias.
 func TestCofreDoSistema(t *testing.T) {
+	// O cofre de verdade só no CI: neste PC, um erro no código poderia mexer nas chaves da pessoa (revisão do
+	// CyberSec no #93, depois do incidente do #85). O CI exige que este teste passe, sem pular.
+	if os.Getenv("CI") != "true" {
+		t.Skip("cofre do sistema de verdade: só no CI")
+	}
 	b := make([]byte, 6)
 	if _, err := rand.Read(b); err != nil {
 		t.Fatal(err)
