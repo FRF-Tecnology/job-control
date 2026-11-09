@@ -57,6 +57,8 @@ func main() {
 		Janela:       controleEnvio.Janela,
 		// "Ao vivo" (jc-a2y.6.9): nil no build padrão (a rota dá 404).
 		AoVivo: controleEnvio.AoVivo,
+		// Aviso da pasta de dados nesta abertura, para a tela (GET /dados/pasta, jc-etv.14), sem caminho.
+		AvisoPasta: abertura.Aviso,
 	})
 
 	app = application.New(application.Options{
@@ -89,22 +91,18 @@ func main() {
 	}
 }
 
-// registrarMigracao: o fato e o aviso da migração da pasta, no log e no banco (meta "pasta"), sem caminho. A tela lê o
-// aviso por GET /dados/pasta (jc-etv.7, proposta).
+// registrarMigracao: o fato e o aviso da migração da pasta no log, sem caminho. No banco (meta "pasta") fica só
+// quando a pasta foi renomeada (migradaEm), e uma vez: o aviso é desta abertura e vai para a API por Opcoes.AvisoPasta
+// (GET /dados/pasta, jc-etv.14), para não ficar velho no banco depois que a pessoa resolver.
 func registrarMigracao(ctx context.Context, banco *armazem.Armazem, a config.Abertura) {
-	switch {
-	case a.Migrou:
-		log.Printf("pasta: migrada para %s", config.NomePasta)
-	case a.Aviso != "":
+	if a.Aviso != "" {
 		log.Printf("pasta: %s", a.Aviso)
-	default:
+	}
+	if !a.Migrou {
 		return
 	}
-	registro := map[string]any{"aviso": a.Aviso, "em": time.Now().Format(time.RFC3339)}
-	if a.Migrou {
-		registro["migradaEm"] = registro["em"]
-	}
-	if err := banco.GravarMeta(ctx, "pasta", registro); err != nil {
+	log.Printf("pasta: migrada para %s", config.NomePasta)
+	if err := banco.GravarMeta(ctx, "pasta", map[string]any{"migradaEm": time.Now().Format(time.RFC3339)}); err != nil {
 		log.Printf("pasta: não gravou o registro da migração (%T)", err)
 	}
 }
