@@ -15,6 +15,9 @@ import (
 
 const limiteCorpo = 2_000_000
 
+// statusClienteDesistiu: o cliente fechou o pedido antes da resposta (o mesmo 499 que o nginx usa). Ninguém lê.
+const statusClienteDesistiu = 499
+
 // ErroInterno é a mensagem fixa do 500: nunca leva o texto do erro.
 const ErroInterno = "erro interno do app; tente de novo"
 
@@ -72,6 +75,12 @@ func (a *API) Handler() http.Handler {
 			caminho += "?" + r.URL.RawQuery
 		}
 		resp, err := a.Chamar(r.Context(), Pedido{Metodo: m, Caminho: caminho, Corpo: corpo, Autor: "eu"})
+		if err != nil && r.Context().Err() != nil {
+			// jc-a2y.35: o cliente desistiu (fechou ou trocou de tela) e o erro é só o cancelamento. Não é erro do
+			// app: nada vai para o log, e a gravação em andamento já foi desfeita pela transação.
+			enviar(w, Resposta{Status: statusClienteDesistiu, Corpo: Objeto{"erro": "pedido cancelado"}})
+			return
+		}
 		if err != nil {
 			// O texto do erro pode ter caminho da pasta (com o nome do usuário) ou dado do pedido: não vai para a
 			// resposta nem para o log. O log fica com método, caminho sem query e o tipo do erro.
