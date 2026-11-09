@@ -48,7 +48,22 @@ type EstadoCLI struct {
 	Instalada bool   `json:"instalada"`
 	Logada    *bool  `json:"logada"` // nil = não dá para saber sem chamar a IA
 	Versao    string `json:"versao,omitempty"`
+	Pronta    bool   `json:"pronta"`          // instalada e num formato que o app usa com segurança
+	Aviso     string `json:"aviso,omitempty"` // texto fixo quando não está pronta
+	// Motivo, só quando instalada e não pronta: MotivoFormato (instalar a versão nativa resolve) ou MotivoPolitica
+	// (fora do app por regra de segurança; o caminho é a chave de API). A tela escolhe a ação por ele (jc-a2y.42).
+	Motivo string `json:"motivo,omitempty"`
 }
+
+// Motivos de uma CLI instalada que não está pronta (EstadoCLI.Motivo).
+const (
+	MotivoFormato  = "formato"
+	MotivoPolitica = "politica"
+)
+
+// aceitaCmd: CLIs cujos argumentos são sempre seguros para o cmd.exe (o pedido vai pelo stdin). O Claude leva o
+// prompt de sistema (várias linhas) e o esquema (com aspas) no argv, então instalado como .cmd não roda (jc-a2y.25).
+func aceitaCmd(comando string) bool { return comando != "claude" }
 
 const limiteSaida = 4 << 20
 
@@ -59,7 +74,12 @@ func (c cli) Nome() string { return c.qual + "-cli" }
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
 func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
-	if alvo, err := exec.LookPath(comando); err == nil && viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
+	// O arquivo conferido é o mesmo que roda: o caminho resolvido pelo LookPath vai para o CommandContext.
+	alvo, err := exec.LookPath(comando)
+	if err != nil {
+		alvo = comando // o exec devolve o erro de "não achei" na hora de rodar
+	}
+	if viaCmdExe(alvo) && !argsSegurosParaCmd(args) {
 		return nil, "", &ErroIA{Tipo: "config", Mensagem: comando + "-cli: " + msgCmdInseguro, Provedor: comando + "-cli"}
 	}
 	ctx, cancelar := context.WithTimeout(ctx, tempoLimite)
@@ -69,7 +89,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 		return nil, "", err
 	}
 	defer os.RemoveAll(pasta)
-	cmd := exec.CommandContext(ctx, comando, args...)
+	cmd := exec.CommandContext(ctx, alvo, args...)
 	cmd.Dir = pasta
 	cmd.Stdin = strings.NewReader(entrada)
 	var saida, erro limitado
@@ -96,6 +116,10 @@ func viaCmdExe(caminho string) bool {
 func argsSegurosParaCmd(args []string) bool {
 	for _, a := range args {
 		for _, r := range a {
+			// Letra modificadora (Lm) e símbolo modificador (Sk), como ʺ e ˆ, podem virar " e ^ na conversão para ANSI.
+			if unicode.Is(unicode.Lm, r) || unicode.Is(unicode.Sk, r) {
+				return false
+			}
 			if !(unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune(` .,_:/\=+@~-`, r)) {
 				return false
 			}
@@ -103,6 +127,16 @@ func argsSegurosParaCmd(args []string) bool {
 	}
 	return true
 }
+
+// ModeloSeguro diz se o nome do modelo pode ir como argumento de CLI (--model), com a mesma lista segura do cmd.exe
+// (jc-a2y.43). A API recusa o resto ao configurar, para o modelo nunca chegar à linha de comando com outro caractere.
+// Também não pode começar com "-": vindo logo depois de --model, a CLI poderia ler o nome como opção.
+func ModeloSeguro(modelo string) bool {
+	return !strings.HasPrefix(modelo, "-") && argsSegurosParaCmd([]string{modelo})
+}
+
+// MsgModeloInseguro é o texto fixo da recusa do nome do modelo.
+const MsgModeloInseguro = "o nome do modelo não pode começar com - e só pode ter letras, números, espaço e . , _ : / \\ = + @ ~ -"
 
 func semChaves(env []string) []string {
 	saida := env[:0:0]
@@ -131,8 +165,31 @@ func erroCLI(provedor, msg string) error {
 	return &ErroIA{Tipo: "provedor", Mensagem: provedor + ": " + msg, Provedor: provedor}
 }
 
+// semTravaDeFerramentas: CLIs que o app ainda não sabe rodar sem ferramentas, MCP e configuração da pessoa
+// (jc-a2y.26). O Claude roda com --tools "", --strict-mcp-config e --setting-sources project. Codex e Gemini ficam
+// indisponíveis até as travas equivalentes serem conferidas no --help das versões instaladas e testadas com um
+// arquivo canário: lendo texto de vaga, uma IA com ferramentas poderia ler arquivo da pessoa ou chamar MCP.
+var semTravaDeFerramentas = map[string]bool{"codex": true, "gemini": true}
+
+const msgSemTrava = "esta CLI ainda não roda no app sem as ferramentas dela; use o Claude ou uma chave de API"
+
+// CLIIndisponivel diz se o provedor (ex.: "gemini-cli") está fora do app e por quê (texto fixo).
+func CLIIndisponivel(provedor string) (string, bool) {
+	if semTravaDeFerramentas[strings.TrimSuffix(provedor, "-cli")] && strings.HasSuffix(provedor, "-cli") {
+		return msgSemTrava, true
+	}
+	return "", false
+}
+
 func (c cli) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
 	nome := c.Nome()
+	if msg, fora := CLIIndisponivel(nome); fora {
+		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": " + msg, Provedor: nome}
+	}
+	// Confere de novo na hora de rodar: a configuração pode ter sido gravada por fora do PUT /ia/config (jc-a2y.43).
+	if p.Modelo != "" && !ModeloSeguro(p.Modelo) {
+		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": " + MsgModeloInseguro, Provedor: nome}
+	}
 	if _, err := exec.LookPath(c.qual); err != nil {
 		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": a CLI não está instalada neste computador", Provedor: nome}
 	}
@@ -269,8 +326,13 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 	saida := make([]EstadoCLI, 0, len(CLIs))
 	for _, info := range CLIs {
 		e := EstadoCLI{InfoCLI: info}
-		if _, err := exec.LookPath(info.Comando); err == nil {
-			e.Instalada = true
+		if caminho, err := exec.LookPath(info.Comando); err == nil {
+			e.Instalada, e.Pronta = true, true
+			if msg, fora := CLIIndisponivel(info.Provedor); fora {
+				e.Pronta, e.Aviso, e.Motivo = false, msg, MotivoPolitica
+			} else if viaCmdExe(caminho) && !aceitaCmd(info.Comando) {
+				e.Pronta, e.Aviso, e.Motivo = false, msgCmdInseguro, MotivoFormato
+			}
 			c, cancelar := context.WithTimeout(ctx, 15*time.Second)
 			if out, err := exec.CommandContext(c, info.Comando, "--version").Output(); err == nil {
 				e.Versao = strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])

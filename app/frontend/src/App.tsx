@@ -8,6 +8,8 @@ import { Dialogo, type PedidoDialogo } from './app/Dialogo';
 import { Detalhe } from './telas/Detalhe';
 import { TelaHoje } from './telas/Hoje';
 import { TelaTriagem } from './telas/Triagem';
+import { TelaFila } from './telas/Fila';
+import { EVENTO_ENVIO, type EstadoEnvio } from './telas/PainelEnvio';
 import { TelaQuadro } from './telas/Quadro';
 import { TelaVagas } from './telas/Vagas';
 import { TelaNumeros } from './telas/Numeros';
@@ -27,12 +29,13 @@ type R = ReturnType<typeof resumo>;
 const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
   { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
   { rota: 'triagem', nome: 'Triagem', Tela: TelaTriagem, contador: r => r.descoberta, aba: true },
+  { rota: 'fila', nome: 'Fila', Tela: TelaFila },
   { rota: 'quadro', nome: 'Quadro', Tela: TelaQuadro },
   { rota: 'vagas', nome: 'Vagas', Tela: TelaVagas, aba: true },
   { rota: 'numeros', nome: 'Números', Tela: TelaNumeros },
   { rota: 'plataformas', nome: 'Plataformas', Tela: TelaPlataformas },
   { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
-  { rota: 'perfil', nome: 'Perfil e regras', Tela: TelaPerfil },
+  { rota: 'perfil', nome: 'Perfil', Tela: TelaPerfil }, // no menu, "Perfil"; o título da tela segue "Perfil e regras"
   { rota: 'ia', nome: 'Conectar IA', Tela: TelaConectarIA },
 ];
 
@@ -72,10 +75,12 @@ export default function App() {
   const { tela, vaga } = useHash();
   const [estado, setEstado] = useState<Estado | null>(null);
   const [conexao, setConexao] = useState<{ texto: string; estado: 'ok' | 'off' | '' }>({ texto: '', estado: '' });
+  const [envioAtivo, setEnvioAtivo] = useState(false); // ligado e não pausado: marca no cabeçalho (jc-a2y.51)
   const [falha, setFalha] = useState<Falha>(null);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [dialogo, setDialogo] = useState<PedidoDialogo | null>(null);
   const versao = useRef<string | null>(null);
+  const fechando = useRef(false); // 503 depois de apagar os dados (jc-a2y.49)
   const temEstado = useRef(false);
   // Há texto digitado e ainda não salvo (perfil, nota nova, notas da vaga…)? Enquanto houver, nada é redesenhado.
   const sujo = useRef(false);
@@ -89,16 +94,22 @@ export default function App() {
   const perguntar = useCallback((p: Pergunta) => new Promise<string | null>(resolver => setDialogo({ tipo: 'pergunta', pergunta: p, resolver })), []);
 
   const carregar = useCallback(async (forcar = false) => {
+    // Depois de "Apagar meus dados", o servidor responde 503 a tudo até o app sair: não adianta tentar de novo.
+    if (fechando.current) return;
     let novo: Estado;
     try {
       if (!forcar && temEstado.current) {
         const { versao: v } = await chamarApi('/api/v1/versao');
-        if (v === versao.current) { setConexao({ texto: 'Conectado', estado: 'ok' }); return; }
+        if (v === versao.current) { setConexao({ texto: 'Dados locais', estado: 'ok' }); return; }
       }
       if (sujo.current && !forcar) { setConexao({ texto: 'Há mudanças novas — salve o que está editando para ver', estado: '' }); return; }
       novo = await chamarApi('/api/v1/estado');
     } catch (e) {
-      if (e instanceof ErroApi) {
+      if (e instanceof ErroApi && e.status === 503) {
+        fechando.current = true;
+        setConexao({ texto: 'Fechando', estado: 'off' });
+        setFalha({ titulo: 'Dados apagados. O app está fechando.', texto: 'Na próxima vez que você abrir, ele começa como novo.' });
+      } else if (e instanceof ErroApi) {
         // A API respondeu, mas com erro (ex.: dados corrompidos).
         setConexao({ texto: 'Erro nos dados', estado: 'off' });
         setFalha({ titulo: 'A Central encontrou um problema nos dados', texto: e.message });
@@ -113,7 +124,22 @@ export default function App() {
     sujo.current = false;
     setFalha(null);
     setEstado(novo);
-    setConexao({ texto: 'Conectado', estado: 'ok' });
+    setConexao({ texto: 'Dados locais', estado: 'ok' });
+  }, []);
+
+  // Envio ligado e não pausado aparece no cabeçalho em todas as telas, não só na Fila (nota do CyberSec no #60).
+  // Pausar e retomar não mudam a /versao, então a casca lê /envio a cada 5 s e ouve o painel da Fila na hora.
+  useEffect(() => {
+    const ativo = (e: Partial<EstadoEnvio> | null) => !!e && e.ligado === true && e.pausado === false;
+    const ler = async () => {
+      if (fechando.current || document.visibilityState !== 'visible') return;
+      try { setEnvioAtivo(ativo(await chamarApi('/api/v1/envio'))); } catch { setEnvioAtivo(false); }
+    };
+    const aoMudar = (ev: Event) => setEnvioAtivo(ativo((ev as CustomEvent<EstadoEnvio>).detail));
+    window.addEventListener(EVENTO_ENVIO, aoMudar);
+    const t = setInterval(ler, 5000);
+    ler();
+    return () => { window.removeEventListener(EVENTO_ENVIO, aoMudar); clearInterval(t); };
   }, []);
 
   // Atualização automática: a cada 5 s, ao voltar para a janela e ao trocar de seção.
@@ -209,6 +235,7 @@ export default function App() {
           </a>
           <Menu atual={tela.rota} contador={contador} />
           <div className="topo-pe">
+            {envioAtivo && <a className="marca-envio" href="#/fila" title="O app está enviando as candidaturas aprovadas. Abra a Fila para pausar.">Envio ligado</a>}
             <span className={`status-conexao ${conexao.estado}`} role="status">{conexao.texto}</span>
             <button className="botao-icone" type="button" aria-label="Alternar tema claro/escuro" onClick={alternarTema}>
               <Icone d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />

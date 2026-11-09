@@ -47,7 +47,7 @@ func TestCLIViaCmdTextoDaVagaSoPeloStdin(t *testing.T) {
 	for _, qual := range []string{"gemini", "codex"} {
 		t.Run(qual, func(t *testing.T) {
 			pasta := comCLIFalsaCmd(t, qual)
-			cli{qual: qual}.Chamar(context.Background(), PedidoProvedor{Modelo: "modelo-exemplo", Prompt: promptComPayload()})
+			chamarSemPortao(qual, PedidoProvedor{Modelo: "modelo-exemplo", Prompt: promptComPayload()})
 			if existe(filepath.Join(pasta, "marcador-jc25")) {
 				t.Fatal("o payload da vaga rodou no cmd.exe")
 			}
@@ -90,5 +90,24 @@ func TestArgumentoInseguroNaoChegaAoCmdExe(t *testing.T) {
 	}
 	if existe(filepath.Join(pasta, "marcador-jc25")) || existe(filepath.Join(pasta, "argv.txt")) {
 		t.Fatal("o payload chegou ao cmd.exe")
+	}
+}
+
+// A tela Conectar IA vê o Claude .cmd como instalado, mas não pronto, com o aviso fixo; Gemini e Codex .cmd ficam prontos.
+func TestDetectarCLIsMarcaClaudeCmdComoNaoPronto(t *testing.T) {
+	pasta := t.TempDir()
+	for _, qual := range []string{"claude", "codex", "gemini"} {
+		if err := os.WriteFile(filepath.Join(pasta, qual+".cmd"), []byte("@echo off\r\necho 1.0.0\r\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", pasta+string(os.PathListSeparator)+filepath.Join(os.Getenv("SystemRoot"), "System32"))
+	for _, e := range DetectarCLIs(context.Background()) {
+		// Codex e Gemini ficam fora do app (jc-a2y.26); o Claude .cmd fica fora por causa do cmd.exe (jc-a2y.25).
+		aviso := map[string]string{"claude": msgCmdInseguro, "codex": msgSemTrava, "gemini": msgSemTrava}[e.Comando]
+		motivo := map[string]string{"claude": MotivoFormato, "codex": MotivoPolitica, "gemini": MotivoPolitica}[e.Comando]
+		if !e.Instalada || e.Pronta || e.Aviso != aviso || e.Motivo != motivo {
+			t.Errorf("%s: instalada=%v pronta=%v aviso=%q", e.Comando, e.Instalada, e.Pronta, e.Aviso)
+		}
 	}
 }

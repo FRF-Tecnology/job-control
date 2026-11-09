@@ -1,0 +1,52 @@
+{
+ "descricao": "gupy-cpf",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "cpf"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Dados pessoais",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    },
+    {
+     "id": "doc",
+     "tipo": "text",
+     "rotulo": "CPF",
+     "nome": "documento",
+     "obrigatorio": true
+    },
+    {
+     "id": "cv",
+     "tipo": "file",
+     "rotulo": "Currículo (PDF)",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

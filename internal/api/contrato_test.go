@@ -27,7 +27,7 @@ import (
 //     implementação chegar, este teste falha até a marca sair.
 //
 // Limites (o que este teste NÃO garante):
-//   - a busca de rotas no código só olha api.go e ia.go e só reconhece os formatos de hoje:
+//   - a busca de rotas no código só olha api.go, ia.go, candidaturas.go, dados.go e envio.go e só reconhece os formatos de hoje:
 //     `p == "/x"`, `case "/x"` e regexp.MustCompile(`^/x...`). Rota nova escrita de outro jeito,
 //     ou noutro arquivo, só é pega se cair num caminho que já está no contrato (2ª checagem);
 //   - cada operação é chamada com corpo {} e parâmetros de exemplo: o teste prova que a rota existe,
@@ -38,7 +38,7 @@ const caminhoContrato = "../../api/openapi.yaml"
 var metodosHTTP = []string{"GET", "PUT", "POST", "PATCH", "DELETE"}
 
 // Valores de exemplo para os parâmetros de caminho (fictícios).
-var exemplosParam = map[string]string{"provedor": "anthropic", "n": "1"}
+var exemplosParam = map[string]string{"provedor": "anthropic", "n": "1", "plataforma": "linkedin"}
 
 type operacoes map[string]map[string]bool // caminho do contrato → métodos
 
@@ -248,7 +248,7 @@ func TestRotasDoCodigoEstaoNoContrato(t *testing.T) {
 	for _, modelo := range ordenadas(ops) {
 		exemplos[concreto(modelo)] = true
 	}
-	for _, arq := range []string{"api.go", "ia.go"} {
+	for _, arq := range []string{"api.go", "ia.go", "candidaturas.go", "dados.go", "envio.go"} {
 		b, err := os.ReadFile(arq)
 		if err != nil {
 			t.Fatal(err)

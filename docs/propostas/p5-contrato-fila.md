@@ -79,6 +79,16 @@ stateDiagram-v2
 3. **Queda não reenvia (M3).** O caso já está descrito em `incerta`.
 4. **Endereço confere (M5).** A página aberta tem de ser a `url` aprovada, em https, com host da plataforma (`linkedin.com`, `gupy.io`, `inhire.app` e subdomínios), e tem de corresponder ao `vagaId`. Se a candidatura mandar para um site externo (ATS fora da plataforma) ou para outra vaga, o executor marca `bloqueada/site-externo`.
    - **Como comparar o host (nota do CyberSec para o `.6.2`):** use o host já analisado pela biblioteca de URL, nunca prefixo ou trecho da string. Aceite só scheme `https` e `host == "linkedin.com"` ou `HasSuffix(host, ".linkedin.com")`, e o mesmo para `gupy.io` e `inhire.app`. Testes: `evil-linkedin.com`, `linkedin.com.evil.io`, `linkedin.com@evil.io`, `http://`, host com maiúsculas e host com ponto final.
+   - **Lista fechada no envio (jc-a2y.6.2.5):** além de `URLDaPlataforma`, o executor exige `dominio.MesmaVaga` a cada etapa e logo antes do clique. A regra só aperta o contrato:
+
+     | Plataforma | Hosts | Vaga |
+     |---|---|---|
+     | LinkedIn | `linkedin.com`, `www.linkedin.com` ou subdomínio de país de 2 letras (`br.linkedin.com`) | `/jobs/view/<n>` ou `currentJobId=<n>` numa página de `/jobs/`, igual ao aprovado; caminho e query com ids diferentes são recusados |
+     | Gupy | só o host da empresa aprovado (`<empresa>.gupy.io`); `www`, `portal`, `login`, `api` e `app` não contam | `/jobs/<n>` igual |
+     | InHire | o host da empresa aprovado (`<empresa>.inhire.app`) | `/vagas/<id>` igual |
+     | InHire | `form-app.inhire.app` (questionário) | o id aprovado inteiro num segmento do caminho ou num valor da query |
+
+     Sempre https, sem usuário e sem porta. Fora disso: `bloqueada/site-externo`.
 5. O intervalo mínimo entre ações (com variação) e o perfil próprio do Chrome são regras do executor e não aparecem no contrato.
 
 ## Regras de aprovação

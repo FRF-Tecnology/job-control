@@ -120,6 +120,9 @@ h3 { font-size: 1.05rem; }
 .status-conexao.off { color: var(--erro); }
 .status-conexao.off::before { background: var(--erro); }
 .status-conexao:empty { display: none; }
+/* Envio ligado e não pausado (jc-a2y.51): visível em todas as telas, leva à Fila para pausar. */
+.marca-envio { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--verde); padding: 6px 12px; border-radius: 999px; background: var(--verde-suave); text-decoration: none; white-space: nowrap; }
+.marca-envio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .botao-icone { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 0; background: transparent; cursor: pointer; color: var(--tinta-2); }
 .botao-icone:hover { background: var(--superficie-2); color: var(--tinta); }
 .botao-icone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -143,13 +146,16 @@ main:focus, main:focus-visible { outline: none; }
 .botao[disabled], .botao-fantasma[disabled] { opacity: .5; cursor: default; }
 .botao.p, .botao-fantasma.p { min-height: 34px; padding: 4px 14px; font-size: .84rem; }
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-input[type=text], input[type=search], input[type=number], input[type=url], input[type=email], select, textarea {
+input[type=text], input[type=search], input[type=number], input[type=url], input[type=email], input[type=password], input[type=tel], select, textarea {
   background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio-p); padding: 9px 12px; min-height: 44px; width: 100%; transition: border-color .15s, box-shadow .15s;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--destaque); box-shadow: 0 0 0 4px var(--destaque-suave); }
 textarea { min-height: 88px; resize: vertical; }
 label.campo { display: grid; gap: 6px; font-size: .88rem; color: var(--tinta-2); }
 label.campo > span { font-weight: 600; color: var(--tinta); }
+.destino-chave { font-size: .85rem; color: var(--tinta-2); overflow-wrap: anywhere; } /* para onde a chave vai (jc-a2y.40) */
+.destino-chave strong { color: var(--tinta); font-weight: 600; }
+.destino-chave.proprio, .destino-chave.proprio strong { color: var(--ambar); } /* endereço fora do padrão: chama atenção */
 
 /* ---------- etapas e selos ---------- */
 .etapa { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--tinta-2); white-space: nowrap; }
@@ -226,6 +232,8 @@ a.cartao-num:hover { transform: translateY(-2px); }
 .convite.azul { background: var(--destaque-fundo); color: var(--sobre-destaque); }
 .convite.azul .botao { background: var(--sobre-destaque); color: var(--destaque-fundo); }
 .convite.azul :focus-visible { outline-color: var(--sobre-destaque); } /* o anel padrão (--destaque) some neste fundo */
+.convite.ambar { background: var(--ambar-suave); } /* pede a pessoa (ex.: IA em uso não pronta, falta a chave) */
+.convite.ambar strong { color: var(--ambar); }
 
 /* funil em barras */
 .funil-barras { display: grid; gap: 14px; padding: 22px; border-radius: var(--raio); background: var(--superficie-2); }
@@ -336,20 +344,33 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 /* ---------- plataformas / perfil ---------- */
 .plataformas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .plataforma { border-radius: var(--raio); padding: 20px 22px; display: grid; gap: 10px; background: var(--superficie-2); border-top: 4px solid var(--cor, var(--linha)); }
+.plataforma select.situacao { width: auto; min-height: 30px; padding: 2px 8px; }
 .plataforma.s-automatizada { --cor: var(--destaque); } .plataforma.s-manual { --cor: var(--e-em-processo); }
 .plataforma.s-a-testar { --cor: var(--ambar); } .plataforma.s-descartada { --cor: var(--e-pulada); }
 .formulario { display: grid; gap: 16px; max-width: 860px; }
 .formulario .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .respostas { display: grid; gap: 8px; }
 .respostas .par { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 8px; }
-fieldset { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 18px 20px; display: grid; gap: 14px; }
+/* min-width 0: fieldset não encolhe abaixo do conteúdo por padrão, e um caminho longo alargava a página (jc-a2y.53). */
+fieldset { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
 legend { font: 700 1rem var(--fonte-display); padding: 0 6px; }
+/* Seus dados neste computador (jc-a2y.49): fora do formulário do perfil, cada ação no seu bloco. */
+.seus-dados { display: grid; gap: 16px; max-width: 860px; margin-top: 48px; }
+.seus-dados h2 { margin: 0; } .seus-dados > p { margin: 0; }
+.zona { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 20px; display: grid; gap: 12px; }
+.zona h3 { margin: 0; font-size: 1rem; } .zona p, .zona ul { margin: 0; } .zona ul { padding-left: 20px; display: grid; gap: 4px; }
+.zona.perigo { border-color: color-mix(in srgb, var(--erro) 45%, var(--linha-2)); }
+.seus-dados .feito { margin: 0; color: var(--verde); font-weight: 600; }
+.seus-dados .feito.parcial { color: var(--ambar); } /* faltou algo: atenção, não sucesso */
+.feito-bloco { display: grid; gap: 8px; } .feito-bloco p, .feito-bloco ul { margin: 0; } .feito-bloco ul { padding-left: 20px; }
 
 /* ---------- diálogo e avisos ---------- */
 dialog { border: 0; border-radius: 24px; padding: 26px; width: min(500px, calc(100vw - 32px)); background: var(--superficie); color: var(--tinta); box-shadow: var(--sombra-alta); }
 dialog[open] { animation: subir .22s var(--facil); }
 dialog::backdrop { background: rgb(0 0 0 / .35); backdrop-filter: blur(3px); }
 dialog form { display: grid; gap: 16px; }
+/* Lista para conferir antes de confirmar (ex.: vagas do grupo A). Longa, rola dentro do diálogo; nome comprido quebra. */
+.lista-dialogo { margin: 0; padding: 8px 12px 8px 28px; display: grid; gap: 4px; max-height: 40vh; overflow-y: auto; overflow-wrap: anywhere; background: var(--superficie-2); border: 1px solid var(--linha); border-radius: var(--raio-p); }
 .avisos { position: fixed; bottom: calc(22px + var(--abas)); left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 90; width: min(520px, calc(100vw - 32px)); }
 .aviso { background: var(--tinta); color: var(--papel); padding: 12px 18px; border-radius: 14px; box-shadow: var(--sombra-alta); font-size: .92rem; font-weight: 500; animation: subir .2s var(--facil); }
 .aviso.erro { background: var(--erro-fundo); color: var(--sobre-destaque); }
@@ -361,12 +382,12 @@ dialog form { display: grid; gap: 16px; }
 .primeiros ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .primeiros li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--destaque) 15%, transparent); }
 .primeiros li:last-child { border-bottom: 0; }
-.primeiros li p { margin: 2px 0 0; color: var(--tinta-2); }
+.primeiros li p { margin: 2px 0 0; color: var(--tinta-2); overflow-wrap: anywhere; } /* caminho de pasta longo quebra no card (jc-a2y.47) */
 .marca-passo { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--destaque); font-size: .8rem; font-weight: 700; color: var(--sobre-destaque); }
 .primeiros li.feito .marca-passo { background: var(--destaque-fundo); border-color: var(--destaque-fundo); }
 .primeiros li.feito strong { color: var(--tinta-2); font-weight: 500; }
 .estado-passo { font-size: .85rem; color: var(--tinta-2); }
-.aviso-cv { margin: 0; padding: 12px 14px; border-radius: var(--raio-p); background: var(--ambar-suave); }
+.aviso-cv { margin: 0; padding: 12px 14px; border-radius: var(--raio-p); background: var(--ambar-suave); overflow-wrap: anywhere; }
 
 /* Folha "Mais" (celular) */
 .folha-mais { display: grid; gap: 4px; }
@@ -417,3 +438,71 @@ dialog form { display: grid; gap: 16px; }
 }
 .item-acao .selo-n svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .item-acao select { width: auto; flex: 1 1 220px; min-height: 34px; padding: 4px 10px; }
+
+/* Fila de candidaturas (P5, jc-a2y.6.3.1): limites por plataforma e o pacote exato de cada candidatura. */
+.limites { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.limite { display: grid; gap: 4px; padding: 16px 20px; border-radius: var(--raio-m); background: var(--superficie-2); }
+.limite .num { font: 700 1.5rem var(--fonte-display); letter-spacing: -.02em; }
+.limite.cheio { background: var(--ambar-suave); }
+.limite.cheio .num { color: var(--ambar); }
+.fila-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.cand { display: grid; gap: 12px; padding: 20px 24px; border-radius: var(--raio); background: var(--superficie); box-shadow: var(--sombra); border: 1px solid var(--linha-2); }
+.cand.alerta { border-color: var(--ambar); }
+.cand > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 8px 16px; }
+.cand h2 { margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.cand .situacao { margin: 0; color: var(--tinta-2); overflow-wrap: anywhere; }
+.chip.cand-bloqueada, .chip.cand-incerta, .chip.cand-falhou { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+.chip.cand-aprovada, .chip.cand-enviada { background: var(--verde-suave); color: var(--verde); font-weight: 600; }
+.chip.cand-preparada { background: var(--destaque-suave); color: var(--destaque); font-weight: 600; }
+.pacote summary, .tecnicos summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.tecnicos summary { color: var(--tinta-2); font-size: .9rem; } /* recolhido: só para quem quer conferir os códigos */
+.pacote dl, .tecnicos dl { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 8px 16px; margin: 8px 0 0; }
+.pacote dt, .tecnicos dt { color: var(--tinta-2); font-size: .9rem; }
+.pacote dd, .tecnicos dd { margin: 0; overflow-wrap: anywhere; }
+.pacote .respostas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pacote .respostas li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.pacote .pergunta { color: var(--tinta-2); }
+.impressao { display: block; font: .82rem ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; padding: 8px 12px; border-radius: var(--raio-p); background: var(--superficie-2); }
+.conferida { display: block; margin: 0; font-size: .88rem; font-weight: 600; }
+.conferida.ok { color: var(--verde); }
+.conferida.diferente { color: var(--erro); }
+/* Envio (jc-a2y.51): ligado ou pausado, o que está indo agora e os últimos desfechos. */
+.envio { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 16px 20px; display: grid; gap: 12px; margin-bottom: 24px; }
+.envio.pausado { border-color: color-mix(in srgb, var(--ambar) 45%, var(--linha-2)); }
+.envio-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.envio h2 { margin: 0; font-size: 1.05rem; } .envio p { margin: 0; }
+.enviando-agora { display: flex; align-items: center; gap: 8px; font-weight: 600; overflow-wrap: anywhere; }
+.enviando-agora .ponto { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--verde); animation: piscar 1.2s ease-in-out infinite alternate; }
+@keyframes piscar { from { opacity: 1; } to { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .enviando-agora .ponto { animation: none; } }
+.desfechos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.desfechos li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; overflow-wrap: anywhere; }
+.envio-desligado { margin: 0 0 16px; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
+.prontas { margin-bottom: 24px; }
+.pronta { display: grid; gap: 16px; padding: 16px 20px; }
+.pronta-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.pronta-topo strong { overflow-wrap: anywhere; }
+.pacote-form { max-width: none; }
+.pacote-form fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.pacote-form legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+.respostas-form { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.respostas-form li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.chip.origem-ia { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+.erro-resposta { grid-column: 1 / -1; margin: 0; color: var(--erro); font-size: .88rem; font-weight: 600; } /* pergunta que só a pessoa responde */
+@media (max-width: 600px) {
+  .cand { padding: 16px; }
+  .pacote dl, .tecnicos dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .pacote dd, .tecnicos dd { margin-bottom: 8px; }
+  .pronta { padding: 16px; }
+  .respostas-form li { grid-template-columns: minmax(0, 1fr) auto; }
+  .respostas-form li input { grid-column: 1 / -1; }
+}
+/* Alvos de toque (jc-a2y.39): com ponteiro grosso (tela de toque), todo controle tem pelo menos 44 px.
+   Com mouse, o tamanho compacto do desktop continua. */
+@media (any-pointer: coarse) {
+  .botao.p, .botao-fantasma.p, .seletor button, .sugestoes button, .item-acao select, .plataforma select.situacao { min-height: 44px; }
+  .botao-icone { width: 44px; height: 44px; }
+  .marca, .plataforma h2 a, .marca-envio { min-height: 44px; }
+  .plataforma h2 a { display: inline-flex; align-items: center; }
+  .funil-barras a { min-height: 44px; }
+}

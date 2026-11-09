@@ -1,0 +1,45 @@
+{
+ "descricao": "latam-raza",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "dado-sensivel"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Encuesta de diversidad (opcional)",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nombre completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "Correo electrónico",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Teléfono móvil",
+     "obrigatorio": true
+    },
+    {
+     "id": "raza",
+     "tipo": "select",
+     "rotulo": "Raza/etnia",
+     "obrigatorio": false
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+//go:build envio_dev
+
+package envio
+
+import (
+	"context"
+	"log"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/executor"
+	"github.com/FRF-Tecnology/job-control/internal/navegador"
+)
+
+// Ligado diz se este binário traz o gatilho do envio.
+const Ligado = true
+
+// intervaloDaFila: de quanto em quanto tempo o executor olha se há candidatura aprovada.
+const intervaloDaFila = 2 * time.Minute
+
+// Ligar (só no build envio_dev) roda o executor em segundo plano: ao abrir, Iniciar (enviando vira incerta e
+// aprovação vencida volta a preparada), e depois EnviarAprovadas de tempos em tempos, com o navegador visível.
+func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
+	return ligarExecutorDeDesenvolvimento(ctx, arm, pastaDados)
+}
+
+func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
+	log.Printf("envio: executor LIGADO (build de desenvolvimento envio_dev)")
+	nav, err := navegador.Novo(navegador.Opcoes{PastaDados: pastaDados, Visivel: true})
+	if err != nil {
+		log.Printf("envio: navegador indisponível (%T); executor desligado", err)
+		return Controle{Parar: nada, Suspender: suspenderNada, FecharNavegador: nada}
+	}
+	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos")})
+	ctx, cancelar := context.WithCancel(ctx)
+	feito := make(chan struct{})
+	var ciclo sync.Mutex // um ciclo da fila por vez; Suspender segura até soltar
+	go func() {
+		defer close(feito)
+		x.Rodar(ctx, intervaloDaFila, &ciclo) // Iniciar falhando não entra no laço
+	}()
+	return Controle{
+		Parar: func() {
+			cancelar()
+			<-feito
+			nav.Fechar()
+		},
+		Suspender: func() func() {
+			ciclo.Lock()
+			return ciclo.Unlock
+		},
+		FecharNavegador: nav.Fechar, // espera o processo sair; a próxima página abre de novo, com o perfil recriado
+	}
+}

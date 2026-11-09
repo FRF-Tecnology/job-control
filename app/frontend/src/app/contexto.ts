@@ -7,6 +7,7 @@ export type Estado = any;
 export interface Pergunta {
   titulo: string;
   texto?: string;
+  itens?: string[]; // lista mostrada como está, para a pessoa conferir (ex.: vagas a aprovar de uma vez)
   opcoes?: string[];
   campo?: string;
   valor?: string;

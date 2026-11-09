@@ -22,9 +22,10 @@ export function EtapaChip({ etapa }: { etapa: string }) {
   return <span className={`etapa e-${etapa}`}>{nomeEtapa(etapa)}</span>;
 }
 
-export function Convite({ titulo, texto, children, azul }: { titulo: ReactNode; texto?: ReactNode; children?: ReactNode; azul?: boolean }) {
+// azul: destaque (ação principal); ambar: algo pede a pessoa (ex.: IA em uso não pronta).
+export function Convite({ titulo, texto, children, azul, ambar }: { titulo: ReactNode; texto?: ReactNode; children?: ReactNode; azul?: boolean; ambar?: boolean }) {
   return (
-    <div className={`convite${azul ? ' azul' : ''}`}>
+    <div className={`convite${azul ? ' azul' : ''}${ambar ? ' ambar' : ''}`}>
       <div>
         <strong>{titulo}</strong>
         {texto != null && <p style={{ margin: 0 }}>{texto}</p>}
