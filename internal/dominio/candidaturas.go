@@ -492,6 +492,13 @@ func AprovarCandidatura(e Estado, id, impressao string, agora time.Time, limites
 	if err := conferirLimite(e, c.Plataforma, agora, limites); err != nil {
 		return e, nil, err
 	}
+	// O limite também conta as aprovadas que ainda não saíram (decisão do CyberSec no #102, jc-a2y.6.13): a tela
+	// nunca mostra mais "aprovada" do que o dia comporta. Vale para o aprovar de uma e para o lote.
+	if limite, tem := LimiteDe(limites, c.Plataforma); tem {
+		if usadas := UsadasNoDia(e, c.Plataforma, agora); usadas+AprovadasPendentes(e, c.Plataforma, agora) >= limite {
+			return e, nil, &ErroLimite{Plataforma: c.Plataforma, Limite: limite, Usadas: usadas, RenovaEm: RenovaEm(agora).Format(time.RFC3339)}
+		}
+	}
 	c.Aprovacao = &Aprovacao{
 		Em:        agora.Format(time.RFC3339),
 		Impressao: c.Impressao,

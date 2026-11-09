@@ -502,11 +502,12 @@ func TestCanceladoAntesDoClique(t *testing.T) {
 // M2 no instante do envio: limite atingido ou aprovação vencida não mudam nada.
 func TestRecusaNaEntrada(t *testing.T) {
 	s := novoCenario(t, novaPagina(), novaPagina())
+	a := s.aprovada("linkedin", linkLI)
+	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	// A pessoa baixa o limite depois de aprovar (o aprovar já conta as aprovadas): o envio segura o excesso.
 	if err := s.arm.GravarLimiteCandidatura(context.Background(), "linkedin", 1); err != nil {
 		t.Fatal(err)
 	}
-	a := s.aprovada("linkedin", linkLI)
-	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
 	s.enviar(a)
 	antes := fmt.Sprint(s.cand(b))
 	var el *dominio.ErroLimite
@@ -544,11 +545,11 @@ func TestIniciar(t *testing.T) {
 // A fila: da aprovação mais antiga para a mais nova, com intervalo entre candidaturas, pulando a plataforma no limite.
 func TestEnviarAprovadas(t *testing.T) {
 	s := novoCenario(t, novaPagina(), novaPagina())
-	s.arm.GravarLimiteCandidatura(context.Background(), "linkedin", 1)
 	li1 := s.aprovada("linkedin", linkLI)
 	ou := s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1")
 	li2 := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
 	gp := s.aprovada("gupy", "https://empresa-teste.gupy.io/jobs/1")
+	s.arm.GravarLimiteCandidatura(context.Background(), "linkedin", 1) // baixado depois de aprovar: o envio segura o excesso
 	ds, err := s.x.EnviarAprovadas(context.Background())
 	if err != nil {
 		t.Fatal(err)

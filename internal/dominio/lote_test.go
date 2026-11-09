@@ -119,3 +119,27 @@ func TestAprovarLoteRecusaTudoAntes(t *testing.T) {
 		t.Fatalf("vaga fora = %v %v %v", a, r, err)
 	}
 }
+
+// Decisão do CyberSec no #102: o aprovar de uma também conta as aprovadas que ainda não saíram.
+func TestAprovarDeUmaContaAsPendentes(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 9, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	limites := map[string]int{"linkedin": 2}
+	e := EstadoVazio()
+	for _, n := range []string{"1", "2", "3"} {
+		e = comVaga(t, e, "li-"+n, "linkedin", linkLI(n), true)
+	}
+	e, _ = aprovada(t, e, "li-1", agora, limites)
+	e, _ = aprovada(t, e, "li-2", agora, limites) // 2 aprovadas que não saíram: o dia está cheio
+	e, c3 := preparada(t, e, "li-3", agora)
+	_, _, err := AprovarCandidatura(e, c3.ID, c3.Impressao, agora, limites, eu)
+	var el *ErroLimite
+	if !errors.As(err, &el) || el.Limite != 2 {
+		t.Fatalf("3ª aprovação com 2 pendentes = %v", err)
+	}
+	// Amanhã as pendentes venceram: aprova de novo.
+	amanha := agora.Add(24 * time.Hour)
+	e, _ = VencerAprovacoes(e, amanha)
+	if _, _, err := AprovarCandidatura(e, c3.ID, c3.Impressao, amanha, limites, eu); err != nil {
+		t.Fatalf("no dia seguinte = %v", err)
+	}
+}

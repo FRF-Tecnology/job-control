@@ -284,7 +284,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       x-so-tela: true
-      summary: 'preparada → aprovada, só se a impressão enviada for a atual; vale uma vez, até o fim do dia local'
+      summary: 'preparada → aprovada, só se a impressão enviada for a atual; vale uma vez, até o fim do dia local. O limite do dia conta as já enviadas e as aprovadas que ainda não saíram (429 ao passar; jc-a2y.6.13)'
       requestBody:
         required: true
         content:
