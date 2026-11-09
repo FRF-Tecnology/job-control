@@ -115,6 +115,8 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.Cofre == nil {
 		o.Cofre = segredos.Sistema{}
 	}
+	// Erro do cofre sempre com texto fixo, venha de onde vier: nada do que foi gravado sai numa resposta (jc-a2y.63).
+	o.Cofre = segredos.Seguro{Cofre: o.Cofre}
 	if o.DetectarCLIs == nil {
 		o.DetectarCLIs = ia.DetectarCLIs
 	}
