@@ -2,11 +2,13 @@ package executor
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 	_ "time/tzdata"
@@ -640,5 +642,61 @@ func TestIniciarPausa(t *testing.T) {
 	}
 	if !s.arm.EnvioPausado(context.Background()) {
 		t.Fatal("Iniciar não pausou o envio")
+	}
+}
+
+// quebrarBanco põe uma linha estragada na tabela itens: Carregar e Gravar passam a falhar; a meta continua gravável.
+func (s *cenario) quebrarBanco() {
+	s.t.Helper()
+	if err := s.arm.Transacao(context.Background(), func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(context.Background(), `INSERT INTO itens (colecao, ordem, dados) VALUES ('vagas', 999, '{estragado')`)
+		return err
+	}); err != nil {
+		s.t.Fatal(err)
+	}
+}
+
+// Revisão do #61: com a gravação das incertas falhando ao abrir, o envio já fica pausado (vem primeiro).
+func TestIniciarPausaMesmoComFalha(t *testing.T) {
+	s := novoCenario(t) // começa liberado
+	s.quebrarBanco()
+	if _, _, err := s.x.Iniciar(context.Background()); err == nil {
+		t.Fatal("Iniciar deveria falhar com o banco estragado")
+	}
+	if !s.arm.EnvioPausado(context.Background()) {
+		t.Fatal("a falha no Iniciar deixou o envio liberado")
+	}
+}
+
+// Rodar com o Iniciar falhando não entra no laço: devolve o erro na hora e nenhuma página abre.
+func TestRodarNaoEntraNoLacoSeIniciarFalha(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	s.aprovada("linkedin", linkLI)
+	s.quebrarBanco()
+	ctx, cancelar := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancelar()
+	var ciclo sync.Mutex
+	inicio := time.Now()
+	err := s.x.Rodar(ctx, time.Millisecond, &ciclo)
+	if err == nil || time.Since(inicio) > time.Second || s.nav.abertas != 0 {
+		t.Fatalf("Rodar = %v em %v, páginas %d", err, time.Since(inicio), s.nav.abertas)
+	}
+	if !ciclo.TryLock() {
+		t.Fatal("Rodar deixou o ciclo travado")
+	}
+}
+
+// Rodar normal: abre pausado e não envia; ao cancelar, sai.
+func TestRodarAbrePausado(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	id := s.aprovada("linkedin", linkLI)
+	ctx, cancelar := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancelar()
+	var ciclo sync.Mutex
+	if err := s.x.Rodar(ctx, 10*time.Millisecond, &ciclo); err != nil {
+		t.Fatal(err)
+	}
+	if s.cand(id)["estado"] != "aprovada" || s.nav.abertas != 0 || !s.arm.EnvioPausado(context.Background()) {
+		t.Fatalf("Rodar enviou sem retomar: %v, páginas %d", s.cand(id)["estado"], s.nav.abertas)
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
@@ -140,6 +141,11 @@ func (x *Executor) gravarCom(ctx context.Context, gravar func(context.Context, f
 
 // Iniciar roda ao abrir o app: enviando vira incerta (M3) e aprovação vencida volta a preparada, numa transação.
 func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err error) {
+	// Ao abrir o app, o envio começa sempre PAUSADO (recomendação do CyberSec no #59), e isso vem PRIMEIRO, sozinho:
+	// se a gravação das incertas falhar (banco ocupado pela CLI, disco), o envio já está pausado. Só a tela retoma.
+	if err := x.arm.GravarEnvioPausado(ctx, true); err != nil {
+		return 0, 0, err
+	}
 	agora := x.o.Relogio()
 	err = x.arm.Gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
 		e, incertas = dominio.MarcarIncertas(e, agora)
@@ -149,12 +155,36 @@ func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err err
 	if err == nil && (incertas > 0 || vencidas > 0) {
 		x.o.Log("executor: ao abrir, %d incerta(s) e %d aprovação(ões) vencida(s)", incertas, vencidas)
 	}
-	// Ao abrir o app, o envio começa sempre PAUSADO (recomendação do CyberSec no #59): quem retomou e fechou o app
-	// não volta a enviar sem ninguém na frente. Só a tela retoma.
-	if err == nil {
-		err = x.arm.GravarEnvioPausado(ctx, true)
-	}
 	return incertas, vencidas, err
+}
+
+// Rodar é o laço do executor no app (build envio_dev): Iniciar ao abrir e, de intervalo em intervalo,
+// EnviarAprovadas. Cada ciclo segura o ciclo (sync.Locker), que "sair das plataformas" usa para suspender. Se o
+// Iniciar falhar, não entra no laço: devolve o erro e nada é enviado até o app abrir de novo.
+func (x *Executor) Rodar(ctx context.Context, intervalo time.Duration, ciclo sync.Locker) error {
+	ciclo.Lock()
+	_, _, err := x.Iniciar(ctx)
+	ciclo.Unlock()
+	if err != nil {
+		x.o.Log("executor: ao abrir (%s); envio desligado até abrir o app de novo", tipoDoErro(err))
+		return err
+	}
+	t := time.NewTicker(intervalo)
+	defer t.Stop()
+	for {
+		ciclo.Lock()
+		if ctx.Err() == nil {
+			if _, err := x.EnviarAprovadas(ctx); err != nil && ctx.Err() == nil {
+				x.o.Log("executor: fila (%s)", tipoDoErro(err))
+			}
+		}
+		ciclo.Unlock()
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+	}
 }
 
 // EnviarAprovadas envia as aprovadas, da aprovação mais antiga para a mais nova, com intervalo entre uma e outra.
