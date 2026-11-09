@@ -24,7 +24,7 @@ func TestRotearMandaApiParaApiETelasParaTelas(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer banco.Fechar()
-	h := rotear(api.Novo(banco), application.AssetFileServerFS(telas))
+	h := rotear(api.Nova(banco, api.Opcoes{}).Handler(), application.AssetFileServerFS(telas))
 
 	pedir := func(caminho string) (int, string) {
 		rec := httptest.NewRecorder()

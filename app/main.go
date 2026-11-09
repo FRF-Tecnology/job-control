@@ -34,7 +34,7 @@ func main() {
 		Name:        "Central de Candidaturas",
 		Description: "Busca, triagem e acompanhamento de candidaturas",
 		Assets: application.AssetOptions{
-			Handler: rotear(api.Novo(banco), application.AssetFileServerFS(telas)),
+			Handler: rotear(api.Nova(banco, api.Opcoes{}).Handler(), application.AssetFileServerFS(telas)),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,

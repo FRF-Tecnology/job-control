@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"path/filepath"
+	"sync"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite" // SQLite em Go puro: sem cgo, compila igual em Windows, Mac e Linux.
@@ -17,16 +19,23 @@ var migracoes embed.FS
 
 // Armazem é a conexão com o banco local.
 type Armazem struct {
-	db *sql.DB
+	db    *sql.DB
+	pasta string // pasta do banco; "" para banco em memória
+
+	travaBackup    sync.Mutex
+	backupsMemoria map[string]bool
 }
 
 // Abrir abre (ou cria) o banco em caminho e aplica as migrações pendentes.
 // caminho ":memory:" serve para testes.
 func Abrir(ctx context.Context, caminho string) (*Armazem, error) {
-	dsn := caminho
+	// _txlock=immediate: quem grava pega a vez no começo da transação (app, CLI e MCP não se atropelam).
+	dsn := "file::memory:?_txlock=immediate&_pragma=foreign_keys(1)"
+	pasta := ""
 	if caminho != ":memory:" {
-		// WAL: leituras não esperam escritas. busy_timeout: a CLI e o app podem escrever ao mesmo tempo.
-		dsn = "file:" + caminho + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+		// WAL: leituras não esperam escritas. busy_timeout: espera a vez em vez de falhar.
+		dsn = "file:" + caminho + "?_txlock=immediate&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+		pasta = filepath.Dir(caminho)
 	}
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -39,7 +48,7 @@ func Abrir(ctx context.Context, caminho string) (*Armazem, error) {
 		db.Close()
 		return nil, err
 	}
-	return &Armazem{db: db}, nil
+	return &Armazem{db: db, pasta: pasta, backupsMemoria: map[string]bool{}}, nil
 }
 
 func migrar(ctx context.Context, db *sql.DB) error {

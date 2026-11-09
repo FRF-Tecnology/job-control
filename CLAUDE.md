@@ -101,6 +101,16 @@ Ao mudar uma regra de `nucleo/`:
 
 O teste `testes/golden.test.mjs` falha se o golden estiver desatualizado.
 
+**API em Go:** `internal/api` é o porte de `servidor/api.mjs`.
+- **Referência:** é conferida contra uma sessão de 94 chamadas gravada da API Node em `internal/api/testdata/golden-api.json`. Para regravar, use `node ferramentas/gerar-golden-api.mjs`.
+- **Armazenamento:** os dados ficam no SQLite (`internal/armazem`). Cada coleção é uma lista de objetos JSON na tabela `itens`.
+- **Importar os dados da Central antiga:**
+  - `go run ./cmd/central-cli importar-legado --dir dados --dry-run` mostra o que seria importado;
+  - sem `--dry-run`, grava. Ele recusa CPF/RG e não sobrescreve sem `--substituir`.
+- **Comparar com a Central Node rodando, com dados reais:**
+  - aponte `CENTRAL_PASTA` para uma pasta de teste e importe com `importar-legado`;
+  - rode `CENTRAL_NODE=http://localhost:4321 go test -tags comparacao -run CompararComNode ./internal/api/`.
+
 **Pasta de dados:** `os.UserConfigDir()/Central de Candidaturas`. A variável `CENTRAL_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
 
 ## Ferramentas de desenvolvimento
