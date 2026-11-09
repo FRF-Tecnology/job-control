@@ -80,8 +80,8 @@ paths:
         '409': { description: 'O pedido não tem proposta: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /emails:
     get: { summary: 'Emails registrados (?status=, ?vaga=)' }
-    post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica' }
-  /emails/{idMensagem}/ligar: { post: { summary: 'Liga um email sem vaga: {vagaId}' } }
+    post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica. jc-a2y.7.3 (proposta, decisão do PO): mesma regra da leitura pelo navegador, para qualquer autor. Recusa e oferta nunca mudam a vaga aqui: o email fica a-confirmar, e só a pessoa confirma pela tela (POST /emails/{idMensagem}/confirmar). Entrevista e teste aplicam sozinhos (em-processo com pendência) só com remetente de domínio conhecido da vaga; senão, a-confirmar. Confirmação e outro só registram' }
+  /emails/{idMensagem}/ligar: { post: { summary: 'Liga um email sem vaga: {vagaId}. jc-a2y.7.3 (proposta): ligado pela pessoa (autor eu, pela tela), a mudança aplica como hoje; ligado por outro autor, recusa e oferta ficam a-confirmar' } }
   /emails/{idMensagem}/descartar: { post: { summary: 'Tira da lista "sem vaga". jc-a2y.7.3 (proposta): também descarta um email a-confirmar, sem mudar a vaga' } }
   # E-mails pelo navegador (jc-a2y.7.3, docs/propostas/emails-navegador.md). Gmail web, só leitura, num perfil do
   # navegador só para e-mail. Nunca envia, responde, arquiva, apaga, marca nem abre a mensagem. Só a tela, e só no
@@ -134,11 +134,11 @@ paths:
         '429': { description: 'Intervalo mínimo entre leituras: {erro, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroIntervaloEmails' } } } }
   /emails/{idMensagem}/confirmar:
     parameters:
-      - { name: idMensagem, in: path, required: true, schema: { type: string, pattern: '^gmail:[0-9a-f]{1,32}$' } }
+      - { name: idMensagem, in: path, required: true, schema: { type: string, maxLength: 200 }, description: 'gmail:<id da conversa> na leitura pelo navegador; o id que o assistente mandou no POST /emails' }
     post:
       x-proposta: true
       x-so-tela: true
-      summary: 'A pessoa confirma a mudança proposta de um e-mail a-confirmar (recusa, oferta, ou entrevista e teste de remetente de outro domínio). A transição é recalculada com o estado de agora; se não vale mais (a vaga já andou, foi encerrada ou pulada), é 409 e nada muda'
+      summary: 'A pessoa confirma a mudança proposta de um e-mail a-confirmar (recusa, oferta, ou entrevista e teste de remetente de outro domínio), venha da leitura pelo navegador ou do POST /emails do assistente. A transição é recalculada com o estado de agora; se não vale mais (a vaga já andou, foi encerrada ou pulada), é 409 e nada muda'
       requestBody:
         required: true
         content:
