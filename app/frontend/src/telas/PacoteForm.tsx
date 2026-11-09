@@ -1,13 +1,13 @@
 // Formulário do pacote da candidatura (P5, jc-a2y.6.3.3): preparar e editar. O que está aqui é exatamente o que vai
 // para a vaga. Resposta editada pela pessoa passa a ter origem "Você"; a da IA fica marcada até ser editada.
 import { useState } from 'react';
-import { conteudoParaEnviar, type Conteudo } from '../app/pacote';
+import { avisoCurriculo, conteudoParaEnviar, type Conteudo } from '../app/pacote';
 import { NOME_MOTIVO_SENSIVEL, perguntaSensivel } from '../app/sensivel';
 
 const ORIGENS: Record<string, string> = { respostasPadrao: 'Respostas padrão', pessoa: 'Você', ia: 'IA' };
 
-export function PacoteForm({ inicial, pdfs, rotulo, ocupado, foraDoPacote = 0, onSalvar, onCancelar }: {
-  inicial: Conteudo; pdfs: { nome: string }[]; rotulo: string; ocupado?: boolean;
+export function PacoteForm({ inicial, pdfs, perfil, rotulo, ocupado, foraDoPacote = 0, onSalvar, onCancelar }: {
+  inicial: Conteudo; pdfs: { nome: string }[]; perfil?: any; rotulo: string; ocupado?: boolean;
   foraDoPacote?: number; // respostas padrão deixadas de fora por serem perguntas que só a pessoa responde
   onSalvar: (c: Conteudo) => void; onCancelar: () => void;
 }) {
@@ -29,6 +29,9 @@ export function PacoteForm({ inicial, pdfs, rotulo, ocupado, foraDoPacote = 0, o
             {nomes.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
           {semPDF && <small className="destino-chave">Coloque um PDF na pasta de currículos (Perfil › Currículos).</small>}
+          {!semPDF && perfil && avisoCurriculo({ idioma: c.idioma }, perfil, pdfs) && (
+            <small className="destino-chave proprio" role="status">{avisoCurriculo({ idioma: c.idioma }, perfil, pdfs)}</small>
+          )}
         </label>
         <label className="campo"><span>Idioma</span>
           <select value={c.idioma} onChange={ev => { const v = ev.target.value; mudar(x => { x.idioma = v; }); }}>

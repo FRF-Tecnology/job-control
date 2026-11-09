@@ -46,6 +46,18 @@ export function pacoteInicial(vaga: VagaBase, perfil: any, pdfs: PDF[]): Conteud
   return { curriculo: { arquivo }, idioma, contato: Object.keys(contato).length ? contato : null, pretensao, respostas, mensagem: null };
 }
 
+// Quando o currículo do perfil para o idioma não pode ser usado (não definido ou fora da pasta), o pacote cai para
+// outro PDF; a tela destaca isso para a pessoa conferir qual vai. "" quando o do perfil está na pasta.
+export function avisoCurriculo(vaga: VagaBase, perfil: any, pdfs: PDF[]): string {
+  if (!pdfs.length) return '';
+  const ingles = vaga.idioma === 'en';
+  const nomeIdioma = ingles ? 'inglês' : 'português';
+  const nome = nomeDoArquivo(perfil?.curriculos?.[ingles ? 'EN' : 'PT']);
+  if (!nome) return `O perfil não tem currículo para ${nomeIdioma}. Confira qual vai.`;
+  if (!pdfs.some(p => p.nome === nome)) return `O currículo do perfil para ${nomeIdioma} (${nome}) não está na pasta. Confira qual vai.`;
+  return '';
+}
+
 export function conteudoParaEnviar(c: Conteudo): Conteudo {
   const contato: Record<string, string> = {};
   for (const k of CAMPOS_CONTATO) if (texto(c.contato?.[k])) contato[k] = texto(c.contato![k]);

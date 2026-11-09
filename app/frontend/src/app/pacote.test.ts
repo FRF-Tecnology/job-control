@@ -1,7 +1,7 @@
 // Pacote inicial da candidatura (P5, jc-a2y.6.3.3): só dado do perfil e da pasta de currículos, sem inventar
 // resposta. E o corpo que vai para a API: só o nome do currículo (o servidor calcula o sha256). Só dados fictícios.
 import { describe, expect, it } from 'vitest';
-import { conteudoParaEnviar, pacoteInicial, perguntasSensiveisDoPerfil } from './pacote';
+import { avisoCurriculo, conteudoParaEnviar, pacoteInicial, perguntasSensiveisDoPerfil } from './pacote';
 
 const PERFIL = {
   nome: 'Ana Exemplo', email: 'ana@exemplo.com', telefone: '', cidade: 'Cidade Exemplo',
@@ -51,6 +51,16 @@ describe('pacoteInicial', () => {
     ] };
     expect(pacoteInicial({}, perfil, PDFS).respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'respostasPadrao' }]);
     expect(perguntasSensiveisDoPerfil(perfil)).toBe(3);
+  });
+
+  it('avisa quando o currículo não é o do perfil para o idioma (sumiu da pasta ou não foi definido)', () => {
+    expect(avisoCurriculo({ idioma: 'pt' }, PERFIL, PDFS)).toBe('');
+    expect(avisoCurriculo({ idioma: 'en' }, { curriculos: { PT: 'curriculos/cv-pt.pdf', EN: 'curriculos/sumiu.pdf' } }, PDFS))
+      .toBe('O currículo do perfil para inglês (sumiu.pdf) não está na pasta. Confira qual vai.');
+    expect(avisoCurriculo({ idioma: 'en' }, { curriculos: { PT: 'curriculos/cv-pt.pdf' } }, PDFS))
+      .toBe('O perfil não tem currículo para inglês. Confira qual vai.');
+    expect(avisoCurriculo({}, {}, [{ nome: 'unico.pdf' }])).toBe('O perfil não tem currículo para português. Confira qual vai.');
+    expect(avisoCurriculo({}, PERFIL, [])).toBe('');
   });
 
   it('sem PDF na pasta, o arquivo fica vazio (a tela pede para colocar um)', () => {

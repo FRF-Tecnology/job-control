@@ -181,7 +181,7 @@ export function TelaFila() {
                   {preparando !== v.id && <button className="botao p" type="button" onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
                 </div>
                 {preparando === v.id && (
-                  <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, perfil, pdfs)} pdfs={pdfs}
+                  <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, perfil, pdfs)} pdfs={pdfs} perfil={perfil}
                     rotulo="Preparar candidatura" ocupado={ocupado} foraDoPacote={perguntasSensiveisDoPerfil(perfil)}
                     onSalvar={k => preparar(v.id, k)} onCancelar={() => setPreparando(null)} />
                 )}
@@ -212,7 +212,7 @@ export function TelaFila() {
                   </header>
                   <p className="situacao">{situacao(c)}</p>
                   {editando === c.id ? (
-                    <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} rotulo="Salvar pacote" ocupado={ocupado}
+                    <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} perfil={perfil} rotulo="Salvar pacote" ocupado={ocupado}
                       onSalvar={k => salvarEdicao(c, k)} onCancelar={() => setEditando(null)} />
                   ) : (<>
                   {(c.estado === 'preparada' || c.estado === 'aprovada') && (

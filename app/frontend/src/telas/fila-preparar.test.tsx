@@ -84,6 +84,16 @@ describe('Fila: preparar candidatura', () => {
     expect(app.recarregar).toHaveBeenCalled();
   });
 
+  it('currículo que não é o do perfil para o idioma aparece destacado ao lado do campo', async () => {
+    montar();
+    const linha = within(await prontas()).getByText('Empresa Dois — Pessoa Dev Node').closest('li') as HTMLElement;
+    await clicar(within(linha).getByRole('button', { name: 'Preparar candidatura' }));
+    const form = within(linha).getByRole('form', { name: 'Pacote da candidatura' });
+    expect(within(form).queryByText(/Confira qual vai/)).toBeNull(); // português: o do perfil está na pasta
+    fireEvent.change(within(form).getByLabelText('Idioma'), { target: { value: 'en' } });
+    expect(within(form).getByText('O perfil não tem currículo para inglês. Confira qual vai.')).toBeTruthy();
+  });
+
   it('409 de duplicata aparece em texto claro', async () => {
     const { avisos } = montar({ erro: new ErroApi('já existe uma candidatura ativa para esta vaga', 409, { erro: 'já existe uma candidatura ativa para esta vaga', existente: 'cand-x' }) });
     const linha = within(await prontas()).getByText('Empresa Dois — Pessoa Dev Node').closest('li') as HTMLElement;
