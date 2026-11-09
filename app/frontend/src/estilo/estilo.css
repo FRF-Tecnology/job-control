@@ -436,6 +436,14 @@ dialog form { display: grid; gap: 16px; }
 .limite .num { font: 700 1.5rem var(--fonte-display); letter-spacing: -.02em; }
 .limite.cheio { background: var(--ambar-suave); }
 .limite.cheio .num { color: var(--ambar); }
+/* Ajustar o limite no próprio cartão (jc-a2y.54). */
+.limite { align-content: start; } /* um cartão com o formulário aberto não espalha o conteúdo dos vizinhos */
+.limite > div:last-child { margin-top: 8px; }
+.limite .botao-fantasma { background: var(--superficie); } /* o cartão já é superficie-2: o botão precisa se destacar */
+.limite-form { display: grid; gap: 8px; margin-top: 8px; min-width: 0; }
+.limite-form label { font-weight: 600; font-size: .9rem; }
+.limite-form input { width: 100%; max-width: 160px; }
+.limite-form small, .limite-form p { margin: 0; }
 .fila-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
 .cand { display: grid; gap: 12px; padding: 20px 24px; border-radius: var(--raio); background: var(--superficie); box-shadow: var(--sombra); border: 1px solid var(--linha-2); }
 .cand.alerta { border-color: var(--ambar); }
