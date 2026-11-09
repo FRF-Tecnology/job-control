@@ -432,15 +432,16 @@ dialog form { display: grid; gap: 16px; }
 .chip.cand-bloqueada, .chip.cand-incerta, .chip.cand-falhou { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
 .chip.cand-aprovada, .chip.cand-enviada { background: var(--verde-suave); color: var(--verde); font-weight: 600; }
 .chip.cand-preparada { background: var(--destaque-suave); color: var(--destaque); font-weight: 600; }
-.pacote summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
-.pacote dl { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 8px 16px; margin: 8px 0 0; }
-.pacote dt { color: var(--tinta-2); font-size: .9rem; }
-.pacote dd { margin: 0; overflow-wrap: anywhere; }
+.pacote summary, .tecnicos summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.tecnicos summary { color: var(--tinta-2); font-size: .9rem; } /* recolhido: só para quem quer conferir os códigos */
+.pacote dl, .tecnicos dl { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 8px 16px; margin: 8px 0 0; }
+.pacote dt, .tecnicos dt { color: var(--tinta-2); font-size: .9rem; }
+.pacote dd, .tecnicos dd { margin: 0; overflow-wrap: anywhere; }
 .pacote .respostas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .pacote .respostas li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .pacote .pergunta { color: var(--tinta-2); }
 .impressao { display: block; font: .82rem ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; padding: 8px 12px; border-radius: var(--raio-p); background: var(--superficie-2); }
-.conferida { display: block; margin-top: 4px; font-size: .88rem; font-weight: 600; }
+.conferida { display: block; margin: 0; font-size: .88rem; font-weight: 600; }
 .conferida.ok { color: var(--verde); }
 .conferida.diferente { color: var(--erro); }
 /* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
@@ -457,8 +458,8 @@ dialog form { display: grid; gap: 16px; }
 .erro-resposta { grid-column: 1 / -1; margin: 0; color: var(--erro); font-size: .88rem; font-weight: 600; } /* pergunta que só a pessoa responde */
 @media (max-width: 600px) {
   .cand { padding: 16px; }
-  .pacote dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .pacote dd { margin-bottom: 8px; }
+  .pacote dl, .tecnicos dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .pacote dd, .tecnicos dd { margin-bottom: 8px; }
   .pronta { padding: 16px; }
   .respostas-form li { grid-template-columns: minmax(0, 1fr) auto; }
   .respostas-form li input { grid-column: 1 / -1; }
