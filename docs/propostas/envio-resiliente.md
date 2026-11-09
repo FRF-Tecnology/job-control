@@ -24,10 +24,22 @@ O pedido do Vini: o app tem de ser automático e esperto com as falhas. Hoje, qu
 - `clicouEnviarEm` é gravado numa transação **antes** do clique final.
 - Se a gravação da marca falhar, o passo não acontece (`falhou`), e a candidatura também não volta.
 - A volta (`DevolverAprovada`) recusa com qualquer marca gravada. O executor também não pede a volta depois de pedir a marca. São duas travas.
-- **Mutações:**
-  - tirar a conferência da marca no domínio reprova;
-  - não marcar antes de preencher reprova;
-  - não marcar antes do clique reprova.
+- **Ao abrir o app** (`RecuperarAoAbrir`), uma candidatura que ficou em `enviando` segue a marca gravada:
+  - **sem marca** (o app caiu antes de interagir): volta para `aprovada` e conta como volta, com as mesmas regras do item 2 (no máximo 3 e a 4ª vira `falhou`; vencida vira `preparada`);
+  - **com qualquer marca:** vira `incerta`, como sempre (M3).
+- **Cliques antes da marca (decisão do CyberSec):**
+  - abrir a página não conta como interação;
+  - no LinkedIn, o botão que abre o Easy Apply também não conta, mas só para os rótulos de uma lista fechada;
+  - na Gupy e na InHire, qualquer clique conta, e a marca é gravada antes dele.
+
+  Hoje o app não clica em nada antes da marca: os únicos cliques são avançar e enviar, os dois depois dela. A regra vale para quando o clique do Easy Apply entrar.
+- **Testes e mutações:**
+  - **Queda antes e depois da gravação da marca:** sem marca volta, com marca vira incerta.
+  - **Mutações que reprovam:**
+    - tirar a conferência da marca no domínio;
+    - não marcar antes de preencher;
+    - gravar a marca depois de preencher em vez de antes;
+    - não marcar antes do clique.
 
 ### 2. A volta não é uma aprovação nova
 
@@ -47,7 +59,11 @@ O pedido do Vini: o app tem de ser automático e esperto com as falhas. Hoje, qu
 ### 3. Limite e teto
 
 - A tentativa devolvida sai de `tentativas`, por isso não conta no limite do dia.
-- **Teto firme:** contadas + devolvidas no dia nunca passam de **40 páginas abertas por plataforma** (`LimiteMaximo`). Passou disso, `IniciarEnvio` recusa com 429, como o limite.
+- **Teto firme:** contadas + devolvidas no dia nunca passam de **40 páginas abertas por plataforma** (`LimiteMaximo`). Passou disso, `IniciarEnvio` recusa com 429, como o limite, e a plataforma espera o dia seguinte.
+- **`GET /envio` mostra, por plataforma:**
+  - `voltasHoje`: as voltas do dia;
+  - `paginasHoje`: as páginas do dia;
+  - `tetoPaginas`: o teto, 40.
 - **Sem laço:**
   - no máximo 3 voltas por aprovação;
   - 2 falhas iguais seguidas pausam a plataforma.
@@ -70,6 +86,7 @@ Fica na meta do banco (`envio-plataformas`), com falha fechada: um valor ilegív
 ### 5. `precisa-entrar` volta sozinha só depois do login
 
 - Volta sozinha só quando **a pessoa fecha a janela "Entrar nas plataformas"** e o envio geral **não está pausado**. As duas coisas são conferidas na mesma transação.
+- As candidaturas que voltaram por login só saem dentro da validade da aprovação delas (vencida vira `preparada`).
 - O app fechar o navegador (sair, apagar, fechar o app) não conta como login.
 - Com o envio geral pausado, a plataforma fica em `precisa-entrar` até a pessoa retomá-la.
 
