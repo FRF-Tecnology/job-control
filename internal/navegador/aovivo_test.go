@@ -72,7 +72,7 @@ func esperarAte(t *testing.T, limite time.Duration, cond func() bool) bool {
 // Com o Chrome de verdade, sem janela: a aba do envio só manda quadros enquanto o observador quer, para de mandar
 // ao desligar, e nenhum quadro vai para a pasta de dados nem para o temp.
 func TestAoVivoComChrome(t *testing.T) {
-	temp := t.TempDir()
+	temp := pastaQueEsperaOChrome(t)
 	for _, v := range []string{"TMP", "TEMP", "TMPDIR"} {
 		t.Setenv(v, temp) // o Chrome herda: tudo o que ele puser no temp fica aqui, para conferir
 	}
@@ -81,7 +81,7 @@ func TestAoVivoComChrome(t *testing.T) {
 	t.Cleanup(func() { intervaloAoVivo = antes })
 
 	srv := novoServidor(t)
-	dados := t.TempDir()
+	dados := pastaQueEsperaOChrome(t)
 	n := navegadorDeTeste(t, srv, dados)
 	obs := &observadorTeste{}
 	n.aoVivo = obs
@@ -147,4 +147,30 @@ func TestAoVivoComChrome(t *testing.T) {
 			return nil
 		})
 	}
+}
+
+// pastaQueEsperaOChrome: pasta temporária que, no fim do teste, espera até 15 s o Chrome soltar os arquivos. No
+// Windows, um processo filho do Chrome (cache, GPU) às vezes ainda segura um arquivo logo depois de o navegador
+// fechar, e o RemoveAll do t.TempDir falharia o teste por isso. O que o teste confere não muda.
+func pastaQueEsperaOChrome(t *testing.T) string {
+	t.Helper()
+	p, err := os.MkdirTemp("", "aovivo-teste-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		fim := time.Now().Add(15 * time.Second)
+		for {
+			err := os.RemoveAll(p)
+			if err == nil {
+				return
+			}
+			if time.Now().After(fim) {
+				t.Errorf("a pasta temporária do teste não saiu: %v", err)
+				return
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+	})
+	return p
 }
