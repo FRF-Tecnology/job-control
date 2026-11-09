@@ -133,7 +133,8 @@ export default function App() {
     const ativo = (e: Partial<EstadoEnvio> | null) => !!e && e.ligado === true && e.pausado === false;
     const ler = async () => {
       if (fechando.current || document.visibilityState !== 'visible') return;
-      try { setEnvioAtivo(ativo(await chamarApi('/api/v1/envio'))); } catch { setEnvioAtivo(false); }
+      // Leitura falhou: mantém o último valor conhecido, para a marca não sumir por um erro passageiro (CyberSec, #60).
+      try { setEnvioAtivo(ativo(await chamarApi('/api/v1/envio'))); } catch { /* mantém */ }
     };
     const aoMudar = (ev: Event) => setEnvioAtivo(ativo((ev as CustomEvent<EstadoEnvio>).detail));
     window.addEventListener(EVENTO_ENVIO, aoMudar);

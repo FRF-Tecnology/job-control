@@ -10,6 +10,7 @@ import { mercadoDe } from '../dominio/modelo';
 import { encode } from '../util';
 import { PacoteForm } from './PacoteForm';
 import { PainelEnvio } from './PainelEnvio';
+import { LimiteCartao, type Limite } from './LimiteDiario';
 
 type EstadoCand = 'preparada' | 'aprovada' | 'enviando' | 'enviada' | 'bloqueada' | 'falhou' | 'incerta' | 'cancelada';
 type Resposta = { pergunta: string; resposta: string; origem: string };
@@ -26,7 +27,6 @@ export type Candidatura = {
   resultado: { em: string; tipo: string; detalhe?: string } | null;
   versao: number; criadaEm: string; atualizadaEm: string;
 };
-type Limite = { limite: number; usadas: number; renovaEm: string };
 
 // O que pede a pessoa vem primeiro.
 const ORDEM: EstadoCand[] = ['bloqueada', 'incerta', 'falhou', 'preparada', 'aprovada', 'enviando', 'enviada', 'cancelada'];
@@ -209,11 +209,8 @@ export function TelaFila() {
       <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} />
       <section className="limites" aria-label="Limite de hoje" role="region">
         {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
-          <div key={p} className={`limite${limites[p].usadas >= limites[p].limite ? ' cheio' : ''}`}>
-            <strong>{PLATAFORMAS[p]}</strong>
-            <span className="num">{`${limites[p].usadas} de ${limites[p].limite}`}</span>
-            <span className="pequeno mudo">{quandoRenova(limites[p].renovaEm, app.hoje)}</span>
-          </div>
+          <LimiteCartao key={p} plataforma={p} nome={PLATAFORMAS[p]} na={NA_PLATAFORMA[p]} limite={limites[p]}
+            renova={quandoRenova(limites[p].renovaEm, app.hoje)} onSalvo={l => setLimites(x => ({ ...x, [p]: l }))} />
         ))}
       </section>
 
