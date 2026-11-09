@@ -1,7 +1,7 @@
 // Plataformas: onde procurar vagas e como cada uma funciona (porte de web/telas/plataformas.mjs).
 import { useApp } from '../app/contexto';
 import { porPlataforma } from '../dominio/funil';
-import { Convite } from '../componentes';
+import { Convite, LinkExterno } from '../componentes';
 import { dataCurta, encode } from '../util';
 
 const STATUS: Record<string, string> = { automatizada: 'Automatizada', manual: 'Manual', 'a-testar': 'A testar', descartada: 'Descartada' };
@@ -33,7 +33,7 @@ export function TelaPlataformas() {
             return (
               <article key={p.id} className={`plataforma s-${p.status}`}>
                 <div className="acoes" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <h2>{/^https?:\/\//.test(p.url ?? '') ? <a href={p.url} target="_blank" rel="noopener">{p.nome ?? p.id}</a> : (p.nome ?? p.id)}</h2>
+                  <h2><LinkExterno url={p.url} semLink={p.nome ?? p.id}>{p.nome ?? p.id}</LinkExterno></h2>
                   <select aria-label={`Situação de ${p.nome}`} style={{ width: 'auto', minHeight: '30px', padding: '2px 8px' }} value={p.status ?? ''}
                     onChange={ev => salvar(p, { status: ev.target.value }, `${p.nome}: ${STATUS[ev.target.value]}`)}>
                     {!STATUS[p.status] && <option value={p.status ?? ''} />}
