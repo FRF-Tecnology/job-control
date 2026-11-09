@@ -101,3 +101,17 @@ func TestPastaInexistente(t *testing.T) {
 		t.Fatal("queria erro para pasta inexistente")
 	}
 }
+
+// jc-a2y.15: cópia que falha no meio não deixa arquivo pela metade na pasta de currículos.
+func TestCopiaQueFalhaNaoDeixaArquivo(t *testing.T) {
+	dir := t.TempDir()
+	origem := filepath.Join(dir, "pasta-no-lugar-do-pdf") // ler uma pasta como arquivo falha no io.Copy
+	os.Mkdir(origem, 0o700)
+	destino := filepath.Join(dir, "cv.pdf")
+	if err := copiar(origem, destino); err == nil {
+		t.Fatal("a cópia de uma pasta deveria falhar")
+	}
+	if _, err := os.Stat(destino); !os.IsNotExist(err) {
+		t.Fatalf("ficou arquivo pela metade: %v", err)
+	}
+}

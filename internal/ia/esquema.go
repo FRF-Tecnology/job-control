@@ -21,6 +21,15 @@ type esquema struct {
 	temPropriedad bool
 }
 
+// deve: o contrato é nosso e embutido (funcoes.json), lido ao iniciar o pacote. Um campo malformado (enum que não
+// é lista, properties que não é objeto...) não pode ser ignorado em silêncio, porque enfraqueceria a validação.
+// Falha ao iniciar, e os testes pegam (jc-a2y.15, gosec G104).
+func deve(err error, campo string) {
+	if err != nil {
+		panic("esquema: campo " + campo + " malformado: " + err.Error())
+	}
+}
+
 func lerEsquema(bruto json.RawMessage) *esquema {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(bruto, &m); err != nil {
@@ -32,24 +41,24 @@ func lerEsquema(bruto json.RawMessage) *esquema {
 		if json.Unmarshal(t, &um) == nil {
 			e.Tipos = []string{um}
 		} else {
-			json.Unmarshal(t, &e.Tipos)
+			deve(json.Unmarshal(t, &e.Tipos), "type")
 		}
 	}
 	if en, ok := m["enum"]; ok {
 		e.temEnum = true
-		json.Unmarshal(en, &e.Enum)
+		deve(json.Unmarshal(en, &e.Enum), "enum")
 	}
 	if p, ok := m["properties"]; ok {
 		e.temPropriedad = true
 		var props map[string]json.RawMessage
-		json.Unmarshal(p, &props)
+		deve(json.Unmarshal(p, &props), "properties")
 		e.Propriedades = map[string]*esquema{}
 		for k, v := range props {
 			e.Propriedades[k] = lerEsquema(v)
 		}
 	}
 	if r, ok := m["required"]; ok {
-		json.Unmarshal(r, &e.Obrigatorios)
+		deve(json.Unmarshal(r, &e.Obrigatorios), "required")
 	}
 	if a, ok := m["additionalProperties"]; ok && string(a) == "false" {
 		e.SemExtras = true
@@ -117,7 +126,7 @@ func validarEsquema(valor any, e *esquema, caminho string) []string {
 			}
 		}
 		if !achou {
-			erros = append(erros, fmt.Sprintf("%s: valor fora da lista (%s)", caminho, stringify(simples(valor), "")))
+			erros = append(erros, caminho+": valor fora da lista") // sem o valor: pode vir da vaga ou do email (jc-a2y.23)
 		}
 	}
 	if t == "object" && e.temPropriedad {
@@ -132,7 +141,7 @@ func validarEsquema(valor any, e *esquema, caminho string) []string {
 			if p, ok := e.Propriedades[k]; ok {
 				erros = append(erros, validarEsquema(v, p, caminho+"."+k)...)
 			} else if e.SemExtras {
-				erros = append(erros, fmt.Sprintf("%s.%s: campo não previsto", caminho, k))
+				erros = append(erros, caminho+": campo não previsto") // sem o nome: a chave vem da saída da IA (jc-a2y.23)
 			}
 		}
 	}

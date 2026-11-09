@@ -254,7 +254,10 @@ func chamarCodex(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error
 	}
 	defer os.RemoveAll(pasta)
 	esquema, ultima := filepath.Join(pasta, "esquema.json"), filepath.Join(pasta, "resposta.txt")
-	os.WriteFile(esquema, p.Prompt.Esquema, 0o600)
+	if err := os.WriteFile(esquema, p.Prompt.Esquema, 0o600); err != nil {
+		// Sem o arquivo do esquema, o codex rodaria sem o contrato da saída (jc-a2y.15, gosec G104).
+		return RespostaProvedor{}, &ErroIA{Tipo: "provedor", Mensagem: "codex-cli: não deu para preparar a pasta temporária", Provedor: "codex-cli", Reintentavel: true}
+	}
 	args := []string{"exec", "--skip-git-repo-check", "--sandbox", "read-only", "--color", "never", "--output-schema", esquema, "--output-last-message", ultima}
 	if p.Modelo != "" {
 		args = append(args, "--model", p.Modelo)
