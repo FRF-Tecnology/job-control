@@ -402,7 +402,7 @@ paths:
         '429': { description: 'Teto de 40 páginas abertas na plataforma hoje: {erro, plataforma, limite, usadas, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLimite' } } } }
   /candidaturas/limites:
     get:
-      summary: 'Limite diário por plataforma (linkedin, gupy, inhire), quantas já entraram em enviando hoje e quando renova. jc-a2y.7.2 (proposta): formulario entra aqui e em PUT /candidaturas/limites/{plataforma}, com padrão 30'
+      summary: 'Limite diário por plataforma (linkedin, gupy, inhire e formulario), quantas já entraram em enviando hoje e quando renova. formulario (jc-a2y.7.2) entra com o envio do executor, com padrão 30'
       responses:
         '200':
           description: Limites
@@ -415,9 +415,10 @@ paths:
                   linkedin: { $ref: '#/components/schemas/LimiteDiario' }
                   gupy: { $ref: '#/components/schemas/LimiteDiario' }
                   inhire: { $ref: '#/components/schemas/LimiteDiario' }
+                  formulario: { $ref: '#/components/schemas/LimiteDiario' }
   /candidaturas/limites/{plataforma}:
     parameters:
-      - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
+      - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire, formulario] } }
     put:
       x-so-tela: true
       summary: 'Muda o limite diário da plataforma (padrão 30, de 1 a 40)'
@@ -720,8 +721,8 @@ components:
       description: 'enviando e incerta só o executor põe; incerta sai só pela tela (concluir-manual ou reabrir)'
     PlataformaCandidatura:
       type: string
-      enum: [linkedin, gupy, inhire, outra]
-      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo. jc-a2y.7.2 (proposta): formulario, para Google Forms (docs.google.com/forms/d/e/<id>/viewform, docs.google.com/forms/d/<id>/viewform, forms.gle/<id>) e Typeform (<conta>.typeform.com/to/<id>, form.typeform.com/to/<id>), por lista exata de hosts e caminhos, nunca endsWith; URL guardada sem query nem fragmento (sem entry.* nem campos ocultos); conta no limite do dia (padrão 30) e no teto de 40'
+      enum: [linkedin, gupy, inhire, outra, formulario]
+      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo. jc-a2y.7.2: formulario, para Google Forms (docs.google.com/forms/d/e/<id>/viewform, docs.google.com/forms/d/<id>/viewform, forms.gle/<id>) e Typeform (<conta>.typeform.com/to/<id>, form.typeform.com/to/<id>), por lista exata de hosts e caminhos, nunca endsWith; URL guardada sem query nem fragmento (sem entry.* nem campos ocultos); conta no limite do dia (padrão 30) e no teto de 40'
     ConteudoCandidatura:
       type: object
       description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. Campo a mais em qualquer nível dá 400 (nada é gravado). CPF ou RG em qualquer texto dá 400'

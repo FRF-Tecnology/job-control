@@ -344,6 +344,9 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 	if v, ok := dominio.NumeroDe(o["versao"]); ok {
 		t.versao = int(v)
 	}
+	if plataforma == dominio.PlataformaFormulario { // jc-a2y.7.2: formulario.go
+		return x.concluir(ctx, plataforma, t, x.preencherFormulario(ctx, c, t))
+	}
 	return x.concluir(ctx, plataforma, t, x.preencherEEnviar(ctx, c, t))
 }
 
@@ -708,12 +711,21 @@ var etapaDoDesfecho = map[string]string{
 // vale o desfecho de sempre. Incerta nunca volta.
 func (x *Executor) concluir(ctx context.Context, plataforma string, t *tentativa, p passo) (Desfecho, error) {
 	id, agora := t.id, x.o.Relogio()
+	// Formulário (jc-a2y.7.2): não tem sessão nem estado de plataforma. O login é do próprio formulário (nunca
+	// enviamos a identidade da conta Google): fica bloqueada, sem voltar; e nada pausa os outros formulários.
+	formulario := plataforma == dominio.PlataformaFormulario
+	registrar := func(pl dominio.Plataformas, codigo string) dominio.Plataformas {
+		if formulario {
+			return pl
+		}
+		return pl.RegistrarResultado(plataforma, codigo, agora)
+	}
 	volta := ""
 	if !t.interagiu {
 		switch {
 		case p.estado == dominio.CandFalhou && p.motivo == "erro-tecnico":
 			volta = "erro-tecnico"
-		case p.estado == dominio.CandBloqueada && p.motivo == "login":
+		case p.estado == dominio.CandBloqueada && p.motivo == "login" && !formulario:
 			volta = "login"
 		}
 	}
@@ -728,7 +740,7 @@ func (x *Executor) concluir(ctx context.Context, plataforma string, t *tentativa
 			switch {
 			case err == nil:
 				final, devolveu = o, true
-				pl = pl.RegistrarResultado(plataforma, volta, agora)
+				pl = registrar(pl, volta)
 				depois = pl.DaPlataforma(plataforma, agora)
 				return novo, pl, nil
 			case !errors.As(err, &ec):
@@ -753,7 +765,7 @@ func (x *Executor) concluir(ctx context.Context, plataforma string, t *tentativa
 			return e, pl, err
 		}
 		final = o
-		pl = pl.RegistrarResultado(plataforma, codigoDoPasso(p), agora)
+		pl = registrar(pl, codigoDoPasso(p))
 		depois = pl.DaPlataforma(plataforma, agora)
 		return novo, pl, nil
 	})

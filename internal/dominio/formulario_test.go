@@ -59,7 +59,7 @@ func TestFormularioDoEndereco(t *testing.T) {
 }
 
 // A vaga com link de formulário vira "formulario"; a candidatura guarda a URL canônica e só o fato do
-// pré-preenchimento. Até o executor dos formulários, a aprovada segue para site-externo, como hoje.
+// pré-preenchimento.
 func TestCandidaturaDeFormulario(t *testing.T) {
 	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
 	e := comVaga(t, EstadoVazio(), "fm-1", "Site da empresa", "https://docs.google.com/forms/d/e/1FAIpQLSf_x/viewform?entry.123=Pessoa+Teste", true)
@@ -73,9 +73,9 @@ func TestCandidaturaDeFormulario(t *testing.T) {
 	if strings.Contains(emJSONTeste(e), "Pessoa+Teste") && strings.Contains(texto(e.Candidaturas[0]["url"]), "entry") {
 		t.Fatal("o pré-preenchimento ficou na candidatura")
 	}
-	// Sem envio automático por enquanto: LimiteDe diz que não há executor para formulario.
-	if _, automatico := LimiteDe(nil, PlataformaFormulario); automatico {
-		t.Fatal("formulario com envio automático antes do executor")
+	// Com o executor dos formulários (parte 3b): envio automático, no limite do dia (padrão 30).
+	if n, automatico := LimiteDe(nil, PlataformaFormulario); !automatico || n != LimitePadrao {
+		t.Fatalf("limite de formulario = %d %v", n, automatico)
 	}
 	// Link que não é de formulário continua "outra".
 	e2 := comVaga(t, EstadoVazio(), "ou-1", "Site da empresa", "https://carreiras.exemplo.com/1", true)
