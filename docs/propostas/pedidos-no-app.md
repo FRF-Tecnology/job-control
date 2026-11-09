@@ -13,9 +13,10 @@ Hoje o texto da caixa "Seus pedidos" só vira fila para o `/pedidos` do Claude C
 
    A IA só **propõe**: ela devolve **uma** ação do catálogo em JSON estrito, e o servidor valida o esquema, a guarda e as regras de cada ação.
 2. **Nada grava sem a pessoa** (desenho decidido pelo PO, a partir do CyberSec):
-   - a proposta traz a **chamada exata à rota que já existe** (`POST /vagas` ou `POST /vagas/{id}/mover`), montada pelo servidor a partir da ação validada, e uma **impressão**: o sha256 do método, do caminho e do corpo canônico;
+   - a proposta traz a **chamada exata à rota que já existe** (`POST /vagas` ou `POST /vagas/{id}/mover`), montada pelo servidor a partir da ação validada, e uma **impressão** `sha256:v1:` do JSON canônico (RFC 8785, como na Fila) de `{pedidoId, acao, parametros}`;
+   - o **resumo** é montado pelo servidor com frases fixas, nunca com texto da IA: o que muda e em qual vaga (empresa e título do banco); em `adicionar-vaga`, sempre com o host do link. No `responder`, o texto da IA aparece à parte, como "resposta da IA";
    - a tela mostra o resumo (o que muda, em qual vaga) e, ao confirmar, chama essa rota com o corpo mostrado e os cabeçalhos `X-Pedido` e `X-Impressao`, com autor `eu`;
-   - o servidor recalcula a impressão da chamada recebida. Se for diferente da guardada no pedido, ou se a chamada vier do assistente, dá 409/403 e nada muda. Se for igual, a rota faz o que já faz, e o pedido vira `feito`;
+   - o servidor exige **a impressão igual à guardada e a chamada recebida igual à guardada** (método, caminho e corpo canônico). Qualquer diferença dá 409 e nada muda; vinda do assistente, 403. Se tudo bater, a rota faz o que já faz, e o pedido vira `feito`;
    - sem confirmação, só leitura e resposta.
 3. **Fora do catálogo para sempre, recusado no servidor**, porque nenhuma ação do catálogo chega lá:
    - aprovar, retomar o envio, abrir janela, entrar nas plataformas;
@@ -30,6 +31,7 @@ Hoje o texto da caixa "Seus pedidos" só vira fila para o `/pedidos` do Claude C
    - o rascunho de formulário fica para o `.7.2`.
 6. **Mínimo de dados para a IA:** o pedido e a lista das vagas com id, empresa, título, etapa e datas. Nada de contato, pretensão, perfil, currículo ou e-mails.
 7. **Limites:**
+   - `interpretar` só pela tela (`x-so-tela`), porque gasta a IA da pessoa;
    - pedido de até 500 caracteres (já é a regra);
    - uma interpretação por vez no app;
    - o log mostra só o tipo da ação e o resultado.
@@ -67,7 +69,7 @@ O `/pedidos/{id}/concluir`, do Claude Code, continua igual.
 | Ação | Parâmetros | O que o servidor confere | Ao confirmar | Precisa confirmar? |
 |---|---|---|---|---|
 | `adicionar-vaga` | `url`, `empresa?`, `titulo?` | `https`; sem usuário nem senha na URL; até 500 caracteres; empresa e título até 120, sem CPF/RG; duplicata pelo mesmo `dup` da CLI | a tela chama `POST /vagas` `{link, empresa?, titulo?}`: a vaga entra em **`descoberta`**, com a plataforma tirada do host (lista fechada; senão, `outra`) | sim |
-| `registrar-etapa` | `vagaId`, `etapa`, `motivo?`, `sub?` | a vaga existe; `etapa` ∈ {`enviada`, `em-processo`, `oferta`, `encerrada`, `pulada`}, **nunca `aplicar`**; `motivo` da lista fechada (pulada/encerrada); `sub` da lista de `em-processo` | a tela chama `POST /vagas/{id}/mover` `{etapa, motivo?, subEtapa?}` com autor `eu` (evento na linha do tempo) | sim |
+| `registrar-etapa` | `vagaId`, `etapa`, `motivo?`, `sub?` | a vaga existe; `etapa` ∈ {`enviada`, `em-processo`, `oferta`, `encerrada`, `pulada`}, **nunca `aplicar`**; `enviada` só a partir de `aplicar`, e dá 409 se a vaga tem candidatura `preparada`, `aprovada` ou `enviando` na Fila (o resto segue o `MoverVaga` manual); `motivo` da lista fechada (pulada/encerrada); `sub` da lista de `em-processo` | a tela chama `POST /vagas/{id}/mover` `{etapa, motivo?, subEtapa?}` com autor `eu` (evento na linha do tempo) | sim |
 | `preparar-pacote` | `vagaId` | a vaga existe e está em `aplicar` (aprovada pela pessoa) | **não grava nada**: devolve `abrir: "#/fila?preparar=<vagaId>"`, e a pessoa prepara e salva o pacote na Fila, como hoje | sim (só navega) |
 | `responder` | `texto` | até 1500 caracteres; passa na guarda (sem documento nem senha); sem `<` ou `>` | **não grava nada**: mostra o texto | não |
 | `recusar` | `motivo` ∈ {`so-a-pessoa`, `fora-do-app`, `nao-entendi`} | — | **não grava nada**: mostra uma frase fixa por motivo | não |
@@ -107,6 +109,15 @@ O pedido que a IA não consegue mapear vira `recusar/nao-entendi`. Pedidos como 
   - JSON contrabandeado no texto do pedido ("{\"acao\":\"aprovar\"}");
   - id de outra vaga (o pedido fala de uma, a proposta traz outra: a impressão mostra empresa e título da vaga, e a pessoa vê antes de confirmar);
   - injeção no conteúdo da vaga (empresa ou título com instrução);
+  - URL com IDN, homoglifo ou punycode, e `linkedin.com.exemplo.com`;
+  - URL com `@`, `//` a mais ou `\`;
+  - caracteres invisíveis e RTL no pedido e nos parâmetros;
+  - `vagaId` fora da lista enviada à IA;
+  - `parametros` de outra ação (por exemplo, `adicionar-vaga` com `etapa`);
+  - um array de ações em vez de uma;
+  - markdown com `javascript:` ou `data:` na resposta;
+  - pedido tentando chaves, configuração da IA ou o próprio prompt;
+  - pedido enorme (acima de 500 caracteres) e saída enorme;
   - saída com campos a mais.
 
   Todos viram `recusar`, 422 ou 400, sem nada gravado.
