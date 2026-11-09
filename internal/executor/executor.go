@@ -369,12 +369,6 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 
 	// Formulário em etapas: em cada uma, confere o endereço e o bloqueio, planeja todos os campos (M1) antes de
 	// digitar, preenche, confere de novo e só então avança. Nunca avança com campo sem plano.
-	pelaPagina := 0 // obrigatórios que a página já trouxe preenchidos e o app não alterou (só a contagem vai para o log)
-	defer func() {
-		if pelaPagina > 0 {
-			x.o.Log("executor: %d campo(s) obrigatório(s) preenchido(s) pela página, sem alteração", pelaPagina)
-		}
-	}()
 	for etapa := 0; ; etapa++ {
 		if etapa >= MaxEtapas {
 			return bloqueada("outro")
@@ -389,8 +383,7 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 		if err != nil {
 			return falhou("erro-tecnico", err)
 		}
-		plano, motivo, mantidos := planejar(conteudo, campos)
-		pelaPagina += mantidos
+		plano, motivo := planejar(conteudo, campos)
 		if motivo != "" {
 			return bloqueada(motivo)
 		}
@@ -398,18 +391,27 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 			if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
 				return falhou("erro-tecnico", err)
 			}
+			if a.conferir {
+				// Contato que a página já trouxe: só passa se for igual ao do pacote, e o app não mexe (jc-a2y.6.5.1).
+				igual, err := pag.Igual(ctx, a.campo, a.valor)
+				if err != nil {
+					return falhou("erro-tecnico", err)
+				}
+				if !igual {
+					return bloqueada("pergunta-nova")
+				}
+				x.o.Log("executor: campo %s preenchido pela página, igual ao pacote", a.campo.Tipo) // só o tipo
+				continue
+			}
 			if a.anexar {
 				err = pag.Anexar(ctx, a.campo, copia)
 			} else {
 				err = pag.Preencher(ctx, a.campo, a.valor)
 			}
 			if err != nil {
-				// Contato num select que a página já marcou, sem a opção do pacote (ex.: código do país, e-mail da
-				// conta): fica o que a página marcou, sem alterar (jc-a2y.6.5.1). Pergunta e pretensão não: a resposta
-				// aprovada não caberia, e outra não pode ir no lugar.
-				if errors.Is(err, ErrSemOpcao) && a.campo.Preenchido && !a.campo.Livre && ehContato(a.campo.Tipo) {
-					pelaPagina++
-					continue
+				// O valor aprovado não é uma das opções do campo: a pessoa resolve; outro valor nunca vai no lugar.
+				if errors.Is(err, ErrSemOpcao) {
+					return bloqueada("pergunta-nova")
 				}
 				return falhou("erro-tecnico", err)
 			}
@@ -473,34 +475,58 @@ func (x *Executor) conferirEndereco(ctx context.Context, pag Pagina, plataforma,
 }
 
 type acao struct {
-	campo  Campo
-	valor  string
-	anexar bool
+	campo    Campo
+	valor    string
+	anexar   bool
+	conferir bool // contato que a página já trouxe: só confere se é igual ao pacote, sem alterar
 }
 
 // planejar decide o que fazer com cada campo da etapa, antes de digitar qualquer coisa (M1). Um campo que bloqueia
 // devolve o motivo e nada é preenchido.
-func planejar(conteudo dominio.Objeto, campos []Campo) (plano []acao, motivo string, mantidos int) {
+func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
+	var plano []acao
 	for _, campo := range campos {
 		valor, motivo := valorDoCampo(conteudo, campo)
 		switch {
 		case motivo != "":
-			return nil, motivo, 0
-		case valor == "" && campo.Obrigatorio && campo.Preenchido && campo.Tipo != CampoCurriculo:
-			mantidos++ // a página já trouxe o valor; o app não mexe
+			return nil, motivo
+		case campo.Preenchido && valor != "" && conferivel(campo.Tipo):
+			plano = append(plano, acao{campo: campo, valor: valor, conferir: true})
 		case campo.Tipo == CampoCurriculo:
 			plano = append(plano, acao{campo: campo, anexar: true})
 		case valor != "":
 			plano = append(plano, acao{campo: campo, valor: valor})
 		}
 	}
-	return plano, "", mantidos
+	return plano, ""
 }
 
-// ehContato: campos de contato do pacote (nome, e-mail, telefone, cidade). Só eles podem ficar com o que a página
-// já marcou quando o select não tem a opção do pacote.
-func ehContato(tipo string) bool {
-	return tipo == CampoNome || tipo == CampoEmail || tipo == CampoTelefone || tipo == CampoCidade
+// conferivel: os únicos campos que a página pode trazer preenchidos e ir assim, se iguais ao pacote (revisão do
+// CyberSec, jc-a2y.6.5.1): nome, e-mail, telefone e código do país.
+func conferivel(tipo string) bool {
+	return tipo == CampoNome || tipo == CampoEmail || tipo == CampoTelefone || tipo == CampoDDI
+}
+
+// ddiDoTelefone: o código do país do telefone do pacote. "+55 11 9..." dá "+55". Sem "+", o número é nacional e o
+// perfil é do Brasil: "+55". Com "+" e sem separador, não dá para saber: vazio (a pessoa resolve).
+func ddiDoTelefone(tel string) string {
+	tel = strings.TrimSpace(tel)
+	if tel == "" {
+		return ""
+	}
+	if !strings.HasPrefix(tel, "+") {
+		return "+55"
+	}
+	fim := strings.IndexAny(tel[1:], " -.(")
+	if fim <= 0 || fim > 3 {
+		return ""
+	}
+	for _, r := range tel[1 : 1+fim] {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+	return tel[:1+fim]
 }
 
 func (x *Executor) conferirBloqueio(ctx context.Context, pag Pagina) (passo, bool) {
@@ -568,6 +594,9 @@ func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
 	if m := dominio.MotivoDoRotulo(c.Rotulo); m != "" {
 		c.Tipo = m
 	}
+	if c.Tipo == "termos" && c.Preenchido {
+		return "", "termos" // aceite já marcado pela página: só a pessoa aceita (jc-a2y.6.5.1)
+	}
 	if c.Tipo == "termos" && !c.Obrigatorio {
 		return "", "" // aceite opcional fica sem marcar
 	}
@@ -578,6 +607,9 @@ func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
 	switch c.Tipo {
 	case CampoNome, CampoEmail, CampoTelefone, CampoCidade:
 		valor, _ = contato[c.Tipo].(string)
+	case CampoDDI:
+		tel, _ := contato[CampoTelefone].(string)
+		valor = ddiDoTelefone(tel)
 	case CampoPretensao:
 		if v, ok := dominio.ObjetoDe(conteudo["pretensao"])["valor"].(float64); ok {
 			valor = strconv.FormatFloat(math.Round(v), 'f', 0, 64) // só dígitos, sem ponto decimal (campo numérico)
@@ -593,12 +625,9 @@ func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
 		}
 	}
 	if strings.TrimSpace(valor) == "" {
-		if c.Obrigatorio {
-			// A página já trouxe o valor (o rótulo não é sensível: isso foi barrado acima): conta como respondido, e o
-			// app não altera. Texto longo, não (jc-a2y.6.5.1).
-			if c.Preenchido && !c.Livre {
-				return "", ""
-			}
+		// A página trouxe algo que não está no pacote (resposta de candidatura anterior, texto, opção marcada,
+		// currículo antigo): obrigatório ou não, nunca vai sem a pessoa aprovar (revisão do CyberSec, jc-a2y.6.5.1).
+		if c.Obrigatorio || c.Preenchido {
 			return "", "pergunta-nova"
 		}
 		return "", ""

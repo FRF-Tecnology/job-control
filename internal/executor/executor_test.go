@@ -31,6 +31,8 @@ type paginaFalsa struct {
 	campos       []Campo
 	errPreencher error
 	errPorCampo  map[string]error // erro do Preencher só naquele campo (ex.: ErrSemOpcao)
+	iguais       map[string]bool  // Igual: o valor que a página trouxe é o do pacote
+	conferidos   []string
 	errEnviar    error
 	confirma     bool
 	aoPreencher  func()
@@ -95,6 +97,10 @@ func (p *paginaFalsa) Preencher(ctx context.Context, c Campo, v string) error {
 	}
 	p.preenchidos[c.ID] = v
 	return nil
+}
+func (p *paginaFalsa) Igual(ctx context.Context, c Campo, esperado string) (bool, error) {
+	p.conferidos = append(p.conferidos, c.ID)
+	return p.iguais[c.ID], nil
 }
 func (p *paginaFalsa) Anexar(ctx context.Context, c Campo, caminho string) error {
 	if p.aoAnexar != nil {
