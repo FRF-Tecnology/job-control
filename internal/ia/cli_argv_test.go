@@ -37,3 +37,13 @@ func TestGeminiRecebePedidoPeloStdin(t *testing.T) {
 		t.Fatalf("gemini = %+v, %v", s, err)
 	}
 }
+
+// CLI que não está no PATH: nem instalada, nem pronta, sem aviso.
+func TestDetectarCLIsSemNadaInstalado(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, e := range DetectarCLIs(context.Background()) {
+		if e.Instalada || e.Pronta || e.Aviso != "" {
+			t.Errorf("%s: %+v", e.Comando, e)
+		}
+	}
+}
