@@ -31,9 +31,13 @@ type paginaFalsa struct {
 	errEnviar    error
 	confirma     bool
 	aoPreencher  func()
+	etapas       [][]Campo // formulário em etapas (vazio: uma etapa só, com campos)
+	urls         []string  // URLAtual por chamada (vazio: final)
 	aoAnexar     func()
 
 	chamadasBloqueio int
+	etapa            int
+	chamadasURL      int
 	preenchidos      map[string]string
 	anexos           map[string][]byte
 	caminhosAnexo    []string
@@ -55,7 +59,27 @@ func (p *paginaFalsa) Bloqueio(ctx context.Context) (string, error) {
 	}
 	return "", nil
 }
-func (p *paginaFalsa) Campos(ctx context.Context) ([]Campo, error) { return p.campos, nil }
+func (p *paginaFalsa) Campos(ctx context.Context) ([]Campo, error) {
+	if len(p.etapas) > 0 {
+		return p.etapas[p.etapa], nil
+	}
+	return p.campos, nil
+}
+func (p *paginaFalsa) URLAtual(ctx context.Context) (string, error) {
+	i := p.chamadasURL
+	p.chamadasURL++
+	if i < len(p.urls) {
+		return p.urls[i], nil
+	}
+	return p.final, nil
+}
+func (p *paginaFalsa) Proxima(ctx context.Context) (bool, error) {
+	if p.etapa+1 < len(p.etapas) {
+		p.etapa++
+		return true, nil
+	}
+	return false, nil
+}
 func (p *paginaFalsa) Preencher(ctx context.Context, c Campo, v string) error {
 	if p.aoPreencher != nil {
 		p.aoPreencher()
@@ -178,10 +202,14 @@ func (s *cenario) aprovada(plataforma, link string) string {
 		conteudo := dominio.Objeto{
 			"curriculo": dominio.Objeto{"arquivo": "cv-pt.pdf", "sha256": curriculos.SHA256(pdf)},
 			"idioma":    "pt",
-			"contato":   dominio.Objeto{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com"},
+			"contato":   dominio.Objeto{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com", "telefone": "11900000000", "cidade": "Cidade Teste"},
 			"pretensao": dominio.Objeto{"valor": 8500.0, "moeda": "BRL", "tipo": "PJ"},
-			"respostas": []any{dominio.Objeto{"pergunta": "Anos de Go?", "resposta": marca, "origem": "pessoa"}},
-			"mensagem":  nil,
+			"respostas": []any{
+				dominio.Objeto{"pergunta": "Anos de Go?", "resposta": marca, "origem": "pessoa"},
+				dominio.Objeto{"pergunta": "Anos de experiência com Go", "resposta": "3", "origem": "respostasPadrao"},
+				dominio.Objeto{"pergunta": "Experiência com banco de dados?", "resposta": "Sim", "origem": "respostasPadrao"},
+			},
+			"mensagem": nil,
 		}
 		e, o, err := dominio.CriarCandidatura(e, vaga, conteudo, s.agora, eu(s.agora))
 		if err != nil {
@@ -365,8 +393,8 @@ func TestBloqueiaSemPreencher(t *testing.T) {
 		{"senha", func(p *paginaFalsa) { p.campos = append(p.campos, Campo{ID: "s", Tipo: "senha", Obrigatorio: true}) }, "senha"},
 		{"dado sensível", func(p *paginaFalsa) { p.campos = append(p.campos, Campo{ID: "r", Tipo: "dado-sensivel"}) }, "dado-sensivel"},
 		{"termos", func(p *paginaFalsa) { p.campos = append(p.campos, Campo{ID: "t", Tipo: "termos", Obrigatorio: true}) }, "termos"},
-		{"telefone obrigatório fora do pacote", func(p *paginaFalsa) {
-			p.campos = append(p.campos, Campo{ID: "tel", Tipo: CampoTelefone, Obrigatorio: true})
+		{"mensagem obrigatória fora do pacote", func(p *paginaFalsa) {
+			p.campos = append(p.campos, Campo{ID: "carta", Tipo: CampoMensagem, Obrigatorio: true})
 		}, "pergunta-nova"},
 	}
 	for _, k := range casos {
@@ -531,7 +559,7 @@ func TestValorDoCampo(t *testing.T) {
 		{Campo{Tipo: CampoNome, Obrigatorio: true}, "Pessoa Teste", ""},
 		{Campo{Tipo: CampoEmail, Obrigatorio: true}, "", "pergunta-nova"},
 		{Campo{Tipo: CampoEmail}, "", ""},
-		{Campo{Tipo: CampoPretensao}, "12000.5", ""},
+		{Campo{Tipo: CampoPretensao}, "12001", ""}, // sem ponto decimal
 		{Campo{Tipo: CampoMensagem}, "Olá", ""},
 		{Campo{Tipo: CampoPergunta, Rotulo: " INGLÊS?  *"}, "Avançado", ""},
 		{Campo{Tipo: CampoPergunta, Rotulo: "Inglês fluente?", Obrigatorio: true}, "", "pergunta-nova"},

@@ -21,6 +21,11 @@ type Pagina interface {
 	Preencher(ctx context.Context, c Campo, valor string) error
 	// Anexar põe o arquivo do caminho no campo (o executor passa uma cópia já conferida, nunca o original).
 	Anexar(ctx context.Context, c Campo, caminho string) error
+	// URLAtual é onde a página está agora (o executor confere a cada etapa e logo antes do clique).
+	URLAtual(ctx context.Context) (string, error)
+	// Proxima avança para a próxima etapa do formulário, sem enviar. Devolve false quando a etapa atual é a
+	// última (a que tem o botão de enviar).
+	Proxima(ctx context.Context) (bool, error)
 	// Enviar clica no botão final. Depois dele, sem confirmação, a candidatura fica incerta (nunca reenvia).
 	Enviar(ctx context.Context) error
 	// Confirmacao diz se a página mostrou que a candidatura foi recebida.

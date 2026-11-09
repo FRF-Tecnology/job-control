@@ -1,0 +1,27 @@
+{
+ "descricao": "gupy-cnh",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "documento"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Documentos",
+   "campos": [
+    {
+     "id": "cnh",
+     "tipo": "file",
+     "rotulo": "Anexe sua CNH",
+     "obrigatorio": false
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

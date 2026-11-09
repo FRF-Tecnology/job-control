@@ -1,0 +1,67 @@
+{
+ "descricao": "inhire-ats-externo",
+ "plataforma": "inhire",
+ "url": "https://empresa-teste.inhire.app/vagas/9000002/dev-go",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "site-externo"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.inhire.app/vagas/9000002/dev-go",
+   "texto": "Candidate-se",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://ats.exemplo.io/form/123",
+   "texto": "Continue sua candidatura",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

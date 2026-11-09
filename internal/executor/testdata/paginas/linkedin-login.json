@@ -1,0 +1,33 @@
+{
+ "descricao": "linkedin-login",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "login"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Sua sessão expirou. Entre na sua conta para continuar",
+   "campos": [
+    {
+     "id": "u",
+     "tipo": "email",
+     "rotulo": "E-mail ou telefone",
+     "obrigatorio": true
+    },
+    {
+     "id": "p",
+     "tipo": "password",
+     "rotulo": "Senha",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}
