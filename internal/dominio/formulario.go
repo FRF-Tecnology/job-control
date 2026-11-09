@@ -83,12 +83,11 @@ func GravarEstruturaFormulario(e Estado, id string, perguntas []PerguntaFormular
 	if !strings.HasPrefix(c.URL, "https://forms.gle/") && final != c.URL {
 		return e, nil, validacao("o destino do formulário não é o da candidatura")
 	}
-	b, err := JSONCanonico(perguntasComoLista(perguntas))
+	hash, err := hashDasPerguntas(perguntas)
 	if err != nil {
 		return e, nil, err
 	}
-	h := sha256.Sum256(b)
-	c.Estrutura = &EstruturaFormulario{Hash: "sha256:" + VersaoImpressao + ":" + hex.EncodeToString(h[:]), URLFinal: final, Perguntas: append([]PerguntaFormulario(nil), perguntas...)}
+	c.Estrutura = &EstruturaFormulario{Hash: hash, URLFinal: final, Perguntas: append([]PerguntaFormulario(nil), perguntas...)}
 	c.Conteudo = clonarObj(c.Conteudo)
 	c.Conteudo["respostas"] = respostasDoFormulario(e.Perfil, c.Conteudo, perguntas)
 	c.Pendentes = pendentesDe(c.Estrutura, c.Conteudo)

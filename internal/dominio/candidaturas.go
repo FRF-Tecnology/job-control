@@ -67,8 +67,9 @@ const (
 // hostsDaPlataforma: o host da plataforma (e os subdomínios dele).
 var hostsDaPlataforma = map[string]string{"linkedin": "linkedin.com", "gupy": "gupy.io", "inhire": "inhire.app"}
 
-// PlataformasComLimite são as plataformas com envio automático e limite diário.
-var PlataformasComLimite = []string{"linkedin", "gupy", "inhire"}
+// PlataformasComLimite são as plataformas com envio automático e limite diário. formulario (jc-a2y.7.2) entra com o
+// envio do executor: conta no limite do dia (padrão 30) e no teto de 40.
+var PlataformasComLimite = []string{"linkedin", "gupy", "inhire", PlataformaFormulario}
 
 // Candidatura é a forma tipada do item guardado na coleção "candidaturas".
 type Candidatura struct {
