@@ -80,6 +80,7 @@ type API struct {
 	mostrarEnvio    func(visivel bool)           // "Ver o envio": janela a partir da próxima candidatura
 	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
 	janela          func() (visivel, login bool) // estado da janela do envio
+	avisoPasta      string                       // aviso da pasta de dados nesta abertura (jc-etv.14)
 }
 
 // Opcoes configura a API.
@@ -103,6 +104,9 @@ type Opcoes struct {
 	MostrarEnvio func(visivel bool)
 	Entrar       func(endereco string) error
 	Janela       func() (visivel, login bool)
+	// AvisoPasta: o aviso da pasta de dados nesta abertura (config.Abertura.Aviso, jc-etv.7): pasta-antiga-ficou,
+	// migracao-adiada ou vazio. GET /dados/pasta mostra à tela, sem caminho.
+	AvisoPasta string
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -147,7 +151,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, avisoPasta: o.AvisoPasta}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -473,7 +477,7 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
-	if p == "/dados/apagar" || p == "/navegador/sair" || p == "/navegador/entrar" {
+	if p == "/dados/apagar" || p == "/dados/pasta" || p == "/navegador/sair" || p == "/navegador/entrar" {
 		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
 			return r, err
 		}
