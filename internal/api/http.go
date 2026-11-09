@@ -75,7 +75,7 @@ func (a *API) Handler() http.Handler {
 		if r.URL.RawQuery != "" {
 			caminho += "?" + r.URL.RawQuery
 		}
-		resp, err := a.Chamar(r.Context(), Pedido{Metodo: m, Caminho: caminho, Corpo: corpo, Autor: "eu"})
+		resp, err := a.Chamar(r.Context(), Pedido{Metodo: m, Caminho: caminho, Corpo: corpo, Autor: "eu", DaJanela: daJanela(r)})
 		// Só o cancelamento em si: um erro de verdade (disco, SQLite) que coincide com a saída do cliente continua 500.
 		if err != nil && r.Context().Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
 			// jc-a2y.35: o cliente desistiu (fechou ou trocou de tela) e o erro é só o cancelamento. Não é erro do

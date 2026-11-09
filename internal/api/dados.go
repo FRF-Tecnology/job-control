@@ -159,6 +159,10 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	// 1) Para o executor: espera o ciclo acabar e o Chrome sair (no build padrão, não faz nada). Só depois confere
 	// enviando, para não haver corrida com um envio que começasse no meio. Com 409, o executor fica parado.
 	a.pararEnvio()
+	if a.aoVivo != nil { // apagar os dados desliga o ao vivo e apaga o quadro (jc-a2y.6.9)
+		a.aoVivo.Ligar(false)
+		a.aoVivo.Limpar()
+	}
 	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora: nada foi apagado, e o envio ficou parado até você abrir o app de novo"); err != nil {
 		return Resposta{}, err
 	}
@@ -219,6 +223,7 @@ func (a *API) sairDasPlataformas(ctx context.Context, c Objeto, autor string) (R
 		return Resposta{}, err
 	}
 	a.fecharNavegador()
+	a.limparAoVivo() // sair das plataformas apaga o quadro (jc-a2y.6.9)
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}}
 	res.item(itemNavegador, removerTudo(config.PastaNavegador(pasta)))
 	res.Completo = len(res.Faltou) == 0
