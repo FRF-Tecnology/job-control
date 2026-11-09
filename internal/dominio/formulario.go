@@ -11,6 +11,14 @@ import (
 	"unicode/utf8"
 )
 
+// ErroBloqueioLeitura: a estrutura lida tem o que só a pessoa faz (motivo de PendenciaDoMotivo). Quem lê bloqueia a
+// candidatura com esse motivo (BloquearLeitura); nada da estrutura é guardado.
+type ErroBloqueioLeitura struct{ Motivo string }
+
+func (e *ErroBloqueioLeitura) Error() string {
+	return "o formulário pede o que só a pessoa responde: " + e.Motivo
+}
+
 // PerguntaFormulario: uma pergunta lida do formulário (texto da página: dado não confiável, a tela mostra como texto;
 // nunca vai para a IA nem para o log).
 type PerguntaFormulario struct {
@@ -60,6 +68,13 @@ func GravarEstruturaFormulario(e Estado, id string, perguntas []PerguntaFormular
 	}
 	if erros := validarPerguntas(perguntas); len(erros) > 0 {
 		return e, nil, &ErroValidacao{erros}
+	}
+	// Pergunta sensível (CPF, RG, senha, banco, documento, dado sensível, termos): o formulário fica com a pessoa.
+	// Nunca é preenchida, nem por respostasPadrao (achado do CyberSec no #120): a estrutura nem é guardada.
+	for _, p := range perguntas {
+		if m := MotivoDoRotulo(p.Texto); m != "" {
+			return e, nil, &ErroBloqueioLeitura{Motivo: m}
+		}
 	}
 	final, _, ok := FormularioDoEndereco(urlFinal)
 	if !ok || strings.HasPrefix(final, "https://forms.gle/") {
@@ -163,6 +178,9 @@ func respostasDoFormulario(perfil, conteudo Objeto, perguntas []PerguntaFormular
 		if ro, ok := daPessoa[p.ID]; ok {
 			saida = append(saida, ro)
 			continue
+		}
+		if MotivoDoRotulo(p.Texto) != "" {
+			continue // defesa a mais: pergunta sensível nunca recebe resposta automática
 		}
 		if v, ok := padrao[normalizarPergunta(p.Texto)]; ok {
 			saida = append(saida, Objeto{"pergunta": p.Texto, "resposta": v, "origem": "respostasPadrao", "perguntaId": p.ID})
