@@ -138,7 +138,7 @@ describe('Fila: formulário externo', () => {
   });
 
   it.each([
-    [409, {}, 'Não deu para ler agora: a candidatura não está para revisar, ou há um envio ou uma janela de login aberta. Tente de novo depois.'],
+    [409, {}, 'Não deu para ler agora: a página não respondeu, a candidatura não está para revisar, ou há um envio ou uma janela de login aberta. Tente de novo daqui a pouco.'],
     [429, { plataforma: 'formulario', limite: 40, usadas: 40, renovaEm: '2026-11-10T00:00:00-03:00' }, 'O app já abriu 40 páginas de formulário hoje, o teto do dia. Renova amanhã às 00:00.'],
     [404, {}, 'Este app não traz a leitura de formulários.'],
     [403, {}, 'Só você pode ler o formulário, por esta tela.'],

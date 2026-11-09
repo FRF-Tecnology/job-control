@@ -205,7 +205,7 @@ export function TelaFila() {
       await app.recarregar(); await ler();
     } catch (e) {
       const s = e instanceof ErroApi ? e.status : 0;
-      if (s === 409) { ler(); app.aviso('Não deu para ler agora: a candidatura não está para revisar, ou há um envio ou uma janela de login aberta. Tente de novo depois.', true); }
+      if (s === 409) { ler(); app.aviso('Não deu para ler agora: a página não respondeu, a candidatura não está para revisar, ou há um envio ou uma janela de login aberta. Tente de novo daqui a pouco.', true); }
       else if (s === 429) { const d = (e as ErroApi).dados ?? {}; app.aviso(`O app já abriu ${d.usadas ?? d.limite ?? 40} páginas de formulário hoje, o teto do dia. ${d.renovaEm ? `${quandoRenova(d.renovaEm, app.hoje)}.` : ''}`.trim(), true); }
       else if (s === 404) app.aviso('Este app não traz a leitura de formulários.', true);
       else if (s === 403) app.aviso('Só você pode ler o formulário, por esta tela.', true);
