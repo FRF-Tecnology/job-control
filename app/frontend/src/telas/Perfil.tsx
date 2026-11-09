@@ -1,6 +1,7 @@
 // Perfil e regras (porte de web/telas/perfil.mjs). O formulário guarda as edições localmente até salvar.
 import { useState } from 'react';
 import { useApp } from '../app/contexto';
+import { SeusDados } from './SeusDados';
 
 // Campos simples do perfil: [chave, rótulo, tipo, dica]
 const CAMPOS: [string, [string, string, string, string?][]][] = [
@@ -61,7 +62,7 @@ export function TelaPerfil() {
     </label>
   );
 
-  return (
+  return (<>
     <form className="formulario" onSubmit={async ev => {
       ev.preventDefault();
       if (await app.agir(() => app.api('/api/v1/perfil', 'PUT', perfil), 'Perfil salvo')) app.limpar();
@@ -106,5 +107,6 @@ export function TelaPerfil() {
       </fieldset>
       <div><button className="botao" type="submit">Salvar perfil</button></div>
     </form>
-  );
+    <SeusDados />
+  </>);
 }
