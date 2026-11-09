@@ -1,7 +1,7 @@
 // Pacote inicial da candidatura (P5, jc-a2y.6.3.3): só dado do perfil e da pasta de currículos, sem inventar
 // resposta. E o corpo que vai para a API: só o nome do currículo (o servidor calcula o sha256). Só dados fictícios.
 import { describe, expect, it } from 'vitest';
-import { conteudoParaEnviar, pacoteInicial } from './pacote';
+import { conteudoParaEnviar, pacoteInicial, perguntasSensiveisDoPerfil } from './pacote';
 
 const PERFIL = {
   nome: 'Ana Exemplo', email: 'ana@exemplo.com', telefone: '', cidade: 'Cidade Exemplo',
@@ -42,6 +42,15 @@ describe('pacoteInicial', () => {
 
   it('currículo do perfil que não está mais na pasta não é usado', () => {
     expect(pacoteInicial({ idioma: 'en' }, { curriculos: { EN: 'curriculos/sumiu.pdf' } }, PDFS).curriculo.arquivo).toBe('cv-pt.pdf');
+  });
+
+  it('pergunta que só a pessoa responde na página não entra no pacote, mesmo nas respostas padrão', () => {
+    const perfil = { respostasPadrao: [
+      { pergunta: 'Informe seu CPF', resposta: '000' }, { pergunta: 'Raça/cor', resposta: 'x' }, { pergunta: 'Você é PcD?', resposta: 'não' },
+      { pergunta: 'Anos com React?', resposta: '3' },
+    ] };
+    expect(pacoteInicial({}, perfil, PDFS).respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'respostasPadrao' }]);
+    expect(perguntasSensiveisDoPerfil(perfil)).toBe(3);
   });
 
   it('sem PDF na pasta, o arquivo fica vazio (a tela pede para colocar um)', () => {

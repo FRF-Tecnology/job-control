@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 import { impressaoCandidatura } from '../app/impressao';
-import { pacoteInicial, type Conteudo as ConteudoPacote } from '../app/pacote';
+import { pacoteInicial, perguntasSensiveisDoPerfil, type Conteudo as ConteudoPacote } from '../app/pacote';
 import { Convite } from '../componentes';
 import { mercadoDe } from '../dominio/modelo';
 import { encode } from '../util';
@@ -182,7 +182,8 @@ export function TelaFila() {
                 </div>
                 {preparando === v.id && (
                   <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, perfil, pdfs)} pdfs={pdfs}
-                    rotulo="Preparar candidatura" ocupado={ocupado} onSalvar={k => preparar(v.id, k)} onCancelar={() => setPreparando(null)} />
+                    rotulo="Preparar candidatura" ocupado={ocupado} foraDoPacote={perguntasSensiveisDoPerfil(perfil)}
+                    onSalvar={k => preparar(v.id, k)} onCancelar={() => setPreparando(null)} />
                 )}
               </li>
             ))}

@@ -1,6 +1,7 @@
 // Pacote da candidatura (P5, jc-a2y.6.3.3). O pacote inicial sai só do perfil e da pasta de currículos: nada é
 // inventado (sem resposta que a pessoa não deu). O corpo que vai para a API leva o currículo só pelo nome (o
 // servidor calcula o sha256 do arquivo) e tira campos vazios. Nunca CPF, RG, senha ou dado bancário.
+import { perguntaSensivel } from './sensivel';
 
 export type Resposta = { pergunta: string; resposta: string; origem: 'respostasPadrao' | 'pessoa' | 'ia' | string };
 export type Conteudo = {
@@ -17,6 +18,12 @@ const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === '
 const numero = (v: unknown) => { const n = typeof v === 'number' ? v : Number(texto(v).replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : null; };
 const nomeDoArquivo = (caminho: unknown) => texto(caminho).split(/[\\/]/).pop() ?? '';
 
+const respostasDoPerfil = (perfil: any) => (Array.isArray(perfil?.respostasPadrao) ? perfil.respostasPadrao : [])
+  .filter((r: any) => texto(r?.pergunta) && texto(r?.resposta));
+
+// Quantas respostas padrão ficaram de fora do pacote por serem perguntas que só a pessoa responde.
+export const perguntasSensiveisDoPerfil = (perfil: any) => respostasDoPerfil(perfil).filter((r: any) => perguntaSensivel(texto(r.pergunta))).length;
+
 export function pacoteInicial(vaga: VagaBase, perfil: any, pdfs: PDF[]): Conteudo {
   const idioma = vaga.idioma === 'en' ? 'en' : 'pt';
   const naPasta = (caminho: unknown) => { const n = nomeDoArquivo(caminho); return n && pdfs.some(p => p.nome === n) ? n : ''; };
@@ -31,8 +38,9 @@ export function pacoteInicial(vaga: VagaBase, perfil: any, pdfs: PDF[]): Conteud
   else if (/\bPJ\b/i.test(vaga.contrato ?? '') && pj) pretensao = { valor: pj, moeda: 'BRL', tipo: 'PJ' };
   else if (clt) pretensao = { valor: clt, moeda: 'BRL', tipo: 'CLT' };
 
-  const respostas: Resposta[] = (Array.isArray(perfil?.respostasPadrao) ? perfil.respostasPadrao : [])
-    .filter((r: any) => texto(r?.pergunta) && texto(r?.resposta))
+  // Pergunta que só a pessoa responde na página (CPF, senha, dado sensível…) não entra, mesmo vinda do perfil.
+  const respostas: Resposta[] = respostasDoPerfil(perfil)
+    .filter((r: any) => !perguntaSensivel(texto(r.pergunta)))
     .map((r: any) => ({ pergunta: texto(r.pergunta), resposta: texto(r.resposta), origem: 'respostasPadrao' }));
 
   return { curriculo: { arquivo }, idioma, contato: Object.keys(contato).length ? contato : null, pretensao, respostas, mensagem: null };

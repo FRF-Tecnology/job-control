@@ -454,6 +454,7 @@ dialog form { display: grid; gap: 16px; }
 .respostas-form { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .respostas-form li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
 .chip.origem-ia { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+.erro-resposta { grid-column: 1 / -1; margin: 0; color: var(--erro); font-size: .88rem; font-weight: 600; } /* pergunta que só a pessoa responde */
 @media (max-width: 600px) {
   .cand { padding: 16px; }
   .pacote dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }

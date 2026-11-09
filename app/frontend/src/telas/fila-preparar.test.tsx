@@ -135,6 +135,16 @@ describe('Fila: editar o pacote', () => {
     expect(avisos).toContainEqual({ texto: 'O pacote mudou enquanto você editava. A fila foi atualizada; abra e edite de novo.', erro: true });
   });
 
+  it('pergunta sensível digitada mostra o erro ao lado da resposta e bloqueia salvar', async () => {
+    const { gravacoes } = montar({ candidaturas: [cand('a', 'preparada')] });
+    const form = await editar('a');
+    fireEvent.change(within(form).getByLabelText('Pergunta 1'), { target: { value: 'Chave PIX para pagamento' } });
+    expect(within(form).getByText('Só você responde isso na página (dado bancário). Remova esta resposta.')).toBeTruthy();
+    expect((within(form).getByRole('button', { name: 'Salvar pacote' }) as HTMLButtonElement).disabled).toBe(true);
+    await enviar(form);
+    expect(gravacoes).toEqual([]);
+  });
+
   it('resposta da IA aparece marcada e, editada, passa a ser sua', async () => {
     const comIA = cand('c', 'preparada', { conteudo: { ...CONTEUDO, respostas: [{ pergunta: 'Por que esta vaga?', resposta: 'Texto sugerido', origem: 'ia' }] } });
     const { gravacoes } = montar({ candidaturas: [comIA] });

@@ -2,11 +2,13 @@
 // para a vaga. Resposta editada pela pessoa passa a ter origem "Você"; a da IA fica marcada até ser editada.
 import { useState } from 'react';
 import { conteudoParaEnviar, type Conteudo } from '../app/pacote';
+import { NOME_MOTIVO_SENSIVEL, perguntaSensivel } from '../app/sensivel';
 
 const ORIGENS: Record<string, string> = { respostasPadrao: 'Respostas padrão', pessoa: 'Você', ia: 'IA' };
 
-export function PacoteForm({ inicial, pdfs, rotulo, ocupado, onSalvar, onCancelar }: {
+export function PacoteForm({ inicial, pdfs, rotulo, ocupado, foraDoPacote = 0, onSalvar, onCancelar }: {
   inicial: Conteudo; pdfs: { nome: string }[]; rotulo: string; ocupado?: boolean;
+  foraDoPacote?: number; // respostas padrão deixadas de fora por serem perguntas que só a pessoa responde
   onSalvar: (c: Conteudo) => void; onCancelar: () => void;
 }) {
   const [c, setC] = useState<Conteudo>(() => structuredClone(inicial));
@@ -15,9 +17,12 @@ export function PacoteForm({ inicial, pdfs, rotulo, ocupado, onSalvar, onCancela
   if (c.curriculo.arquivo && !nomes.includes(c.curriculo.arquivo)) nomes.unshift(c.curriculo.arquivo);
   const semPDF = nomes.length === 0;
   const pretensao = c.pretensao ?? { tipo: '', moeda: 'BRL' };
+  // Pergunta que só a pessoa responde na página não pode ir no pacote (o servidor recusa): avisa ao lado e trava salvar.
+  const sensiveis = c.respostas.map(r => perguntaSensivel(r.pergunta));
+  const temSensivel = sensiveis.some(Boolean);
 
   return (
-    <form className="formulario pacote-form" aria-label="Pacote da candidatura" onSubmit={ev => { ev.preventDefault(); onSalvar(conteudoParaEnviar(c)); }}>
+    <form className="formulario pacote-form" aria-label="Pacote da candidatura" onSubmit={ev => { ev.preventDefault(); if (!temSensivel && !semPDF) onSalvar(conteudoParaEnviar(c)); }}>
       <div className="duas">
         <label className="campo"><span>Currículo</span>
           <select value={c.curriculo.arquivo} disabled={semPDF} onChange={ev => { const v = ev.target.value; mudar(x => { x.curriculo = { arquivo: v }; }); }}>
@@ -66,6 +71,7 @@ export function PacoteForm({ inicial, pdfs, rotulo, ocupado, onSalvar, onCancela
 
       <fieldset><legend>Respostas</legend>
         {c.respostas.length === 0 && <p className="pequeno mudo">Sem respostas. Só entra o que você escrever ou tiver nas respostas padrão do perfil.</p>}
+        {foraDoPacote > 0 && <p className="pequeno mudo">{`${foraDoPacote === 1 ? '1 resposta padrão ficou' : `${foraDoPacote} respostas padrão ficaram`} de fora: são perguntas que só você responde na página (CPF, senha, dado sensível…).`}</p>}
         <ol className="respostas-form">
           {c.respostas.map((r, i) => (
             <li key={i}>
@@ -73,6 +79,7 @@ export function PacoteForm({ inicial, pdfs, rotulo, ocupado, onSalvar, onCancela
               <input type="text" aria-label={`Resposta ${i + 1}`} value={r.resposta} onChange={ev => { const v = ev.target.value; mudar(x => { x.respostas[i] = { ...x.respostas[i], resposta: v, origem: 'pessoa' }; }); }} />
               <span className={`chip origem-${r.origem}`}>{ORIGENS[r.origem] ?? r.origem}</span>
               <button className="botao-fantasma p" type="button" aria-label={`Remover resposta ${i + 1}`} onClick={() => mudar(x => { x.respostas.splice(i, 1); })}>Remover</button>
+              {sensiveis[i] && <p className="erro-resposta" role="alert">{`Só você responde isso na página (${NOME_MOTIVO_SENSIVEL[sensiveis[i]] ?? sensiveis[i]}). Remova esta resposta.`}</p>}
             </li>
           ))}
         </ol>
@@ -84,7 +91,7 @@ export function PacoteForm({ inicial, pdfs, rotulo, ocupado, onSalvar, onCancela
       </label>
 
       <div className="acoes">
-        <button className="botao" type="submit" disabled={!!ocupado || semPDF}>{ocupado ? 'Salvando…' : rotulo}</button>
+        <button className="botao" type="submit" disabled={!!ocupado || semPDF || temSensivel}>{ocupado ? 'Salvando…' : rotulo}</button>
         <button className="botao-fantasma" type="button" onClick={onCancelar}>Cancelar</button>
       </div>
     </form>
