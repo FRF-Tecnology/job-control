@@ -260,7 +260,8 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       x-proposta: true
-      summary: 'preparada, aprovada, bloqueada ou falhou → cancelada (incerta não pode ser cancelada)'
+      x-so-tela: true
+      summary: 'preparada, aprovada, bloqueada ou falhou → cancelada, estado final (incerta não pode ser cancelada); só pela tela'
       responses:
         '200': { description: Cancelada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
         '404': { $ref: '#/components/responses/Erro' }

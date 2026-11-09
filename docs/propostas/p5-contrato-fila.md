@@ -96,8 +96,8 @@ stateDiagram-v2
 - **Regra para a P6:**
   - O MCP e a CLI não usam o handler da tela. Eles entram por um ponto próprio, com `Autor` `mcp` ou `cli` definido pelo app, nunca pelo pedido.
   - Esse ponto tem uma **lista de permissão de rotas**: o que não está nela é negado.
-  - Ficam **só para a tela** (decisão 8 do PO): `aprovar`, `concluir-manual`, `reabrir` e `PUT /candidaturas/limites/*`.
-  - O MCP e a CLI podem ler a fila e os limites, `revogar` e `cancelar`, porque essas ações só reduzem o risco. **Qualquer outra ação vinda do MCP ou da CLI recebe 403**, inclusive criar e editar candidatura.
+  - Ficam **só para a tela** (decisão 8 do PO e R5): `aprovar`, `concluir-manual`, `reabrir`, `cancelar` e `PUT /candidaturas/limites/*`.
+  - O MCP e a CLI podem só **ler** a fila e os limites e **revogar** uma aprovação, porque revogar só reduz o risco e tem volta. `cancelar` ficou só na tela: `cancelada` é estado final, e uma IA guiada por injeção não pode esvaziar a fila sem volta. **Qualquer outra ação vinda do MCP ou da CLI recebe 403**, inclusive criar e editar candidatura.
   - O MCP é dirigido por uma IA que lê textos de vagas, e é exatamente esse o caminho de injeção que não pode aprovar.
 - **Se a API abrir porta TCP** (P6 ou `central-dev`): as ações só da tela exigem um token de sessão aleatório, criado ao abrir o app e entregue só à janela. O `central-dev` continua só para desenvolvimento.
 - **Outros envios** (mensagem para recrutador e follow-up, na P6) seguem a mesma regra: aprovação vinculada ao conteúdo e de uso único.
@@ -120,7 +120,7 @@ stateDiagram-v2
 | PUT | `/candidaturas/{id}/conteudo` | `{conteudo, versao}` em `preparada` ou `aprovada` (volta a `preparada`) | 400, 404, 409 versão ou estado | ✓ (P6: MCP/CLI recebem 403) |
 | POST | `/candidaturas/{id}/aprovar` | `{impressao}` → `aprovada` | 404, 409 impressão, estado ou vaga mudou, 429 limite | ✓ |
 | POST | `/candidaturas/{id}/revogar` | `aprovada → preparada` | 404, 409 estado | — |
-| POST | `/candidaturas/{id}/cancelar` | `preparada`, `aprovada`, `bloqueada` ou `falhou` → `cancelada` | 404, 409 estado final ou `incerta` | — |
+| POST | `/candidaturas/{id}/cancelar` | `preparada`, `aprovada`, `bloqueada` ou `falhou` → `cancelada` (final) | 404, 409 estado final ou `incerta` | ✓ |
 | POST | `/candidaturas/{id}/reabrir` | `bloqueada`, `falhou` ou `incerta` → `preparada` | 404, 409 estado | ✓ |
 | POST | `/candidaturas/{id}/concluir-manual` | `bloqueada` ou `incerta` → `enviada` | 404, 409 estado | ✓ |
 | GET | `/candidaturas/limites` | `{linkedin: {limite, usadas, renovaEm}, gupy: {…}, inhire: {…}}` | — | — |
@@ -197,4 +197,5 @@ Executor (no `jc-a2y.6.2`):
 | 5 | Identidade do MCP e da CLI | regra M4 registrada agora | **fica para a P6**; na P5, aprovação só pela tela e nenhuma rota aceita aprovação de MCP ou CLI |
 | 6 | Fila como coleção em `itens` | sim | **sim**; avisar o PO antes de trocar, se a contagem do limite ficar cara ou frágil |
 | 7 | Estado `incerta` próprio (M3), em vez de `falhou` com `resultado.tipo = incerto` | aceita os dois jeitos | **sim**: sai só pela tela (`concluir-manual` ou `reabrir`) e conta no limite |
-| 8 | Quais ações ficam só para a tela | opcional, se o PO quiser | **aprovar, concluir-manual, reabrir e PUT limites**; revogar e cancelar também pelo MCP/CLI; qualquer outra ação do MCP/CLI dá 403 |
+| 8 | Quais ações ficam só para a tela | opcional, se o PO quiser | **aprovar, concluir-manual, reabrir, cancelar e PUT limites**; MCP/CLI só leem e revogam; qualquer outra ação do MCP/CLI dá 403 |
+| 9 | R5: cancelar pelo MCP/CLI (`cancelada` é final) | (a) só tela, ou (b) reabrir cancelada | **(a)**: cancelar só pela tela; `cancelada` continua final |
