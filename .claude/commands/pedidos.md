@@ -1,5 +1,5 @@
 ---
-description: Faz os pedidos que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central
+description: Faz os pedidos que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central (Node)
 ---
 1. Liste os pedidos abertos: `node ferramentas/cli.mjs pedidos`. Se não houver nenhum, diga isso e pare.
 2. Para cada pedido, do mais antigo para o mais novo:
