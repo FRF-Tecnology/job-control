@@ -31,7 +31,9 @@ func TestCofreDoSistema(t *testing.T) {
 	}
 	// Provedor fictício: mesmo num erro, não troca a chave de um provedor de verdade.
 	prov := "provedor-teste-" + hex.EncodeToString(b)
-	t.Cleanup(func() { keyring.Delete(teste, prov) })
+	// Apaga o provedor fictício nos dois serviços: se algum método ignorasse o Servico, o que ele gravou no real sai
+	// também (revisão do Fallen no #85). O provedor é fictício, então nunca apaga uma chave de verdade.
+	t.Cleanup(func() { keyring.Delete(teste, prov); keyring.Delete(servico, prov) })
 
 	if c, err := s.Ler(prov); c != "" || err != nil {
 		t.Fatalf("serviço novo: ler = %q, %v", c, err)
@@ -39,6 +41,13 @@ func TestCofreDoSistema(t *testing.T) {
 	chave := "sk-ficticia-" + hex.EncodeToString(b) + "-WXYZ"
 	if err := s.Gravar(prov, chave); err != nil {
 		t.Fatalf("gravar: %v", err)
+	}
+	// Gravou no serviço de teste, não no real: lá o provedor fictício continua não existindo.
+	if _, err := keyring.Get(servico, prov); !errors.Is(err, keyring.ErrNotFound) {
+		t.Fatalf("o Gravar foi para o serviço real (%v)", err)
+	}
+	if _, err := keyring.Get(teste, prov); err != nil {
+		t.Fatalf("o Gravar não foi para o serviço de teste (%v)", err)
 	}
 	if c, err := s.Ler(prov); c != chave || err != nil {
 		t.Fatalf("ler = %q, %v", c, err)
