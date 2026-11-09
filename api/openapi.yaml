@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.5.0
+  version: 0.9.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -229,6 +229,58 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
         '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  # Aprovar em lote (jc-a2y.6.13, docs/propostas/aprovar-lote.md). Proposta: ainda não atendida.
+  /candidaturas/aprovar-lote:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Aprova de uma vez a "Lista do dia": cada item com a impressão que a tela mostrou. Numa transação só, cada item passa pela mesma conferência do aprovar de uma (preparada, impressão atual, vaga em aplicar, limite do dia contando as já aprovadas no lote). Item recusado não afeta os outros. Vale até o fim do dia local. Só a tela (o assistente recebe 403, e nada é aprovado)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [itens]
+              properties:
+                itens:
+                  type: array
+                  minItems: 1
+                  maxItems: 120
+                  description: 'Na ordem em que a tela mostrou (o limite vale nessa ordem). id repetido dá 400 e nada é aprovado. 120 = 3 plataformas × 40 (o maior limite)'
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, impressao]
+                    properties:
+                      id: { type: string, pattern: '^cand-' }
+                      impressao: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$', description: 'A impressão que a tela mostrou para este item' }
+      responses:
+        '200':
+          description: 'Resultado por item. Nenhum aprovado também é 200 (todos em recusadas)'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [aprovadas, recusadas]
+                properties:
+                  aprovadas: { type: array, items: { type: string, pattern: '^cand-' }, description: 'ids aprovados, na ordem do pedido' }
+                  recusadas:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, motivo]
+                      properties:
+                        id: { type: string, pattern: '^cand-' }
+                        motivo:
+                          type: string
+                          enum: [nao-encontrada, estado, impressao-mudou, vaga-fora, limite]
+                          description: 'Lista fechada, sem texto da candidatura: nao-encontrada; estado (não está mais em preparada); impressao-mudou (o pacote mudou depois que a tela mostrou: revise de novo); vaga-fora (a vaga saiu de aplicar ou já foi enviada); limite (o limite do dia da plataforma acabou)'
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
   /candidaturas/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, pattern: '^cand-' } }
@@ -466,6 +518,40 @@ paths:
         '403': { $ref: '#/components/responses/SoTela' }
   # Ver o envio (jc-a2y.6.7). O padrão é sem janela, para não pegar o foco, o mouse nem o teclado de quem usa o PC.
   # A janela só aparece quando a pessoa pede, e volta a oculta a cada abertura do app.
+  # Envio que se vira sozinho (jc-a2y.6.11, docs/propostas/envio-resiliente.md). Proposta: ainda não atendida.
+  /envio/plataformas/{plataforma}/pausar:
+    post:
+      x-proposta: true
+      summary: 'Pausa só esta plataforma (gravado no banco). Qualquer autor pausa (só reduz o risco); só a pessoa retoma. Parada até amanhã continua parada até amanhã. Só no build com o envio'
+      parameters:
+        - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { description: 'Este build não traz o envio, ou a plataforma não tem envio automático: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /envio/plataformas/{plataforma}/retomar:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Retoma uma plataforma pausada (falhas-seguidas ou pela pessoa/assistente) ou à espera de login (precisa-entrar). Parada até amanhã (captcha, aviso de conta) dá 409: não se tenta de novo no mesmo dia. Só a tela (o assistente recebe 403)'
+      parameters:
+        - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'A plataforma está ativa, ou parada até amanhã: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /envio/janela:
     post:
       summary: 'Ver o envio: visivel true mostra o navegador do envio numa janela a partir da próxima candidatura (a que está em enviando termina sem janela); visivel false volta ao envio sem janela. Só a pessoa liga (pela tela); qualquer autor desliga, como pausar. Só no build com o envio'
@@ -642,6 +728,19 @@ components:
         versao: { type: integer }
         criadaEm: { type: string }
         atualizadaEm: { type: string }
+        retentativas:
+          type: array
+          description: 'jc-a2y.6.11 (proposta): histórico das voltas automáticas para aprovada (falha técnica ou sessão caída ANTES de interagir com o formulário). Não contam no limite do dia, mas contam no teto de 40 páginas abertas por plataforma no dia. No máximo 3 desde a aprovação em vigor; na 4ª, falhou/erro-tecnico. O histórico nunca é apagado'
+          items:
+            type: object
+            additionalProperties: false
+            required: [em, codigo]
+            properties:
+              em: { type: string }
+              codigo: { type: string, enum: [erro-tecnico, login] }
+        proximaTentativaEm: { type: [string, 'null'], description: 'jc-a2y.6.11 (proposta): o executor só pega a aprovada depois deste instante (5 min, 30 min, 2 h). Gravado: vale com o app reaberto' }
+        interagiuEm: { type: [string, 'null'], description: 'jc-a2y.6.11 (proposta): marca da tentativa em curso, gravada numa transação ANTES do primeiro preencher, anexar, desmarcar ou avançar. Com ela, a candidatura nunca volta sozinha para aprovada' }
+        clicouEnviarEm: { type: [string, 'null'], description: 'jc-a2y.6.11 (proposta): marca gravada ANTES do clique final. Com ela, sem confirmação, incerta (M3)' }
     EstadoEnvio:
       type: object
       additionalProperties: false
@@ -649,6 +748,18 @@ components:
       properties:
         ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
         pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
+        plataformas:
+          type: array
+          description: 'jc-a2y.6.11 (proposta): estado do envio por plataforma, gravado no banco (as três, em ordem: gupy, inhire, linkedin). O executor só pega candidatura de plataforma ativa; o pausado geral vale acima disto. precisa-entrar volta sozinha só quando a pessoa fecha a janela "Entrar nas plataformas" com o envio geral liberado. Estado ilegível no banco: pausada'
+          items:
+            type: object
+            additionalProperties: false
+            required: [plataforma, estado]
+            properties:
+              plataforma: { type: string, enum: [linkedin, gupy, inhire] }
+              estado: { type: string, enum: [ativa, pausada, precisa-entrar, parada-hoje] }
+              motivo: { type: [string, 'null'], enum: [falhas-seguidas, login, captcha, aviso-conta, null] }
+              ate: { type: [string, 'null'], description: 'Só em parada-hoje: 00:00 do dia seguinte (horário local)' }
         janela: { type: string, enum: [oculta, visivel], description: 'Como o navegador abre nas próximas candidaturas. oculta (sem janela, sem foco, mouse nem teclado) a cada abertura do app; visivel só por POST /envio/janela da tela. oculta também no build padrão' }
         login: { type: boolean, description: 'Há uma janela de login aberta pela pessoa (POST /navegador/entrar); enquanto true, o envio espera' }
         enviandoAgora:
@@ -687,7 +798,8 @@ components:
         fechar: { type: boolean, description: 'true em /dados/apagar: o app fecha logo depois de responder' }
     MotivoBloqueio:
       type: string
-      enum: [cpf, rg, senha, dado-bancario, captcha, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
+      enum: [cpf, rg, senha, dado-bancario, captcha, aviso-conta, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
+      description: 'aviso-conta (jc-a2y.6.11, proposta): a plataforma mostrou um aviso sobre a conta (atividade incomum, conta restrita); a plataforma para até amanhã'
     LimiteDiario:
       type: object
       required: [limite, usadas, renovaEm]
