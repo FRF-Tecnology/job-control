@@ -1,6 +1,6 @@
 # Envio que se vira sozinho com as falhas
 
-Bead `jc-a2y.6.11` (P0). Status: **proposta**, com os 9 requisitos do CyberSec incorporados. O contrato vai para 0.6.0: duas rotas novas em `x-proposta`, campos novos opcionais e o motivo `aviso-conta`.
+Bead `jc-a2y.6.11` (P0). Status: **atendida** (contrato 0.6.0), com os 9 requisitos do CyberSec: duas rotas novas, campos novos opcionais e o motivo `aviso-conta`.
 
 O pedido do Vini: o app tem de ser automático e esperto com as falhas. Hoje, qualquer falha técnica vira `falhou` e espera a pessoa reabrir.
 

@@ -103,7 +103,7 @@ func (p Plataformas) RegistrarResultado(plataforma, codigo string, agora time.Ti
 // PausarPlataforma: qualquer autor (só reduz o risco). Parada-hoje continua parada-hoje.
 func (p Plataformas) PausarPlataforma(plataforma string, agora time.Time) (Plataformas, error) {
 	if !plataformaDoEnvio(plataforma) {
-		return p, &ErroNaoEncontrado{Msg: "plataforma sem envio automático: " + plataforma}
+		return p, &ErroNaoEncontrado{Msg: "plataforma não encontrada no envio automático: " + plataforma}
 	}
 	n := p.clonar()
 	s := n.DaPlataforma(plataforma, agora)
@@ -118,7 +118,7 @@ func (p Plataformas) PausarPlataforma(plataforma string, agora time.Time) (Plata
 // ativa dão conflito.
 func (p Plataformas) RetomarPlataforma(plataforma string, agora time.Time) (Plataformas, error) {
 	if !plataformaDoEnvio(plataforma) {
-		return p, &ErroNaoEncontrado{Msg: "plataforma sem envio automático: " + plataforma}
+		return p, &ErroNaoEncontrado{Msg: "plataforma não encontrada no envio automático: " + plataforma}
 	}
 	s := p.DaPlataforma(plataforma, agora)
 	switch s.Estado {
