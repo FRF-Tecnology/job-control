@@ -12,7 +12,9 @@ import (
 
 // jc-a2y.61: o nome visível do produto é Applyer nos metadados do build (executável, instaladores, Mac e Linux).
 // Os nomes internos (pasta de dados, cofre, identidade do app, executável) só mudam com o plano do jc-etv.6
-// aprovado: mudar sem migração faria o app abrir vazio ou perder as chaves de IA.
+// aprovado e a migração de cada um: mudar sem migração faria o app abrir vazio ou perder as chaves de IA.
+//   - PR A1 (jc-etv.7): a pasta de dados já é Applyer, com a antiga renomeada ao abrir (config.AbrirPastaDados).
+//   - O resto continua travado: o serviço do cofre até o PR A2; identidade, MSIX e executável até o PR B (jc-etv.8).
 func TestMarcaApplyerSemMudarNomesInternos(t *testing.T) {
 	ler := func(caminho string) string {
 		t.Helper()
@@ -68,7 +70,12 @@ func TestMarcaApplyerSemMudarNomesInternos(t *testing.T) {
 			}
 		}
 	}
-	if config.NomePasta != "Central de Candidaturas" {
-		t.Errorf("pasta de dados = %q; só muda com a migração do jc-etv.6", config.NomePasta)
+	// Pasta de dados (jc-etv.7, PR A1): a nova é Applyer, e a antiga, que a migração renomeia, continua com o nome de
+	// antes. Trocar qualquer uma das duas sem nova migração deixaria a pasta de quem já usa para trás.
+	if config.NomePasta != "Applyer" {
+		t.Errorf("pasta de dados = %q; queria Applyer (jc-etv.7)", config.NomePasta)
+	}
+	if config.NomePastaAntiga != "Central de Candidaturas" {
+		t.Errorf("pasta antiga = %q; a migração do jc-etv.7 renomeia a Central de Candidaturas", config.NomePastaAntiga)
 	}
 }
