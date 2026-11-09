@@ -70,5 +70,5 @@ func main() {
 		porta = "4500"
 	}
 	log.Printf("Central (desenvolvimento) em http://localhost:%s — dados em %s", porta, pasta)
-	log.Fatal(http.ListenAndServe("127.0.0.1:"+porta, h))
+	log.Fatal(novoServidor("127.0.0.1:"+porta, h).ListenAndServe()) // com tempos limite (jc-a2y.14)
 }
