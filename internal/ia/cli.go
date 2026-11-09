@@ -128,6 +128,16 @@ func argsSegurosParaCmd(args []string) bool {
 	return true
 }
 
+// ModeloSeguro diz se o nome do modelo pode ir como argumento de CLI (--model), com a mesma lista segura do cmd.exe
+// (jc-a2y.43). A API recusa o resto ao configurar, para o modelo nunca chegar à linha de comando com outro caractere.
+// Também não pode começar com "-": vindo logo depois de --model, a CLI poderia ler o nome como opção.
+func ModeloSeguro(modelo string) bool {
+	return !strings.HasPrefix(modelo, "-") && argsSegurosParaCmd([]string{modelo})
+}
+
+// MsgModeloInseguro é o texto fixo da recusa do nome do modelo.
+const MsgModeloInseguro = "o nome do modelo não pode começar com - e só pode ter letras, números, espaço e . , _ : / \\ = + @ ~ -"
+
 func semChaves(env []string) []string {
 	saida := env[:0:0]
 	for _, v := range env {
@@ -175,6 +185,10 @@ func (c cli) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, er
 	nome := c.Nome()
 	if msg, fora := CLIIndisponivel(nome); fora {
 		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": " + msg, Provedor: nome}
+	}
+	// Confere de novo na hora de rodar: a configuração pode ter sido gravada por fora do PUT /ia/config (jc-a2y.43).
+	if p.Modelo != "" && !ModeloSeguro(p.Modelo) {
+		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": " + MsgModeloInseguro, Provedor: nome}
 	}
 	if _, err := exec.LookPath(c.qual); err != nil {
 		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": a CLI não está instalada neste computador", Provedor: nome}
