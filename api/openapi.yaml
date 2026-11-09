@@ -8,8 +8,9 @@ info:
     gravada em internal/api/testdata/golden-api.json. Erros: 400 validação ({erro, erros}),
     404 não encontrado, 409 duplicata ({erro, existente}), 415 sem JSON, 403 gravação de outro site,
     413 corpo grande demais. Rotas /ia (só no app Go): 422 saída da IA fora do contrato ou bloqueada
-    pela guarda, 502 provedor fora ({erro, tipo, regra}). 500 erro inesperado ({erro}): hoje o texto
-    é o erro interno e pode trazer o caminho da pasta de dados (risco conhecido, jc-a2y.13). O teste internal/api/contrato_test.go
+    pela guarda, 502 provedor fora ({erro, tipo, regra}). 500 erro inesperado: sempre
+    {erro: "erro interno do app; tente de novo"}, sem detalhe do erro; o log registra só método, caminho
+    sem query e o tipo do erro (jc-a2y.13). O teste internal/api/contrato_test.go
     confere este arquivo contra as rotas da API.
 servers:
   - url: /api/v1
