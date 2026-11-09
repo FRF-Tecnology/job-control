@@ -56,6 +56,9 @@ var (
 	rotuloCurriculo = re(`curriculo|\bcv\b|resume|curriculum|hoja de vida`)
 	rotuloNome      = re(`^(seu )?nome( completo)?$|^full name$|^name$|^first and last name$|^nome e sobrenome$|^nombre( completo)?$|^nombre y apellidos?$|^your name$`)
 	rotuloEmail     = re(`e-?mail|correo`)
+	// rotuloSeguir: lista fechada, só a caixa "Seguir <empresa>" do Easy Apply (PT e ES: Seguir; EN: Follow).
+	// Newsletter, novidades e consentimento não entram (termos continua bloqueando).
+	rotuloSeguir    = re(`^(seguir|follow)\b`)
 	rotuloDDI       = re(`codigo (do|de) pais|country code|\bddi\b|prefixo (do|de) pais|codigo telefonico|indicativo|prefijo`)
 	rotuloTelefone  = re(`telefone|celular|whatsapp|\bphone\b|\bmobile\b|\bfone\b|telefono|\bmovil\b`)
 	rotuloCidade    = re(`^cidade|\bcity\b|localizacao|\blocation\b|onde (voce )?mora|^ciudad|donde vives`)
@@ -181,6 +184,8 @@ func tipoDoCampo(c CampoDaPagina) string {
 		return CampoPretensao
 	case rotuloMensagem.MatchString(rotulo):
 		return CampoMensagem
+	case tipoHTML == "checkbox" && rotuloSeguir.MatchString(rotulo):
+		return CampoSeguir
 	case tipoHTML == "checkbox" || rotulo == "":
 		return CampoOutro
 	}

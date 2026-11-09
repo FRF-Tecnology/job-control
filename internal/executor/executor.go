@@ -391,9 +391,16 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 			if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
 				return falhou("erro-tecnico", err)
 			}
+			if a.desmarcar {
+				if err := pag.Desmarcar(ctx, a.campo); err != nil {
+					return falhou("erro-tecnico", err) // sem a certeza de que desmarcou, não envia
+				}
+				x.o.Log("executor: caixa %s desmarcada", a.campo.Tipo) // só o tipo
+				continue
+			}
 			if a.conferir {
 				// Contato que a página já trouxe: só passa se for igual ao do pacote, e o app não mexe (jc-a2y.6.5.1).
-				igual, err := pag.Igual(ctx, a.campo, a.valor)
+				igual, err := pag.Igual(ctx, a.campo, esperados(a.campo.Tipo, a.valor))
 				if err != nil {
 					return falhou("erro-tecnico", err)
 				}
@@ -475,10 +482,11 @@ func (x *Executor) conferirEndereco(ctx context.Context, pag Pagina, plataforma,
 }
 
 type acao struct {
-	campo    Campo
-	valor    string
-	anexar   bool
-	conferir bool // contato que a página já trouxe: só confere se é igual ao pacote, sem alterar
+	campo     Campo
+	valor     string
+	anexar    bool
+	conferir  bool // contato que a página já trouxe: só confere se é igual ao pacote, sem alterar
+	desmarcar bool // "Seguir <empresa>" que a página trouxe marcada: o app desmarca (jc-a2y.6.5.2)
 }
 
 // planejar decide o que fazer com cada campo da etapa, antes de digitar qualquer coisa (M1). Um campo que bloqueia
@@ -490,6 +498,10 @@ func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
 		switch {
 		case motivo != "":
 			return nil, motivo
+		case campo.Tipo == CampoSeguir:
+			if campo.Preenchido {
+				plano = append(plano, acao{campo: campo, desmarcar: true})
+			}
 		case campo.Preenchido && valor != "" && conferivel(campo.Tipo):
 			plano = append(plano, acao{campo: campo, valor: valor, conferir: true})
 		case campo.Tipo == CampoCurriculo:
@@ -505,6 +517,35 @@ func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
 // CyberSec, jc-a2y.6.5.1): nome, e-mail, telefone e código do país.
 func conferivel(tipo string) bool {
 	return tipo == CampoNome || tipo == CampoEmail || tipo == CampoTelefone || tipo == CampoDDI
+}
+
+// esperados: os valores que contam como iguais ao do pacote. Telefone: os mesmos dígitos, ou o código do país
+// seguido do número nacional, nada mais (nota do CyberSec no #89). Os outros tipos: o próprio valor.
+func esperados(tipo, valor string) []string {
+	if tipo != CampoTelefone {
+		return []string{valor}
+	}
+	digitos := func(s string) string {
+		var b strings.Builder
+		for _, r := range s {
+			if r >= '0' && r <= '9' {
+				b.WriteRune(r)
+			}
+		}
+		return b.String()
+	}
+	todos := digitos(valor)
+	ddi := digitos(ddiDoTelefone(valor))
+	if todos == "" {
+		return nil
+	}
+	if strings.HasPrefix(strings.TrimSpace(valor), "+") {
+		if ddi == "" || !strings.HasPrefix(todos, ddi) {
+			return []string{todos}
+		}
+		return []string{todos, strings.TrimPrefix(todos, ddi)} // com e sem o código do país
+	}
+	return []string{todos, ddi + todos}
 }
 
 // ddiDoTelefone: o código do país do telefone do pacote. "+55 11 9..." dá "+55". Sem "+", o número é nacional e o
@@ -601,6 +642,14 @@ func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
 		return "", "" // aceite opcional fica sem marcar
 	}
 	if c.Tipo == CampoCurriculo {
+		return "", ""
+	}
+	// "Seguir <empresa>": opcional, fica desmarcada (o planejar desmarca a que veio marcada); obrigatória, a pessoa
+	// decide (aprovado pelo CyberSec no #89).
+	if c.Tipo == CampoSeguir {
+		if c.Obrigatorio {
+			return "", "pergunta-nova"
+		}
 		return "", ""
 	}
 	contato := dominio.ObjetoDe(conteudo["contato"])

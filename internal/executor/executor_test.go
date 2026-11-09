@@ -33,6 +33,8 @@ type paginaFalsa struct {
 	errPorCampo  map[string]error // erro do Preencher só naquele campo (ex.: ErrSemOpcao)
 	iguais       map[string]bool  // Igual: o valor que a página trouxe é o do pacote
 	conferidos   []string
+	desmarcados  []string
+	errDesmarcar error
 	errEnviar    error
 	confirma     bool
 	aoPreencher  func()
@@ -98,7 +100,14 @@ func (p *paginaFalsa) Preencher(ctx context.Context, c Campo, v string) error {
 	p.preenchidos[c.ID] = v
 	return nil
 }
-func (p *paginaFalsa) Igual(ctx context.Context, c Campo, esperado string) (bool, error) {
+func (p *paginaFalsa) Desmarcar(ctx context.Context, c Campo) error {
+	if p.errDesmarcar != nil {
+		return p.errDesmarcar
+	}
+	p.desmarcados = append(p.desmarcados, c.ID)
+	return nil
+}
+func (p *paginaFalsa) Igual(ctx context.Context, c Campo, esperados []string) (bool, error) {
 	p.conferidos = append(p.conferidos, c.ID)
 	return p.iguais[c.ID], nil
 }

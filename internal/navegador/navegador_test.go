@@ -310,6 +310,9 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 			}
 			// Só o pacote: nome, e-mail e telefone dele e o país do código +55 do telefone dele; nada a mais.
 			quer := map[string]string{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com", "tel": "11900000000", "ddi": "BR"}
+			if v.tel != "" {
+				quer["tel"] = v.tel // igual ao do pacote: o app não reescreve
+			}
 			for k, q := range quer {
 				if e.campos.Get(k) != q {
 					t.Errorf("%s: campo %s = %q; queria %q", v.descricao, k, e.campos.Get(k), q)
