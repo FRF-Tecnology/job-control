@@ -25,5 +25,9 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"], // e2e/ é do Playwright
     env: { TZ: "America/Sao_Paulo" },
+    // No CI, o runner às vezes para uns 10 s ao mesmo tempo em vários arquivos (visto no #77: 3 testes de ~100 ms
+    // levaram 10 a 11 s, e o rerun do mesmo commit passou com o mais lento em 1 s). Folga só lá; aqui, 5 s continua
+    // pegando teste lento de verdade (jc-a2y.62).
+    testTimeout: process.env.CI ? 20_000 : 5_000,
   },
 });
