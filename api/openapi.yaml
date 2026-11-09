@@ -276,8 +276,8 @@ paths:
                         id: { type: string, pattern: '^cand-' }
                         motivo:
                           type: string
-                          enum: [nao-encontrada, estado, impressao-mudou, vaga-fora, limite]
-                          description: 'Lista fechada, sem texto da candidatura: nao-encontrada; estado (não está mais em preparada); impressao-mudou (o pacote mudou depois que a tela mostrou: revise de novo); vaga-fora (a vaga saiu de aplicar ou já foi enviada); limite (o limite do dia da plataforma acabou)'
+                          enum: [nao-encontrada, estado, impressao-mudou, vaga-fora, limite, faltam-respostas]
+                          description: 'Lista fechada, sem texto da candidatura: nao-encontrada; estado (não está mais em preparada); impressao-mudou (o pacote mudou depois que a tela mostrou: revise de novo); vaga-fora (a vaga saiu de aplicar ou já foi enviada); limite (o limite do dia da plataforma acabou). faltam-respostas (jc-a2y.7.2): formulário sem a estrutura lida ou com pergunta obrigatória sem resposta'
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
   /candidaturas/{id}:
