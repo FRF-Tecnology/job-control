@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/FRF-Tecnology/job-control/internal/config"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
@@ -51,7 +52,12 @@ func avaliar(args []string) error {
 	arquivos, _ := filepath.Glob(filepath.Join(*dir, "casos", "*.json"))
 	sort.Strings(arquivos)
 
-	x := ia.Nova(ia.Config{}, func(p string) string { c, _ := segredos.Sistema{}.Ler(p); return c }, nil)
+	pasta, err := config.PastaDados()
+	if err != nil {
+		return err
+	}
+	cofre := segredos.Sistema{Servico: segredos.ServicoDaPasta(pasta)} // as chaves desta pasta (jc-a2y.65)
+	x := ia.Nova(ia.Config{}, func(p string) string { c, _ := cofre.Ler(p); return c }, nil)
 	prov := x.Provedores[*provedor]
 	if prov == nil {
 		return fmt.Errorf("provedor desconhecido: %s", *provedor)
