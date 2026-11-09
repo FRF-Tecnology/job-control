@@ -71,15 +71,19 @@ func TestEstruturaDoGoogleBloqueios(t *testing.T) {
 		}
 	}
 	for nome, bruto := range map[string]string{
-		"não é JSON":         "<script>alert(1)</script>",
-		"sem itens":          `[null,["d",[]]]`,
-		"forma errada":       `{"a":1}`,
-		"grande demais":      `[null,["` + strings.Repeat("x", MaxEstruturaBruta) + `",[]]]`,
-		"título não é texto": googleFicticio(`[1,{"x":1},null,0,[[10,null,1]]]`),
-		"entrada sem id":     googleFicticio(`[1,"Nome",null,0,[[null,null,1]]]`),
-		"item sem entradas":  googleFicticio(`[1,"Nome",null,0]`),
-		"item curto":         googleFicticio(`[1,"Nome"]`),
-		"opção não é lista":  googleFicticio(`[1,"Nome",null,2,[[10,["x"],1]]]`),
+		"não é JSON":              "<script>alert(1)</script>",
+		"sem itens":               `[null,["d",[]]]`,
+		"forma errada":            `{"a":1}`,
+		"grande demais":           `[null,["` + strings.Repeat("x", MaxEstruturaBruta) + `",[[1,"Nome",null,0,[[10,null,1]]]]]]`, // bom, salvo o tamanho
+		"só itens sem resposta":   googleFicticio(`[1,"Texto solto",null,6,null],[2,"Imagem",null,11,null]`),
+		"duas entradas num texto": googleFicticio(`[1,"Nome",null,0,[[10,null,1],[11,null,1]]]`),
+		"id de entrada zero":      googleFicticio(`[1,"Nome",null,0,[[0,null,1]]]`),
+		"rótulo não é texto":      googleFicticio(`[1,"Nível",null,2,[[10,[[5]],1]]]`),
+		"título não é texto":      googleFicticio(`[1,{"x":1},null,0,[[10,null,1]]]`),
+		"entrada sem id":          googleFicticio(`[1,"Nome",null,0,[[null,null,1]]]`),
+		"item sem entradas":       googleFicticio(`[1,"Nome",null,0]`),
+		"item curto":              googleFicticio(`[1,"Nome"]`),
+		"opção não é lista":       googleFicticio(`[1,"Nome",null,2,[[10,["x"],1]]]`),
 	} {
 		if _, _, err := EstruturaDoGoogle(bruto); err == nil {
 			t.Errorf("%s: aceitou", nome)

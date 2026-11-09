@@ -57,6 +57,8 @@ func main() {
 		Janela:       controleEnvio.Janela,
 		// "Ao vivo" (jc-a2y.6.9): nil no build padrão (a rota dá 404).
 		AoVivo: controleEnvio.AoVivo,
+		// Leitura de formulários (jc-a2y.7.2): nil no build padrão (a rota dá 404).
+		LerFormulario: controleEnvio.LerFormulario,
 	})
 
 	app = application.New(application.Options{
