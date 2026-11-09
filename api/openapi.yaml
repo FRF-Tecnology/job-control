@@ -72,7 +72,7 @@ paths:
       responses:
         '200': { description: Conexão atual, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
     put:
-      summary: 'Escolhe o provedor; "nenhum" desconecta. Modelo vazio usa o padrão do provedor. Trocar o host (url) de um provedor com chave apaga a chave salva para o host antigo e responde chaveApagada: true; a pessoa cola de novo (jc-a2y.27)'
+      summary: 'Escolhe o provedor; "nenhum" desconecta. Modelo vazio usa o padrão do provedor. codex-cli e gemini-cli dão 400 até haver travas de ferramentas (jc-a2y.26). Trocar o host (url) de um provedor com chave apaga a chave salva para o host antigo e responde chaveApagada: true; a pessoa cola de novo (jc-a2y.27)'
       requestBody:
         required: true
         content:
@@ -375,7 +375,7 @@ components:
         logada: { type: [boolean, 'null'], description: null quando não dá para saber sem chamar a IA }
         versao: { type: string }
         pronta: { type: boolean, description: 'Instalada e num formato que o app pode usar com segurança. Ex.: o Claude instalado como .cmd (npm, Windows) fica instalada: true, pronta: false (jc-a2y.25)' }
-        aviso: { type: string, description: 'Texto fixo nosso quando pronta é false, com o que a pessoa faz (ex.: instalar a versão nativa .exe)' }
+        aviso: { type: string, description: 'Texto fixo nosso quando pronta é false, com o que a pessoa faz (ex.: instalar a versão nativa .exe). Codex e Gemini ficam pronta: false até haver travas de ferramentas (jc-a2y.26)' }
     EstadoIA:
       type: object
       required: [configurada, chaves, clis, gratis, uso]

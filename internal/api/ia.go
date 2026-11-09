@@ -276,6 +276,9 @@ func (a *API) configurarIA(ctx context.Context, c Objeto) (Resposta, error) {
 	if !conhecido || !reNomeProv.MatchString(prov) {
 		return Resposta{}, &dominio.ErroValidacao{Erros: []string{"provedor desconhecido"}}
 	}
+	if msg, fora := ia.CLIIndisponivel(prov); fora { // jc-a2y.26: Codex e Gemini ainda sem travas de ferramentas
+		return Resposta{}, &dominio.ErroValidacao{Erros: []string{msg}}
+	}
 	modelo, _ := c["modelo"].(string)
 	if modelo = trimEspacos(modelo); modelo == "" {
 		modelo = padrao

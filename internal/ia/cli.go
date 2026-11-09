@@ -146,8 +146,27 @@ func erroCLI(provedor, msg string) error {
 	return &ErroIA{Tipo: "provedor", Mensagem: provedor + ": " + msg, Provedor: provedor}
 }
 
+// semTravaDeFerramentas: CLIs que o app ainda não sabe rodar sem ferramentas, MCP e configuração da pessoa
+// (jc-a2y.26). O Claude roda com --tools "", --strict-mcp-config e --setting-sources project. Codex e Gemini ficam
+// indisponíveis até as travas equivalentes serem conferidas no --help das versões instaladas e testadas com um
+// arquivo canário: lendo texto de vaga, uma IA com ferramentas poderia ler arquivo da pessoa ou chamar MCP.
+var semTravaDeFerramentas = map[string]bool{"codex": true, "gemini": true}
+
+const msgSemTrava = "esta CLI ainda não roda no app sem as ferramentas dela; use o Claude ou uma chave de API"
+
+// CLIIndisponivel diz se o provedor (ex.: "gemini-cli") está fora do app e por quê (texto fixo).
+func CLIIndisponivel(provedor string) (string, bool) {
+	if semTravaDeFerramentas[strings.TrimSuffix(provedor, "-cli")] && strings.HasSuffix(provedor, "-cli") {
+		return msgSemTrava, true
+	}
+	return "", false
+}
+
 func (c cli) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
 	nome := c.Nome()
+	if msg, fora := CLIIndisponivel(nome); fora {
+		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": " + msg, Provedor: nome}
+	}
 	if _, err := exec.LookPath(c.qual); err != nil {
 		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": a CLI não está instalada neste computador", Provedor: nome}
 	}
@@ -286,7 +305,9 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 		e := EstadoCLI{InfoCLI: info}
 		if caminho, err := exec.LookPath(info.Comando); err == nil {
 			e.Instalada, e.Pronta = true, true
-			if viaCmdExe(caminho) && !aceitaCmd(info.Comando) {
+			if msg, fora := CLIIndisponivel(info.Provedor); fora {
+				e.Pronta, e.Aviso = false, msg
+			} else if viaCmdExe(caminho) && !aceitaCmd(info.Comando) {
 				e.Pronta, e.Aviso = false, msgCmdInseguro
 			}
 			c, cancelar := context.WithTimeout(ctx, 15*time.Second)
