@@ -57,6 +57,8 @@ type API struct {
 	cofre            segredos.Cofre
 	provedoresExtras map[string]ia.Provedor // só nos testes: provedor de IA falso
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
+	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
+	cacheCLIs        cacheDeteccao
 }
 
 // Opcoes configura a API.
@@ -87,7 +89,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.DetectarCLIs == nil {
 		o.DetectarCLIs = ia.DetectarCLIs
 	}
-	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs}
+	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
