@@ -12,6 +12,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/api"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/config"
+	modelodados "github.com/FRF-Tecnology/job-control/modelo-dados"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -29,6 +30,9 @@ func main() {
 		log.Fatalf("banco: %v", err)
 	}
 	defer banco.Fechar()
+	if _, err := banco.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
+		log.Fatalf("primeira vez: %v", err)
+	}
 
 	app := application.New(application.Options{
 		Name:        "Central de Candidaturas",

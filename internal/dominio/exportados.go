@@ -8,7 +8,7 @@ func ObjetoDe(v any) Objeto { return obj(v) }
 // ListaDe devolve v como lista, ou nil.
 func ListaDe(v any) []any { return lista(v) }
 
-// Texto imita String(v ?? '').
+// Texto imita String(v ?? ”).
 func Texto(v any) string { return texto(v) }
 
 // JSString imita String(v).

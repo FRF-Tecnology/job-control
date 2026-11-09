@@ -25,3 +25,5 @@ app/frontend/node_modules/
 app/frontend/bindings/
 app/frontend/dist/
 *.syso
+app/frontend/test-results/
+app/frontend/playwright-report/

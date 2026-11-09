@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node --test
+      - run: npm test
 
   # App novo (Wails: Go + React/TS). No Windows o build não precisa de cgo nem de bibliotecas extras.
   app:
@@ -41,10 +41,18 @@ jobs:
           cd frontend
           npm ci
           npm run build
+      - name: Testes das telas (Vitest)
+        working-directory: app/frontend
+        run: npm test
       - run: go vet ./...
       - run: go test ./...
       - name: Compilar o app
         run: go build -o central.exe ./app
+      - name: Jornada de usuário novo (Playwright, PC e celular)
+        working-directory: app/frontend
+        run: |
+          npx playwright install chromium
+          npm run e2e
 
   # Repositório público: nenhum segredo pode entrar.
   segredos:

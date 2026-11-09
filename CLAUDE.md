@@ -111,6 +111,18 @@ O teste `testes/golden.test.mjs` falha se o golden estiver desatualizado.
   - aponte `CENTRAL_PASTA` para uma pasta de teste e importe com `importar-legado`;
   - rode `CENTRAL_NODE=http://localhost:4321 go test -tags comparacao -run CompararComNode ./internal/api/`.
 
+**Telas novas (P3):** ficam em `app/frontend/src` e são as mesmas telas e classes de CSS da Central atual.
+- `telas/*.tsx` são as telas;
+- `App.tsx` é a casca (rotas por hash, atualização a cada 5 s com proteção de edição, diálogo, avisos);
+- `dominio/*.ts` é o mesmo código de `nucleo/`.
+
+Testes das telas:
+- `cd app/frontend && npm test` roda o Vitest. As funções de domínio em TS são conferidas contra o golden do Node.
+- `npm run build && npm run e2e` roda o Playwright: a jornada de usuário novo no PC e no celular, contra `cmd/central-dev` com uma pasta vazia.
+
+Para ver no navegador: `npm run build` e depois `CENTRAL_PASTA=<pasta de teste> go run ./cmd/central-dev`, na raiz. Abre em http://localhost:4500.
+Os testes da Central atual rodam com `npm test` na raiz, só `testes/`.
+
 **Pasta de dados:** `os.UserConfigDir()/Central de Candidaturas`. A variável `CENTRAL_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
 
 ## Ferramentas de desenvolvimento

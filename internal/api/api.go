@@ -769,7 +769,9 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 	}
 	switch {
 	case m == "PATCH" && acao == "":
-		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) { return dominio.AtualizarVaga(e, id, c, cx) })
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			return dominio.AtualizarVaga(e, id, c, cx)
+		})
 		if err != nil {
 			return Resposta{}, err
 		}

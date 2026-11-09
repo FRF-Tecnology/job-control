@@ -63,7 +63,7 @@ func ouV(a, b any) any {
 	return b
 }
 
-// texto imita String(v ?? ''): nulo vira "", o resto vira o texto que o JS mostraria.
+// texto imita String(v ?? ”): nulo vira "", o resto vira o texto que o JS mostraria.
 func texto(v any) string {
 	if v == nil {
 		return ""
