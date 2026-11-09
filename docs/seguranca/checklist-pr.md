@@ -30,6 +30,7 @@ Todo PR que mexe em pelo menos uma destas áreas precisa da revisão do CyberSec
 - Vale para qualquer achado com severidade original **crítica** que esteja aberto no branch, seja novo ou antigo, de produção, de dev ou de CI.
 - Não há exceção automática: o risco contextual menor, o achado ser anterior ao PR ou ser só de teste **não** liberam o merge.
 - O achado só deixa de bloquear quando a correção entra no branch e a verificação (por exemplo, `npm audit`) confirma.
+- O PR que corrige o crítico é avaliado pelo estado do próprio head, já corrigido, para não depender de si mesmo. Depois que ele entra, os outros PRs atualizam a base e rodam o CI de novo antes do merge.
 - O risco contextual serve para entender o problema e ordenar as outras correções. Ele não muda o bloqueio de um crítico nem fecha o bead.
 
 Dev e CI estão no escopo: dependência só de teste não é ignorada por não ir no app.
