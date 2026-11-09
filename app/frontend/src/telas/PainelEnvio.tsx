@@ -109,8 +109,11 @@ export function PainelEnvio({ nome, motivo, onEstado }: { nome: (id: string) => 
   async function verEnvio(visivel: boolean) {
     setOcupado(true);
     try {
-      aplicar(await app.api('/api/v1/envio/janela', 'POST', { visivel }));
-      app.aviso(visivel ? 'A janela do envio aparece a partir da próxima candidatura.' : 'O envio volta a rodar sem janela.');
+      const e: EstadoEnvio = await app.api('/api/v1/envio/janela', 'POST', { visivel });
+      aplicar(e);
+      // O aviso segue o estado que voltou, não o pedido: se a janela não ficou visível, não promete que vai aparecer.
+      if (visivel && e.janela !== 'visivel') app.aviso('Não deu para mostrar a janela do envio agora. Tente de novo.', true);
+      else app.aviso(visivel ? 'A janela do envio aparece a partir da próxima candidatura.' : 'O envio volta a rodar sem janela.');
     } catch (e) {
       app.aviso(e instanceof ErroApi && e.status === 403 ? 'Só você pode abrir a janela do envio, por esta tela.'
         : e instanceof ErroApi && e.status === 404 ? 'O envio não está disponível neste app.'

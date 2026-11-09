@@ -43,6 +43,18 @@ describe('Ver o envio', () => {
     expect(screen.getByRole('button', { name: 'Ver o envio' })).toBeTruthy();
   });
 
+  it('se a janela não ficou visível na resposta, não promete que vai aparecer', async () => {
+    let atual: EstadoEnvio = BASE;
+    const avisos: { texto: string; erro?: boolean }[] = [];
+    const app = { estado: { vagas: [] }, aviso: (texto: string, e?: boolean) => { avisos.push({ texto, erro: e }); }, perguntar: async () => 'ok',
+      api: vi.fn(async (_c: string, metodo = 'GET') => metodo === 'GET' ? atual : (atual = { ...atual, janela: 'oculta' })) } as unknown as App;
+    render(<Contexto.Provider value={app}><PainelEnvio nome={() => 'x'} motivo={() => 'x'} /></Contexto.Provider>);
+    await screen.findByRole('button', { name: 'Ver o envio' });
+    await clicar('Ver o envio');
+    expect(avisos).toEqual([{ texto: 'Não deu para mostrar a janela do envio agora. Tente de novo.', erro: true }]);
+    expect(screen.getByRole('button', { name: 'Ver o envio' })).toBeTruthy();
+  });
+
   it('403 (pedido fora da tela) em frase fixa', async () => {
     const { avisos } = montarPainel({ erro: new ErroApi('só a pessoa', 403, { erro: 'só a pessoa' }) });
     await screen.findByRole('button', { name: 'Ver o envio' });
