@@ -85,6 +85,7 @@ type API struct {
 	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
 	janela          func() (visivel, login bool) // estado da janela do envio
 	aoVivo          *aovivo.AoVivo               // "Ao vivo" (jc-a2y.6.9): nil fora do app com envio (404)
+	avisoPasta      string                       // aviso da pasta de dados nesta abertura (jc-etv.14)
 	// lerFormulario (jc-a2y.7.2): o leitor do executor; nil fora do app com envio (404).
 	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 }
@@ -116,6 +117,9 @@ type Opcoes struct {
 	// LerFormulario (jc-a2y.7.2): lê a estrutura do formulário no navegador do envio, sem interagir. Só o app com o
 	// envio passa; sem ele, POST /candidaturas/{id}/ler-formulario dá 404.
 	LerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// AvisoPasta: o aviso da pasta de dados nesta abertura (config.Abertura.Aviso, jc-etv.7): pasta-antiga-ficou,
+	// migracao-adiada ou vazio. GET /dados/pasta mostra à tela, sem caminho.
+	AvisoPasta string
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -160,7 +164,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -490,7 +494,7 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
-	if p == "/dados/apagar" || p == "/navegador/sair" || p == "/navegador/entrar" {
+	if p == "/dados/apagar" || p == "/dados/pasta" || p == "/navegador/sair" || p == "/navegador/entrar" {
 		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
 			return r, err
 		}

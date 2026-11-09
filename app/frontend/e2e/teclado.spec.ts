@@ -2,7 +2,9 @@
 // Retomar), o foco vai para um lugar que faz sentido, e não para o começo da página. Esc fecha diálogo e formulário e
 // devolve o foco ao botão que os abriu. Fila e envio interceptados com dados fictícios.
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { ENVIO, interceptar } from './dados-fila';
+import { ENVIO, interceptar, soltarRotas } from './dados-fila';
+
+test.afterEach(async ({ page }) => { await soltarRotas(page); });
 
 test.skip(({ isMobile }) => isMobile, 'teclado: só no PC');
 

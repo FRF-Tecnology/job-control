@@ -141,8 +141,30 @@ func (a *API) rotasDados(ctx context.Context, m, p string, c Objeto, autor strin
 	case m == "POST" && p == "/navegador/entrar":
 		r, err := a.entrarNoNavegador(ctx, c, autor)
 		return r, true, err
+	case m == "GET" && p == "/dados/pasta":
+		r, err := a.estadoDaPasta(ctx)
+		return r, true, err
 	}
 	return Resposta{}, false, nil
+}
+
+// avisosDaPasta: lista fechada do contrato (o mesmo texto de config.AvisoAntigaFicou e config.AvisoMigracaoAdiada).
+var avisosDaPasta = map[string]bool{config.AvisoAntigaFicou: true, config.AvisoMigracaoAdiada: true}
+
+// estadoDaPasta (jc-etv.14): {aviso, migradaEm}, sem caminho. O aviso é o desta abertura (Opcoes.AvisoPasta); fora
+// da lista, null. migradaEm vem da meta "pasta" que o app grava no rename; só texto passa.
+func (a *API) estadoDaPasta(ctx context.Context) (Resposta, error) {
+	o := Objeto{"aviso": nil, "migradaEm": nil}
+	if avisosDaPasta[a.avisoPasta] {
+		o["aviso"] = a.avisoPasta
+	}
+	var meta map[string]any
+	if achou, err := a.arm.LerMeta(ctx, "pasta", &meta); err == nil && achou {
+		if em, ok := meta["migradaEm"].(string); ok && em != "" {
+			o["migradaEm"] = em
+		}
+	}
+	return ok(o)
 }
 
 // semEnvioEmAndamento: com candidatura em enviando, o executor está numa página: nada é apagado (409).

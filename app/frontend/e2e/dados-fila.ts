@@ -36,12 +36,25 @@ export const ENVIO = { ligado: true, pausado: false, janela: 'oculta', login: fa
 // A vaga fictícia entra só na resposta do GET /estado: os testes não gravam nada na pasta de dados, que a jornada de
 // usuário novo precisa vazia.
 const VAGA = { id: 'ext-exemplo-1', empresa: 'Empresa Exemplo', titulo: 'Pessoa Dev React', link: 'https://www.linkedin.com/jobs/view/123', plataforma: 'linkedin', etapa: 'aplicar', aderencia: 'A' };
-export async function interceptar(page: Page) {
+// GET /estado real com dados fictícios por cima. O handler busca o servidor (r.fetch) e pode ainda estar no meio
+// quando o teste acaba: com a página fechada, "Response has been disposed" (jc-h39, run 42708747310). Por isso ele
+// tolera a página fechar, e cada spec chama soltarRotas no afterEach.
+export async function alterarEstado(page: Page, mudar: (estado: any) => any) {
   await page.route('**/api/v1/estado', async r => {
-    const res = await r.fetch();
-    const estado = await res.json();
-    r.fulfill({ response: res, json: { ...estado, vagas: [...estado.vagas, VAGA] } });
+    try {
+      const res = await r.fetch();
+      const estado = await res.json();
+      await r.fulfill({ response: res, json: mudar(estado) });
+    } catch (e) {
+      if (!page.isClosed()) throw e; // com a página aberta, o erro é de verdade
+    }
   });
+}
+// Desfaz os routes no fim do teste sem falhar por handler ainda em voo (recomendação do Playwright para esse erro).
+export const soltarRotas = (page: Page) => page.unrouteAll({ behavior: 'ignoreErrors' });
+
+export async function interceptar(page: Page) {
+  await alterarEstado(page, estado => ({ ...estado, vagas: [...estado.vagas, VAGA] }));
   // O POST também fica aqui: com a lista falsa, o preparo automático desta aba veria as vagas reais da jornada (que roda
   // em paralelo no mesmo servidor) sem candidatura e criaria uma de verdade antes dela, e a jornada não veria o aviso.
   await page.route('**/api/v1/candidaturas', r => r.request().method() === 'GET'
