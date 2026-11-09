@@ -61,6 +61,41 @@ func TestDocumentoBloqueiaImportacao(t *testing.T) {
 	}
 }
 
+// Link de vaga fora de http(s) (ex.: javascript:) não entra: viraria script na janela do app (jc-a2y.29).
+func TestLinkForaDeHTTPNaoEntra(t *testing.T) {
+	dir := t.TempDir()
+	escrever(t, dir, "vagas.json", `[
+		{"id":"li-1","empresa":"Empresa Exemplo","titulo":"Dev","etapa":"descoberta","link":"javascript:alert(1)"},
+		{"id":"li-2","empresa":"Empresa Exemplo","titulo":"Dev","etapa":"descoberta","link":" JavaScript:alert(1)"},
+		{"id":"li-3","empresa":"Empresa Exemplo","titulo":"Dev","etapa":"descoberta","link":"data:text/html,oi"},
+		{"id":"li-4","empresa":"Empresa Exemplo","titulo":"Dev","etapa":"descoberta","link":"https://vagas.exemplo.com/4"}
+	]`)
+	e, rel, err := Ler(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range e.Vagas[:3] {
+		if _, tem := v["link"]; tem {
+			t.Errorf("%v: link %q entrou; deveria sair", v["id"], v["link"])
+		}
+	}
+	if e.Vagas[3]["link"] != "https://vagas.exemplo.com/4" {
+		t.Errorf("link https mudou: %v", e.Vagas[3]["link"])
+	}
+	avisos := strings.Join(rel.Avisos, "\n")
+	for _, id := range []string{"li-1", "li-2", "li-3"} {
+		if !strings.Contains(avisos, id+": link fora de http(s) removido") {
+			t.Errorf("sem aviso para %s; avisos: %v", id, rel.Avisos)
+		}
+	}
+	if strings.Contains(avisos, "javascript") || strings.Contains(avisos, "data:") {
+		t.Errorf("aviso repete o link de fora: %v", rel.Avisos)
+	}
+	if len(rel.Bloqueios) != 0 {
+		t.Errorf("link ruim não bloqueia a importação: %v", rel.Bloqueios)
+	}
+}
+
 func TestPastaInexistente(t *testing.T) {
 	if _, _, err := Ler(filepath.Join(t.TempDir(), "nao-existe")); err == nil {
 		t.Fatal("queria erro para pasta inexistente")
