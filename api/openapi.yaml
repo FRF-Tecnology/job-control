@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.10
+  version: 0.4.11
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -372,6 +372,47 @@ paths:
         '403': { $ref: '#/components/responses/SoTela' }
         '409': { $ref: '#/components/responses/EnvioEmAndamento' }
 
+  # Envio (jc-a2y.51; achado 2 da revisão integrada jc-a2y.6.4). O executor só existe no build envio_dev; no build
+  # padrão, ligado é false e nada é enviado. Começa PAUSADO (por padrão, depois de apagar os dados e quando o estado
+  # gravado falta ou está corrompido). O executor confere pausado antes de cada entrada em enviando; pausar não corta
+  # a candidatura que já está em enviando (ela termina no desfecho dela). Pausar e retomar ficam na meta e não mudam
+  # a /versao; os desfechos gravam no banco e mudam.
+  /envio:
+    get:
+      x-proposta: true
+      summary: 'Estado do envio: ligado (este build traz o executor), pausado, a candidatura em enviando agora e os últimos desfechos (sem conteúdo, M7)'
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, format: date-time }, description: 'Só os desfechos com em depois deste instante' }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+  /envio/pausar:
+    post:
+      x-proposta: true
+      summary: 'Pausa o envio: nenhuma candidatura nova entra em enviando até retomar. Qualquer autor pode (só reduz o risco, como revogar)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+  /envio/retomar:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'Retoma o envio das candidaturas aprovadas. Só a pessoa, pela tela'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+
 components:
   schemas:
     Erro:
@@ -529,6 +570,34 @@ components:
         versao: { type: integer }
         criadaEm: { type: string }
         atualizadaEm: { type: string }
+    EstadoEnvio:
+      type: object
+      additionalProperties: false
+      required: [ligado, pausado, enviandoAgora, desfechos]
+      properties:
+        ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
+        pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
+        enviandoAgora:
+          type: [object, 'null']
+          additionalProperties: false
+          required: [id, desde]
+          properties:
+            id: { type: string, pattern: '^cand-' }
+            desde: { type: string, description: 'Quando entrou em enviando' }
+        desfechos:
+          type: array
+          maxItems: 20
+          description: 'Até 20, do mais novo para o mais antigo. Para a vaga, a pendência e o detalhe, GET /candidaturas/{id}'
+          items: { $ref: '#/components/schemas/Desfecho' }
+    Desfecho:
+      type: object
+      additionalProperties: false
+      required: [id, estado, motivo, em]
+      properties:
+        id: { type: string, pattern: '^cand-' }
+        estado: { type: string, enum: [enviada, bloqueada, falhou, incerta] }
+        motivo: { oneOf: [{ $ref: '#/components/schemas/MotivoBloqueio' }, { type: 'null' }], description: 'Só em bloqueada' }
+        em: { type: string }
     ItemApagado:
       type: string
       enum: [banco, curriculos, backups, navegador, chaves]
