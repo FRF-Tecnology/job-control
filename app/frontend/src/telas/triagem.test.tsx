@@ -59,7 +59,7 @@ describe('Aprovar todas do grupo A', () => {
     expect(movidas.every(m => m.corpo.etapa === 'aplicar')).toBe(true);
     expect(movidas.some(m => 'autor' in m.corpo)).toBe(false); // a tela não manda autor: a API grava "eu"
     expect(app.recarregar).toHaveBeenCalledTimes(1);
-    expect(avisos).toEqual([{ texto: '2 vagas foram para a fila do Claude.', erro: undefined }]);
+    expect(avisos).toEqual([{ texto: '2 vagas foram para a Fila.', erro: undefined }]);
   });
 
   it('cancelar não muda nada', async () => {
@@ -75,7 +75,7 @@ describe('Aprovar todas do grupo A', () => {
     const { movidas, avisos } = montar({ vagas: VAGAS, depois });
     await clicarAprovarTodas();
     expect(movidas.map(m => m.id)).toEqual(['a2']);
-    expect(avisos[0].texto).toBe('1 vaga foi para a fila do Claude. 1 mudou antes e ficou como estava.');
+    expect(avisos[0].texto).toBe('1 vaga foi para a Fila. 1 mudou antes e ficou como estava.');
   });
 
   it('vaga com empresa ou título trocados depois da confirmação não é aprovada (a pessoa aprovou o que viu)', async () => {
@@ -83,7 +83,7 @@ describe('Aprovar todas do grupo A', () => {
     const { movidas, avisos } = montar({ vagas: [...VAGAS, vaga('a3', 'A')], depois: [...depois, vaga('a3', 'A')] });
     await clicarAprovarTodas();
     expect(movidas.map(m => m.id)).toEqual(['a3']);
-    expect(avisos[0].texto).toBe('1 vaga foi para a fila do Claude. 2 mudaram antes e ficaram como estavam.');
+    expect(avisos[0].texto).toBe('1 vaga foi para a Fila. 2 mudaram antes e ficaram como estavam.');
   });
 
   it('falha numa vaga não para as outras e é avisada', async () => {
