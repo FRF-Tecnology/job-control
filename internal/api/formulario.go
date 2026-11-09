@@ -55,11 +55,16 @@ func (a *API) lerFormularioDe(ctx context.Context, id string, c Objeto, autor st
 		if motivo == "" {
 			novo, o, err := dominio.GravarEstruturaFormulario(e, id, leitura.Perguntas, leitura.URLFinal, agora)
 			var ev *dominio.ErroValidacao
-			if !errors.As(err, &ev) {
+			var eb *dominio.ErroBloqueioLeitura
+			switch {
+			case errors.As(err, &eb):
+				motivo = eb.Motivo // pergunta sensível ou termos: o motivo do detector (achado do CyberSec no #120)
+			case errors.As(err, &ev):
+				motivo = "outro" // estrutura que o domínio não aceita: a pessoa envia
+			default:
 				res = o
 				return novo, err
 			}
-			motivo = "outro" // estrutura que o domínio não aceita: a pessoa envia
 		}
 		if _, conhecido := dominio.PendenciaDoMotivo[motivo]; !conhecido {
 			motivo = "outro"

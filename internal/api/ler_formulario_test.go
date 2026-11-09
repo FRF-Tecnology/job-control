@@ -144,3 +144,16 @@ func TestLerFormularioNoTeto(t *testing.T) {
 		t.Fatalf("abriu %d páginas", abertas)
 	}
 }
+
+// Achado do CyberSec no #120: pergunta sensível na leitura bloqueia com o motivo do detector (cpf, senha...), nunca
+// é preenchida. Dados fictícios.
+func TestLerFormularioComPerguntaSensivel(t *testing.T) {
+	f, id := filaComFormulario(t)
+	f.api.lerFormulario = func(_ context.Context, endereco string) (dominio.LeituraFormulario, error) {
+		return dominio.LeituraFormulario{URLFinal: endereco, Perguntas: []dominio.PerguntaFormulario{{ID: "s", Texto: "Qual o seu CPF?", Tipo: "texto-curto", Obrigatoria: true}}}, nil
+	}
+	c := f.chamar("POST", "/candidaturas/"+id+"/ler-formulario", Objeto{}, 200)
+	if c["estado"] != "bloqueada" || dominio.ObjetoDe(c["bloqueio"])["motivo"] != "cpf" || c["estrutura"] != nil {
+		t.Fatalf("pergunta sensível = %v", c)
+	}
+}
