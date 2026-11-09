@@ -189,7 +189,7 @@ func TestApagarRecusaSemMudarNada(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if r := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 409); r["estado"] != "enviando" {
+	if r := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 409); r["estado"] != "enviando" || !strings.Contains(dominio.Texto(r["erro"]), "envio ficou parado") {
 		t.Fatalf("409 = %v", r)
 	}
 	f.chamar("POST", "/navegador/sair", Objeto{}, 409)
@@ -232,6 +232,9 @@ func TestSairDasPlataformas(t *testing.T) {
 
 // Falha parcial: o cofre recusa; o resto sai, e a resposta diz o que faltou, sem texto do sistema.
 func TestApagarFalhaParcial(t *testing.T) {
+	var saida bytes.Buffer
+	log.SetOutput(&saida)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
 	f := novaPastaFicticia(t, segredos.Memoria{})
 	f.api.cofre = cofreQuebrado{}
 	res := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
@@ -241,6 +244,10 @@ func TestApagarFalhaParcial(t *testing.T) {
 	b, _ := json.Marshal(res)
 	if strings.Contains(string(b), "cofre indisponível") || strings.Contains(string(b), f.pasta) {
 		t.Fatalf("resposta com texto do sistema: %s", b)
+	}
+	// Log: o motivo da lista fechada, nunca o texto do erro.
+	if !strings.Contains(saida.String(), "apagar: chaves faltou (cofre)") || strings.Contains(saida.String(), "cofre indisponível") {
+		t.Fatalf("log = %s", saida.String())
 	}
 }
 
@@ -279,6 +286,9 @@ func TestApagarArquivoPreso(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("arquivo aberto só fica preso no Windows")
 	}
+	var saida bytes.Buffer
+	log.SetOutput(&saida)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
 	f := novaPastaFicticia(t, segredos.Memoria{})
 	preso, err := os.Open(filepath.Join(f.pasta, "curriculos", "cv-pt.pdf"))
 	if err != nil {
@@ -286,8 +296,11 @@ func TestApagarArquivoPreso(t *testing.T) {
 	}
 	defer preso.Close()
 	res := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
-	if strings.Join(lista(res["faltou"]), ",") != "curriculos" || res["completo"] != false {
+	if strings.Join(lista(res["faltou"]), ",") != "curriculos" || res["completo"] != false || res["fechar"] != true {
 		t.Fatalf("resposta = %v", res)
+	}
+	if !strings.Contains(saida.String(), "apagar: curriculos faltou (em-uso)") || strings.Contains(saida.String(), f.pasta) {
+		t.Fatalf("log = %s", saida.String())
 	}
 }
 

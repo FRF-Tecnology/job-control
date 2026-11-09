@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -39,10 +40,23 @@ type ResultadoApagar struct {
 	Fechar   bool     `json:"fechar"`
 }
 
+// falhaDe classifica a falha numa lista fechada para o log (M7): nunca o texto do erro, que traz o caminho.
+func falhaDe(nome string, err error) string {
+	switch {
+	case nome == itemChaves:
+		return "cofre"
+	case emUso(err):
+		return "em-uso"
+	case errors.Is(err, fs.ErrPermission):
+		return "permissao"
+	}
+	return "outro"
+}
+
 func (r *ResultadoApagar) item(nome string, err error) {
 	if err != nil {
 		r.Faltou = append(r.Faltou, nome)
-		log.Printf("apagar: %s faltou (%T)", nome, err)
+		log.Printf("apagar: %s faltou (%s)", nome, falhaDe(nome, err))
 		return
 	}
 	r.Apagado = append(r.Apagado, nome)
@@ -62,14 +76,14 @@ func (a *API) rotasDados(ctx context.Context, m, p string, c Objeto, autor strin
 }
 
 // semEnvioEmAndamento: com candidatura em enviando, o executor está numa página: nada é apagado (409).
-func (a *API) semEnvioEmAndamento(ctx context.Context) error {
+func (a *API) semEnvioEmAndamento(ctx context.Context, msg string) error {
 	e, err := a.arm.Carregar(ctx)
 	if err != nil {
 		return err
 	}
 	for _, o := range e.Candidaturas {
 		if dominio.Igual(o["estado"], dominio.CandEnviando) {
-			return &dominio.ErroConflito{Msg: "há uma candidatura sendo enviada agora; espere terminar", Estado: dominio.CandEnviando}
+			return &dominio.ErroConflito{Msg: msg, Estado: dominio.CandEnviando}
 		}
 	}
 	return nil
@@ -103,7 +117,7 @@ func (a *API) apagarDados(ctx context.Context, c Objeto, autor string) (Resposta
 	// 1) Para o executor: espera o ciclo acabar e o Chrome sair (no build padrão, não faz nada). Só depois confere
 	// enviando, para não haver corrida com um envio que começasse no meio. Com 409, o executor fica parado.
 	a.pararEnvio()
-	if err := a.semEnvioEmAndamento(ctx); err != nil {
+	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora: nada foi apagado, e o envio ficou parado até você abrir o app de novo"); err != nil {
 		return Resposta{}, err
 	}
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}, Fechar: true}
@@ -157,7 +171,7 @@ func (a *API) sairDasPlataformas(ctx context.Context, c Objeto, autor string) (R
 	// Nenhum ciclo novo do executor até o fim; o atual termina antes. O navegador fecha esperando o processo sair.
 	soltar := a.suspenderEnvio()
 	defer soltar()
-	if err := a.semEnvioEmAndamento(ctx); err != nil {
+	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora; espere terminar"); err != nil {
 		return Resposta{}, err
 	}
 	a.fecharNavegador()
