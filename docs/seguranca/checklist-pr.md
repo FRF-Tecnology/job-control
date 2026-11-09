@@ -74,6 +74,9 @@ São dois tipos de segredo, com lugares diferentes:
   - Verificar: teste de regressão com provedor falso (httptest) e chave fictícia, nos 3 provedores, em que o provedor ecoa a chave de 5 formas (exata, JSON-escapada, URL-encoded, prefixo + final, últimos 20). Nenhuma delas aparece na resposta HTTP nem no log.
   - **Nunca** testar com chave real.
 - [ ] CLIs de assinatura rodam sem shell (`exec.CommandContext` com lista de argumentos), numa pasta temporária, com tempo limite e sem chave de API no ambiente.
+- [ ] Todo cliente HTTP que manda chave ou token **não segue redirecionamento** (Go: `CheckRedirect` com `http.ErrUseLastResponse`; Node: `redirect: 'manual'`), nem para o mesmo host. O 3xx vira erro com texto fixo, sem o destino.
+  - Verificar: teste com servidor local que responde 307 e 308 para outro host e para o mesmo host; o destino recebe 0 pedidos.
+  - Vale para clientes novos da P5 (navegador) e da P7 (nuvem).
 - [ ] Segredo de infraestrutura só por variável de ambiente no servidor. O app de PC nunca recebe nenhum deles.
   - Verificar: o binário do app e `app/frontend/dist` não contêm segredo da nuvem (busca por nome de variável e por gitleaks no artefato).
 - [ ] Faltou variável de ambiente obrigatória: `cmd/nuvem` não sobe, e a mensagem de erro diz o nome da variável sem mostrar o valor.
