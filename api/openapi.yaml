@@ -72,7 +72,7 @@ paths:
       responses:
         '200': { description: Conexão atual, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
     put:
-      summary: 'Escolhe o provedor; "nenhum" desconecta. Modelo vazio usa o padrão do provedor. codex-cli e gemini-cli dão 400 até haver travas de ferramentas (jc-a2y.26)'
+      summary: 'Escolhe o provedor; "nenhum" desconecta. Modelo vazio usa o padrão do provedor. codex-cli e gemini-cli dão 400 até haver travas de ferramentas (jc-a2y.26). Trocar o host (url) de um provedor com chave apaga a chave salva para o host antigo e responde chaveApagada: true; a pessoa cola de novo (jc-a2y.27)'
       requestBody:
         required: true
         content:
@@ -91,7 +91,7 @@ paths:
     parameters:
       - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google] } }
     put:
-      summary: 'Salva a chave de API no cofre do sistema'
+      summary: 'Salva a chave de API no cofre do sistema, presa ao host configurado agora para o provedor (o padrão, se não houver url própria). A chave só é usada nesse host (jc-a2y.27)'
       requestBody:
         required: true
         content:
@@ -355,6 +355,7 @@ components:
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }
+        chaveApagada: { type: boolean, description: 'Só no PUT: true quando a troca de host apagou a chave salva (jc-a2y.27)' }
     ChaveSalva:
       type: object
       required: [provedor, final]
