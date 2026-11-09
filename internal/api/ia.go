@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -141,6 +142,7 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		return res, true, err
 
 	case m == "PUT" && p == "/ia/config":
+		a.esquecerCLIsDetectadas()
 		r, err := a.configurarIA(ctx, c)
 		return r, true, err
 
@@ -184,6 +186,7 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		return r, true, err
 
 	case m == "POST" && p == "/ia/testar":
+		a.esquecerCLIsDetectadas()
 		x, err := a.novaIA(ctx)
 		if err != nil {
 			return Resposta{}, true, err
@@ -323,6 +326,37 @@ func (a *API) configurarIA(ctx context.Context, c Objeto) (Resposta, error) {
 
 var reHTTPS = regexp.MustCompile(`^https://`)
 
+// jc-a2y.44: detectar as CLIs roda cada uma (--version, auth status) e é lento. O resultado fica numa janela curta;
+// mudar a configuração ou testar a conexão limpa o cache, e detecção cortada por pedido cancelado não entra nele.
+const janelaDeteccaoCLIs = 45 * time.Second
+
+type cacheDeteccao struct {
+	mu     sync.Mutex
+	quando time.Time
+	valor  []ia.EstadoCLI
+	tem    bool
+}
+
+func (a *API) clisDetectadas(ctx context.Context) []ia.EstadoCLI {
+	a.cacheCLIs.mu.Lock()
+	defer a.cacheCLIs.mu.Unlock()
+	agora := a.relogio()
+	if a.cacheCLIs.tem && agora.Sub(a.cacheCLIs.quando) < janelaDeteccaoCLIs {
+		return append([]ia.EstadoCLI(nil), a.cacheCLIs.valor...)
+	}
+	v := a.detectarCLIs(ctx)
+	if ctx.Err() == nil {
+		a.cacheCLIs.quando, a.cacheCLIs.valor, a.cacheCLIs.tem = agora, v, true
+	}
+	return append([]ia.EstadoCLI(nil), v...)
+}
+
+func (a *API) esquecerCLIsDetectadas() {
+	a.cacheCLIs.mu.Lock()
+	a.cacheCLIs.tem = false
+	a.cacheCLIs.mu.Unlock()
+}
+
 func (a *API) estadoIA(ctx context.Context) (Resposta, error) {
 	cfg, err := a.configIA(ctx)
 	if err != nil {
@@ -337,7 +371,7 @@ func (a *API) estadoIA(ctx context.Context) (Resposta, error) {
 			chaves[p] = segredos.Final(c)
 		}
 	}
-	corpo := Objeto{"configurada": false, "chaves": chaves, "clis": a.detectarCLIs(ctx), "gratis": Objeto{"disponivel": false}}
+	corpo := Objeto{"configurada": false, "chaves": chaves, "clis": a.clisDetectadas(ctx), "gratis": Objeto{"disponivel": false}}
 	if r, okR := cfg.Rotas["padrao"]; okR {
 		corpo["configurada"], corpo["provedor"], corpo["modelo"] = true, r.Provedor, r.Modelo
 		if o, tem := cfg.Provedores[r.Provedor]; tem && o.URL != "" {
