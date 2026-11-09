@@ -18,6 +18,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
@@ -38,6 +39,9 @@ type Pedido struct {
 	Caminho string // /api/v1/... com ?consulta
 	Corpo   any
 	Autor   string // "eu" (tela) ou "claude" (CLI, extensão, MCP)
+	// DaJanela: o Handler viu Sec-Fetch-Site same-origin e o Host da janela do app (jc-a2y.6.9). A CLI e o MCP
+	// nunca marcam. Só o "Ao vivo" usa.
+	DaJanela bool
 	// Confirmação da proposta de um pedido (jc-a2y.7.1): os cabeçalhos X-Pedido e X-Impressao, só eles.
 	XPedido, XImpressao string
 }
@@ -80,6 +84,7 @@ type API struct {
 	mostrarEnvio    func(visivel bool)           // "Ver o envio": janela a partir da próxima candidatura
 	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
 	janela          func() (visivel, login bool) // estado da janela do envio
+	aoVivo          *aovivo.AoVivo               // "Ao vivo" (jc-a2y.6.9): nil fora do app com envio (404)
 }
 
 // Opcoes configura a API.
@@ -103,6 +108,9 @@ type Opcoes struct {
 	MostrarEnvio func(visivel bool)
 	Entrar       func(endereco string) error
 	Janela       func() (visivel, login bool)
+	// AoVivo (jc-a2y.6.9): o último quadro do navegador do envio, em memória. Só o app com o envio passa; sem ele,
+	// /envio/ao-vivo dá 404 (build padrão e central-dev).
+	AoVivo *aovivo.AoVivo
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -147,7 +155,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -457,7 +465,8 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 	}
 	c := dominio.ObjetoDe(corpo)
 
-	// Confirmação da proposta de um pedido (jc-a2y.7.1): só POST /vagas e /vagas/{id}/mover, só da tela.
+	// Confirmação da proposta de um pedido (jc-a2y.7.1): só POST /vagas e /vagas/{id}/mover, só da tela. Vem antes de
+	// qualquer outra rota: X-Pedido em outro caminho é recusado.
 	if ped.XPedido != "" || ped.XImpressao != "" {
 		return a.confirmarPedido(ctx, m, p, corpo, ped.XPedido, ped.XImpressao, autor)
 	}
@@ -465,6 +474,9 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		if r, feito, err := a.rotasPedidosNoApp(ctx, m, p, c, autor); feito {
 			return r, err
 		}
+	}
+	if p == "/envio/ao-vivo" {
+		return a.rotaAoVivo(ctx, m, c, autor, ped.DaJanela)
 	}
 
 	if strings.HasPrefix(p, "/envio") {
