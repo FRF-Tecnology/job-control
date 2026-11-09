@@ -127,6 +127,9 @@ export function TelaFila() {
     const erro = e as ErroApi;
     if (erro instanceof ErroApi && erro.status === 429) {
       const d = erro.dados ?? {};
+      // O servidor conta as aprovadas que ainda não saíram; "usadas" são só as tentativas. Sem isso, "0 de 1" confunde.
+      const pendentes = (lista ?? []).filter(c => c.plataforma === d.plataforma && c.estado === 'aprovada').length;
+      if (pendentes > 0) return app.aviso(`Limite de hoje ${NA_PLATAFORMA[d.plataforma] ?? 'na plataforma'} cheio: ${d.usadas} ${d.usadas === 1 ? 'enviada' : 'enviadas'} e ${pendentes} ${pendentes === 1 ? 'aprovada esperando' : 'aprovadas esperando'} envio, de ${d.limite}. ${d.renovaEm ? `${quandoRenova(d.renovaEm, app.hoje)}.` : ''}`.trim(), true);
       return app.aviso(`Limite de hoje ${NA_PLATAFORMA[d.plataforma] ?? 'na plataforma'} atingido (${d.usadas} de ${d.limite}). ${d.renovaEm ? `${quandoRenova(d.renovaEm, app.hoje)}.` : ''}`.trim(), true);
     }
     if (erro instanceof ErroApi && erro.status === 409) {
@@ -236,6 +239,7 @@ export function TelaFila() {
       <section className="limites" aria-label="Limite de hoje" role="region">
         {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
           <LimiteCartao key={p} plataforma={p} nome={PLATAFORMAS[p]} na={NA_PLATAFORMA[p]} limite={limites[p]}
+            aprovadas={lista.filter(c => c.plataforma === p && c.estado === 'aprovada').length}
             renova={quandoRenova(limites[p].renovaEm, app.hoje)} onSalvo={l => setLimites(x => ({ ...x, [p]: l }))} />
         ))}
       </section>
