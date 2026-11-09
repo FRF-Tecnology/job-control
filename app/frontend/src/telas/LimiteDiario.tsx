@@ -8,9 +8,11 @@ export type Limite = { limite: number; usadas: number; renovaEm: string };
 export const MINIMO = 1, MAXIMO = 40, PADRAO = 30;
 const FORA = `O limite vai de ${MINIMO} a ${MAXIMO} por dia.`;
 
-export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo }: {
-  plataforma: string; nome: string; na: string; limite: Limite; renova: string; onSalvo: (l: Limite) => void;
+// aprovadas: as que ainda vão sair hoje. O servidor conta com elas no limite (jc-a2y.6.13), então a tela também.
+export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo, aprovadas = 0 }: {
+  plataforma: string; nome: string; na: string; limite: Limite; renova: string; onSalvo: (l: Limite) => void; aprovadas?: number;
 }) {
+  const sobra = Math.max(0, limite.limite - limite.usadas - aprovadas);
   const app = useApp();
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState(String(limite.limite));
@@ -54,9 +56,10 @@ export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo }: 
   }
 
   return (
-    <div className={`limite${limite.usadas >= limite.limite ? ' cheio' : ''}`}>
+    <div className={`limite${sobra === 0 ? ' cheio' : ''}`}>
       <strong>{nome}</strong>
       <span className="num">{`${limite.usadas} de ${limite.limite}`}</span>
+      {aprovadas > 0 && <span className="pequeno mudo">{`${aprovadas === 1 ? '1 aprovada esperando' : `${aprovadas} aprovadas esperando`} envio · ${sobra === 1 ? 'sobra 1' : `sobram ${sobra}`} hoje`}</span>}
       <span className="pequeno mudo">{renova}</span>
       {aberto ? (
         <form className="limite-form" onSubmit={salvar} noValidate onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); fechar(); } }}>
