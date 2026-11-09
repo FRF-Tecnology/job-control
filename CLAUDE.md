@@ -146,8 +146,8 @@ Testes das telas (também a partir da raiz):
 Para ver no navegador: `npm run build` e depois `CENTRAL_PASTA=<pasta de teste> go run ./cmd/central-dev`, na raiz. Abre em http://localhost:4500.
 Os testes da Central (Node) rodam com `npm test` na raiz, só `testes/`.
 
-**IA no app (P4):** `internal/ia` é o porte de `nucleo/ia`, com as funções, a guarda (10 regras), os prompts e os provedores.
-- **Referência:** é conferida contra `internal/ia/testdata/golden-ia.json`, que traz 77 prompts, 791 casos de guarda e os pedidos HTTP. Os contratos ficam em `internal/ia/funcoes.json`. Os dois arquivos são gravados por `node ferramentas/gerar-golden-ia.mjs`.
+**IA no app (P4):** `internal/ia` é o porte de `nucleo/ia`, com as funções, a guarda (11 regras), os prompts e os provedores.
+- **Referência:** é conferida contra `internal/ia/testdata/golden-ia.json`, que traz 80 prompts, 953 casos de guarda e os pedidos HTTP. Os contratos ficam em `internal/ia/funcoes.json`. Os dois arquivos são gravados por `node ferramentas/gerar-golden-ia.mjs`.
 - **Provedores por chave:** `anthropic`, `openai` (também OpenRouter e compatíveis, pela URL) e `google`. A chave fica no cofre do sistema (`internal/segredos`), nunca no banco.
 - **Provedores por assinatura:** `claude-cli`, `codex-cli` e `gemini-cli` rodam a CLI oficial com o login da pessoa.
   - Rodam sem ferramentas, numa pasta temporária, sem chave de API no ambiente.

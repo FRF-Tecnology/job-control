@@ -124,7 +124,14 @@ func TestEnvioDesfechos(t *testing.T) {
 	}
 	r := chamarEnvio(t, a, "GET", "/envio", nil, "eu")
 	c := r.Corpo.(map[string]any)
-	b, _ := json.Marshal(c)
+	// plataformas (jc-a2y.6.11) traz o nome da plataforma como código fixo; o resto não pode trazer nada da fila.
+	semPlataformas := map[string]any{}
+	for k, v := range c {
+		if k != "plataformas" {
+			semPlataformas[k] = v
+		}
+	}
+	b, _ := json.Marshal(semPlataformas)
 	for _, proibido := range []string{marcaEnvio, "v-cand", "linkedin", "texto fixo", "conteudo", "pendencia", "detalhe", "cand-e", "cand-f", "cand-g"} {
 		if strings.Contains(string(b), proibido) {
 			t.Errorf("GET /envio tem %q: %s", proibido, b)

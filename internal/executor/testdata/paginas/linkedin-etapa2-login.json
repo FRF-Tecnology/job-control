@@ -1,0 +1,67 @@
+{
+ "descricao": "linkedin-etapa2-login",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "login"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Informações de contato",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    },
+    {
+     "id": "cv",
+     "tipo": "file",
+     "rotulo": "Currículo (PDF)",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Sua sessão expirou. Entre na sua conta para continuar",
+   "campos": [
+    {
+     "id": "u",
+     "tipo": "email",
+     "rotulo": "E-mail ou telefone",
+     "obrigatorio": true
+    },
+    {
+     "id": "p",
+     "tipo": "password",
+     "rotulo": "Senha",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Entrar"
+   ]
+  }
+ ]
+}

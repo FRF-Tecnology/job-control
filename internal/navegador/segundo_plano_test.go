@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -106,6 +107,8 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	srv := novoServidor(t)
 	dados := t.TempDir()
 	nav := navegadorDeTeste(t, srv, dados)
+	var avisos atomic.Int32 // jc-a2y.6.11: a pessoa fechou a janela de login
+	nav.QuandoFecharLogin(func() { avisos.Add(1) })
 
 	if err := nav.AbrirLogin("https://www.linkedin.com/login"); err != nil {
 		t.Fatal(err)
@@ -146,6 +149,12 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	if nav.Ocupado() {
 		t.Fatal("depois de fechar a janela, o login continua aberto")
 	}
+	for avisos.Load() == 0 && time.Now().Before(prazo) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if n := avisos.Load(); n != 1 {
+		t.Fatalf("avisos de login fechado = %d; queria 1", n)
+	}
 	pag, err := nav.NovaPagina(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -156,6 +165,17 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	nav.mu.Unlock()
 	if visivel {
 		t.Fatal("depois do login, o envio abriu com janela")
+	}
+	pag.Fechar()
+
+	// O app fecha o navegador com o login aberto (sair, apagar, fechar o app): não é login da pessoa, não avisa.
+	if err := nav.AbrirLogin("https://www.linkedin.com/login"); err != nil {
+		t.Fatal(err)
+	}
+	nav.Fechar()
+	time.Sleep(time.Second)
+	if n := avisos.Load(); n != 1 {
+		t.Fatalf("o app fechou o login e avisou: avisos = %d", n)
 	}
 }
 
