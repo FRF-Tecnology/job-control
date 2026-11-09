@@ -34,9 +34,9 @@ func janelaNenhuma() (visivel, login bool) { return false, false }
 
 // Erros de Entrar: textos fixos para a tela (409), sem o erro do sistema, que pode trazer caminho.
 var (
-	ErrSemNavegador = &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador"}
-	ErrLoginAberto  = &dominio.ErroConflito{Msg: "já há uma janela de login aberta: entre por ela ou feche-a antes"}
-	ErrEnviando     = &dominio.ErroConflito{Msg: "há uma candidatura sendo enviada agora; espere terminar", Estado: dominio.CandEnviando}
+	ErrSemNavegador = &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador", Motivo: "sem-navegador"}
+	ErrLoginAberto  = &dominio.ErroConflito{Msg: "já há uma janela de login aberta: entre por ela ou feche-a antes", Motivo: "login-aberto"}
+	ErrEnviando     = &dominio.ErroConflito{Msg: "há uma candidatura sendo enviada agora; espere terminar", Estado: dominio.CandEnviando, Motivo: "enviando"}
 )
 
 func entrarNada(string) error { return ErrSemNavegador }

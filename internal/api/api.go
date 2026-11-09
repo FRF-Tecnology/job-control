@@ -134,7 +134,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	if o.Entrar == nil {
 		o.Entrar = func(string) error {
-			return &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador"}
+			return &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador", Motivo: "sem-navegador"}
 		}
 	}
 	if o.Janela == nil {

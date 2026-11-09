@@ -22,9 +22,13 @@ export async function entrarNavegador(app: { api: (c: string, m?: string, b?: un
     window.dispatchEvent(new CustomEvent(EVENTO_ENVIO, { detail: e }));
     return e;
   } catch (e) {
-    if (e instanceof ErroApi && e.status === 409) throw new Error(e.dados?.estado === 'enviando'
-      ? 'Uma candidatura está sendo enviada agora. Espere terminar e tente de novo.'
-      : 'Já há uma janela de login aberta. Feche-a antes de abrir outra.');
+    if (e instanceof ErroApi && e.status === 409) {
+      // Contrato 0.4.14 (jc-a2y.6.8): o motivo diz qual 409 é. Sem motivo (servidor anterior), vale a regra antiga.
+      const motivo = e.dados?.motivo ?? (e.dados?.estado === 'enviando' ? 'enviando' : 'login-aberto');
+      if (motivo === 'enviando') throw new Error('Uma candidatura está sendo enviada agora. Espere terminar e tente de novo.');
+      if (motivo === 'sem-navegador') throw new Error('Não deu para abrir: este computador não tem o Chrome nem o Edge para o app usar.');
+      throw new Error('Já há uma janela de login aberta. Feche-a antes de abrir outra.');
+    }
     if (e instanceof ErroApi && e.status === 403) throw new Error('Só você pode fazer isso, por esta tela.');
     if (e instanceof ErroApi && e.status === 404) throw new Error('Não deu para abrir: o envio não está neste app ou a candidatura saiu da fila.');
     if (e instanceof ErroApi && e.status === 400) throw new Error('Não deu para abrir: o endereço desta vaga não é de uma página conhecida da plataforma.');

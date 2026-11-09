@@ -86,6 +86,20 @@ describe('Entrar nas plataformas', () => {
     expect(dois.avisos).toContainEqual({ texto: 'Já há uma janela de login aberta. Feche-a antes de abrir outra.', erro: true });
   });
 
+  it('409 pelo motivo do contrato 0.4.14: enviando, login-aberto e sem-navegador', async () => {
+    const casos: [Record<string, unknown>, string][] = [
+      [{ erro: 'x', motivo: 'enviando', estado: 'enviando' }, 'Uma candidatura está sendo enviada agora. Espere terminar e tente de novo.'],
+      [{ erro: 'x', motivo: 'login-aberto' }, 'Já há uma janela de login aberta. Feche-a antes de abrir outra.'],
+      [{ erro: 'x', motivo: 'sem-navegador' }, 'Não deu para abrir: este computador não tem o Chrome nem o Edge para o app usar.'],
+    ];
+    for (const [dados, frase] of casos) {
+      const { avisos } = montarPainel({ erro: new ErroApi('x', 409, dados) });
+      await screen.findByRole('button', { name: 'Entrar no LinkedIn' });
+      await clicar('Entrar no LinkedIn');
+      expect(avisos).toContainEqual({ texto: frase, erro: true });
+      cleanup();
+    }
+  });
   it('build sem envio (ligado:false): nenhum dos botões', async () => {
     montarPainel({ estado: { ...BASE, ligado: false } });
     await screen.findByText(/Envio automático desligado/);

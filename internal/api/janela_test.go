@@ -149,7 +149,7 @@ func TestEntrarNasPlataformas(t *testing.T) {
 	}
 
 	// O envio recusa (login já aberto): 409 com o texto dele; erro do sistema vira texto fixo, sem o detalhe.
-	j.erro = &dominio.ErroConflito{Msg: "já há uma janela de login aberta: entre por ela ou feche-a antes"}
+	j.erro = &dominio.ErroConflito{Msg: "já há uma janela de login aberta: entre por ela ou feche-a antes", Motivo: "login-aberto"}
 	if r := chamarEnvio(t, a, "POST", "/navegador/entrar", Objeto{"plataforma": "linkedin"}, "eu"); r.Status != 409 || !strings.Contains(estadoDe(t, r)["erro"].(string), "login aberta") {
 		t.Fatalf("login já aberto = %d %v", r.Status, r.Corpo)
 	}
@@ -173,5 +173,45 @@ func TestEntrarNasPlataformas(t *testing.T) {
 	got := saida.String()
 	if strings.Count(got, "navegador: janela de login aberta (eu)") != 2 || strings.Contains(got, "linkedin.com") || strings.Contains(got, "gupy.io") {
 		t.Fatalf("log = %q", got)
+	}
+}
+
+// jc-a2y.6.8 (achado do Jarvis no #79): o 409 do /navegador/entrar diz o motivo, para a tela não confundir "sem
+// navegador" com "login já aberto".
+func TestEntrarDizOMotivoDo409(t *testing.T) {
+	motivo := func(r Resposta) (any, any) {
+		c := r.Corpo.(map[string]any)
+		return c["motivo"], c["estado"]
+	}
+	// central-dev com a tag: ligado, sem o gancho do navegador.
+	semGancho, _ := apiDeEnvio(t, true)
+	if r := chamarEnvio(t, semGancho, "POST", "/navegador/entrar", Objeto{"plataforma": "linkedin"}, "eu"); r.Status != 409 {
+		t.Fatalf("sem navegador = %d", r.Status)
+	} else if m, _ := motivo(r); m != "sem-navegador" {
+		t.Errorf("sem navegador: motivo = %v", m)
+	}
+
+	a, arm, j := apiComJanela(t, true)
+	j.erro = &dominio.ErroConflito{Msg: "já há uma janela de login aberta: entre por ela ou feche-a antes", Motivo: "login-aberto"}
+	if r := chamarEnvio(t, a, "POST", "/navegador/entrar", Objeto{"plataforma": "linkedin"}, "eu"); r.Status != 409 {
+		t.Fatalf("login aberto = %d", r.Status)
+	} else if m, _ := motivo(r); m != "login-aberto" {
+		t.Errorf("login aberto: motivo = %v", m)
+	}
+	j.erro = errors.New("erro do sistema sem tipo")
+	if r := chamarEnvio(t, a, "POST", "/navegador/entrar", Objeto{"plataforma": "linkedin"}, "eu"); r.Status != 409 {
+		t.Fatalf("erro do sistema = %d", r.Status)
+	} else if m, _ := motivo(r); m != "sem-navegador" {
+		t.Errorf("erro do sistema: motivo = %v", m)
+	}
+	j.erro = nil
+	arm.Gravar(context.Background(), func(e dominio.Estado) (dominio.Estado, error) {
+		e.Candidaturas = []Objeto{{"id": "cand-agora", "vagaId": "v-1", "plataforma": "linkedin", "estado": "enviando", "url": "https://www.linkedin.com/jobs/view/9000000009"}}
+		return e, nil
+	})
+	if r := chamarEnvio(t, a, "POST", "/navegador/entrar", Objeto{"plataforma": "linkedin"}, "eu"); r.Status != 409 {
+		t.Fatalf("enviando = %d", r.Status)
+	} else if m, e := motivo(r); m != "enviando" || e != "enviando" {
+		t.Errorf("enviando: motivo = %v, estado = %v", m, e)
 	}
 }
