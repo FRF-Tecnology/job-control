@@ -1,4 +1,4 @@
-// Central de Candidaturas: app de PC (Wails v3). A janela mostra as telas React de
+// Applyer: app de PC (Wails v3). A janela mostra as telas React de
 // frontend/dist; os pedidos para /api/ vão para a API local em Go (internal/api).
 package main
 
@@ -49,7 +49,7 @@ func main() {
 	})
 
 	app = application.New(application.Options{
-		Name:        "Central de Candidaturas",
+		Name:        "Applyer",
 		Description: "Busca, triagem e acompanhamento de candidaturas",
 		Assets: application.AssetOptions{
 			Handler: rotear(local.Handler(), application.AssetFileServerFS(telas)),
