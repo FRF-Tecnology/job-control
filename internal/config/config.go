@@ -4,6 +4,8 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 // NomePasta é a pasta do app dentro da pasta de configuração do usuário.
@@ -17,12 +19,36 @@ func PastaDados() (string, error) {
 	if p := os.Getenv("CENTRAL_PASTA"); p != "" {
 		return p, criarProtegida(p)
 	}
+	p, err := PastaPadrao()
+	if err != nil {
+		return "", err
+	}
+	return p, criarProtegida(p)
+}
+
+// PastaPadrao é a pasta de dados de sempre (sem CENTRAL_PASTA). Não cria nada.
+func PastaPadrao() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	p := filepath.Join(base, NomePasta)
-	return p, criarProtegida(p)
+	return filepath.Join(base, NomePasta), nil
+}
+
+// MesmaPasta diz se dois caminhos são a mesma pasta (limpos e absolutos; no Windows, sem diferenciar maiúsculas).
+func MesmaPasta(a, b string) bool {
+	limpar := func(p string) string {
+		p = filepath.Clean(p)
+		if abs, err := filepath.Abs(p); err == nil {
+			p = abs
+		}
+		return p
+	}
+	a, b = limpar(a), limpar(b)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
 }
 
 func criarProtegida(p string) error {
