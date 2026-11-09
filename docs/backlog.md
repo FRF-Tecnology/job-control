@@ -1,5 +1,7 @@
 # Backlog — de ferramenta pessoal a produto
 
+> **Histórico.** Este backlog é anterior à troca de marca: "Central" aqui é o nome antigo do produto, que agora se chama **Applyer** (épico `jc-etv`). O texto fica como foi escrito.
+
 ## Visão em uma página
 
 **Um app web (PC e celular) onde dev brasileiro/LATAM gerencia a busca de emprego inteira — achar a vaga certa, aplicar,

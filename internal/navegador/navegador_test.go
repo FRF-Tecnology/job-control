@@ -131,6 +131,9 @@ func navegadorDeTeste(t *testing.T, s *servidorFicticio, dados string) *Navegado
 		t.Skip("ponta a ponta com navegador: fora do -short")
 	}
 	if _, err := Localizar(); err != nil {
+		if os.Getenv("CI") == "true" { // no runner do CI o navegador é obrigatório: pular esconderia o teste (jc-a2y.6.7)
+			t.Fatalf("sem Chrome nem Edge no CI: %v", err)
+		}
 		t.Skipf("sem Chrome nem Edge nesta máquina: %v", err)
 	}
 	n, err := Novo(Opcoes{PastaDados: dados})

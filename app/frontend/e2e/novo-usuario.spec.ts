@@ -116,7 +116,16 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
 
   await aprovarTodas.click();
   await dlg.getByRole('button', { name: 'Aprovar 2 vagas' }).click();
-  await avisou(page, '2 vagas foram para a fila do Claude.');
+  await avisou(page, '2 vagas foram para a Fila.');
+  // O envio é pelo app, pausado até a pessoa retomar na Fila (jc-a2y.56); a Triagem não fala mais em o Claude enviar.
+  await expect(page.getByText(/Aprovadas vão para a Fila; o envio acontece pelo app quando você retomar\./)).toBeVisible();
+  // Na Hoje, a sugestão leva à Fila (onde se prepara e aprova) em vez de virar pedido para o Claude aplicar.
+  const pedidosAntes = (await (await page.request.get('/api/v1/estado')).json()).pedidos?.length ?? 0;
+  await ir(page, 'hoje');
+  await page.locator('.sugestoes').getByRole('button', { name: /^Preparar (a vaga|as \d+ vagas) aprovadas? na Fila$/ }).click();
+  await expect(page).toHaveURL(/#\/fila$/);
+  expect((await (await page.request.get('/api/v1/estado')).json()).pedidos?.length ?? 0).toBe(pedidosAntes);
+  await ir(page, 'triagem');
   await expect(page.locator('.ficha .empresa')).toHaveText('Empresa ext-grupo-b-1');
   expect(await etapas()).toEqual({ 'ext-grupo-a-1': 'aplicar', 'ext-grupo-a-2': 'aplicar', 'ext-grupo-b-1': 'descoberta' });
   const eventos = (await (await page.request.get('/api/v1/estado')).json()).eventos.filter((e: any) => e.tipo === 'aplicar' && e.vagaId.startsWith('ext-grupo-'));

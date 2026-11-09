@@ -16,6 +16,8 @@ const FUNIL = [
 
 // Pedidos que a própria tela resolve na hora; o resto vira pedido para o assistente (/pedidos).
 const ATALHOS: [RegExp, string][] = [
+  // As aprovadas se preparam e se aprovam na Fila; o envio é pelo app, não um pedido ao assistente (jc-a2y.56).
+  [/\bfila\b|\bprepar/, '#/fila'],
   [/\btri(ar|agem)\b|decidir|vagas novas/, '#/triagem'],
   [/respond|retorno|entrevista|processo|oferta/, '#/quadro'],
   [/n[uú]meros|taxa|funil|semana|m[eé]tric/, '#/numeros'],
@@ -51,8 +53,10 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
 function sugestoesPara(foco: string, nAplicar: number, nDescoberta: number) {
   const buscar = ({ internacional: 'Buscar vagas USD LATAM', nacional: 'Buscar vagas CLT/PJ remotas', ambos: 'Buscar vagas novas' } as Record<string, string>)[foco];
   const qual = ({ internacional: ' internacionais', nacional: ' nacionais', ambos: '' } as Record<string, string>)[foco];
+  const qualUma = ({ internacional: ' internacional', nacional: ' nacional', ambos: '' } as Record<string, string>)[foco];
+  const preparar = nAplicar === 1 ? `Preparar a vaga${qualUma} aprovada na Fila` : `Preparar as ${nAplicar} vagas${qual} aprovadas na Fila`;
   return [
-    nAplicar ? `Aplicar nas ${nAplicar}${qual} aprovadas` : buscar,
+    nAplicar ? preparar : buscar,
     nAplicar ? buscar : null,
     nDescoberta ? `Triar ${plural(nDescoberta, 'vaga nova', 'vagas novas')}` : null,
     'Quem me respondeu?',
@@ -344,7 +348,7 @@ export function TelaHoje() {
 
       <p className="tranquilo">
         <Icone><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" /><path d="M9 12l2 2 4-4" /></Icone>
-        Senhas, CPF e logins ficam sempre com você. A Central nunca guarda documentos e nada é enviado em seu nome sem você aprovar.
+        Senhas, CPF e logins ficam sempre com você. O Applyer nunca guarda documentos e nada é enviado em seu nome sem você aprovar.
       </p>
     </div>
   );

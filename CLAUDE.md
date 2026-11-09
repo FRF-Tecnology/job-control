@@ -1,4 +1,6 @@
-# Central de Candidaturas — instruções para o Claude
+# Applyer — instruções para o Claude
+
+> O produto se chama **Applyer**. A versão em uso é a **Central** (versão em Node, sai na P8), em http://localhost:4321: neste arquivo, "Central" é sempre ela. O app novo está na seção "Reescrita".
 
 Este projeto organiza a busca de emprego de **uma pessoa por computador**. O perfil dela fica em `dados/perfil.json`.
 Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação, filtros, respostas padrão e modo de trabalho.
@@ -93,8 +95,10 @@ Rules:
 
 ## Reescrita: app de PC (Go + React/TS)
 
-A Central está sendo reescrita como app de PC com Wails v3. O plano tem as fases P0 a P8, acompanhadas no Gas Town (épico `jc-a2y`).
-Até a P8, o código Node atual continua sendo a Central em uso, e a API dele é a referência do contrato.
+A Central (versão em Node) está sendo reescrita como o **Applyer**, um app de PC com Wails v3. O plano tem as fases P0 a P8, acompanhadas no Gas Town (épico `jc-a2y`; a troca de marca é o épico `jc-etv`).
+Até a P8, o código Node continua sendo a versão em uso, a Central, e a API dele é a referência do contrato.
+
+**Nomes internos:** o produto se chama Applyer, mas os nomes internos ainda usam "central": `CENTRAL_PASTA`, `central.exe`, `cmd/central-dev`, `cmd/central-cli`, `central.db`, a pasta de dados `Central de Candidaturas`, o serviço do cofre e o MCP "central". Eles só mudam com o plano de migração do `jc-etv.6` aprovado. Nas telas e nos textos para a pessoa, use Applyer.
 
 **Onde fica cada parte:**
 - `go.mod` na raiz;
@@ -124,17 +128,23 @@ O teste `testes/golden.test.mjs` falha se o golden estiver desatualizado.
   - aponte `CENTRAL_PASTA` para uma pasta de teste e importe com `importar-legado`;
   - rode `CENTRAL_NODE=http://localhost:4321 go test -tags comparacao -run CompararComNode ./internal/api/`.
 
-**Telas novas (P3):** ficam em `app/frontend/src` e são as mesmas telas e classes de CSS da Central atual.
+**Telas novas (P3):** ficam em `app/frontend/src` e são as mesmas telas e classes de CSS da Central (Node), com o nome Applyer.
 - `telas/*.tsx` são as telas;
 - `App.tsx` é a casca (rotas por hash, atualização a cada 5 s com proteção de edição, diálogo, avisos);
 - `dominio/*.ts` é o mesmo código de `nucleo/`.
 
-Testes das telas:
+Preparar o ambiente do front (uma vez por clone, e sempre que os bindings mudarem). Cada comando parte da raiz do repositório:
+- `go` e `wails3` precisam estar no PATH. No Windows ficam em `C:\Program Files\Go\bin` e `%USERPROFILE%\go\bin`; se faltar o `wails3`, instale com `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`.
+- `cd app && wails3 generate bindings -clean=true -ts -i` gera `app/frontend/bindings`. Sem essa pasta, o Vitest e o build do Vite param com `Event bindings module not found` (plugin `wails-typed-events`). A pasta fica fora do git, e o CI gera a dela.
+- `cd app/frontend && npm ci` instala as dependências.
+- `cd app/frontend && npx playwright install chromium` baixa o navegador dos testes de ponta a ponta. Eles rodam sem janela (headless); não use o modo com janela no PC de quem está usando.
+
+Testes das telas (também a partir da raiz):
 - `cd app/frontend && npm test` roda o Vitest. As funções de domínio em TS são conferidas contra o golden do Node.
 - `npm run build && npm run e2e` roda o Playwright: a jornada de usuário novo no PC e no celular, contra `cmd/central-dev` com uma pasta vazia.
 
 Para ver no navegador: `npm run build` e depois `CENTRAL_PASTA=<pasta de teste> go run ./cmd/central-dev`, na raiz. Abre em http://localhost:4500.
-Os testes da Central atual rodam com `npm test` na raiz, só `testes/`.
+Os testes da Central (Node) rodam com `npm test` na raiz, só `testes/`.
 
 **IA no app (P4):** `internal/ia` é o porte de `nucleo/ia`, com as funções, a guarda (10 regras), os prompts e os provedores.
 - **Referência:** é conferida contra `internal/ia/testdata/golden-ia.json`, que traz 77 prompts, 791 casos de guarda e os pedidos HTTP. Os contratos ficam em `internal/ia/funcoes.json`. Os dois arquivos são gravados por `node ferramentas/gerar-golden-ia.mjs`.
@@ -145,7 +155,7 @@ Os testes da Central atual rodam com `npm test` na raiz, só `testes/`.
 - **Na interface:** a tela "Conectar IA" fica em `#/ia`. As rotas ficam em `/api/v1/ia/...`. Na Triagem há o botão "Opinião da IA", e na Hoje a "Mensagem" usa um rascunho da IA quando há uma conectada.
 - **Avaliação:** `go run ./cmd/central-cli avaliar --provedor claude-cli --limite 3 --saida r.json` roda os casos. Pontue com `node ferramentas/cli.mjs avaliar --respostas r.json --modelo <nome>`, usando `CENTRAL_DADOS` numa pasta de teste.
 
-**Pasta de dados:** `os.UserConfigDir()/Central de Candidaturas`. A variável `CENTRAL_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
+**Pasta de dados:** `os.UserConfigDir()/Central de Candidaturas` (nome interno, ver acima). A variável `CENTRAL_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
 
 ## Ferramentas de desenvolvimento
 

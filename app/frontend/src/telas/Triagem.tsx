@@ -28,7 +28,7 @@ export function TelaTriagem() {
   const grupoA = fila.filter((x: any) => x.aderencia === 'A');
 
   const umaVez = (fn: () => Promise<unknown>) => async () => { if (ocupado) return; ocupado = true; try { await fn(); } finally { ocupado = false; } };
-  const aplicar = v && umaVez(() => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a fila do Claude`));
+  const aplicar = v && umaVez(() => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a Fila`));
   const pular = v && umaVez(async () => {
     const motivo = await app.perguntar({ titulo: 'Por que pular?', texto: `${v.empresa} — ${v.titulo}`, opcoes: MOTIVOS_PULO });
     if (motivo) await app.mover(v.id, 'pulada', { motivo }, 'Pulada');
@@ -41,7 +41,7 @@ export function TelaTriagem() {
     const quantas = plural(lista.length, 'vaga', 'vagas');
     const ok = await app.perguntar({
       titulo: `Aprovar ${quantas} do grupo A?`,
-      texto: 'Elas vão para a fila do Claude aplicar. As outras continuam aqui.',
+      texto: 'Elas vão para a Fila, onde você prepara e aprova o pacote de cada uma. As outras continuam aqui.',
       itens: lista.map((x: any) => `${x.empresa} — ${x.titulo}`),
       confirmar: `Aprovar ${quantas}`,
     });
@@ -50,7 +50,7 @@ export function TelaTriagem() {
       const r = await aprovarLista(app, lista);
       await app.recarregar();
       if (r.aprovadas || r.mudaram) {
-        const feito = r.aprovadas ? `${plural(r.aprovadas, 'vaga foi', 'vagas foram')} para a fila do Claude.` : 'Nenhuma vaga foi aprovada.';
+        const feito = r.aprovadas ? `${plural(r.aprovadas, 'vaga foi', 'vagas foram')} para a Fila.` : 'Nenhuma vaga foi aprovada.';
         app.aviso(r.mudaram ? `${feito} ${plural(r.mudaram, 'mudou antes e ficou como estava', 'mudaram antes e ficaram como estavam')}.` : feito);
       }
       r.falhas.forEach(f => app.aviso(f, true));
@@ -121,7 +121,7 @@ export function TelaTriagem() {
         <button className="redondo sim" type="button" aria-label="Aplicar na vaga (tecla A)" onClick={aplicar!}><Icone d="M6 12.5l4 4L18 8" /></button>
       </div>
       <div className="legenda-decisao" aria-hidden="true"><span>Pular · P</span><span>Detalhes</span><span>Aplicar · A</span></div>
-      <p className="pequeno mudo" style={{ textAlign: 'center', marginTop: '18px' }}>{`${fila.length - 1 > 0 ? `Depois desta, mais ${fila.length - 1}.` : 'É a última.'} Aprovadas vão para a fila; o Claude envia na próxima rodada.`}</p>
+      <p className="pequeno mudo" style={{ textAlign: 'center', marginTop: '18px' }}>{`${fila.length - 1 > 0 ? `Depois desta, mais ${fila.length - 1}.` : 'É a última.'} Aprovadas vão para a Fila; o envio acontece pelo app quando você retomar.`}</p>
     </div>
   );
 }

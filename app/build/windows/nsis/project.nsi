@@ -21,7 +21,7 @@ Unicode true
 ####
 ## !define INFO_PROJECTNAME    "my-project" # Default "central"
 ## !define INFO_COMPANYNAME    "My Company" # Default "FRF Tecnology"
-## !define INFO_PRODUCTNAME    "My Product Name" # Default "Central de Candidaturas"
+## !define INFO_PRODUCTNAME    "My Product Name" # Default "Applyer"
 ## !define INFO_PRODUCTVERSION "1.0.0"     # Default "0.1.0"
 ## !define INFO_COPYRIGHT      "(c) Now, My Company" # Default "FRF Tecnology"
 ###

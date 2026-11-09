@@ -57,8 +57,8 @@ export function TelaPerfil() {
     <label style={{ display: 'flex', gap: '8px', alignItems: 'start' }}>
       <input type="radio" name="modo" value={valor} checked={(perfil.modo ?? 'revisar') === valor} onChange={() => mudar(p => { p.modo = valor; })} />
       <span>{valor === 'revisar'
-        ? <span><b>Revisar antes</b> — o Claude só aplica o que você aprovou na triagem.</span>
-        : <span><b>Aplicar direto</b> — o Claude aplica sozinho as vagas do grupo A e deixa B e C para a triagem.</span>}</span>
+        ? <span><b>Revisar antes</b> — só as vagas que você aprovou na Triagem vão para a Fila.</span>
+        : <span><b>Aplicar direto</b> — as vagas do grupo A também vão para a Fila sem passar pela Triagem; B e C esperam por ela. O pacote de cada uma ainda precisa da sua aprovação.</span>}</span>
     </label>
   );
 

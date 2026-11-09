@@ -1,7 +1,7 @@
 // Limite diário por plataforma (jc-a2y.54): cada cartão mostra o uso de hoje e deixa ajustar o limite, de 1 a 40
 // (padrão 30), com confirmação. PUT /candidaturas/limites/{plataforma} {limite}, só pela tela. A gravação não muda a
 // /versao, então o cartão usa a resposta do PUT.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 
 export type Limite = { limite: number; usadas: number; renovaEm: string };
@@ -17,8 +17,16 @@ export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo }: 
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const id = `limite-${plataforma}`;
+  // Abrir leva o foco ao campo; fechar devolve ao botão (teclado e leitor de tela; jc-a2y.59).
+  const campo = useRef<HTMLInputElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const mexeu = useRef(false);
+  useEffect(() => {
+    if (!mexeu.current) return;
+    (aberto ? campo.current : botao.current)?.focus();
+  }, [aberto]);
 
-  const abrir = () => { setValor(String(limite.limite)); setErro(''); setAberto(true); };
+  const abrir = () => { mexeu.current = true; setValor(String(limite.limite)); setErro(''); setAberto(true); };
   const fechar = () => { setAberto(false); setErro(''); app.limpar(); };
 
   async function salvar(ev: React.FormEvent) {
@@ -53,17 +61,17 @@ export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo }: 
       {aberto ? (
         <form className="limite-form" onSubmit={salvar} noValidate onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); fechar(); } }}>
           <label htmlFor={id}>{`Limite por dia, de ${MINIMO} a ${MAXIMO}`}</label>
-          <input id={id} type="number" inputMode="numeric" min={MINIMO} max={MAXIMO} step={1} value={valor}
-            aria-invalid={!!erro} aria-describedby={`${id}-dica`} onChange={e => { setValor(e.target.value); setErro(''); }} />
+          <input ref={campo} id={id} type="number" inputMode="numeric" min={MINIMO} max={MAXIMO} step={1} value={valor}
+            aria-invalid={!!erro} aria-describedby={erro ? `${id}-dica ${id}-erro` : `${id}-dica`} onChange={e => { setValor(e.target.value); setErro(''); }} />
           <small id={`${id}-dica`} className="mudo">{`Padrão: ${PADRAO}.`}</small>
-          {erro && <p className="erro-resposta" role="alert">{erro}</p>}
+          {erro && <p id={`${id}-erro`} className="erro-resposta" role="alert">{erro}</p>}
           <div className="acoes">
             <button className="botao p" type="submit" disabled={ocupado}>Salvar</button>
             <button className="botao-fantasma p" type="button" onClick={fechar}>Cancelar</button>
           </div>
         </form>
       ) : (
-        <div><button className="botao-fantasma p" type="button" onClick={abrir} aria-label={`Ajustar limite ${na}`}>Ajustar limite</button></div>
+        <div><button ref={botao} className="botao-fantasma p" type="button" onClick={abrir} aria-label={`Ajustar limite ${na}`}>Ajustar limite</button></div>
       )}
     </div>
   );
