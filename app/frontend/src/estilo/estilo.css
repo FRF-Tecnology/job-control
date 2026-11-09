@@ -220,6 +220,8 @@ a.cartao-num:hover { transform: translateY(-2px); }
 .convite strong { font: 700 1.8rem var(--fonte-display); letter-spacing: -.03em; }
 .convite.azul { background: var(--destaque); color: #fff; }
 .convite.azul .botao { background: #fff; color: var(--destaque); }
+.convite.ambar { background: var(--ambar-suave); } /* pede a pessoa (ex.: IA em uso não pronta, falta a chave) */
+.convite.ambar strong { color: var(--ambar); }
 
 /* funil em barras */
 .funil-barras { display: grid; gap: 14px; padding: 22px; border-radius: var(--raio); background: var(--superficie-2); }
