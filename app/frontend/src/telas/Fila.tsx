@@ -2,7 +2,7 @@
 // Só leitura neste passo; aprovar e as outras ações chegam no jc-a2y.6.3.2. A impressão é recalculada aqui a
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
 import { useCallback, useEffect, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, type Pergunta } from '../app/contexto';
 import { impressaoCandidatura } from '../app/impressao';
 import { pacoteInicial, perguntasSensiveisDoPerfil, type Conteudo as ConteudoPacote } from '../app/pacote';
 import { Convite } from '../componentes';
@@ -84,7 +84,9 @@ export function TelaFila() {
   const [lista, setLista] = useState<Candidatura[] | null>(null);
   const [limites, setLimites] = useState<Record<string, Limite> | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
-  const [conferidas, setConferidas] = useState<Record<string, 'ok' | 'diferente'>>({});
+  // Impressão calculada nesta tela para cada candidatura, a partir do mesmo objeto mostrado ("" se o cálculo falhar).
+  // É ela, e nunca a do servidor, que vai no aprovar, e só quando as duas batem.
+  const [calculadas, setCalculadas] = useState<Record<string, string>>({});
   const [preparando, setPreparando] = useState<string | null>(null); // id da vaga com o formulário aberto
   const [editando, setEditando] = useState<string | null>(null); // id da candidatura em edição
   const [ocupado, setOcupado] = useState(false);
@@ -101,17 +103,26 @@ export function TelaFila() {
   useEffect(() => {
     if (!lista) return;
     let vivo = true;
-    Promise.all(lista.map(async c => [c.id, (await impressaoCandidatura(c)) === c.impressao ? 'ok' : 'diferente'] as const))
-      .then(r => { if (vivo) setConferidas(Object.fromEntries(r)); })
-      .catch(() => { if (vivo) setConferidas(Object.fromEntries(lista.map(c => [c.id, 'diferente']))); });
+    setCalculadas({});
+    Promise.all(lista.map(async c => [c.id, await impressaoCandidatura(c)] as const))
+      .then(r => { if (vivo) setCalculadas(Object.fromEntries(r)); })
+      .catch(() => { if (vivo) setCalculadas(Object.fromEntries(lista.map(c => [c.id, '']))); });
     return () => { vivo = false; };
   }, [lista]);
 
   // 409 em texto claro: duplicata (traz "existente") ou pacote que mudou enquanto a pessoa editava (versão velha).
   const explicar = (e: unknown) => {
     const erro = e as ErroApi;
+    if (erro instanceof ErroApi && erro.status === 429) {
+      const d = erro.dados ?? {};
+      return app.aviso(`Limite de hoje ${NA_PLATAFORMA[d.plataforma] ?? 'na plataforma'} atingido (${d.usadas} de ${d.limite}). ${d.renovaEm ? `${quandoRenova(d.renovaEm, app.hoje)}.` : ''}`.trim(), true);
+    }
     if (erro instanceof ErroApi && erro.status === 409) {
       if (erro.dados?.existente) return app.aviso('Esta vaga já tem uma candidatura ativa ou já foi enviada. Veja na fila.', true);
+      if (erro.dados?.impressaoAtual) {
+        ler();
+        return app.aviso('O pacote mudou desde que você abriu. A fila foi atualizada; revise de novo antes de aprovar.', true);
+      }
       setEditando(null);
       ler();
       return app.aviso('O pacote mudou enquanto você editava. A fila foi atualizada; abra e edite de novo.', true);
@@ -139,6 +150,38 @@ export function TelaFila() {
     await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/conteudo`, 'PUT', { conteudo, versao: c.versao }),
       c.estado === 'aprovada' ? 'Pacote atualizado. Revise e aprove de novo.' : 'Pacote atualizado.');
   };
+
+  const empresaDe = (c: Candidatura) => app.estado.vagas?.find((v: any) => v.id === c.vagaId)?.empresa ?? 'a vaga';
+  // Aprovar: só com a impressão calculada aqui e igual à do servidor; nunca manda a do servidor no lugar.
+  const aprovar = async (c: Candidatura) => {
+    const impressao = calculadas[c.id];
+    if (!impressao || impressao !== c.impressao) return;
+    const ok = await app.perguntar({
+      titulo: 'Aprovar e enviar este pacote?',
+      texto: `O app envia exatamente este pacote para ${empresaDe(c)}, hoje e uma vez só. Até o envio começar, você pode tirar a aprovação.`,
+      confirmar: 'Aprovar e enviar',
+    });
+    if (ok === null) return;
+    await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/aprovar`, 'POST', { impressao }), 'Aprovado. O app envia este pacote hoje, uma vez.');
+  };
+  // Demais ações: corpo {} (o contrato recusa campo a mais). As que mudam o rumo pedem confirmação antes.
+  const acao = async (c: Candidatura, rota: string, sucesso: string, confirmar?: Pergunta) => {
+    if (confirmar && (await app.perguntar(confirmar)) === null) return;
+    await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/${rota}`, 'POST', {}), sucesso);
+  };
+  const na = (c: Candidatura) => NA_PLATAFORMA[c.plataforma] ?? 'no site da vaga';
+  const cancelar = (c: Candidatura) => acao(c, 'cancelar', 'Candidatura cancelada.',
+    { titulo: 'Cancelar esta candidatura?', texto: 'Ela não será enviada, e isso não pode ser desfeito.', confirmar: 'Cancelar candidatura' });
+  const reabrir = (c: Candidatura) => acao(c, 'reabrir', 'Candidatura reaberta. Revise e aprove de novo.', {
+    titulo: 'Reabrir esta candidatura?',
+    texto: c.estado === 'incerta'
+      ? `Use só se você conferiu ${na(c)} que ela não foi enviada. Ela volta para revisão e precisa de nova aprovação.`
+      : 'Ela volta para revisão. Para enviar de novo, você precisa aprovar outra vez.',
+    confirmar: 'Reabrir',
+  });
+  const concluirManual = (c: Candidatura) => acao(c, 'concluir-manual', 'Marcada como enviada.', c.estado === 'incerta'
+    ? { titulo: 'Você conferiu que foi enviada?', texto: `Confira ${na(c)} antes. A candidatura e a vaga passam para Enviada.`, confirmar: 'Marcar como enviada' }
+    : { titulo: 'Você enviou pela página?', texto: 'A candidatura e a vaga passam para Enviada.', confirmar: 'Marcar como enviada' });
 
   const cabecalho = (
     <header className="cabecalho">
@@ -199,7 +242,8 @@ export function TelaFila() {
             const v = vaga(c.vagaId);
             const k = c.conteudo;
             const contato = k.contato ? [k.contato.nome, k.contato.email, k.contato.telefone, k.contato.cidade].filter(Boolean).join(' · ') : '';
-            const conferida = conferidas[c.id];
+            const calculada = calculadas[c.id];
+            const conferida = calculada === undefined ? undefined : calculada && calculada === c.impressao ? 'ok' : 'diferente';
             return (
               <li key={c.id}>
                 <article className={`cand${ALERTA.includes(c.estado) ? ' alerta' : ''}`} data-testid={c.id} aria-labelledby={`${c.id}-titulo`}>
@@ -245,6 +289,26 @@ export function TelaFila() {
                       </dd>
                     </dl>
                   </details>
+                  {/* Ações por estado, conforme o contrato: incerta não se cancela; enviando, enviada e cancelada não têm ação. */}
+                  {['preparada', 'aprovada', 'bloqueada', 'falhou', 'incerta'].includes(c.estado) && (
+                    <div className="acoes acoes-cand">
+                      {c.estado === 'preparada' && (
+                        <button className="botao" type="button" disabled={ocupado || conferida !== 'ok'} onClick={() => aprovar(c)}>Aprovar este pacote</button>
+                      )}
+                      {c.estado === 'aprovada' && (
+                        <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => acao(c, 'revogar', 'Aprovação retirada. O pacote voltou para revisão.')}>Tirar aprovação</button>
+                      )}
+                      {(c.estado === 'bloqueada' || c.estado === 'incerta') && (
+                        <button className="botao" type="button" disabled={ocupado} onClick={() => concluirManual(c)}>Marcar como enviada</button>
+                      )}
+                      {(c.estado === 'bloqueada' || c.estado === 'falhou' || c.estado === 'incerta') && (
+                        <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => reabrir(c)}>Reabrir</button>
+                      )}
+                      {c.estado !== 'incerta' && (
+                        <button className="botao-perigo" type="button" disabled={ocupado} onClick={() => cancelar(c)}>Cancelar candidatura</button>
+                      )}
+                    </div>
+                  )}
                   </>)}
                 </article>
               </li>
