@@ -25,3 +25,7 @@ func PastaDados() (string, error) {
 
 // CaminhoBanco é o arquivo SQLite dentro da pasta de dados.
 func CaminhoBanco(pasta string) string { return filepath.Join(pasta, "central.db") }
+
+// PastaNavegador é o perfil próprio do navegador do app dentro da pasta de dados. Fica aqui (e não só em
+// internal/navegador) para a API apagar o perfil sem trazer o navegador para o binário padrão.
+func PastaNavegador(pasta string) string { return filepath.Join(pasta, "navegador") }

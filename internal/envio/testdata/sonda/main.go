@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
-	parar := envio.Ligar(context.Background(), nil, "")
-	parar()
+	c := envio.Ligar(context.Background(), nil, "")
+	c.FecharNavegador()
+	c.Parar()
 }

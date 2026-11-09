@@ -89,6 +89,10 @@ func (n *Navegador) iniciar() error {
 	if n.navCtx != nil {
 		return nil
 	}
+	// O perfil pode ter sido apagado ("sair das plataformas"): recria com as preferências antes de abrir.
+	if err := prepararPerfil(n.perfil); err != nil {
+		return err
+	}
 	alloc, fecharAlloc := chromedp.NewExecAllocator(context.Background(), n.opcoes()...)
 	navCtx, fecharNav := chromedp.NewContext(alloc, chromedp.WithLogf(semConteudo), chromedp.WithDebugf(semConteudo), chromedp.WithErrorf(soErro))
 	// Download negado no navegador inteiro.

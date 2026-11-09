@@ -383,6 +383,22 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 		}
 	})
 
+	t.Run("Sair das plataformas: o perfil volta com as preferências na próxima página", func(t *testing.T) {
+		nav.Fechar()
+		if err := ApagarPerfil(dados); err != nil {
+			t.Fatal(err)
+		}
+		pag, err := nav.NovaPagina(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer pag.Fechar()
+		b, err := os.ReadFile(filepath.Join(PastaPerfil(dados), "Default", "Preferences"))
+		if err != nil || !strings.Contains(string(b), "password_manager_enabled") {
+			t.Fatalf("perfil recriado sem as preferências: %v", err)
+		}
+	})
+
 	// M7: nada da página nem do pacote no log (do executor ou do chromedp).
 	tudo := strings.Join(s.logs, "\n") + "\n" + saida.String()
 	for _, proibido := range []string{marca, "Pessoa Teste", "pessoa@exemplo.com", "Empresa Teste", "linkedin.com", "ats.exemplo.io", "cv-pt.pdf", dados} {
