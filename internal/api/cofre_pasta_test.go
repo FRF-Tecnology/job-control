@@ -20,6 +20,28 @@ import (
 // pessoa, porque todas as pastas usavam o mesmo nome no cofre. Duas pastas fictícias, o cofre do sistema de verdade,
 // cada uma com o seu nome (nunca o real): apagar uma não tira a chave da outra. Chaves fictícias.
 func TestApagarSoApagaAsChavesDestaPasta(t *testing.T) {
+	// Só no CI (revisão do CyberSec no #93): a API deriva o nome do cofre sozinha, e um erro nela (voltar a
+	// Sistema{}) gravaria e apagaria a chave real deste PC antes de qualquer conferência do teste.
+	if os.Getenv("CI") != "true" {
+		t.Skip("cofre do sistema de verdade: só no CI")
+	}
+	// Sentinela: a chave do nome real (a pasta padrão) não pode mudar em nenhum passo deste teste.
+	padrao, err := config.PastaPadrao()
+	if err != nil {
+		t.Fatal(err)
+	}
+	servicoReal := segredos.ServicoDaPasta(padrao)
+	antes, errAntes := keyring.Get(servicoReal, "anthropic")
+	if errAntes != nil {
+		t.Cleanup(func() { keyring.Delete(servicoReal, "anthropic") }) // não existia: se o teste criou, tira (só no CI)
+	}
+	sentinela := func(passo string) {
+		t.Helper()
+		depois, errDepois := keyring.Get(servicoReal, "anthropic")
+		if depois != antes || (errAntes == nil) != (errDepois == nil) {
+			t.Fatalf("%s mexeu na chave do cofre real (a API não usou o nome da pasta)", passo)
+		}
+	}
 	raiz := t.TempDir()
 	pastas := []string{filepath.Join(raiz, "teste-a"), filepath.Join(raiz, "teste-b")}
 	apis := make([]*API, 2)
@@ -49,10 +71,12 @@ func TestApagarSoApagaAsChavesDestaPasta(t *testing.T) {
 		if r.Status != 200 {
 			t.Fatalf("gravar a chave na pasta %d = %d %v", i, r.Status, r.Corpo)
 		}
+		sentinela("gravar a chave na pasta de teste")
 	}
 	if r := chamarEnvio(t, apis[0], "POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, "eu"); r.Status != 200 {
 		t.Fatalf("apagar a pasta A = %d %v", r.Status, r.Corpo)
 	}
+	sentinela("apagar os dados da pasta de teste")
 	if c, _ := keyring.Get(segredos.ServicoDaPasta(pastas[0]), "anthropic"); c != "" {
 		t.Error("a chave da pasta A ficou no cofre")
 	}
