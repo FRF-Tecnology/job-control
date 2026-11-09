@@ -11,7 +11,8 @@ import (
 // nunca por prefixo ou trecho. É mais estreito que URLDaPlataforma ("host da plataforma e subdomínios", o contrato):
 // só aperta.
 //
-//   - LinkedIn: www.linkedin.com, linkedin.com ou o subdomínio de país (br.linkedin.com); vaga em /jobs/view/<n>.
+//   - LinkedIn: www.linkedin.com, linkedin.com ou o subdomínio de país (br.linkedin.com); vaga em /jobs/view/<n> ou
+//     em currentJobId=<n> numa página de /jobs/ (busca, coleções). Se o caminho e a query trazem ids diferentes, recusa.
 //   - Gupy: só o host da empresa aprovado (<empresa>.gupy.io); vaga em /jobs/<n>.
 //   - InHire: o host da empresa aprovado (<empresa>.inhire.app), vaga em /vagas/<n>; ou o formulário em
 //     form-app.inhire.app, desde que o id aprovado esteja no endereço (segmento do caminho ou valor da query, inteiro).
@@ -21,6 +22,7 @@ var (
 	hostEmpresaGupy = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.gupy\.io$`)
 	hostEmpresaIH   = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.inhire\.app$`)
 	idLinkedIn      = regexp.MustCompile(`^/jobs/view/([0-9]+)(/.*)?$`)
+	soDigitos       = regexp.MustCompile(`^[0-9]+$`)
 	idGupy          = regexp.MustCompile(`^/jobs/([0-9]+)(/.*)?$`)
 	idInHire        = regexp.MustCompile(`^/vagas/([0-9a-zA-Z-]+?)(/.*)?$`)
 )
@@ -51,8 +53,26 @@ func vagaDoEndereco(plataforma string, u *url.URL, host string) (id string, ok b
 	caminho := u.EscapedPath()
 	switch plataforma {
 	case "linkedin":
-		if g := idLinkedIn.FindStringSubmatch(caminho); hostLinkedIn.MatchString(host) && g != nil {
-			return g[1], true
+		if !hostLinkedIn.MatchString(host) {
+			return "", false
+		}
+		doCaminho := ""
+		if g := idLinkedIn.FindStringSubmatch(caminho); g != nil {
+			doCaminho = g[1]
+		}
+		daQuery := ""
+		if v := u.Query()["currentJobId"]; len(v) == 1 && soDigitos.MatchString(v[0]) && strings.HasPrefix(caminho, "/jobs/") {
+			daQuery = v[0]
+		} else if len(v) > 1 {
+			return "", false // mais de um currentJobId: ambíguo
+		}
+		switch {
+		case doCaminho != "" && daQuery != "" && doCaminho != daQuery:
+			return "", false // caminho e query apontam vagas diferentes
+		case doCaminho != "":
+			return doCaminho, true
+		case daQuery != "":
+			return daQuery, true
 		}
 	case "gupy":
 		if g := idGupy.FindStringSubmatch(caminho); hostEmpresaGupy.MatchString(host) && !hostsReservados[host] && g != nil {

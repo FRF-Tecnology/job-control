@@ -30,6 +30,17 @@ func TestMesmaVaga(t *testing.T) {
 		{"linkedin", li, "http://www.linkedin.com/jobs/view/9000000001", false},
 		{"linkedin", li, "https://www.linkedin.com:8443/jobs/view/9000000001", false},
 		{"linkedin", "https://www.linkedin.com/feed/", li, false}, // aprovado sem id de vaga
+		// currentJobId= numa página de /jobs/, igual ao aprovado (pedido do PO).
+		{"linkedin", li, "https://www.linkedin.com/jobs/search/?currentJobId=9000000001&keywords=go", true},
+		{"linkedin", li, "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=9000000001", true},
+		{"linkedin", "https://www.linkedin.com/jobs/search/?currentJobId=9000000001", li + "/apply", true},
+		{"linkedin", li, "https://www.linkedin.com/jobs/search/?currentJobId=9000000002", false},
+		{"linkedin", li, "https://www.linkedin.com/jobs/search/?currentJobId=90000000011", false},
+		{"linkedin", li, "https://www.linkedin.com/jobs/search/?currentJobId=9000000001x", false},
+		{"linkedin", li, "https://www.linkedin.com/feed/?currentJobId=9000000001", false},
+		{"linkedin", li, "https://www.linkedin.com/jobs/view/9000000001?currentJobId=9000000002", false},
+		{"linkedin", li, "https://www.linkedin.com/jobs/search/?currentJobId=9000000001&currentJobId=9000000002", false},
+		{"linkedin", li, "https://evil.com/jobs/search/?currentJobId=9000000001", false},
 		// Gupy: a mesma empresa e a mesma vaga.
 		{"gupy", gp, gp + "/apply", true},
 		{"gupy", gp, "https://empresa-teste.gupy.io/jobs/9000001?jobBoardSource=teste", true},
