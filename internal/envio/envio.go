@@ -7,6 +7,8 @@
 package envio
 
 import (
+	"context"
+
 	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
@@ -22,6 +24,8 @@ import (
 //     pessoa entrar com a conta dela; até ela fechar a janela, o envio espera.
 //   - Janela: se "Ver o envio" está ligado e se a janela de login está aberta.
 //   - AoVivo (jc-a2y.6.9): o último quadro da aba do envio e a etapa, só em memória. nil sem o envio (a rota dá 404).
+//   - LerFormulario (jc-a2y.7.2): lê a estrutura de um formulário sem interagir, depois do ciclo atual do executor.
+//     nil sem o envio (a rota dá 404).
 type Controle struct {
 	Parar           func()
 	Suspender       func() (soltar func())
@@ -30,6 +34,7 @@ type Controle struct {
 	Entrar          func(endereco string) error
 	Janela          func() (visivel, login bool)
 	AoVivo          *aovivo.AoVivo
+	LerFormulario   func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 }
 
 func nada()                                {}

@@ -35,6 +35,10 @@ func EnderecoFinal(plataforma, aprovada, atual string) string {
 		if host == "login.gupy.io" {
 			return EnderecoLogin
 		}
+	case PlataformaFormulario: // jc-a2y.7.2: o Google pede login na conta (nunca enviamos a identidade dela)
+		if host == "accounts.google.com" {
+			return EnderecoLogin
+		}
 	}
 	if !URLDaPlataforma(plataforma, atual) {
 		return EnderecoOutroHost
