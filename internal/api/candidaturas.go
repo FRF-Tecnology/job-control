@@ -3,9 +3,12 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"math"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/curriculos"
@@ -53,6 +56,10 @@ func (a *API) rotasCandidaturas(ctx context.Context, m, p string, q map[string]s
 
 	case p == "/candidaturas" && m == "POST":
 		r, err := a.criarCandidatura(ctx, c, autor)
+		return r, true, err
+
+	case p == "/candidaturas/aprovar-lote" && m == "POST":
+		r, err := a.aprovarLote(ctx, c, autor)
 		return r, true, err
 
 	case reCandidatura.MatchString(p) && m == "GET":
@@ -282,6 +289,60 @@ func (a *API) acaoCandidatura(ctx context.Context, id, acao string, c Objeto, au
 		return Resposta{}, err
 	}
 	return ok(visao(res))
+}
+
+var reImpressaoLote = regexp.MustCompile(`^sha256:v1:[0-9a-f]{64}$`)
+
+// aprovarLote (jc-a2y.6.13): aprova a "Lista do dia" de uma vez, só pela tela. Cada item com a impressão que a tela
+// mostrou; numa transação só; item recusado não afeta os outros. O log leva só os números.
+func (a *API) aprovarLote(ctx context.Context, c Objeto, autor string) (Resposta, error) {
+	if err := soCampos(c, "itens"); err != nil {
+		return Resposta{}, err
+	}
+	if autor != "eu" {
+		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa pode aprovar candidaturas"}
+	}
+	lista, eLista := c["itens"].([]any)
+	if !eLista || len(lista) == 0 || len(lista) > dominio.MaxItensLote {
+		return Resposta{}, erroCampo(fmt.Sprintf("itens: lista de 1 a %d itens {id, impressao}", dominio.MaxItensLote))
+	}
+	itens := make([]dominio.ItemLote, 0, len(lista))
+	for i, x := range lista {
+		o, eObj := x.(map[string]any)
+		if !eObj {
+			return Resposta{}, erroCampo(fmt.Sprintf("itens[%d]: objeto {id, impressao}", i))
+		}
+		if err := soCampos(o, "id", "impressao"); err != nil {
+			return Resposta{}, err
+		}
+		id, _ := o["id"].(string)
+		impressao, _ := o["impressao"].(string)
+		if !strings.HasPrefix(id, "cand-") || !reImpressaoLote.MatchString(impressao) {
+			return Resposta{}, erroCampo(fmt.Sprintf("itens[%d]: id (cand-…) e impressao (sha256:v1: e 64 hex) obrigatórios", i))
+		}
+		itens = append(itens, dominio.ItemLote{ID: id, Impressao: impressao})
+	}
+	limites, err := a.arm.LimitesCandidatura(ctx)
+	if err != nil {
+		return Resposta{}, err
+	}
+	agora := a.relogio()
+	var aprovadas []string
+	var recusadas []dominio.Recusa
+	err = a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
+		novo, ap, rec, err := dominio.AprovarLote(e, itens, agora, limites, a.ctx(e, autor))
+		aprovadas, recusadas = ap, rec
+		return novo, err
+	})
+	if err != nil {
+		return Resposta{}, err
+	}
+	log.Printf("fila: lote aprovado (%s): %d aprovadas, %d recusada(s)", autor, len(aprovadas), len(recusadas)) // só números
+	rec := make([]Objeto, 0, len(recusadas))
+	for _, r := range recusadas {
+		rec = append(rec, Objeto{"id": r.ID, "motivo": r.Motivo})
+	}
+	return ok(Objeto{"aprovadas": aprovadas, "recusadas": rec})
 }
 
 func limiteDiario(e dominio.Estado, limites map[string]int, plataforma string, agora time.Time) Objeto {
