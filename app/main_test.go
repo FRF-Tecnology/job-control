@@ -36,7 +36,7 @@ func TestRotearMandaApiParaApiETelasParaTelas(t *testing.T) {
 	if s, c := pedir("/api/v1/saude"); s != 200 || !strings.Contains(c, `"ok":true`) {
 		t.Errorf("/api/v1/saude = %d %q", s, c)
 	}
-	if s, c := pedir("/"); s != 200 || !strings.Contains(c, "<title>Central de Candidaturas</title>") {
+	if s, c := pedir("/"); s != 200 || !strings.Contains(c, "<title>Applyer</title>") {
 		t.Errorf("/ = %d; não veio o index.html das telas", s)
 	}
 }
