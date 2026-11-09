@@ -47,7 +47,7 @@ func TestCLIViaCmdTextoDaVagaSoPeloStdin(t *testing.T) {
 	for _, qual := range []string{"gemini", "codex"} {
 		t.Run(qual, func(t *testing.T) {
 			pasta := comCLIFalsaCmd(t, qual)
-			cli{qual: qual}.Chamar(context.Background(), PedidoProvedor{Modelo: "modelo-exemplo", Prompt: promptComPayload()})
+			chamarSemPortao(qual, PedidoProvedor{Modelo: "modelo-exemplo", Prompt: promptComPayload()})
 			if existe(filepath.Join(pasta, "marcador-jc25")) {
 				t.Fatal("o payload da vaga rodou no cmd.exe")
 			}
@@ -103,8 +103,9 @@ func TestDetectarCLIsMarcaClaudeCmdComoNaoPronto(t *testing.T) {
 	}
 	t.Setenv("PATH", pasta+string(os.PathListSeparator)+filepath.Join(os.Getenv("SystemRoot"), "System32"))
 	for _, e := range DetectarCLIs(context.Background()) {
-		quer := e.Comando != "claude"
-		if !e.Instalada || e.Pronta != quer || (quer && e.Aviso != "") || (!quer && e.Aviso != msgCmdInseguro) {
+		// Codex e Gemini ficam fora do app (jc-a2y.26); o Claude .cmd fica fora por causa do cmd.exe (jc-a2y.25).
+		aviso := map[string]string{"claude": msgCmdInseguro, "codex": msgSemTrava, "gemini": msgSemTrava}[e.Comando]
+		if !e.Instalada || e.Pronta || e.Aviso != aviso {
 			t.Errorf("%s: instalada=%v pronta=%v aviso=%q", e.Comando, e.Instalada, e.Pronta, e.Aviso)
 		}
 	}

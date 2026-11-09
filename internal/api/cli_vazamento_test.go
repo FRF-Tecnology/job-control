@@ -85,7 +85,15 @@ func TestErroDaCLIPeloHTTPSemTextoDeFora(t *testing.T) {
 	for _, qual := range []string{"claude", "codex", "gemini"} {
 		t.Run(qual, func(t *testing.T) {
 			a := apiCom(t, nil)
-			if st, c := chamarHTTP(t, a, "PUT", Prefixo+"/ia/config", `{"provedor":"`+qual+`-cli"}`); st != 200 {
+			st, c := chamarHTTP(t, a, "PUT", Prefixo+"/ia/config", `{"provedor":"`+qual+`-cli"}`)
+			if qual != "claude" { // jc-a2y.26: Codex e Gemini fora do app, recusados ao escolher
+				msg, _ := ia.CLIIndisponivel(qual + "-cli")
+				if st != 400 || !strings.Contains(c, msg) {
+					t.Fatalf("config %s = %d %s", qual, st, c)
+				}
+				return
+			}
+			if st != 200 {
 				t.Fatalf("config = %d %s", st, c)
 			}
 			st, corpo, dec := erroDoTestar(t, a)
