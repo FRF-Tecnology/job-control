@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/curriculos"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -45,6 +46,9 @@ type Opcoes struct {
 	Esperar           func(ctx context.Context, d time.Duration) error
 	Sortear           func() float64 // de 0 a 1
 	Log               func(formato string, args ...any)
+	// Etapa (jc-a2y.6.9, "Ao vivo"): o passo do envio para o painel, só valores da lista fechada de internal/aovivo
+	// (nada da página). Padrão: não faz nada.
+	Etapa func(candidatura, etapa string)
 }
 
 // Executor envia, uma por vez, as candidaturas aprovadas.
@@ -87,6 +91,9 @@ func Novo(arm *armazem.Armazem, o Opcoes) *Executor {
 	}
 	if o.Log == nil {
 		o.Log = log.Printf
+	}
+	if o.Etapa == nil {
+		o.Etapa = func(string, string) {}
 	}
 	return &Executor{arm: arm, o: o}
 }
@@ -386,7 +393,7 @@ func bloqueada(motivo string) passo {
 }
 
 func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *tentativa) passo {
-	plataforma, aprovada := dominio.Texto(c["plataforma"]), dominio.Texto(c["url"])
+	id, plataforma, aprovada := t.id, dominio.Texto(c["plataforma"]), dominio.Texto(c["url"])
 	conteudo := dominio.ObjetoDe(c["conteudo"])
 	cv := dominio.ObjetoDe(conteudo["curriculo"])
 	nome := dominio.Texto(cv["arquivo"])
@@ -414,6 +421,7 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *te
 	defer pag.Fechar()
 
 	// M5: a página tem de ficar no site da plataforma e na mesma vaga.
+	x.o.Etapa(id, aovivo.Abrindo)
 	final, err := pag.Abrir(ctx, aprovada)
 	if err != nil {
 		return falhou("erro-tecnico", err)
@@ -455,6 +463,7 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *te
 		if err != nil {
 			return falhou("erro-tecnico", err)
 		}
+		x.o.Etapa(id, aovivo.Preenchendo)
 		plano, motivo := planejar(conteudo, campos)
 		if motivo != "" {
 			return bloqueada(motivo)
@@ -519,6 +528,7 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *te
 	}
 
 	// Logo antes do clique: ainda no site da plataforma e na mesma vaga.
+	x.o.Etapa(id, aovivo.Revisando)
 	if p, parou := x.conferirEndereco(ctx, pag, plataforma, aprovada); parou {
 		return p
 	}
@@ -529,6 +539,7 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *te
 	if err := t.marcar(ctx, dominio.MarcaClicouEnviar); err != nil {
 		return falhou("erro-tecnico", err)
 	}
+	x.o.Etapa(id, aovivo.Enviando)
 	if err := pag.Enviar(ctx); err != nil {
 		// Sem o botão final, nada foi clicado: bloqueada (a pessoa confere), não incerta (jc-a2y.6.5.1).
 		if errors.Is(err, ErrSemBotaoEnviar) {
@@ -685,6 +696,12 @@ func (x *Executor) conferirBloqueio(ctx context.Context, pag Pagina) (passo, boo
 	return passo{}, false
 }
 
+// etapaDoDesfecho: a etapa final do "Ao vivo" para cada desfecho gravado (jc-a2y.6.9).
+var etapaDoDesfecho = map[string]string{
+	dominio.CandEnviada: aovivo.Confirmada, dominio.CandBloqueada: aovivo.Bloqueada,
+	dominio.CandFalhou: aovivo.Falhou, dominio.CandIncerta: aovivo.Incerta,
+}
+
 // concluir grava o desfecho do envio (a candidatura está em enviando) e o efeito dele na plataforma, na mesma
 // transação (jc-a2y.6.11). Falha técnica ou sessão caída ANTES de interagir (sem marca) devolve a candidatura para
 // aprovada (dominio.DevolverAprovada, que confere a marca gravada, a versão e a impressão); se o domínio recusar,
@@ -758,9 +775,11 @@ func (x *Executor) concluir(ctx context.Context, plataforma string, t *tentativa
 			if p.err != nil {
 				x.o.Log("executor: %s falha antes de interagir (%s)", id, tipoDoErro(p.err))
 			}
+			x.o.Etapa(id, aovivo.SemEnvio) // devolvida para aprovada: o painel volta a "nada sendo enviado"
 			return Desfecho{ID: id, Estado: estado, Motivo: motivo}, nil
 		}
 	}
+	x.o.Etapa(id, etapaDoDesfecho[estado])
 	switch {
 	case p.err != nil:
 		x.o.Log("executor: %s %s %s (%s)", id, estado, motivo, tipoDoErro(p.err))

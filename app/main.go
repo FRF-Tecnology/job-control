@@ -55,6 +55,8 @@ func main() {
 		MostrarEnvio: controleEnvio.MostrarEnvio,
 		Entrar:       controleEnvio.Entrar,
 		Janela:       controleEnvio.Janela,
+		// "Ao vivo" (jc-a2y.6.9): nil no build padrão (a rota dá 404).
+		AoVivo: controleEnvio.AoVivo,
 		// Aviso da pasta de dados nesta abertura, para a tela (GET /dados/pasta, jc-etv.14), sem caminho.
 		AvisoPasta: abertura.Aviso,
 	})

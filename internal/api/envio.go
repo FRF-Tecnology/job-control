@@ -28,6 +28,7 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 		}
 		r, err := a.mudarPausa(ctx, true)
 		if err == nil {
+			a.limparAoVivo()                         // pausado: sem quadro (jc-a2y.6.9)
 			log.Printf("envio: pausado (%s)", autor) // só o fato e o autor
 		}
 		return r, true, err

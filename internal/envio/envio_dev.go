@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/executor"
 	"github.com/FRF-Tecnology/job-control/internal/navegador"
@@ -30,12 +31,13 @@ func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) Control
 
 func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
 	log.Printf("envio: executor LIGADO (build de desenvolvimento envio_dev)")
-	nav, err := navegador.Novo(navegador.Opcoes{PastaDados: pastaDados})
+	av := aovivo.Novo(time.Now) // "Ao vivo" (jc-a2y.6.9): começa desligado a cada abertura do app
+	nav, err := navegador.Novo(navegador.Opcoes{PastaDados: pastaDados, AoVivo: av})
 	if err != nil {
 		log.Printf("envio: navegador indisponível (%T); executor desligado", err)
 		return desligado()
 	}
-	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos")})
+	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos"), Etapa: av.Etapa})
 	ctx, cancelar := context.WithCancel(ctx)
 	// A pessoa fechou a janela de login: plataformas em precisa-entrar voltam, se o envio geral estiver liberado
 	// (jc-a2y.6.11).
@@ -51,6 +53,8 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 			cancelar()
 			<-feito
 			nav.Fechar()
+			av.Ligar(false) // fechar o app (ou apagar os dados) apaga o quadro
+			av.Limpar()
 		},
 		Suspender: func() func() {
 			ciclo.Lock()
@@ -74,5 +78,6 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 			}
 		},
 		Janela: nav.Estado,
+		AoVivo: av,
 	}
 }

@@ -63,6 +63,20 @@ describe('Apagar meus dados', () => {
     expect(within(status).getAllByRole('listitem').map(li => li.textContent)).toEqual(['As chaves de IA guardadas no cofre do sistema']);
   });
 
+  it('pasta antiga que não deu para apagar (faltou pasta-antiga, #113) aparece com a frase fixa', async () => {
+    montar({ retorno: { apagado: ['banco', 'curriculos', 'backups', 'navegador', 'chaves'], faltou: ['pasta-antiga'], completo: false, fechar: true } });
+    digitar('APAGAR MEUS DADOS');
+    await clicar(apagar());
+    const status = screen.getByRole('status');
+    expect(within(status).getByText('Parte dos dados foi apagada. O app vai fechar.')).toBeTruthy();
+    expect(within(status).getAllByRole('listitem').map(li => li.textContent)).toEqual(['A pasta antiga (Central de Candidaturas) com os dados de antes']);
+  });
+
+  it('a pasta antiga não entra na lista de "o que apaga" (nem sempre existe)', () => {
+    montar();
+    expect(screen.queryByText('A pasta antiga (Central de Candidaturas) com os dados de antes')).toBeNull();
+  });
+
   it('mostra antes tudo o que será apagado e o que não sai', () => {
     montar();
     expect(screen.getByText(/Não apaga: o login das ferramentas de IA .*, os PDFs originais que você copiou, os dados da Central antiga \(pasta dados\/\) e o cache da janela do app\./)).toBeTruthy();
@@ -114,6 +128,12 @@ describe('Sair das plataformas', () => {
     await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));
     expect(screen.getByRole('alert').textContent).toBe('Não deu para sair das plataformas: o navegador do app está em uso. Feche o app, abra de novo e repita.');
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('o login da pasta antiga ficou (faltou pasta-antiga, #113): não diz pronto, diz o que fazer', async () => {
+    montar({ sair: { apagado: ['navegador'], faltou: ['pasta-antiga'], completo: false, fechar: false } });
+    await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));
+    expect(screen.getByRole('alert').textContent).toBe('O login guardado na pasta antiga (Central de Candidaturas) ficou: ela está em uso. Feche o app antigo, a CLI e o assistente (MCP) e repita.');
   });
 
   it('cancelar a confirmação não faz nada', async () => {
