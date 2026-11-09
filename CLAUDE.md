@@ -1,4 +1,6 @@
-# Central de Candidaturas — instruções para o Claude
+# Applyer — instruções para o Claude
+
+> O produto se chama **Applyer**. A versão em uso é a **Central** (versão em Node, sai na P8), em http://localhost:4321: neste arquivo, "Central" é sempre ela. O app novo está na seção "Reescrita".
 
 Este projeto organiza a busca de emprego de **uma pessoa por computador**. O perfil dela fica em `dados/perfil.json`.
 Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação, filtros, respostas padrão e modo de trabalho.
