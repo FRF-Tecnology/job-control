@@ -60,6 +60,12 @@ jobs:
           for t in TestEnvioNaoPegaFocoNemMouse TestLoginAbreJanelaESegura; do
             grep -q -- "--- PASS: $t " navegador-ci.log || { echo "::error::$t não passou no CI (pulado ou ausente)"; exit 1; }
           done
+      # Cofre do sistema de verdade (Gerenciador de Credenciais), com serviço de teste (jc-a2y.63).
+      - name: Cofre do Windows (serviço de teste)
+        shell: bash
+        run: |
+          go test -count=1 -v -run '^TestCofreDoSistema$' ./internal/segredos/ | tee cofre-ci.log
+          grep -q -- "--- PASS: TestCofreDoSistema " cofre-ci.log || { echo "::error::TestCofreDoSistema não passou no Windows"; exit 1; }
       - name: Compilar o app
         run: go build -o central.exe ./app
       - name: Jornada de usuário novo (Playwright, PC e celular)
@@ -148,6 +154,23 @@ jobs:
           archive: false
           retention-days: 7
           if-no-files-found: error
+
+  # Cofre do macOS (Keychain), com serviço de teste: só o pacote internal/segredos (jc-a2y.63).
+  segredos-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Cofre do macOS (serviço de teste)
+        shell: bash # -eo pipefail: falha de qualquer teste do pacote não some no tee (revisão do Kauai)
+        run: |
+          go test -count=1 -v ./internal/segredos/ | tee cofre-ci.log
+          grep -q -- "--- PASS: TestCofreDoSistema " cofre-ci.log || { echo "::error::TestCofreDoSistema não passou no macOS"; exit 1; }
 
   # Repositório público: nenhum segredo pode entrar.
   segredos:
