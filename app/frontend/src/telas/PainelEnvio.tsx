@@ -22,6 +22,7 @@ export type EstadoEnvio = {
 };
 
 const NOME_PLATAFORMA: Record<EstadoPlataforma['plataforma'], string> = { linkedin: 'LinkedIn', gupy: 'Gupy', inhire: 'InHire' };
+const PLATAFORMAS_ENVIO = new Set<string>(['linkedin', 'gupy', 'inhire']); // lista fechada do contrato
 const ROTULO_ESTADO: Record<EstadoPlataforma['estado'], string> = { ativa: 'Ativa', pausada: 'Pausada', 'precisa-entrar': 'Precisa entrar', 'parada-hoje': 'Parada até amanhã' };
 // Frases fixas por estado e motivo (lista fechada do contrato); nada vem da página.
 function explicarPlataforma(p: EstadoPlataforma, volta: string) {
@@ -159,6 +160,8 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
   }
   // Retomar uma plataforma: só a pessoa, por esta tela (x-so-tela). Parada até amanhã nem mostra o botão.
   async function retomarPlataforma(p: EstadoPlataforma) {
+    // Só as plataformas da lista fechada viram caminho (nota do CyberSec no #114).
+    if (!PLATAFORMAS_ENVIO.has(p.plataforma)) return;
     const nomeP = NOME_PLATAFORMA[p.plataforma];
     const ok = await app.perguntar({
       titulo: `Retomar ${nomeP}?`,
@@ -234,7 +237,7 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
               const nomeP = NOME_PLATAFORMA[p.plataforma] ?? p.plataforma;
               const paginas = typeof p.paginasHoje === 'number' && typeof p.tetoPaginas === 'number'
                 ? `${p.paginasHoje} de ${p.tetoPaginas} páginas hoje${p.voltasHoje ? ` (${contar(p.voltasHoje, 'volta', 'voltas')})` : ''}` : null;
-              const podeRetomar = p.estado === 'pausada' || p.estado === 'precisa-entrar';
+              const podeRetomar = (p.estado === 'pausada' || p.estado === 'precisa-entrar') && PLATAFORMAS_ENVIO.has(p.plataforma);
               return (
                 <li key={p.plataforma} className={`plat-envio e-${p.estado}`}>
                   <div className="plat-topo">

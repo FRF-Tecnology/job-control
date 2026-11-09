@@ -96,6 +96,13 @@ describe('Painel de envio: plataformas (.6.11)', () => {
     expect(avisos).toContainEqual({ texto: frase, erro: true });
   });
 
+  it('plataforma fora da lista (linkedin, gupy, inhire) não ganha "Retomar" nem vira caminho (nota do CyberSec no #114)', async () => {
+    const { gravacoes } = montar(ESTADO([plat('../candidaturas/x/aprovar' as any, 'pausada'), plat('gupy', 'ativa')]));
+    await cartao('Gupy');
+    expect(screen.queryByRole('button', { name: /^Retomar / })).toBeNull();
+    expect(gravacoes).toEqual([]);
+  });
+
   it('servidor sem o campo plataformas: o painel não mostra o bloco', async () => {
     montar(ESTADO(undefined));
     await screen.findByRole('heading', { name: 'Envio ligado' });
