@@ -18,7 +18,10 @@ func TestDescendentesIgnoraPIDReaproveitado(t *testing.T) {
 		20: 99, // outro processo qualquer
 	}
 	criado := map[uint32]int64{10: 1000, 11: 500, 13: 600, 12: 1010, 14: 1020, 20: 10}
-	got := descendentes(10, pais, func(pid uint32) (int64, bool) { c, ok := criado[pid]; return c, ok })
+	got, fora := descendentes(10, pais, func(pid uint32) (int64, bool) { c, ok := criado[pid]; return c, ok })
+	if fora != 1 { // o órfão 11 (o filho dele nem chega a ser olhado)
+		t.Errorf("de fora = %d; queria 1", fora)
+	}
 	var pids []int
 	for p := range got {
 		pids = append(pids, int(p))
@@ -28,11 +31,11 @@ func TestDescendentesIgnoraPIDReaproveitado(t *testing.T) {
 		t.Fatalf("descendentes = %v; queria [10 12 14]", pids)
 	}
 	// Sem o instante do filho (processo que já saiu), fica de fora; sem o do pai, conta (não dá para comparar).
-	got = descendentes(10, map[uint32]uint32{15: 10}, func(pid uint32) (int64, bool) { return 1000, pid == 10 })
+	got, _ = descendentes(10, map[uint32]uint32{15: 10}, func(pid uint32) (int64, bool) { return 1000, pid == 10 })
 	if got[15] {
 		t.Error("contou filho sem instante de criação")
 	}
-	got = descendentes(10, map[uint32]uint32{15: 10}, func(pid uint32) (int64, bool) { return 0, false })
+	got, _ = descendentes(10, map[uint32]uint32{15: 10}, func(pid uint32) (int64, bool) { return 0, false })
 	if !got[15] {
 		t.Error("sem o instante do pai, o filho deveria contar")
 	}

@@ -126,6 +126,14 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	nav.mu.Lock()
 	navCtx := nav.navCtx
 	nav.mu.Unlock()
+	// E, no fim, encerra o que ainda estiver vivo da árvore do Chrome com janela (jc-a2y.6.14): nada sobra para os
+	// passos seguintes do CI. Só os mesmos processos (PID e instante de criação).
+	encerrarSobras := fotoDoNavegador(nav)
+	t.Cleanup(func() {
+		if n := encerrarSobras(); n > 0 {
+			t.Logf("limpeza: %d processo(s) do Chrome ainda vivos, encerrados", n)
+		}
+	})
 	if _, err := chromedp.CallBrowser(navCtx, browser.Close, cdp.Empty{}); err != nil && navCtx.Err() == nil {
 		t.Fatal(err)
 	}
