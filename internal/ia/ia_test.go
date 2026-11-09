@@ -103,6 +103,21 @@ func init() {
 	// Modo CLI falsa: confere os argumentos e responde como o Claude Code.
 	args := strings.Join(os.Args[1:], " ")
 	entrada, _ := io.ReadAll(os.Stdin)
+	// Falhas com texto pessoal fictício (jc-a2y.21), para qualquer CLI (claude, codex, gemini).
+	switch os.Getenv("CENTRAL_CLI_FALSA") {
+	case "stderr-pessoal":
+		fmt.Fprint(os.Stderr, textoPessoalCLI+"\nsegunda linha "+textoPessoalCLI)
+		os.Exit(3)
+	case "stderr-login":
+		fmt.Fprint(os.Stderr, "Error: not logged in as "+emailFicticioCLI+" (config "+caminhoFicticioCLI+")")
+		os.Exit(1)
+	case "json-erro-pessoal":
+		b, _ := json.Marshal(map[string]any{"type": "result", "subtype": "error_during_execution", "is_error": true, "result": textoPessoalCLI})
+		fmt.Print(string(b))
+		os.Exit(0)
+	case "mudo":
+		os.Exit(0)
+	}
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		fmt.Print(`{"is_error":true,"result":"usou chave de API"}`)
 		os.Exit(0)
@@ -127,14 +142,22 @@ func init() {
 	os.Exit(0)
 }
 
-func comCLIFalsa(t *testing.T, modo string) {
+// Texto pessoal fictício que uma CLI poderia escrever: email da conta e caminho com o nome do usuário.
+const (
+	emailFicticioCLI   = "fulano.ficticio@exemplo.com"
+	caminhoFicticioCLI = `C:\Users\Usuario Exemplo\.config\cli\settings.json`
+	textoPessoalCLI    = "Error: quota for " + emailFicticioCLI + " exceeded; see " + caminhoFicticioCLI + " sk_ant_SENTINELAcli"
+)
+
+func comCLIFalsa(t *testing.T, modo string) { comCLIFalsaNome(t, "claude", modo) }
+
+func comCLIFalsaNome(t *testing.T, nome, modo string) {
 	t.Helper()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	pasta := t.TempDir()
-	nome := "claude"
 	if runtime.GOOS == "windows" {
 		nome += ".exe"
 	}
@@ -167,7 +190,7 @@ func TestCLIClaudeSemLogin(t *testing.T) {
 	comCLIFalsa(t, "erro")
 	_, err := cli{qual: "claude"}.Chamar(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
 	var e *ErroIA
-	if !errors.As(err, &e) || e.Tipo != "provedor" || !strings.Contains(e.Mensagem, "Not logged in") || e.Reintentavel {
+	if !errors.As(err, &e) || e.Tipo != "provedor" || e.Mensagem != "claude-cli: "+msgSemLogin || e.Reintentavel {
 		t.Fatalf("erro = %+v", err)
 	}
 }
@@ -175,7 +198,7 @@ func TestCLIClaudeSemLogin(t *testing.T) {
 func TestCLIClaudeQuebrada(t *testing.T) {
 	comCLIFalsa(t, "lixo")
 	_, err := cli{qual: "claude"}.Chamar(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
-	if err == nil || !strings.Contains(err.Error(), "claude-cli: falhou feio") {
+	if err == nil || err.Error() != "claude-cli: a CLI saiu com código 3 (rode a CLI no terminal para ver o detalhe)" {
 		t.Fatalf("erro = %v", err)
 	}
 }

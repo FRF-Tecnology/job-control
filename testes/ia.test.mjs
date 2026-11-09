@@ -336,3 +336,21 @@ for (const prov of [provAnthropic, provOpenai, provGoogle]) {
     } finally { destino.close(); origem.close(); }
   });
 }
+
+// ---------- recusa do Google com lista fechada de motivos (jc-a2y.21) ----------
+import { motivoBloqueio } from '../nucleo/ia/provedores/google.mjs';
+
+test('google: motivo de bloqueio passa por lista fechada; qualquer outro valor vira "motivo não informado"', async () => {
+  const conhecidos = { SAFETY: 'segurança', BLOCKLIST: 'termos proibidos', PROHIBITED_CONTENT: 'conteúdo proibido', IMAGE_SAFETY: 'segurança de imagem' };
+  for (const [m, texto] of Object.entries(conhecidos)) assert.equal(motivoBloqueio(m), texto);
+  const estranhos = ['OTHER', 'BLOCK_REASON_UNSPECIFIED', 'safety', 'SAFETY_', 'SK_ANT_SENTINELA', 'sk_ant_api', 'fulano.ficticio@exemplo.com',
+    'C:\Users\Usuario Exemplo', 'toString', 'constructor', '__proto__', 'hasOwnProperty', 3, true, null, {}];
+  for (const m of estranhos) assert.equal(motivoBloqueio(m), 'motivo não informado', String(m));
+  for (const eco of estranhos.filter(e => typeof e === 'string')) {
+    const fetch = async () => new Response(JSON.stringify({ promptFeedback: { blockReason: eco } }), { status: 200 });
+    await assert.rejects(provGoogle.chamar({ fetch, chave: 'chave-ficticia', modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+      assert.equal(e.message, 'google: bloqueado (motivo não informado)');
+      return e.tipo === 'provedor' && e.reintentavel === false;
+    });
+  }
+});

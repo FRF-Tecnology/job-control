@@ -15,7 +15,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"unicode/utf16"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
@@ -52,14 +51,6 @@ const tempoLimite = 120 * time.Second
 // semRedirecionamento: o cliente nunca segue redirecionamento. As APIs de IA não precisam, e seguir mandaria
 // os cabeçalhos com a chave (x-api-key, x-goog-api-key) para outro endereço. O 3xx volta como erro do provedor.
 func semRedirecionamento(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-
-func cortarUTF16(s string, n int) string {
-	u := utf16.Encode([]rune(s))
-	if len(u) <= n {
-		return s
-	}
-	return string(utf16.Decode(u[:n]))
-}
 
 // mensagemHTTP é o texto público e fixo de cada status de erro do provedor.
 func mensagemHTTP(status int) string {
@@ -151,6 +142,24 @@ func inteiro(v any) *int {
 		return &n
 	}
 	return nil
+}
+
+// motivosBloqueioGoogle: lista fechada dos motivos de bloqueio do Gemini para textos nossos (jc-a2y.21).
+// Com URL própria o servidor controla o motivo; valor fora da lista não aparece.
+var motivosBloqueioGoogle = map[string]string{
+	"SAFETY":             "segurança",
+	"BLOCKLIST":          "termos proibidos",
+	"PROHIBITED_CONTENT": "conteúdo proibido",
+	"IMAGE_SAFETY":       "segurança de imagem",
+}
+
+func motivoBloqueioGoogle(motivo any) string {
+	if m, ok := motivo.(string); ok {
+		if texto, conhecido := motivosBloqueioGoogle[m]; conhecido {
+			return texto
+		}
+	}
+	return "motivo não informado"
 }
 
 func recusa(provedor, msg string) error {
@@ -257,7 +266,7 @@ func (g google) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor,
 		return RespostaProvedor{}, err
 	}
 	if motivo := dominio.ObjetoDe(r["promptFeedback"])["blockReason"]; dominio.Verdadeiro(motivo) {
-		return RespostaProvedor{}, recusa("google", "bloqueado ("+dominio.JSString(motivo)+")")
+		return RespostaProvedor{}, recusa("google", "bloqueado ("+motivoBloqueioGoogle(motivo)+")")
 	}
 	var b strings.Builder
 	if l := dominio.ListaDe(r["candidates"]); len(l) > 0 {

@@ -109,7 +109,7 @@ const respostasProvedor = {
     { stop_reason: 'refusal', content: [] }],
   openai: [{ choices: [{ message: { content: '{"a":1}' } }], usage: { prompt_tokens: 90, completion_tokens: 12 } }, { choices: [{ message: { refusal: 'não' } }] }, { choices: [] }],
   google: [{ candidates: [{ content: { parts: [{ text: 'pensando', thought: true }, { text: '{"a":1}' }] } }], usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 7, thoughtsTokenCount: 20 } },
-    { promptFeedback: { blockReason: 'SAFETY' } }],
+    { promptFeedback: { blockReason: 'SAFETY' } }, { promptFeedback: { blockReason: 'sk_ant_SENTINELA fulano@exemplo.com' } }, { promptFeedback: { blockReason: 'toString' } }],
 };
 for (const [nome, mod] of Object.entries({ anthropic, openai, google })) {
   for (const [i, resposta] of respostasProvedor[nome].entries()) {

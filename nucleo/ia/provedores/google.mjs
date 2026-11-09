@@ -5,6 +5,11 @@ import { postarJSON, exigirChave } from './http.mjs';
 export const nome = 'google';
 export const variavelChave = 'GEMINI_API_KEY';
 
+// Lista fechada dos motivos de bloqueio do Gemini para textos nossos (jc-a2y.21).
+// Com URL própria o servidor controla o motivo; valor fora da lista não aparece.
+const MOTIVOS_BLOQUEIO = { SAFETY: 'segurança', BLOCKLIST: 'termos proibidos', PROHIBITED_CONTENT: 'conteúdo proibido', IMAGE_SAFETY: 'segurança de imagem' };
+export const motivoBloqueio = (m) => (typeof m === 'string' && Object.hasOwn(MOTIVOS_BLOQUEIO, m) ? MOTIVOS_BLOQUEIO[m] : 'motivo não informado');
+
 export async function chamar({ fetch, chave, modelo, sistema, mensagem, esquema, opcoes = {} }) {
   exigirChave(chave, nome, variavelChave);
   const r = await postarJSON({
@@ -17,7 +22,7 @@ export async function chamar({ fetch, chave, modelo, sistema, mensagem, esquema,
       generationConfig: { responseMimeType: 'application/json', responseJsonSchema: esquema },
     },
   });
-  if (r.promptFeedback?.blockReason) throw new ErroIA('provedor', `${nome}: bloqueado (${r.promptFeedback.blockReason})`, { provedor: nome, reintentavel: false });
+  if (r.promptFeedback?.blockReason) throw new ErroIA('provedor', `${nome}: bloqueado (${motivoBloqueio(r.promptFeedback.blockReason)})`, { provedor: nome, reintentavel: false });
   const partes = r.candidates?.[0]?.content?.parts ?? [];
   const u = r.usageMetadata ?? {};
   return {
