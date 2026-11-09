@@ -130,6 +130,12 @@ describe('Sair das plataformas', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('o login da pasta antiga ficou (faltou pasta-antiga, #113): não diz pronto, diz o que fazer', async () => {
+    montar({ sair: { apagado: ['navegador'], faltou: ['pasta-antiga'], completo: false, fechar: false } });
+    await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));
+    expect(screen.getByRole('alert').textContent).toBe('O login guardado na pasta antiga (Central de Candidaturas) ficou: ela está em uso. Feche o app antigo, a CLI e o assistente (MCP) e repita.');
+  });
+
   it('cancelar a confirmação não faz nada', async () => {
     const { gravacoes } = montar({ resposta: null });
     await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));

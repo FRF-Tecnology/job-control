@@ -58,6 +58,8 @@ export function SeusDados() {
     try {
       const r: Resultado = (await app.api(ROTAS.sair, 'POST', {})) ?? {};
       if (r.faltou?.includes('navegador')) setErro('Não deu para sair das plataformas: o navegador do app está em uso. Feche o app, abra de novo e repita.');
+      // A pasta antiga (Central de Candidaturas) também guarda um login; se ele ficou, não é "pronto" (jc-etv.7, #113).
+      else if (r.faltou?.includes('pasta-antiga')) setErro('O login guardado na pasta antiga (Central de Candidaturas) ficou: ela está em uso. Feche o app antigo, a CLI e o assistente (MCP) e repita.');
       else setFeito({ tipo: 'saiu' });
     }
     catch (e) { setErro(explicar(e, 'sair')); }
