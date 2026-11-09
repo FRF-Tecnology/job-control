@@ -1,7 +1,7 @@
 // Lista do dia (jc-a2y.6.13, decisão do Vini: aprovar em lote, 1 clique por dia). Mostra as candidaturas preparadas
 // cuja impressão confere NESTA tela, até o que resta do limite de hoje em cada plataforma, com o resumo de cada pacote
 // e a opção de tirar itens. "Aprovar a lista do dia" manda cada item com a SUA impressão, a calculada aqui (M2: o
-// servidor confere uma por uma). Contrato do PR #102 (ainda proposta):
+// servidor confere uma por uma). Contrato 0.7.0 (PR #102, api/openapi.yaml):
 // POST /api/v1/candidaturas/aprovar-lote {itens: [{id, impressao}]} → {aprovadas: [id], recusadas: [{id, motivo}]}.
 import { useMemo, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
