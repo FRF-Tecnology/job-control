@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md). A IA só PROPÕE uma ação do
@@ -112,6 +114,90 @@ func regraDaEtapa(e Estado, v Objeto, etapa string) string {
 		}
 	}
 	return ""
+}
+
+// Listas fechadas das ações que gravam (as mesmas do contrato e da interpretação em internal/ia).
+var (
+	etapasPedido   = []string{"enviada", "em-processo", "oferta", "encerrada", "pulada"} // nunca aplicar, descoberta nem bloqueada
+	reVagaIDPedido = regexp.MustCompile(`^[A-Za-z0-9._-]{1,80}$`)
+	// https, host só com ASCII, porta opcional, caminho com ASCII visível sem barra invertida; sem usuário/senha.
+	reURLPedido = regexp.MustCompile(`^https://[A-Za-z0-9.-]+(:\d{1,5})?(/[!-\[\]-~]*)?$`)
+)
+
+// chamadaDaAcao confere as regras de adicionar-vaga e registrar-etapa e devolve a única chamada que sai dos
+// parâmetros. Fora das regras (campo a mais, etapa, motivo ou sub fora da lista, URL insegura, tamanho): false.
+func chamadaDaAcao(acao string, p Objeto) (Objeto, bool) {
+	soChaves := func(permitidas ...string) bool {
+		for k := range p {
+			if !contem(permitidas, k) {
+				return false
+			}
+		}
+		return true
+	}
+	textoAte := func(v any, max int) (string, bool) {
+		s, ok := v.(string)
+		return s, ok && s != "" && utf8.RuneCountInString(s) <= max
+	}
+	switch acao {
+	case "adicionar-vaga":
+		link, ok := textoAte(p["url"], 500)
+		if !soChaves("url", "empresa", "titulo") || !ok || !reURLPedido.MatchString(link) || strings.Contains(link[len("https://"):], "//") {
+			return nil, false
+		}
+		corpo := Objeto{"link": link}
+		for _, k := range []string{"empresa", "titulo"} {
+			if v, tem := p[k]; tem && v != nil {
+				s, ok := v.(string) // opcional: vazio é inofensivo, como na interpretação
+				if !ok || utf8.RuneCountInString(s) > 120 {
+					return nil, false
+				}
+				corpo[k] = s
+			}
+		}
+		return Objeto{"metodo": "POST", "caminho": "/vagas", "corpo": corpo}, true
+	case "registrar-etapa":
+		vagaID, okID := p["vagaId"].(string)
+		etapa, okEtapa := p["etapa"].(string)
+		if !soChaves("vagaId", "etapa", "motivo", "sub") || !okID || !reVagaIDPedido.MatchString(vagaID) || !okEtapa || !contem(etapasPedido, etapa) {
+			return nil, false
+		}
+		corpo := Objeto{"etapa": etapa}
+		var motivos []string
+		switch etapa {
+		case "pulada":
+			motivos = MotivosPulo
+		case "encerrada":
+			motivos = MotivosEncerramento
+		}
+		motivo, temMotivo := p["motivo"]
+		switch {
+		case motivos != nil && !contem(motivos, motivo):
+			return nil, false
+		case motivos == nil && temMotivo && motivo != nil:
+			return nil, false
+		case motivos != nil:
+			corpo["motivo"] = motivo
+		}
+		if sub, tem := p["sub"]; tem && sub != nil {
+			if etapa != "em-processo" || !contem(SubEtapas, sub) {
+				return nil, false
+			}
+			corpo["subEtapa"] = sub
+		}
+		return Objeto{"metodo": "POST", "caminho": "/vagas/" + vagaID + "/mover", "corpo": corpo}, true
+	}
+	return nil, false
+}
+
+// mesmaChamada: método, caminho e corpo canônico iguais.
+func mesmaChamada(a, b Objeto) bool {
+	if a == nil || b == nil || texto(a["metodo"]) != texto(b["metodo"]) || texto(a["caminho"]) != texto(b["caminho"]) {
+		return false
+	}
+	ca, err1 := JSONCanonico(a["corpo"])
+	cb, err2 := JSONCanonico(b["corpo"])
+	return err1 == nil && err2 == nil && string(ca) == string(cb)
 }
 
 // InterpretarPedido guarda no pedido aberto a proposta montada a partir da saída da IA (já passada pela guarda):
@@ -258,10 +344,14 @@ func ConfirmarProposta(e Estado, id, impressao, metodo, caminho string, corpo an
 	if err != nil || impressao != texto(prop["impressao"]) || impressao != recalculada {
 		return e, nil, &ErroConflito{Msg: "a impressão não é a da proposta"}
 	}
+	// As regras da ação de novo, com as listas fechadas da interpretação: a impressão recalculada não pega uma proposta
+	// guardada que foi alterada (bug, migração, banco mexido), porque é calculada dos próprios parâmetros alterados.
+	esperada, valida := chamadaDaAcao(acao, params)
+	if !valida {
+		return e, nil, &ErroConflito{Msg: "a proposta não passa nas regras da ação"}
+	}
 	chamada := ObjetoDe(prop["chamada"])
-	guardado, err1 := JSONCanonico(chamada["corpo"])
-	recebido, err2 := JSONCanonico(corpo)
-	if chamada == nil || err1 != nil || err2 != nil || metodo != texto(chamada["metodo"]) || caminho != texto(chamada["caminho"]) || string(guardado) != string(recebido) {
+	if !mesmaChamada(chamada, esperada) || !mesmaChamada(Objeto{"metodo": metodo, "caminho": caminho, "corpo": corpo}, esperada) {
 		return e, nil, &ErroConflito{Msg: "a chamada não é a da proposta"}
 	}
 

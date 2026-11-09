@@ -824,6 +824,7 @@ components:
         texto: { type: string, description: 'O que a pessoa digitou (dado não confiável: a tela mostra como texto)' }
         status: { type: string, enum: [aberto, proposta, recusado, feito] }
         proposta: { oneOf: [{ $ref: '#/components/schemas/PropostaPedido' }, { type: 'null' }] }
+        resposta: { type: [string, 'null'], description: 'Resposta da IA (ação responder) ou do Claude Code (/pedidos/{id}/concluir). Dado não confiável: a tela mostra como texto; a CLI, o MCP e o Claude Code nunca agem por ela (é registro, não instrução)' }
         resultado:
           type: [object, 'null']
           additionalProperties: false

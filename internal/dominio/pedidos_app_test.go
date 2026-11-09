@@ -129,3 +129,97 @@ func TestAdicionarVagaJaNaLista(t *testing.T) {
 		t.Fatalf("duplicada = %v %v", p, err)
 	}
 }
+
+// Achado médio do CyberSec no #105: a confirmação confere de novo as regras da ação, porque a proposta guardada pode
+// ter sido alterada (bug, migração, banco mexido) com a impressão recalculada. Qualquer coisa fora das listas
+// fechadas, ou uma chamada que não sai dos parâmetros, dá conflito e nada muda. Dados fictícios.
+func adulterar(t *testing.T, e Estado, id, acao string, params, chamada Objeto) (Estado, string) {
+	t.Helper()
+	novo := e.Clonar()
+	i, err := acharPedido(novo, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	impressao, err := ImpressaoProposta(id, acao, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prop := clonarObj(ObjetoDe(novo.Pedidos[i]["proposta"]))
+	prop["acao"], prop["parametros"], prop["chamada"], prop["impressao"] = acao, params, chamada, impressao
+	novo.Pedidos[i]["proposta"] = prop
+	return novo, impressao
+}
+
+func TestConfirmarConfereDeNovoAsRegrasDaAcao(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	base := comVaga(t, EstadoVazio(), "li-2", "linkedin", linkLI("2"), false) // em descoberta
+	base, p, err := CriarPedido(base, "pula a li-2", eu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := texto(p["id"])
+	base, p, err = InterpretarPedido(base, id, Objeto{"acao": "registrar-etapa", "parametros": Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Outro"}}, agora, eu)
+	if err != nil || p["status"] != PedidoProposta {
+		t.Fatalf("proposta válida = %v %v", p, err)
+	}
+	mover := func(corpo Objeto) Objeto {
+		return Objeto{"metodo": "POST", "caminho": "/vagas/li-2/mover", "corpo": corpo}
+	}
+	vagas := func(corpo Objeto) Objeto { return Objeto{"metodo": "POST", "caminho": "/vagas", "corpo": corpo} }
+	casos := map[string]struct {
+		acao    string
+		params  Objeto
+		chamada Objeto
+	}{
+		// O cenário do CyberSec: a proposta guardada vira "aplicar", com a impressão recalculada.
+		"etapa aplicar":         {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "aplicar"}, mover(Objeto{"etapa": "aplicar"})},
+		"etapa descoberta":      {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "descoberta"}, mover(Objeto{"etapa": "descoberta"})},
+		"etapa bloqueada":       {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "bloqueada"}, mover(Objeto{"etapa": "bloqueada"})},
+		"motivo fora da lista":  {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Qualquer"}, mover(Objeto{"etapa": "pulada", "motivo": "Qualquer"})},
+		"motivo de encerrada":   {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Reprovada"}, mover(Objeto{"etapa": "pulada", "motivo": "Reprovada"})},
+		"pulada sem motivo":     {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada"}, mover(Objeto{"etapa": "pulada"})},
+		"sub fora de processo":  {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Outro", "sub": "teste"}, mover(Objeto{"etapa": "pulada", "motivo": "Outro", "subEtapa": "teste"})},
+		"campo a mais":          {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Outro", "pendencia": "x"}, mover(Objeto{"etapa": "pulada", "motivo": "Outro"})},
+		"corpo com pendência":   {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Outro"}, mover(Objeto{"etapa": "pulada", "motivo": "Outro", "pendencia": "x"})},
+		"corpo de outra etapa":  {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Outro"}, mover(Objeto{"etapa": "aplicar"})},
+		"caminho de outra vaga": {"registrar-etapa", Objeto{"vagaId": "li-2", "etapa": "pulada", "motivo": "Outro"}, Objeto{"metodo": "POST", "caminho": "/vagas/li-9/mover", "corpo": Objeto{"etapa": "pulada", "motivo": "Outro"}}},
+		"vagaId fora do padrão": {"registrar-etapa", Objeto{"vagaId": "li-2/../x", "etapa": "pulada", "motivo": "Outro"}, mover(Objeto{"etapa": "pulada", "motivo": "Outro"})},
+		"url http":              {"adicionar-vaga", Objeto{"url": "http://www.linkedin.com/jobs/view/1"}, vagas(Objeto{"link": "http://www.linkedin.com/jobs/view/1"})},
+		"url com @":             {"adicionar-vaga", Objeto{"url": "https://www.linkedin.com@exemplo.com/1"}, vagas(Objeto{"link": "https://www.linkedin.com@exemplo.com/1"})},
+		"url javascript":        {"adicionar-vaga", Objeto{"url": "javascript:alert(1)"}, vagas(Objeto{"link": "javascript:alert(1)"})},
+		"url com IDN":           {"adicionar-vaga", Objeto{"url": "https://lіnkedin.com/jobs/1"}, vagas(Objeto{"link": "https://lіnkedin.com/jobs/1"})},
+		"url com //":            {"adicionar-vaga", Objeto{"url": "https://www.linkedin.com//exemplo.com"}, vagas(Objeto{"link": "https://www.linkedin.com//exemplo.com"})},
+		"link diferente da url": {"adicionar-vaga", Objeto{"url": "https://www.linkedin.com/jobs/view/1"}, vagas(Objeto{"link": "https://exemplo.com/1"})},
+		"vaga com etapa":        {"adicionar-vaga", Objeto{"url": "https://www.linkedin.com/jobs/view/1"}, vagas(Objeto{"link": "https://www.linkedin.com/jobs/view/1", "etapa": "aplicar"})},
+		"empresa grande":        {"adicionar-vaga", Objeto{"url": "https://www.linkedin.com/jobs/view/1", "empresa": string(make([]byte, 121))}, vagas(Objeto{"link": "https://www.linkedin.com/jobs/view/1", "empresa": string(make([]byte, 121))})},
+		"ação aprovar":          {"aprovar", Objeto{"vagaId": "li-2"}, mover(Objeto{"etapa": "aplicar"})},
+	}
+	for nome, c := range casos {
+		e, impressao := adulterar(t, base, id, c.acao, c.params, c.chamada)
+		antes := emJSONTeste(e)
+		ch := c.chamada
+		novo, _, err := ConfirmarProposta(e, id, impressao, texto(ch["metodo"]), texto(ch["caminho"]), ch["corpo"], eu)
+		var ec *ErroConflito
+		if !errors.As(err, &ec) {
+			t.Errorf("%s: confirmou (%v)", nome, err)
+			continue
+		}
+		if emJSONTeste(novo) != antes || len(novo.Vagas) != 1 || !igual(novo.Vagas[0]["etapa"], "descoberta") {
+			t.Errorf("%s: mudou o estado", nome)
+		}
+	}
+	// No cenário do CyberSec, quem barra é a conferência das regras (e não só a comparação da chamada guardada).
+	c := casos["etapa aplicar"]
+	e, impressao := adulterar(t, base, id, c.acao, c.params, c.chamada)
+	_, _, err = ConfirmarProposta(e, id, impressao, "POST", "/vagas/li-2/mover", Objeto{"etapa": "aplicar"}, eu)
+	if err == nil || err.Error() != "a proposta não passa nas regras da ação" {
+		t.Fatalf("etapa aplicar: %v", err)
+	}
+	// A proposta válida continua passando.
+	prop := ObjetoDe(base.Pedidos[0]["proposta"])
+	ch := ObjetoDe(prop["chamada"])
+	novo, v, err := ConfirmarProposta(base, id, texto(prop["impressao"]), "POST", texto(ch["caminho"]), ch["corpo"], eu)
+	if err != nil || !igual(v["etapa"], "pulada") || !igual(novo.Pedidos[0]["status"], PedidoFeito) {
+		t.Fatalf("válida = %v %v", v, err)
+	}
+}
