@@ -133,6 +133,7 @@ Preparar o ambiente do front (uma vez por clone, e sempre que os bindings mudare
 - `go` e `wails3` precisam estar no PATH. No Windows ficam em `C:\Program Files\Go\bin` e `%USERPROFILE%\go\bin`; se faltar o `wails3`, instale com `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`.
 - `cd app && wails3 generate bindings -clean=true -ts -i` gera `app/frontend/bindings`. Sem essa pasta, o Vitest e o build do Vite param com `Event bindings module not found` (plugin `wails-typed-events`). A pasta fica fora do git, e o CI gera a dela.
 - `cd app/frontend && npm ci` instala as dependências.
+- `cd app/frontend && npx playwright install chromium` baixa o navegador dos testes de ponta a ponta. Eles rodam sem janela (headless); não use o modo com janela no PC de quem está usando.
 
 Testes das telas (também a partir da raiz):
 - `cd app/frontend && npm test` roda o Vitest. As funções de domínio em TS são conferidas contra o golden do Node.
