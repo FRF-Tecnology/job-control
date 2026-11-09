@@ -17,6 +17,31 @@ info:
     até o app fechar.
 servers:
   - url: /api/v1
+# jc-a2y.7.4 (proposta, docs/propostas/mcp-cli.md): o que o assistente (MCP e CLI, regra M4) pode chamar. Lista de
+# permissão: método e rota fora dela dão 403 pelo canal do assistente, antes de ler ou gravar. Nenhuma operação
+# x-so-tela entra aqui, e as regras do domínio (regra 8) continuam valendo por cima.
+x-assistente:
+  - GET /resumo
+  - GET /vagas
+  - GET /vagas/{id}
+  - GET /duplicatas
+  - POST /vagas/importar
+  - POST /vagas/{id}/mover
+  - PATCH /vagas/{id}
+  - POST /vagas/{id}/eventos
+  - GET /followups
+  - POST /vagas/{id}/followup
+  - PUT /rodadas/{n}
+  - GET /perfil
+  - GET /pedidos
+  - POST /pedidos/{id}/concluir
+  - GET /candidaturas
+  - GET /candidaturas/{id}
+  - GET /candidaturas/limites
+  - POST /candidaturas/{id}/revogar
+  - GET /envio
+  - POST /envio/pausar
+  - POST /envio/plataformas/{plataforma}/pausar
 paths:
   /saude: { get: { summary: O app está de pé } }
   /estado: { get: { summary: 'Estado inteiro (vagas, eventos, plataformas, rodadas, perfil, pedidos, emails) + hoje, versao, curriculos, primeirosPassos' } }
