@@ -50,6 +50,8 @@ func main() {
 		MostrarEnvio: controleEnvio.MostrarEnvio,
 		Entrar:       controleEnvio.Entrar,
 		Janela:       controleEnvio.Janela,
+		// "Ao vivo" (jc-a2y.6.9): nil no build padrão (a rota dá 404).
+		AoVivo: controleEnvio.AoVivo,
 	})
 
 	app = application.New(application.Options{
