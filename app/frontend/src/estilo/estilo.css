@@ -200,6 +200,7 @@ a.cartao-num:hover { transform: translateY(-2px); }
 .item-acao .selo-n.ambar { background: var(--ambar-suave); color: var(--ambar); }
 .item-acao strong { display: block; font-weight: 600; }
 .item-acao .sub { display: block; font-size: .88rem; color: var(--tinta-2); }
+.item-acao .sub.aviso-cli { margin-top: 4px; color: var(--ambar); overflow-wrap: anywhere; } /* CLI instalada mas não pronta (jc-a2y.36) */
 .item-acao details, .item-acao > .acoes { grid-column: 2 / -1; }
 .item-acao details summary { cursor: pointer; font-size: .85rem; color: var(--destaque); font-weight: 600; list-style: none; }
 .item-acao details summary::-webkit-details-marker { display: none; }
