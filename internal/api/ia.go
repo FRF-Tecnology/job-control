@@ -221,6 +221,9 @@ func (a *API) configurarIA(ctx context.Context, c Objeto) (Resposta, error) {
 	if modelo = trimEspacos(modelo); modelo == "" {
 		modelo = padrao
 	}
+	if !ia.ModeloSeguro(modelo) { // jc-a2y.43: o modelo vira argumento da CLI
+		return Resposta{}, &dominio.ErroValidacao{Erros: []string{"o nome do modelo só pode ter letras, números, espaço e . , _ : / \\ = + @ ~ -"}}
+	}
 	if modelo == "" && !contem([]string{"codex-cli", "gemini-cli"}, prov) {
 		return Resposta{}, &dominio.ErroValidacao{Erros: []string{"informe o modelo (ex.: o nome do modelo na sua conta)"}}
 	}

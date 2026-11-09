@@ -119,6 +119,10 @@ func argsSegurosParaCmd(args []string) bool {
 	return true
 }
 
+// ModeloSeguro diz se o nome do modelo pode ir como argumento de CLI (--model), com a mesma lista segura do cmd.exe
+// (jc-a2y.43). A API recusa o resto ao configurar, para o modelo nunca chegar à linha de comando com outro caractere.
+func ModeloSeguro(modelo string) bool { return argsSegurosParaCmd([]string{modelo}) }
+
 func semChaves(env []string) []string {
 	saida := env[:0:0]
 	for _, v := range env {
