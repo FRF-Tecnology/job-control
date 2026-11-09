@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.3
+  version: 0.4.7
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -63,7 +63,7 @@ paths:
   # recusa do Google, o motivo passa por uma lista fechada de textos nossos (jc-a2y.21).
   /ia:
     get:
-      summary: 'O que está conectado, CLIs detectadas, chaves salvas (só o final) e uso dos últimos 30 dias'
+      summary: 'O que está conectado, CLIs detectadas, chaves salvas (só o final) e uso dos últimos 30 dias. A detecção das CLIs fica em cache por 45 s; PUT /ia/config e POST /ia/testar renovam (jc-a2y.44)'
       responses:
         '200': { description: Estado da IA, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoIA' } } } }
   /ia/config:
