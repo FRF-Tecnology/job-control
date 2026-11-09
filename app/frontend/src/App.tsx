@@ -78,6 +78,7 @@ export default function App() {
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [dialogo, setDialogo] = useState<PedidoDialogo | null>(null);
   const versao = useRef<string | null>(null);
+  const fechando = useRef(false); // 503 depois de apagar os dados (jc-a2y.49)
   const temEstado = useRef(false);
   // Há texto digitado e ainda não salvo (perfil, nota nova, notas da vaga…)? Enquanto houver, nada é redesenhado.
   const sujo = useRef(false);
@@ -91,6 +92,8 @@ export default function App() {
   const perguntar = useCallback((p: Pergunta) => new Promise<string | null>(resolver => setDialogo({ tipo: 'pergunta', pergunta: p, resolver })), []);
 
   const carregar = useCallback(async (forcar = false) => {
+    // Depois de "Apagar meus dados", o servidor responde 503 a tudo até o app sair: não adianta tentar de novo.
+    if (fechando.current) return;
     let novo: Estado;
     try {
       if (!forcar && temEstado.current) {
@@ -100,7 +103,11 @@ export default function App() {
       if (sujo.current && !forcar) { setConexao({ texto: 'Há mudanças novas — salve o que está editando para ver', estado: '' }); return; }
       novo = await chamarApi('/api/v1/estado');
     } catch (e) {
-      if (e instanceof ErroApi) {
+      if (e instanceof ErroApi && e.status === 503) {
+        fechando.current = true;
+        setConexao({ texto: 'Fechando', estado: 'off' });
+        setFalha({ titulo: 'Dados apagados. O app está fechando.', texto: 'Na próxima vez que você abrir, ele começa como novo.' });
+      } else if (e instanceof ErroApi) {
         // A API respondeu, mas com erro (ex.: dados corrompidos).
         setConexao({ texto: 'Erro nos dados', estado: 'off' });
         setFalha({ titulo: 'A Central encontrou um problema nos dados', texto: e.message });

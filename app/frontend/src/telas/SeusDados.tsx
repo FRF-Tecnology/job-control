@@ -40,6 +40,7 @@ export function SeusDados() {
       ? 'Uma candidatura estava sendo enviada, então nada foi apagado. O envio fica parado até você abrir o app de novo. Feche e abra o app e repita.'
       : 'O app está enviando uma candidatura agora. Espere terminar e tente de novo.';
     if (e instanceof ErroApi && e.status === 403) return 'Só você pode fazer isso, por esta tela.';
+    if (e instanceof ErroApi && e.status === 503) return 'Os dados já foram apagados. O app está fechando.';
     return 'Não deu para concluir. Tente de novo.';
   };
 
@@ -103,6 +104,8 @@ export function SeusDados() {
         <p className="mudo">Apaga de vez, sem volta, e fecha o app. Na próxima vez, ele abre como novo:</p>
         <ul>{Object.values(ITENS).map(t => <li key={t}>{t}</li>)}</ul>
         <p className="mudo">Não apaga: o login das ferramentas de IA (Claude, Codex, Gemini), os PDFs originais que você copiou, os dados da Central antiga (pasta dados/) e o cache da janela do app.</p>
+        {/* A trava do app não alcança outros processos (revisão do CyberSec no #58). */}
+        <p className="aviso-cv"><strong>Antes, feche a CLI e o assistente (MCP) da Central</strong>, se estiverem abertos. Eles rodam fora do app e podem gravar de novo enquanto ele apaga.</p>
         <label className="campo"><span>{`Para confirmar, digite ${FRASE}`}</span>
           <input type="text" autoComplete="off" spellCheck={false} value={digitado} onChange={e => setDigitado(e.target.value)} aria-describedby="seus-dados-dica" />
         </label>
