@@ -454,7 +454,18 @@ dialog form { display: grid; gap: 16px; }
 .conferida { display: block; margin: 0; font-size: .88rem; font-weight: 600; }
 .conferida.ok { color: var(--verde); }
 .conferida.diferente { color: var(--erro); }
-/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
+/* Envio (jc-a2y.51): ligado ou pausado, o que está indo agora e os últimos desfechos. */
+.envio { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 16px 20px; display: grid; gap: 12px; margin-bottom: 24px; }
+.envio.pausado { border-color: color-mix(in srgb, var(--ambar) 45%, var(--linha-2)); }
+.envio-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.envio h2 { margin: 0; font-size: 1.05rem; } .envio p { margin: 0; }
+.enviando-agora { display: flex; align-items: center; gap: 8px; font-weight: 600; overflow-wrap: anywhere; }
+.enviando-agora .ponto { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--verde); animation: piscar 1.2s ease-in-out infinite alternate; }
+@keyframes piscar { from { opacity: 1; } to { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .enviando-agora .ponto { animation: none; } }
+.desfechos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.desfechos li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; overflow-wrap: anywhere; }
+.envio-desligado { margin: 0 0 16px; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
 .prontas { margin-bottom: 24px; }
 .pronta { display: grid; gap: 16px; padding: 16px 20px; }
 .pronta-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
