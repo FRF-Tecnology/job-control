@@ -507,6 +507,16 @@ dialog form { display: grid; gap: 16px; }
 .envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
 .envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
 .envio-janelas h3 { margin: 0; font-size: .95rem; }
+/* ao vivo (jc-a2y.6.9.1): só para ver; a imagem não recebe clique */
+.ao-vivo { display: grid; gap: 8px; }
+.ao-vivo-topo { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.ao-vivo-topo h3 { margin: 0; font-size: .95rem; }
+.ao-vivo-topo p { margin: 0; }
+.ao-vivo-painel { display: grid; gap: 8px; }
+.ao-vivo-etapa { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.ao-vivo-cand { margin: 0; overflow-wrap: anywhere; }
+.ao-vivo-quadro { display: block; width: 100%; max-width: 960px; height: auto; border: 1px solid var(--linha); border-radius: var(--raio-p); pointer-events: none; user-select: none; background: var(--superficie-2); }
+.ao-vivo-vazio { display: grid; place-items: center; min-height: 120px; padding: 16px; text-align: center; border: 1px dashed var(--linha); border-radius: var(--raio-p); }
 /* estado por plataforma (jc-a2y.6.11.1) */
 .envio-plataformas { display: grid; gap: 8px; }
 .envio-plataformas h3 { margin: 0; font-size: .95rem; }
