@@ -190,6 +190,11 @@ func (x *Executor) Rodar(ctx context.Context, intervalo time.Duration, ciclo syn
 // EnviarAprovadas envia as aprovadas, da aprovação mais antiga para a mais nova, com intervalo entre uma e outra.
 // Limite atingido numa plataforma pula as outras dela; conflito (mudou no meio) pula só aquela.
 func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
+	// A pessoa está com a janela de login aberta ("Entrar nas plataformas"): o ciclo espera, sem pegar candidatura
+	// nem abrir página, e nada muda de estado (jc-a2y.6.7).
+	if o, ok := x.o.Navegador.(interface{ Ocupado() bool }); ok && o.Ocupado() {
+		return []Desfecho{}, nil
+	}
 	e, err := x.arm.Carregar(ctx)
 	if err != nil {
 		return nil, err

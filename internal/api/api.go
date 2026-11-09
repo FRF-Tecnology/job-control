@@ -68,11 +68,14 @@ type API struct {
 	// noMeioDoPedido só existe para o teste segurar um pedido em curso (com a trava de leitura).
 	noMeioDoPedido func(caminho string)
 
-	pararEnvio      func()        // apagar meus dados: para o executor, espera o ciclo e fecha o navegador
-	suspenderEnvio  func() func() // sair das plataformas: nenhum ciclo novo até soltar
-	fecharNavegador func()        // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
-	aoApagar        func()        // depois de apagar os dados: fecha o app
-	envioLigado     bool          // este build traz o executor (envio.Ligado)
+	pararEnvio      func()                       // apagar meus dados: para o executor, espera o ciclo e fecha o navegador
+	suspenderEnvio  func() func()                // sair das plataformas: nenhum ciclo novo até soltar
+	fecharNavegador func()                       // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
+	aoApagar        func()                       // depois de apagar os dados: fecha o app
+	envioLigado     bool                         // este build traz o executor (envio.Ligado)
+	mostrarEnvio    func(visivel bool)           // "Ver o envio": janela a partir da próxima candidatura
+	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
+	janela          func() (visivel, login bool) // estado da janela do envio
 }
 
 // Opcoes configura a API.
@@ -92,6 +95,10 @@ type Opcoes struct {
 	AoApagar        func()
 	// EnvioLigado: este build traz o executor (envio.Ligado, só o envio_dev). A API não importa o envio.
 	EnvioLigado bool
+	// Janela do navegador do envio (jc-a2y.6.7), de envio.Ligar: MostrarEnvio, Entrar e Janela.
+	MostrarEnvio func(visivel bool)
+	Entrar       func(endereco string) error
+	Janela       func() (visivel, login bool)
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -120,8 +127,20 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.SuspenderEnvio == nil {
 		o.SuspenderEnvio = func() func() { return nada }
 	}
+	if o.MostrarEnvio == nil {
+		o.MostrarEnvio = func(bool) {}
+	}
+	if o.Entrar == nil {
+		o.Entrar = func(string) error {
+			return &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador"}
+		}
+	}
+	if o.Janela == nil {
+		o.Janela = func() (bool, bool) { return false, false }
+	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
-		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado}
+		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -437,7 +456,7 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
-	if p == "/dados/apagar" || p == "/navegador/sair" {
+	if p == "/dados/apagar" || p == "/navegador/sair" || p == "/navegador/entrar" {
 		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
 			return r, err
 		}

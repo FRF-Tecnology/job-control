@@ -114,7 +114,10 @@ func (p *paginaFalsa) Fechar() error                                 { p.fechada
 type navegadorFalso struct {
 	paginas []*paginaFalsa
 	abertas int
+	ocupado bool // janela de login da pessoa aberta
 }
+
+func (n *navegadorFalso) Ocupado() bool { return n.ocupado }
 
 func (n *navegadorFalso) NovaPagina(ctx context.Context) (Pagina, error) {
 	if n.abertas >= len(n.paginas) {
@@ -606,6 +609,23 @@ func TestPausadoNaoEnvia(t *testing.T) {
 	s.arm.GravarEnvioPausado(context.Background(), false)
 	if ds, err := s.x.EnviarAprovadas(context.Background()); err != nil || len(ds) != 2 {
 		t.Fatalf("retomado = %v %v", ds, err)
+	}
+}
+
+// jc-a2y.6.7: com a janela de login da pessoa aberta, o ciclo espera: nenhuma página abre e nada muda de estado
+// (nem a de outra plataforma, que iria para site-externo sem página).
+func TestLoginAbertoNaoEnvia(t *testing.T) {
+	s := novoCenario(t, novaPagina())
+	a := s.aprovada("linkedin", linkLI)
+	ou := s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1")
+	s.nav.ocupado = true
+	ds, err := s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 0 || s.nav.abertas != 0 || s.cand(a)["estado"] != "aprovada" || s.cand(ou)["estado"] != "aprovada" {
+		t.Fatalf("com login aberto: desfechos %v (%v), páginas %d, estados %v %v", ds, err, s.nav.abertas, s.cand(a)["estado"], s.cand(ou)["estado"])
+	}
+	s.nav.ocupado = false // a pessoa fechou a janela
+	if ds, err := s.x.EnviarAprovadas(context.Background()); err != nil || len(ds) != 2 {
+		t.Fatalf("depois do login = %v %v", ds, err)
 	}
 }
 

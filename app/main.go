@@ -46,6 +46,10 @@ func main() {
 		FecharNavegador: controleEnvio.FecharNavegador,
 		AoApagar:        func() { app.Quit() },
 		EnvioLigado:     envio.Ligado,
+		// Envio sem janela; só a tela mostra o envio ou abre o login (jc-a2y.6.7).
+		MostrarEnvio: controleEnvio.MostrarEnvio,
+		Entrar:       controleEnvio.Entrar,
+		Janela:       controleEnvio.Janela,
 	})
 
 	app = application.New(application.Options{

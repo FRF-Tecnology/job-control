@@ -51,6 +51,15 @@ jobs:
         run: npm test
       - run: go vet ./...
       - run: go test ./...
+      # Os testes que só rodam no CI (navegador de verdade, foco, mouse e a janela de login) aparecem pelo nome no
+      # log, e o passo falha se algum foi pulado ou não passou (jc-a2y.6.7).
+      - name: Testes só do CI (navegador sem janela, foco e login)
+        shell: bash
+        run: |
+          go test -count=1 -v -run '^(TestEnvioNaoPegaFocoNemMouse|TestLoginAbreJanelaESegura)$' ./internal/navegador/ | tee navegador-ci.log
+          for t in TestEnvioNaoPegaFocoNemMouse TestLoginAbreJanelaESegura; do
+            grep -q -- "--- PASS: $t " navegador-ci.log || { echo "::error::$t não passou no CI (pulado ou ausente)"; exit 1; }
+          done
       - name: Compilar o app
         run: go build -o central.exe ./app
       - name: Jornada de usuário novo (Playwright, PC e celular)
