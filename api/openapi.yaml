@@ -747,8 +747,43 @@ components:
       properties:
         acao: { type: string, enum: [adicionar-vaga, registrar-etapa, preparar-pacote, responder, recusar] }
         parametros:
-          type: object
-          description: 'Por ação. adicionar-vaga: {url (https), empresa?, titulo?}. registrar-etapa: {vagaId, etapa (enviada|em-processo|oferta|encerrada|pulada; nunca aplicar), motivo?, sub?}. preparar-pacote: {vagaId}. responder: {texto (até 1500, texto puro)}. recusar: {motivo (so-a-pessoa|fora-do-app|nao-entendi)}'
+          description: 'Um esquema por ação, todos estritos (additionalProperties false); o servidor confere que o esquema é o da acao'
+          oneOf:
+            - title: adicionar-vaga
+              type: object
+              additionalProperties: false
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 500, pattern: '^https://[^/@\s]+(/[^\s]*)?$', description: 'https, sem usuário/senha nem espaço; o servidor não busca' }
+                empresa: { type: string, maxLength: 120 }
+                titulo: { type: string, maxLength: 120 }
+            - title: registrar-etapa
+              type: object
+              additionalProperties: false
+              required: [vagaId, etapa]
+              properties:
+                vagaId: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$' }
+                etapa: { type: string, enum: [enviada, em-processo, oferta, encerrada, pulada], description: 'Nunca aplicar, descoberta nem bloqueada' }
+                motivo: { type: string, enum: [Sênior, Inglês, Diploma, Stack, Presencial/Local, Documento, Duplicada, Vaga fechada, Outro, Reprovada, Sem retorno, Desisti], description: 'Pulada: MotivosPulo; encerrada: MotivosEncerramento; o servidor confere o par' }
+                sub: { type: string, enum: [teste, entrevista-rh, entrevista-tecnica, proposta], description: 'Só com em-processo' }
+            - title: preparar-pacote
+              type: object
+              additionalProperties: false
+              required: [vagaId]
+              properties:
+                vagaId: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$' }
+            - title: responder
+              type: object
+              additionalProperties: false
+              required: [texto]
+              properties:
+                texto: { type: string, maxLength: 1500, pattern: '^[^<>]*$', description: 'Texto puro: a tela mostra como texto, sem link automático' }
+            - title: recusar
+              type: object
+              additionalProperties: false
+              required: [motivo]
+              properties:
+                motivo: { type: string, enum: [so-a-pessoa, fora-do-app, nao-entendi] }
         impressao: { type: string, description: 'Texto da proposta que a tela mostra e a pessoa confirma' }
         falta: { type: array, items: { type: string }, description: 'O que ainda fica com a pessoa (frases fixas)' }
         criadaEm: { type: string }

@@ -12,7 +12,7 @@ Hoje o texto da caixa "Seus pedidos" só vira fila para o `/pedidos` do Claude C
    - a saída da IA.
 
    A IA só **propõe**: ela devolve **uma** ação do catálogo em JSON estrito, e o servidor valida o esquema, a guarda e as regras de cada ação.
-2. **Nada grava sem a pessoa:**
+2. **Nada grava sem a pessoa** (o CyberSec sugeriu a tela chamar a rota que já existe com o payload mostrado; aqui a tela confirma a proposta **guardada no servidor**, conferida pela impressão, o que dá a mesma garantia e ainda impede o cliente de mandar outro payload):
    - a proposta fica guardada no servidor, com uma impressão (o texto que a tela mostra);
    - a gravação só acontece em `POST /pedidos/{id}/confirmar`, da tela (`x-so-tela`), com a mesma impressão;
    - o que roda é a proposta guardada, nunca o que o cliente mandar.
@@ -103,6 +103,9 @@ O pedido que a IA não consegue mapear vira `recusar/nao-entendi`. Pedidos como 
   - URL `http://`, `javascript:` ou `file:`, e com usuário e senha;
   - `responder` com HTML, link ou CPF;
   - pedido com texto de vaga colado ("SYSTEM: ...");
+  - JSON contrabandeado no texto do pedido ("{\"acao\":\"aprovar\"}");
+  - id de outra vaga (o pedido fala de uma, a proposta traz outra: a impressão mostra empresa e título da vaga, e a pessoa vê antes de confirmar);
+  - injeção no conteúdo da vaga (empresa ou título com instrução);
   - saída com campos a mais.
 
   Todos viram `recusar`, 422 ou 400, sem nada gravado.
