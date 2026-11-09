@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -59,6 +60,13 @@ type API struct {
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
 	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
 	cacheCLIs        cacheDeteccao
+
+	// trava: cada pedido segura a leitura; "apagar meus dados" segura a escrita (espera os pedidos em curso e
+	// barra os novos). Depois de apagar, apagando fica true e todo pedido recebe 503 até o app fechar.
+	trava    sync.RWMutex
+	apagando bool
+	// noMeioDoPedido só existe para o teste segurar um pedido em curso (com a trava de leitura).
+	noMeioDoPedido func(caminho string)
 
 	pararEnvio      func()        // apagar meus dados: para o executor, espera o ciclo e fecha o navegador
 	suspenderEnvio  func() func() // sair das plataformas: nenhum ciclo novo até soltar
@@ -149,7 +157,22 @@ func respostaDeErro(err error) (Resposta, bool) {
 
 // Chamar atende um pedido. Erro só sobe quando é inesperado (o HTTP responde 500).
 func (a *API) Chamar(ctx context.Context, p Pedido) (Resposta, error) {
-	r, err := a.rotear(ctx, p)
+	if ehPedidoDeApagar(p) {
+		return respostaOuErro(a.apagarComTrava(ctx, p))
+	}
+	a.trava.RLock()
+	defer a.trava.RUnlock()
+	if a.apagando {
+		return respostaFechando(), nil
+	}
+	if a.noMeioDoPedido != nil {
+		a.noMeioDoPedido(p.Caminho)
+	}
+	return respostaOuErro(a.rotear(ctx, p))
+}
+
+// respostaOuErro transforma os erros conhecidos em status; o resto sobe (o HTTP responde 500).
+func respostaOuErro(r Resposta, err error) (Resposta, error) {
 	if err != nil {
 		if resp, ok := respostaDeErro(err); ok {
 			return resp, nil

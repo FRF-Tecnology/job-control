@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.10
+  version: 0.4.11
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -13,7 +13,8 @@ info:
     sem query e o tipo do erro (jc-a2y.13). 429 limite diário da plataforma ({erro, plataforma, limite,
     usadas, renovaEm}). O teste internal/api/contrato_test.go confere este arquivo contra as rotas da API;
     operações com x-proposta: true estão no contrato, mas ainda não são atendidas. 403 também quando o assistente
-    (CLI, MCP) pede uma ação só da pessoa (x-so-tela).
+    (CLI, MCP) pede uma ação só da pessoa (x-so-tela). 503 {erro} em qualquer rota depois de "apagar meus dados",
+    até o app fechar.
 servers:
   - url: /api/v1
 paths:
@@ -355,6 +356,7 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
         '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+        '503': { description: 'Os dados já foram apagados e o app está fechando: {erro}. Vale para qualquer rota depois de apagar', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /navegador/sair:
     post:
       x-so-tela: true

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/config"
@@ -63,11 +64,57 @@ func (r *ResultadoApagar) item(nome string, err error) {
 	log.Printf("apagar: %s ok", nome)
 }
 
+// ErroFechando: depois de apagar os dados, todo pedido recebe 503 até o app fechar.
+const ErroFechando = "os dados foram apagados; o app está fechando"
+
+func respostaFechando() Resposta {
+	return Resposta{Status: 503, Corpo: Objeto{"erro": ErroFechando}}
+}
+
+// ehPedidoDeApagar: POST /dados/apagar passa pela trava de escrita, fora do roteamento comum.
+func ehPedidoDeApagar(ped Pedido) bool {
+	caminho, _, _ := strings.Cut(ped.Caminho, "?")
+	p := strings.TrimPrefix(caminho, Prefixo)
+	return strings.ToUpper(ped.Metodo) == "POST" && p == "/dados/apagar"
+}
+
+// apagarComTrava confere o pedido sem trava (400, 403) e só então pega a trava de escrita: os pedidos em curso
+// terminam antes, e nenhum outro (nem um POST /backup do assistente) grava entre apagar e fechar o banco.
+func (a *API) apagarComTrava(ctx context.Context, ped Pedido) (Resposta, error) {
+	autor := ped.Autor
+	if autor == "" {
+		autor = "eu"
+	}
+	if !ehObjeto(ped.Corpo) {
+		return Resposta{}, falha(400, "envie um objeto JSON")
+	}
+	c := dominio.ObjetoDe(ped.Corpo)
+	if err := validarApagar(c, autor); err != nil {
+		return Resposta{}, err
+	}
+	a.trava.Lock()
+	defer a.trava.Unlock()
+	if a.apagando {
+		return respostaFechando(), nil
+	}
+	return a.apagarDados(ctx)
+}
+
+func validarApagar(c Objeto, autor string) error {
+	if err := soCampos(c, "confirmacao"); err != nil {
+		return err
+	}
+	if frase, _ := c["confirmacao"].(string); frase != FraseApagar {
+		return erroCampo("confirmacao: digite exatamente " + FraseApagar)
+	}
+	if autor != "eu" {
+		return &dominio.ErroSoPessoa{Msg: "só a pessoa pode apagar os dados"}
+	}
+	return nil
+}
+
 func (a *API) rotasDados(ctx context.Context, m, p string, c Objeto, autor string) (Resposta, bool, error) {
 	switch {
-	case m == "POST" && p == "/dados/apagar":
-		r, err := a.apagarDados(ctx, c, autor)
-		return r, true, err
 	case m == "POST" && p == "/navegador/sair":
 		r, err := a.sairDasPlataformas(ctx, c, autor)
 		return r, true, err
@@ -100,16 +147,8 @@ func removerTudo(caminho string) error {
 	return nil
 }
 
-func (a *API) apagarDados(ctx context.Context, c Objeto, autor string) (Resposta, error) {
-	if err := soCampos(c, "confirmacao"); err != nil {
-		return Resposta{}, err
-	}
-	if frase, _ := c["confirmacao"].(string); frase != FraseApagar {
-		return Resposta{}, erroCampo("confirmacao: digite exatamente " + FraseApagar)
-	}
-	if autor != "eu" {
-		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa pode apagar os dados"}
-	}
+// apagarDados roda com a trava de escrita da API (apagarComTrava).
+func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	pasta := a.arm.Pasta()
 	if pasta == "" {
 		return Resposta{}, erroCampo("banco em memória: não há pasta de dados para apagar")
@@ -120,6 +159,8 @@ func (a *API) apagarDados(ctx context.Context, c Objeto, autor string) (Resposta
 	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora: nada foi apagado, e o envio ficou parado até você abrir o app de novo"); err != nil {
 		return Resposta{}, err
 	}
+	// Daqui em diante, todo pedido recebe 503 (a trava de escrita já barra os que chegarem agora).
+	a.apagando = true
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}, Fechar: true}
 
 	// 2) Chaves de IA no cofre do sistema (a que já não existe conta como apagada).

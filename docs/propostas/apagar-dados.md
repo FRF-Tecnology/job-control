@@ -37,7 +37,7 @@ O app não grava log em arquivo: o log vai só para a saída de erro do processo
 
 ## Ordem
 
-1. Confere a frase e o corpo: 400 sem apagar nada, e 403 para o assistente.
+1. Confere a frase e o corpo: 400 sem apagar nada, e 403 para o assistente. Só então pega a **trava de escrita da API**: os pedidos em curso terminam antes, e nenhum outro grava entre apagar e fechar o banco (revisão do CyberSec no #58: um `POST /backup` do assistente no meio recriava `backups/` com o banco inteiro). Daí em diante, todo pedido, inclusive outro `/dados/apagar`, recebe **503** `{erro}` até o app fechar. A trava vale para o processo do app; a CLI e o MCP rodam em outro processo, então a tela pede que a pessoa os feche antes de confirmar.
 2. Para o executor: cancela o ciclo, **espera ele acabar** e fecha o navegador, esperando o processo do Chrome sair (o cancelamento do chromedp espera o processo). Só depois confere se há candidatura em `enviando`, para não haver corrida entre a conferência e um envio que começasse no meio. Se ainda houver, responde 409 e não apaga nada; o executor fica parado até o app abrir de novo, e a mensagem do 409 diz isso à pessoa. No build padrão, nada disso existe.
 3. Apaga as chaves do cofre. Uma chave que já não existe conta como apagada.
 4. Apaga `navegador/`, `curriculos/` e `backups/`. Fecha o banco e apaga `central.db`, `-wal`, `-shm` e `-journal`. No Windows, um arquivo aberto não sai: por isso o banco fecha antes. Remove a raiz só se ficar vazia.

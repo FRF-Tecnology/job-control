@@ -316,3 +316,92 @@ func TestAPISemNavegadorNoBinarioPadrao(t *testing.T) {
 		}
 	}
 }
+
+// Corrida (CyberSec, revisão do #58): uma gravação do assistente durante o apagar (POST /backup em laço) recriava
+// backups/ com o banco inteiro. Com a trava de escrita, nunca sobra cópia. Não determinístico: muitas rodadas.
+func TestApagarSemCorridaComGravacao(t *testing.T) {
+	rodadas := 300
+	if testing.Short() {
+		rodadas = 20
+	}
+	for i := 0; i < rodadas; i++ {
+		f := novaPastaFicticia(t, segredos.Memoria{})
+		var parar atomic.Bool
+		feito := make(chan struct{})
+		go func() {
+			defer close(feito)
+			for !parar.Load() {
+				f.api.Chamar(context.Background(), Pedido{Metodo: "POST", Caminho: Prefixo + "/backup", Corpo: Objeto{}, Autor: "claude"})
+			}
+		}()
+		r, err := f.api.Chamar(context.Background(), Pedido{Metodo: "POST", Caminho: Prefixo + "/dados/apagar", Corpo: Objeto{"confirmacao": FraseApagar}, Autor: "eu"})
+		parar.Store(true)
+		<-feito
+		if err != nil || r.Status != 200 {
+			t.Fatalf("rodada %d: %d %v", i, r.Status, err)
+		}
+		if _, err := os.Stat(filepath.Join(f.pasta, "backups")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("rodada %d: resposta %+v, mas backups/ existe depois de apagar", i, r.Corpo)
+		}
+	}
+}
+
+// Determinístico: um POST /backup do assistente já em curso (segurado no meio, com a trava de leitura) quando o
+// apagar começa. Com a trava, o apagar espera o backup terminar e apaga a cópia; sem ela, o backup recriaria
+// backups/ depois.
+func TestApagarEsperaGravacaoEmCurso(t *testing.T) {
+	f := novaPastaFicticia(t, segredos.Memoria{})
+	entrou, seguir := make(chan struct{}), make(chan struct{})
+	f.api.noMeioDoPedido = func(caminho string) {
+		if strings.HasSuffix(caminho, "/backup") {
+			close(entrou)
+			<-seguir
+		}
+	}
+	backup := make(chan Resposta)
+	go func() {
+		r, _ := f.api.Chamar(context.Background(), Pedido{Metodo: "POST", Caminho: Prefixo + "/backup", Corpo: Objeto{}, Autor: "claude"})
+		backup <- r
+	}()
+	<-entrou
+	apagar := make(chan Resposta)
+	go func() {
+		r, _ := f.api.Chamar(context.Background(), Pedido{Metodo: "POST", Caminho: Prefixo + "/dados/apagar", Corpo: Objeto{"confirmacao": FraseApagar}, Autor: "eu"})
+		apagar <- r
+	}()
+	select {
+	case r := <-apagar:
+		t.Fatalf("o apagar não esperou o pedido em curso: %+v", r)
+	case <-time.After(300 * time.Millisecond):
+	}
+	close(seguir)
+	if r := <-backup; r.Status != 200 {
+		t.Fatalf("backup = %+v", r)
+	}
+	if r := <-apagar; r.Status != 200 {
+		t.Fatalf("apagar = %+v", r)
+	}
+	if _, err := os.Stat(filepath.Join(f.pasta, "backups")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("backups/ ficou depois de apagar")
+	}
+}
+
+// Depois de apagar, todo pedido recebe 503 fixo até o app fechar, inclusive outro apagar e as gravações.
+func TestDepoisDeApagarTudoDa503(t *testing.T) {
+	f := novaPastaFicticia(t, segredos.Memoria{})
+	f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
+	for _, c := range []struct {
+		m, p  string
+		corpo any
+	}{
+		{"GET", "/estado", nil}, {"POST", "/backup", Objeto{}}, {"POST", "/vagas", Objeto{"empresa": "X", "titulo": "Y"}},
+		{"POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}}, {"POST", "/navegador/sair", Objeto{}},
+	} {
+		if r := f.chamar(c.m, c.p, c.corpo, 503); r["erro"] != ErroFechando {
+			t.Errorf("%s %s = %v", c.m, c.p, r)
+		}
+	}
+	if _, err := os.Stat(f.pasta); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("algo recriou a pasta de dados: %v", f.arquivos())
+	}
+}
