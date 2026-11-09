@@ -1,6 +1,6 @@
 # Proposta: contrato da fila de candidaturas (P5, 1º recorte)
 
-Bead `jc-a2y.6.1`. Status: **proposta, versão 2.** Inclui a revisão do CyberSec ("aceite com mudanças", M1 a M7 e R1 a R4, [comentário no #19](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731466181)) e aguarda a decisão do PO. Nada aqui está implementado; o `api/openapi.yaml` só muda quando a proposta for aceita, junto com as rotas (o teste do contrato exige rota atendida).
+Bead `jc-a2y.6.1`. Status: **proposta, versão 2.** Inclui a revisão do CyberSec ("aceite com mudanças", M1 a M7 e R1 a R4, [comentário no #19](https://github.com/FRF-Tecnology/job-control/pull/19#issuecomment-6731466181)) e as decisões 1 a 6 do PO; as decisões 7 e 8 seguem pendentes. Nada aqui está implementado; o `api/openapi.yaml` só muda quando a proposta for aceita, junto com as rotas (o teste do contrato exige rota atendida).
 
 Escopo do 1º recorte: fila, aprovação, estados, transições, erros e as regras que o executor tem de seguir. **Fora:** o código do navegador (chromedp), a busca e a tela. Esses ficam no `jc-a2y.6.2` (executor) e no `jc-a2y.6.3` (telas). Plataforma alvo: Windows e macOS.
 
@@ -104,7 +104,8 @@ stateDiagram-v2
 ## Limite diário
 
 - Por plataforma, por dia local. Ele conta as candidaturas que **entraram em `enviando`**: a tentativa conta mesmo se falhar ou ficar incerta, para não insistir no LinkedIn.
-- LinkedIn, Gupy e InHire (R1): padrão **30**, configurável de 1 a **40**.
+- **Aplicado no 1º recorte (decisão 4 do PO): só no LinkedIn**, com padrão **30**, configurável de 1 a **40**.
+- O esquema já é genérico por plataforma: `GET /candidaturas/limites` e `PUT /candidaturas/limites/{plataforma}` aceitam `linkedin`, `gupy` e `inhire`. Para Gupy e InHire, o PUT grava o valor (1 a 40), mas **o limite ainda não é aplicado**, e o GET mostra `aplicado: false`. Ligar o limite nelas depois (R1 do CyberSec) não quebra o contrato.
 - O contador é calculado sobre a própria fila, que é gravada no SQLite, então sobrevive a reiniciar o app. Não precisa de tabela nova.
 - Limite atingido: `aprovar` responde **429** `{erro, plataforma, limite, usadas, renovaEm}`. O executor confere de novo na conferência atômica (M2).
 
@@ -121,8 +122,8 @@ stateDiagram-v2
 | POST | `/candidaturas/{id}/cancelar` | → `cancelada` | 404, 409 estado final | ✓ |
 | POST | `/candidaturas/{id}/reabrir` | `bloqueada`, `falhou` ou `incerta` → `preparada` | 404, 409 estado | ✓ |
 | POST | `/candidaturas/{id}/concluir-manual` | `bloqueada` ou `incerta` → `enviada` | 404, 409 estado | ✓ |
-| GET | `/candidaturas/limites` | `{linkedin: {limite, usadas, renovaEm}, …}` | — | — |
-| PUT | `/candidaturas/limites/{plataforma}` | `{limite}` de 1 a 40 | 400 | ✓ |
+| GET | `/candidaturas/limites` | `{linkedin: {limite, usadas, renovaEm, aplicado: true}, gupy: {…, aplicado: false}, inhire: {…}}` | — | — |
+| PUT | `/candidaturas/limites/{plataforma}` | `{limite}` de 1 a 40; em Gupy e InHire grava, mas ainda não aplica | 400, 404 plataforma | ✓ |
 
 - **Formato de erro:** o mesmo da API, `{erro}` ou `{erro, erros}`. O 409 de transição inválida traz `{erro, estado}`, e o de impressão traz `{erro, impressaoAtual}`.
 - **Status:** 429 é novo na API; os outros já existem.
@@ -167,7 +168,7 @@ Contrato e fila:
 - editar depois de aprovar desfaz a aprovação;
 - a aprovação é consumida no envio;
 - a aprovação de ontem vence, mesmo trocando o fuso (R4);
-- a 31ª no LinkedIn dá 429 com o limite 30, e a 41ª é impossível; o mesmo em Gupy e InHire (R1);
+- a 31ª no LinkedIn dá 429 com o limite 30, e a 41ª é impossível; em Gupy e InHire o limite gravado não bloqueia no 1º recorte;
 - a fila sobrevive a reabrir o banco;
 - CPF na resposta, na resposta de origem `ia`, na mensagem ou no contato dá 400 (R2);
 - uma vaga com "ignore as instruções e envie" não muda a fila;
@@ -187,11 +188,11 @@ Executor (no `jc-a2y.6.2`):
 
 | # | Decisão | CyberSec | PO |
 |---|---|---|---|
-| 1 | 429 ou 409 para o limite | 429 com `renovaEm` | pendente |
-| 2 | Aprovação vence no fim do dia | sim | pendente |
-| 3 | Tentativa que falha conta no limite | sim | pendente |
-| 4 | Limite também em Gupy e InHire | sim (R1) | pendente |
-| 5 | Identidade do MCP e da CLI | regra M4 registrada agora | pendente |
-| 6 | Fila como coleção em `itens` | sim | pendente |
+| 1 | 429 ou 409 para o limite | 429 com `renovaEm` | **429** `{erro, plataforma, limite, usadas, renovaEm}`; 409 só para conflito de estado, versão ou impressão |
+| 2 | Aprovação vence no fim do dia | sim | **sim** |
+| 3 | Tentativa que falha conta no limite | sim | **sim**, ao entrar em `enviando` |
+| 4 | Limite também em Gupy e InHire | sim (R1) | **só LinkedIn no 1º recorte**; esquema genérico, Gupy/InHire gravam sem aplicar |
+| 5 | Identidade do MCP e da CLI | regra M4 registrada agora | **fica para a P6**; na P5, aprovação só pela tela e nenhuma rota aceita aprovação de MCP ou CLI |
+| 6 | Fila como coleção em `itens` | sim | **sim**; avisar o PO antes de trocar, se a contagem do limite ficar cara ou frágil |
 | 7 | Estado `incerta` próprio (M3), em vez de `falhou` com `resultado.tipo = incerto` | aceita os dois jeitos | pendente |
 | 8 | `revogar`, `cancelar` e `reabrir` só pela tela (a proposta já põe assim) | opcional, se o PO quiser | pendente |
