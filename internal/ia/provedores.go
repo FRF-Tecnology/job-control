@@ -3,12 +3,18 @@ package ia
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf16"
 
@@ -52,14 +58,74 @@ func cortarUTF16(s string, n int) string {
 	return string(utf16.Decode(u[:n]))
 }
 
-// postarJSON: rede, 5xx e 429 viram erro reintentável (aciona a rota reserva). A chave nunca aparece em mensagem de erro.
-func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, chave string, cabecalhos map[string]string, corpo any) (map[string]any, error) {
-	limpar := func(s string) string {
-		if chave == "" {
-			return s
-		}
-		return strings.ReplaceAll(s, chave, "***")
+// mensagemHTTP é o texto público e fixo de cada status de erro do provedor.
+func mensagemHTTP(status int) string {
+	switch {
+	case status == 400:
+		return "pedido recusado (confira o modelo e as opções)"
+	case status == 401:
+		return "chave recusada (confira a chave de API)"
+	case status == 403:
+		return "acesso negado (confira a chave e o plano da conta)"
+	case status == 404:
+		return "modelo ou endereço não encontrado"
+	case status == 408 || status == 504:
+		return "o provedor demorou demais"
+	case status == 413:
+		return "pedido grande demais"
+	case status == 429:
+		return "limite de uso atingido; tente mais tarde"
+	case status >= 500:
+		return "o provedor está com problema; tente mais tarde"
 	}
+	return "o provedor recusou o pedido"
+}
+
+var reCodigoErro = regexp.MustCompile(`^[A-Za-z_]{3,48}$`)
+
+// codigoErro tira do corpo de erro só um código seguro: error.code, error.type ou error.status (Anthropic, OpenAI, Google).
+// Só letras e "_", e nunca um pedaço da chave.
+func codigoErro(bruto []byte, chave string) string {
+	var j struct {
+		Error map[string]any `json:"error"`
+	}
+	if json.Unmarshal(bruto, &j) != nil || j.Error == nil {
+		return ""
+	}
+	for _, campo := range []string{"code", "type", "status"} {
+		c, _ := j.Error[campo].(string)
+		if reCodigoErro.MatchString(c) && !(chave != "" && strings.Contains(chave, c)) {
+			return c
+		}
+	}
+	return ""
+}
+
+// motivoRede descreve a falha sem repetir o texto dela (que traz o endereço e pode trazer dados do pedido).
+func motivoRede(err error) string {
+	var dns *net.DNSError
+	var cert *tls.CertificateVerificationError
+	var autoridade x509.UnknownAuthorityError
+	var nome x509.HostnameError
+	var invalido x509.CertificateInvalidError
+	var ne net.Error
+	switch {
+	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &ne) && ne.Timeout():
+		return "tempo esgotado"
+	case errors.As(err, &dns):
+		return "endereço não encontrado"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "conexão recusada"
+	case errors.As(err, &cert), errors.As(err, &autoridade), errors.As(err, &nome), errors.As(err, &invalido):
+		return "certificado inválido"
+	}
+	return "sem conexão com o provedor"
+}
+
+// postarJSON: rede, 5xx e 429 viram erro reintentável (aciona a rota reserva).
+// A mensagem de erro é sempre um texto fixo nosso: o corpo do provedor e o texto da falha de rede nunca entram,
+// porque podem ecoar a chave (inteira, escapada, codificada ou em partes). Só passa o código curto do provedor.
+func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, chave string, cabecalhos map[string]string, corpo any) (map[string]any, error) {
 	dados, _ := json.Marshal(corpo)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endereco, bytes.NewReader(dados))
 	if err != nil {
@@ -71,13 +137,17 @@ func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, c
 	}
 	resp, err := cliente.Do(req)
 	if err != nil {
-		return nil, &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: falha de rede (%s)", provedor, limpar(err.Error())), Provedor: provedor, Reintentavel: true}
+		return nil, &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: falha de rede (%s)", provedor, motivoRede(err)), Provedor: provedor, Reintentavel: true}
 	}
 	defer resp.Body.Close()
 	bruto, _ := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		reintentavel := resp.StatusCode == 429 || resp.StatusCode >= 500
-		return nil, &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: HTTP %d %s", provedor, resp.StatusCode, cortarUTF16(limpar(string(bruto)), 300)), Provedor: provedor, Status: resp.StatusCode, Reintentavel: reintentavel}
+		msg := fmt.Sprintf("%s: HTTP %d %s", provedor, resp.StatusCode, mensagemHTTP(resp.StatusCode))
+		if c := codigoErro(bruto, chave); c != "" {
+			msg += " [" + c + "]"
+		}
+		return nil, &ErroIA{Tipo: "provedor", Mensagem: msg, Provedor: provedor, Status: resp.StatusCode, Reintentavel: reintentavel}
 	}
 	var r map[string]any
 	if err := json.Unmarshal(bruto, &r); err != nil {

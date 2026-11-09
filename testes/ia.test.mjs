@@ -238,3 +238,43 @@ for (const p of PROVEDORES) {
     }
   });
 }
+
+// ---------- erro do provedor não repete a chave (jc-a2y.18) ----------
+import * as provAnthropic from '../nucleo/ia/provedores/anthropic.mjs';
+import * as provOpenai from '../nucleo/ia/provedores/openai.mjs';
+import * as provGoogle from '../nucleo/ia/provedores/google.mjs';
+
+const SEGREDO = 'FICTICIAqwerty0123456789/abcdefXYZ+fim=9876'; // fictício; gitleaks:allow
+const FORMAS = {
+  exata: SEGREDO,
+  'json-escapada': SEGREDO.replaceAll('/', '\/'),
+  'url-encoded': encodeURIComponent(SEGREDO),
+  'prefixo+final': SEGREDO.slice(0, 16) + '...' + SEGREDO.slice(-4),
+  'ultimos-20': SEGREDO.slice(-20),
+};
+const semPedaco = (msg) => {
+  for (const f of Object.values(FORMAS)) for (let i = 0; i + 4 <= f.length; i++) assert.ok(!msg.includes(f.slice(i, i + 4)), `trecho da chave na mensagem: ${msg}`);
+};
+
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: erro HTTP e falha de rede não repetem a chave em nenhuma forma`, async () => {
+    for (const [nome, eco] of Object.entries(FORMAS)) {
+      for (const status of [400, 401, 403, 429, 500]) {
+        const fetch = async () => new Response(JSON.stringify({ error: { type: 'authentication_error', message: `Incorrect API key provided: ${eco}` } }), { status });
+        await assert.rejects(prov.chamar({ fetch, chave: SEGREDO, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+          semPedaco(e.message);
+          assert.equal(e.tipo, 'provedor', nome);
+          assert.equal(e.status, status);
+          assert.ok(e.message.includes(`HTTP ${status} `) && e.message.endsWith('[authentication_error]'), e.message);
+          return true;
+        });
+      }
+    }
+    const rede = async (url) => { throw new TypeError(`fetch failed ${url} ${SEGREDO}`, { cause: { code: 'ECONNREFUSED' } }); };
+    await assert.rejects(prov.chamar({ fetch: rede, chave: SEGREDO, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+      semPedaco(e.message);
+      assert.equal(e.message, `${prov.nome}: falha de rede (conexão recusada)`);
+      return e.reintentavel === true;
+    });
+  });
+}

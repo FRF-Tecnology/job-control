@@ -37751,7 +37751,7 @@
    "corpo": "devagar",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 429 devagar",
+    "mensagem": "anthropic: HTTP 429 limite de uso atingido; tente mais tarde",
     "regra": null,
     "erros": null,
     "reintentavel": true
@@ -37762,7 +37762,7 @@
    "corpo": "quebrou chave-anthropic",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 500 quebrou ***",
+    "mensagem": "anthropic: HTTP 500 o provedor está com problema; tente mais tarde",
     "regra": null,
     "erros": null,
     "reintentavel": true
@@ -37773,7 +37773,7 @@
    "corpo": "{\"error\":\"modelo inválido\"}",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 400 {\"error\":\"modelo inválido\"}",
+    "mensagem": "anthropic: HTTP 400 pedido recusado (confira o modelo e as opções)",
     "regra": null,
     "erros": null,
     "reintentavel": false
@@ -37784,7 +37784,7 @@
    "corpo": "chave-anthropic inválida",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 401 *** inválida",
+    "mensagem": "anthropic: HTTP 401 chave recusada (confira a chave de API)",
     "regra": null,
     "erros": null,
     "reintentavel": false
@@ -37799,6 +37799,90 @@
     "regra": null,
     "erros": null,
     "reintentavel": null
+   }
+  },
+  {
+   "status": 401,
+   "corpo": "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"rejected: chave-FICTICIA-0123\\\\/abc+XYZ=fim9876\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 401 chave recusada (confira a chave de API) [authentication_error]",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 404,
+   "corpo": "{\"error\":{\"message\":\"model x not found (chave-FICTICIA-0123%2Fabc%2BXYZ%3Dfim9876)\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 404 modelo ou endereço não encontrado [model_not_found]",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 403,
+   "corpo": "{\"error\":{\"code\":403,\"message\":\"blocked: chave-FICTICIA...9876\",\"status\":\"PERMISSION_DENIED\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 403 acesso negado (confira a chave e o plano da conta) [PERMISSION_DENIED]",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 400,
+   "corpo": "{\"error\":{\"type\":\"FICTICIA\",\"message\":\"0123/abc+XYZ=fim9876\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 400 pedido recusado (confira o modelo e as opções)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 503,
+   "corpo": "<html>chave-FICTICIA-0123/abc+XYZ=fim9876</html>",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 503 o provedor está com problema; tente mais tarde",
+    "regra": null,
+    "erros": null,
+    "reintentavel": true
+   }
+  },
+  {
+   "status": 408,
+   "corpo": "",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 408 o provedor demorou demais",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 418,
+   "corpo": "{\"error\":{\"code\":\"codigo com espaço\",\"message\":\"x\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 418 o provedor recusou o pedido",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
    }
   }
  ],
