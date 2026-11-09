@@ -65,7 +65,7 @@ describe('Apagar meus dados', () => {
 
   it('mostra antes tudo o que será apagado e o que não sai', () => {
     montar();
-    expect(screen.getByText(/Não apaga: o login das ferramentas de IA .*, os PDFs originais que você copiou e o cache da janela do app\./)).toBeTruthy();
+    expect(screen.getByText(/Não apaga: o login das ferramentas de IA .*, os PDFs originais que você copiou, os dados da Central antiga \(pasta dados\/\) e o cache da janela do app\./)).toBeTruthy();
     expect((campo() as HTMLInputElement).value).toBe(''); // nunca vem preenchido
     for (const t of ['As vagas, a fila de candidaturas, o perfil, o histórico, os limites e as configurações', 'As chaves de IA guardadas no cofre do sistema', 'O login nas plataformas (navegador do app)'])
       expect(screen.getByText(t)).toBeTruthy();
@@ -75,7 +75,7 @@ describe('Apagar meus dados', () => {
     montar({ erro: new ErroApi('envio em andamento', 409, { erro: 'envio em andamento', estado: 'enviando' }) });
     digitar('APAGAR MEUS DADOS');
     await clicar(apagar());
-    expect(screen.getByRole('alert').textContent).toBe('O app está enviando uma candidatura ou usando o navegador agora. Espere terminar e tente de novo.');
+    expect(screen.getByRole('alert').textContent).toBe('Uma candidatura estava sendo enviada, então nada foi apagado. O envio fica parado até você abrir o app de novo. Feche e abra o app e repita.');
     cleanup();
     montar({ erro: new ErroApi('só pela tela', 403, { erro: 'só pela tela' }) });
     digitar('APAGAR MEUS DADOS');
@@ -85,6 +85,16 @@ describe('Apagar meus dados', () => {
 });
 
 describe('Sair das plataformas', () => {
+  it('409 diz para esperar o envio terminar; erro qualquer vira frase fixa, sem texto do servidor', async () => {
+    montar({ erro: new ErroApi('envio em andamento', 409, { erro: 'envio em andamento', estado: 'enviando' }) });
+    await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));
+    expect(screen.getByRole('alert').textContent).toBe('O app está enviando uma candidatura agora. Espere terminar e tente de novo.');
+    cleanup();
+    montar({ erro: new Error('C:\\caminho\\interno: acesso negado') });
+    await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));
+    expect(screen.getByRole('alert').textContent).toBe('Não deu para concluir. Tente de novo.');
+  });
+
   it('pede confirmação e manda {}', async () => {
     const { gravacoes, perguntas } = montar();
     await clicar(screen.getByRole('button', { name: 'Sair das plataformas' }));

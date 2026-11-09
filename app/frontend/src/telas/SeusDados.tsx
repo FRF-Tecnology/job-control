@@ -33,10 +33,14 @@ export function SeusDados() {
   const [feito, setFeito] = useState<Feito>(null);
   const confere = digitado.trim() === FRASE;
 
-  const explicar = (e: unknown) => {
-    if (e instanceof ErroApi && e.status === 409) return 'O app está enviando uma candidatura ou usando o navegador agora. Espere terminar e tente de novo.';
+  // Frases fixas: nenhum texto do servidor ou do sistema aparece aqui (nota do CyberSec no #57).
+  const explicar = (e: unknown, acao: 'apagar' | 'sair') => {
+    if (e instanceof ErroApi && e.status === 409) return acao === 'apagar'
+      // No apagar, o servidor para o envio antes de conferir e só o solta quando o app abre de novo.
+      ? 'Uma candidatura estava sendo enviada, então nada foi apagado. O envio fica parado até você abrir o app de novo. Feche e abra o app e repita.'
+      : 'O app está enviando uma candidatura agora. Espere terminar e tente de novo.';
     if (e instanceof ErroApi && e.status === 403) return 'Só você pode fazer isso, por esta tela.';
-    return e instanceof Error ? `Não deu para concluir: ${e.message}` : 'Não deu para concluir. Tente de novo.';
+    return 'Não deu para concluir. Tente de novo.';
   };
 
   async function sair() {
@@ -52,7 +56,7 @@ export function SeusDados() {
       if (r.faltou?.includes('navegador')) setErro('Não deu para sair das plataformas: o navegador do app está em uso. Feche o app, abra de novo e repita.');
       else setFeito({ tipo: 'saiu' });
     }
-    catch (e) { setErro(explicar(e)); }
+    catch (e) { setErro(explicar(e, 'sair')); }
     finally { setOcupado(false); }
   }
 
@@ -67,7 +71,7 @@ export function SeusDados() {
       setFeito({ tipo: 'apagou', fechar: !!r.fechar, faltou });
       // Com fechar, o servidor fecha o app; não adianta reler. Sem fechar, relê para mostrar o app vazio.
       if (!r.fechar) await app.recarregar();
-    } catch (e) { setErro(explicar(e)); }
+    } catch (e) { setErro(explicar(e, 'apagar')); }
     finally { setOcupado(false); }
   }
 
@@ -98,7 +102,7 @@ export function SeusDados() {
         <h3>Apagar meus dados</h3>
         <p className="mudo">Apaga de vez, sem volta, e fecha o app. Na próxima vez, ele abre como novo:</p>
         <ul>{Object.values(ITENS).map(t => <li key={t}>{t}</li>)}</ul>
-        <p className="mudo">Não apaga: o login das ferramentas de IA (Claude, Codex, Gemini), os PDFs originais que você copiou e o cache da janela do app.</p>
+        <p className="mudo">Não apaga: o login das ferramentas de IA (Claude, Codex, Gemini), os PDFs originais que você copiou, os dados da Central antiga (pasta dados/) e o cache da janela do app.</p>
         <label className="campo"><span>{`Para confirmar, digite ${FRASE}`}</span>
           <input type="text" autoComplete="off" spellCheck={false} value={digitado} onChange={e => setDigitado(e.target.value)} aria-describedby="seus-dados-dica" />
         </label>
