@@ -17,7 +17,6 @@ import (
 	"log"
 	"math"
 	"math/rand/v2"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -383,7 +382,7 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 const MaxEtapas = 10
 
 func enderecoConfere(plataforma, aprovada, atual string) bool {
-	return dominio.URLDaPlataforma(plataforma, atual) && mesmaVaga(aprovada, atual)
+	return dominio.URLDaPlataforma(plataforma, atual) && dominio.MesmaVaga(plataforma, aprovada, atual)
 }
 
 func (x *Executor) conferirEndereco(ctx context.Context, pag Pagina, plataforma, aprovada string) (passo, bool) {
@@ -477,20 +476,6 @@ func tipoDoErro(err error) string {
 		return "currículo"
 	}
 	return fmt.Sprintf("%T", err)
-}
-
-// mesmaVaga: o caminho onde a página parou é o aprovado ou fica abaixo dele (ex.: /jobs/view/1/apply).
-func mesmaVaga(aprovada, final string) bool {
-	a, errA := url.Parse(aprovada)
-	f, errF := url.Parse(final)
-	if errA != nil || errF != nil {
-		return false
-	}
-	pa, pf := strings.TrimSuffix(a.EscapedPath(), "/"), strings.TrimSuffix(f.EscapedPath(), "/")
-	if pa == "" {
-		return pf == ""
-	}
-	return pf == pa || strings.HasPrefix(pf, pa+"/")
 }
 
 // valorDoCampo devolve o valor do pacote para o campo (M1) ou o motivo de bloqueio. Valor e motivo vazios: campo
