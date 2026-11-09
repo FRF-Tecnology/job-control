@@ -44,7 +44,7 @@ func TestGeminiRecebePedidoPeloStdin(t *testing.T) {
 func TestDetectarCLIsSemNadaInstalado(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	for _, e := range DetectarCLIs(context.Background()) {
-		if e.Instalada || e.Pronta || e.Aviso != "" {
+		if e.Instalada || e.Pronta || e.Aviso != "" || e.Motivo != "" {
 			t.Errorf("%s: %+v", e.Comando, e)
 		}
 	}
@@ -91,8 +91,18 @@ func TestDetectarCLIsMarcaCodexEGeminiNaoProntos(t *testing.T) {
 		if e.Comando == "claude" {
 			continue
 		}
-		if !e.Instalada || e.Pronta || e.Aviso != msgSemTrava {
+		if !e.Instalada || e.Pronta || e.Aviso != msgSemTrava || e.Motivo != MotivoPolitica {
 			t.Errorf("%s: instalada=%v pronta=%v aviso=%q", e.Comando, e.Instalada, e.Pronta, e.Aviso)
+		}
+	}
+}
+
+// O Claude nativo (não .cmd) instalado fica pronto, sem aviso e sem motivo.
+func TestDetectarCLIsClaudeNativoPronto(t *testing.T) {
+	comCLIFalsaNome(t, "claude", "mudo")
+	for _, e := range DetectarCLIs(context.Background()) {
+		if e.Comando == "claude" && (!e.Instalada || !e.Pronta || e.Aviso != "" || e.Motivo != "") {
+			t.Errorf("claude nativo: %+v", e)
 		}
 	}
 }

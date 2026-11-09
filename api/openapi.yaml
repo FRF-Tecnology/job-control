@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.4
+  version: 0.4.5
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -376,6 +376,7 @@ components:
         versao: { type: string }
         pronta: { type: boolean, description: 'Instalada e num formato que o app pode usar com segurança. Ex.: o Claude instalado como .cmd (npm, Windows) fica instalada: true, pronta: false (jc-a2y.25)' }
         aviso: { type: string, description: 'Texto fixo nosso quando pronta é false, com o que a pessoa faz (ex.: instalar a versão nativa .exe). Codex e Gemini ficam pronta: false até haver travas de ferramentas (jc-a2y.26)' }
+        motivo: { type: string, enum: [formato, politica], description: 'Só quando pronta é false. formato: a CLI está instalada num formato que o app não usa com segurança, e instalar a versão nativa resolve (ex.: Claude .cmd); politica: a CLI está fora do app por regra de segurança, e o caminho é usar uma chave de API (ex.: Codex e Gemini, jc-a2y.26)' }
     EstadoIA:
       type: object
       required: [configurada, chaves, clis, gratis, uso]
