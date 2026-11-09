@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/api"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
@@ -22,15 +23,19 @@ var telas embed.FS
 
 func main() {
 	ctx := context.Background()
-	pasta, err := config.PastaDados()
+	// jc-etv.7: a pasta "Central de Candidaturas" vira "Applyer" ao abrir (rename inteiro, ou adiado se estiver em uso).
+	abertura, err := config.AbrirPastaDados()
 	if err != nil {
 		falhar("pasta de dados", err)
 	}
+	pasta := abertura.Caminho
+	log.Printf("partida: %s", config.OrigemPasta()) // sem o caminho (jc-a2y.57)
 	banco, err := armazem.Abrir(ctx, config.CaminhoBanco(pasta))
 	if err != nil {
 		falhar("banco", err)
 	}
 	defer banco.Fechar()
+	registrarMigracao(ctx, banco, abertura)
 	if _, err := banco.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
 		falhar("primeira vez", err)
 	}
@@ -79,6 +84,26 @@ func main() {
 
 	if err := app.Run(); err != nil {
 		falhar("janela", err)
+	}
+}
+
+// registrarMigracao: o fato e o aviso da migração da pasta, no log e no banco (meta "pasta"), sem caminho. A tela lê o
+// aviso por GET /dados/pasta (jc-etv.7, proposta).
+func registrarMigracao(ctx context.Context, banco *armazem.Armazem, a config.Abertura) {
+	switch {
+	case a.Migrou:
+		log.Printf("pasta: migrada para %s", config.NomePasta)
+	case a.Aviso != "":
+		log.Printf("pasta: %s", a.Aviso)
+	default:
+		return
+	}
+	registro := map[string]any{"aviso": a.Aviso, "em": time.Now().Format(time.RFC3339)}
+	if a.Migrou {
+		registro["migradaEm"] = registro["em"]
+	}
+	if err := banco.GravarMeta(ctx, "pasta", registro); err != nil {
+		log.Printf("pasta: não gravou o registro da migração (%T)", err)
 	}
 }
 
