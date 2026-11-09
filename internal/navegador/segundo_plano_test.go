@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
 // jc-a2y.6.7: como o navegador é aberto, com um navegador falso (testdata/falso) que anota os argumentos e a
@@ -160,5 +162,28 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	time.Sleep(time.Second)
 	if n := avisos.Load(); n != 1 {
 		t.Fatalf("o app fechou o login e avisou: avisos = %d", n)
+	}
+}
+
+// P0 da .6.5: com "Ver o envio" ligado (janela visível), a candidatura abre a vaga e envia como no modo sem janela.
+// Abre janela: SÓ NO CI.
+func TestEnvioVisivelNavegaNaVaga(t *testing.T) {
+	if os.Getenv("CI") != "true" {
+		t.Skip("abre uma janela visível: só no CI")
+	}
+	srv := novoServidor(t)
+	dados := t.TempDir()
+	nav := navegadorDeTeste(t, srv, dados)
+	nav.MostrarEnvio(true)
+	s := novoCenario(t, nav, dados)
+	d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000001"))
+	if d.Estado != dominio.CandEnviada {
+		t.Fatalf("visível: desfecho = %+v", d)
+	}
+	nav.mu.Lock()
+	visivel := nav.visivelAgora
+	nav.mu.Unlock()
+	if !visivel {
+		t.Fatal("o envio não abriu no modo visível")
 	}
 }

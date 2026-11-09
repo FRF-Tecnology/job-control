@@ -269,3 +269,20 @@ func TestRecuperarAoAbrir(t *testing.T) {
 		t.Fatalf("4ª queda = %v", estadoDe(t, novo, c.ID).Estado)
 	}
 }
+
+// PO (jc-a2y.6.13 com o .6.11): a volta automática não conta duas vezes no limite do aprovar. Ela sai das tentativas
+// (não é enviada) e conta uma vez só, como aprovada que ainda não saiu.
+func TestVoltaNaoContaDuasVezesNoLimite(t *testing.T) {
+	agora := time.Date(2026, 11, 9, 10, 0, 0, 0, fuso(t, "America/Sao_Paulo"))
+	e, c := enviando(t, agora)
+	if n := UsadasNoDia(e, "linkedin", agora) + AprovadasPendentes(e, "linkedin", agora); n != 1 {
+		t.Fatalf("em enviando, conta %d; queria 1", n)
+	}
+	e, _, err := DevolverAprovada(e, c.ID, c.Versao, "erro-tecnico", agora)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u, p := UsadasNoDia(e, "linkedin", agora), AprovadasPendentes(e, "linkedin", agora); u != 0 || p != 1 {
+		t.Fatalf("depois da volta: usadas %d, pendentes %d; queria 0 e 1", u, p)
+	}
+}

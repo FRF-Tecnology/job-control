@@ -505,7 +505,7 @@ func AprovarCandidatura(e Estado, id, impressao string, agora time.Time, limites
 	if !vagaAprovada(e, c.VagaID) {
 		return e, nil, &ErroConflito{Msg: "a vaga não está mais aprovada para aplicar", Estado: c.Estado}
 	}
-	if err := conferirLimite(e, c.Plataforma, agora, limites); err != nil {
+	if err := conferirLimiteAprovar(e, c.Plataforma, agora, limites); err != nil {
 		return e, nil, err
 	}
 	c.ProximaTentativaEm = "" // aprovação nova: as voltas recomeçam do zero (no máximo 3 por aprovação; o histórico fica)
@@ -555,6 +555,22 @@ func VoltasNoDia(e Estado, plataforma string, agora time.Time) int {
 		}
 	}
 	return n
+}
+
+// conferirLimiteAprovar (jc-a2y.6.13, decisão do PO): aprovar conta as tentativas de hoje e as aprovadas que ainda
+// não saíram, no lote e no aprovar de uma. Assim a tela nunca mostra mais aprovadas do que o limite deixa enviar.
+// O executor usa conferirLimite (só as tentativas), para a candidatura não contar contra ela mesma. Usadas no erro
+// segue sendo as tentativas, como em GET /candidaturas/limites.
+func conferirLimiteAprovar(e Estado, plataforma string, agora time.Time, limites map[string]int) error {
+	limite, tem := LimiteDe(limites, plataforma)
+	if !tem {
+		return nil
+	}
+	usadas := UsadasNoDia(e, plataforma, agora)
+	if usadas+AprovadasPendentes(e, plataforma, agora) >= limite {
+		return &ErroLimite{Plataforma: plataforma, Limite: limite, Usadas: usadas, RenovaEm: RenovaEm(agora).Format(time.RFC3339)}
+	}
+	return nil
 }
 
 // RevogarCandidatura: aprovada → preparada (tira a aprovação). Pode vir de qualquer autor: só reduz o risco.

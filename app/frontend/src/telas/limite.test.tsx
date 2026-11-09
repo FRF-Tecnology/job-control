@@ -9,7 +9,7 @@ afterEach(cleanup);
 
 const L: Limite = { limite: 30, usadas: 3, renovaEm: '2026-11-10T00:00:00-03:00' };
 
-function montar({ resposta = 'ok' as string | null, erro = null as null | Error } = {}) {
+function montar({ resposta = 'ok' as string | null, erro = null as null | Error, aprovadas = 0, limite = L } = {}) {
   const gravacoes: { caminho: string; metodo: string; corpo: any }[] = [];
   const perguntas: Pergunta[] = [];
   const avisos: string[] = [];
@@ -24,7 +24,7 @@ function montar({ resposta = 'ok' as string | null, erro = null as null | Error 
     }),
   } as unknown as App;
   render(<Contexto.Provider value={app}>
-    <LimiteCartao plataforma="linkedin" nome="LinkedIn" na="no LinkedIn" limite={L} renova="Renova amanhã às 00:00" onSalvo={l => salvos.push(l)} />
+    <LimiteCartao plataforma="linkedin" nome="LinkedIn" na="no LinkedIn" limite={limite} aprovadas={aprovadas} renova="Renova amanhã às 00:00" onSalvo={l => salvos.push(l)} />
   </Contexto.Provider>);
   return { gravacoes, perguntas, avisos, salvos };
 }
@@ -39,6 +39,19 @@ describe('Limite diário', () => {
     abrir();
     expect(campo().value).toBe('30');
     expect(screen.getByText('Padrão: 30.')).toBeTruthy();
+  });
+
+  it('conta as aprovadas que ainda vão sair: mostra quanto sobra e fica cheio quando não sobra nada (jc-a2y.6.13)', () => {
+    montar({ aprovadas: 2 });
+    expect(screen.getByText('2 aprovadas esperando envio · sobram 25 hoje')).toBeTruthy();
+    expect(document.querySelector('.limite.cheio')).toBeNull();
+    cleanup();
+    montar({ aprovadas: 1, limite: { ...L, limite: 1, usadas: 0 } });
+    expect(screen.getByText('1 aprovada esperando envio · sobram 0 hoje')).toBeTruthy();
+    expect(document.querySelector('.limite.cheio')).toBeTruthy();
+    cleanup();
+    montar();
+    expect(screen.queryByText(/esperando envio/)).toBeNull();
   });
 
   it('pede confirmação, manda só {limite} e usa a resposta', async () => {
