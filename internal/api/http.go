@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,7 +76,8 @@ func (a *API) Handler() http.Handler {
 			caminho += "?" + r.URL.RawQuery
 		}
 		resp, err := a.Chamar(r.Context(), Pedido{Metodo: m, Caminho: caminho, Corpo: corpo, Autor: "eu"})
-		if err != nil && r.Context().Err() != nil {
+		// Só o cancelamento em si: um erro de verdade (disco, SQLite) que coincide com a saída do cliente continua 500.
+		if err != nil && r.Context().Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
 			// jc-a2y.35: o cliente desistiu (fechou ou trocou de tela) e o erro é só o cancelamento. Não é erro do
 			// app: nada vai para o log, e a gravação em andamento já foi desfeita pela transação.
 			enviar(w, Resposta{Status: statusClienteDesistiu, Corpo: Objeto{"erro": "pedido cancelado"}})

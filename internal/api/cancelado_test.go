@@ -62,3 +62,18 @@ func TestErroDeVerdadeContinuaSendo500(t *testing.T) {
 		t.Fatal("erro de verdade sumiu do log")
 	}
 }
+
+// Cliente saiu e, ao mesmo tempo, erro de verdade (banco fechado, que não é cancelamento): continua 500 com log.
+func TestErroDeVerdadeComClienteSaindoContinua500(t *testing.T) {
+	a := apiCom(t, nil)
+	a.arm.Fechar()
+	ctx, cancelar := context.WithCancel(context.Background())
+	cancelar()
+	lerLog := capturarLog(t)
+	req := httptest.NewRequest("GET", "http://127.0.0.1"+Prefixo+"/estado", nil).WithContext(ctx)
+	w := httptest.NewRecorder()
+	a.Handler().ServeHTTP(w, req)
+	if w.Code != 500 || !strings.Contains(lerLog(), "api: erro 500 em GET "+Prefixo+"/estado") {
+		t.Fatalf("erro de verdade com o cliente saindo virou %d sem log", w.Code)
+	}
+}
