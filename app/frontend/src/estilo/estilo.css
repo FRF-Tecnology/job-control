@@ -135,7 +135,7 @@ main:focus, main:focus-visible { outline: none; }
 .botao[disabled], .botao-fantasma[disabled] { opacity: .5; cursor: default; }
 .botao.p, .botao-fantasma.p { min-height: 34px; padding: 4px 14px; font-size: .84rem; }
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-input[type=text], input[type=search], input[type=number], input[type=url], input[type=email], input[type=password], select, textarea {
+input[type=text], input[type=search], input[type=number], input[type=url], input[type=email], input[type=password], input[type=tel], select, textarea {
   background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio-p); padding: 9px 12px; min-height: 44px; width: 100%; transition: border-color .15s, box-shadow .15s;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--destaque); box-shadow: 0 0 0 4px var(--destaque-suave); }
@@ -443,10 +443,25 @@ dialog form { display: grid; gap: 16px; }
 .conferida { display: block; margin-top: 4px; font-size: .88rem; font-weight: 600; }
 .conferida.ok { color: var(--verde); }
 .conferida.diferente { color: var(--erro); }
+/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
+.prontas { margin-bottom: 24px; }
+.pronta { display: grid; gap: 16px; padding: 16px 20px; }
+.pronta-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.pronta-topo strong { overflow-wrap: anywhere; }
+.pacote-form { max-width: none; }
+.pacote-form fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.pacote-form legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+.respostas-form { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.respostas-form li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.chip.origem-ia { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+.erro-resposta { grid-column: 1 / -1; margin: 0; color: var(--erro); font-size: .88rem; font-weight: 600; } /* pergunta que só a pessoa responde */
 @media (max-width: 600px) {
   .cand { padding: 16px; }
   .pacote dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .pacote dd { margin-bottom: 8px; }
+  .pronta { padding: 16px; }
+  .respostas-form li { grid-template-columns: minmax(0, 1fr) auto; }
+  .respostas-form li input { grid-column: 1 / -1; }
 }
 /* Alvos de toque (jc-a2y.39): com ponteiro grosso (tela de toque), todo controle tem pelo menos 44 px.
    Com mouse, o tamanho compacto do desktop continua. */
