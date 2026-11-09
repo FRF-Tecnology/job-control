@@ -65,6 +65,18 @@ Ferramentas: `resumo`, `vagas_listar`, `vaga_detalhe`, `vaga_duplicada`, `vaga_a
 - A Central só atende o próprio computador. Os scripts de busca usam uma chave local (`dados/.chave`).
 - Na primeira busca, o Chrome pode perguntar se o LinkedIn, a Gupy ou a InHire podem **acessar dispositivos da rede local**. Permitir deixa as vagas irem direto para a Central. Se você negar, o Claude copia as vagas em partes (mais lento, mas funciona).
 
+## Testar o app novo no Mac (versão de teste)
+O CI gera o Applyer para Mac com chip Apple (M1 ou mais novo) a cada commit no branch `reescrita-go`. É só para teste: **não tem assinatura da Apple** (isso fica para a P8).
+1. No GitHub, abra **Actions > CI**, filtre pelo branch **`reescrita-go`** e escolha uma execução verde do tipo **push**. Baixe o artefato **`Applyer-macos-arm64.zip`**. É preciso estar logado; o artefato some depois de 7 dias.
+   **Não use** um `.app` de execução de pull request nem de outro repositório: esses não têm artefato, e um `.app` de outra origem pode ter qualquer coisa dentro.
+2. Confira o arquivo antes de abrir. No Terminal, rode `shasum -a 256 ~/Downloads/Applyer-macos-arm64.zip`. O código precisa ser igual ao `sha256` do resumo da execução (e ao digest ao lado do artefato). Se for diferente, apague o arquivo e não abra.
+3. Abra o zip: sai o `Applyer.app`. Mova-o para **Aplicativos**, se quiser.
+4. Na primeira vez, o macOS bloqueia, porque o app não é de um desenvolvedor identificado:
+   - **macOS 15 (Sequoia) ou mais novo:** tente abrir, feche o aviso e vá em **Ajustes do Sistema > Privacidade e Segurança**. Lá embaixo, clique em **Abrir Mesmo Assim** e confirme.
+   - **macOS 14 ou mais antigo:** clique com o botão direito no `Applyer.app`, escolha **Abrir** e depois **Abrir** de novo.
+
+   Se aparecer que o app "está danificado", rode no Terminal: `xattr -dr com.apple.quarantine /Applications/Applyer.app` (ajuste o caminho se ele estiver em outra pasta).
+
 ## Para quem mexe no código
 - `nucleo/`: regras (validação, deduplicação, funil, follow-up). Puro e testado.
   - `nucleo/armazens/`: onde os dados moram (`arquivos` no modo local, `memoria` nos testes; Postgres na nuvem depois).
