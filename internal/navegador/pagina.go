@@ -131,10 +131,33 @@ func (p *pagina) Preencher(ctx context.Context, c executor.Campo, valor string) 
 	if err != nil {
 		return err
 	}
+	if res == "sem-opcao" {
+		return executor.ErrSemOpcao // o executor decide se fica o que a página já marcou
+	}
 	if res != "ok" {
 		return fmt.Errorf("navegador: não preencheu (%s)", res) // só o código fixo, sem valor nem rótulo
 	}
 	return nil
+}
+
+// Igual confere dentro da página se o valor que o campo já tem é o esperado. Só "igual", "diferente" ou "sem-campo"
+// voltam: o valor da página nunca sai dela (jc-a2y.6.5.1).
+func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperado string) (bool, error) {
+	js, err := chamada(scriptIgual, c.ID, esperado, c.Tipo)
+	if err != nil {
+		return false, err
+	}
+	res, err := rodar(ctx, p, tempoAcao, chromedp.Evaluate[string](js))
+	if err != nil {
+		return false, err
+	}
+	switch res {
+	case "igual":
+		return true, nil
+	case "diferente":
+		return false, nil
+	}
+	return false, fmt.Errorf("navegador: não conferiu (%s)", res) // só o código fixo
 }
 
 // Anexar põe no campo de arquivo o caminho que o executor passou (a cópia conferida, #43).
@@ -174,7 +197,7 @@ func (p *pagina) Enviar(ctx context.Context) error {
 		return err
 	}
 	if !clicou {
-		return errors.New("navegador: botão de enviar não encontrado")
+		return executor.ErrSemBotaoEnviar // nada foi clicado: o executor bloqueia em vez de deixar incerta
 	}
 	return nil
 }
@@ -230,6 +253,13 @@ const scriptRetrato = `(() => {
     if (!t.length) { const f = el.closest('fieldset'); const lg = f && f.querySelector('legend'); if (lg) t.push(lg.innerText); }
     return limpar(t.join(' '));
   };
+  // preenchido: a página já trouxe um valor. Só sim ou não: o valor nunca sai do retrato (jc-a2y.6.5.1).
+  const preenchido = (el, tipo) => {
+    if (tipo === 'checkbox') return el.checked;
+    if (tipo === 'file') return !!(el.files && el.files.length);
+    if (tipo === 'select') { const o = el.options[el.selectedIndex]; return !!o && !o.disabled && o.value !== ''; }
+    return (el.value || '').trim() !== '';
+  };
   const campos = []; const grupos = new Set();
   for (const el of document.querySelectorAll('input, select, textarea')) {
     const tipo = (el.tagName === 'INPUT' ? (el.getAttribute('type') || 'text') : el.tagName).toLowerCase();
@@ -240,10 +270,10 @@ const scriptRetrato = `(() => {
       grupos.add(el.name);
       const f = el.closest('fieldset'); const lg = f && f.querySelector('legend');
       const todos = Array.from(document.getElementsByName(el.name));
-      campos.push({ id: 'input[type="radio"][name="' + CSS.escape(el.name) + '"]', tipo, rotulo: lg ? limpar(lg.innerText) : rotulo(el), nome: el.name, placeholder: '', autocomplete: '', obrigatorio: todos.some(r => r.required) });
+      campos.push({ id: 'input[type="radio"][name="' + CSS.escape(el.name) + '"]', tipo, rotulo: lg ? limpar(lg.innerText) : rotulo(el), nome: el.name, placeholder: '', autocomplete: '', obrigatorio: todos.some(r => r.required), preenchido: todos.some(r => r.checked) });
       continue;
     }
-    campos.push({ id: seletor(el), tipo, rotulo: rotulo(el), nome: el.name || '', placeholder: el.getAttribute('placeholder') || '', autocomplete: el.getAttribute('autocomplete') || '', obrigatorio: !!el.required || el.getAttribute('aria-required') === 'true' });
+    campos.push({ id: seletor(el), tipo, rotulo: rotulo(el), nome: el.name || '', placeholder: el.getAttribute('placeholder') || '', autocomplete: el.getAttribute('autocomplete') || '', obrigatorio: !!el.required || el.getAttribute('aria-required') === 'true', preenchido: preenchido(el, tipo) });
   }
   const quadros = Array.from(document.querySelectorAll('iframe')).map(f => f.getAttribute('src') || '').filter(Boolean).slice(0, 50);
   const botoes = Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], [role=button]')).filter(visivel).map(b => limpar(b.innerText || b.value || b.getAttribute('aria-label'))).filter(Boolean).slice(0, 100);
@@ -264,7 +294,8 @@ const scriptPreencher = `(sel, valor) => {
   const el = document.querySelector(sel);
   if (!el) return 'sem-campo';
   if (el.tagName === 'SELECT') {
-    const op = Array.from(el.options).find(o => norm(o.text) === norm(valor) || norm(o.value) === norm(valor));
+    let op = Array.from(el.options).find(o => norm(o.text) === norm(valor) || norm(o.value) === norm(valor));
+    if (!op && /^\+\d{1,3}$/.test(valor)) { const re = new RegExp('(^|[^0-9])\\+?' + valor.slice(1) + '([^0-9]|$)'); op = Array.from(el.options).find(o => !o.disabled && o.value !== '' && (re.test(o.text) || re.test(o.value))); }
     if (!op) return 'sem-opcao';
     el.value = op.value;
     avisar(el);
@@ -277,6 +308,29 @@ const scriptPreencher = `(sel, valor) => {
   avisar(el);
   el.blur();
   return 'ok';
+}`
+
+// scriptIgual compara o valor atual do campo com o esperado, por tipo: e-mail e nome sem diferença de caixa e acento,
+// telefone pelos dígitos (aceita o código do país na frente), código do país pelo número. Devolve só o resultado.
+const scriptIgual = `(sel, esperado, tipo) => {
+  const norm = s => (s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const dig = s => (s || '').replace(/\D+/g, '');
+  let atuais = [];
+  if (sel.startsWith('input[type="radio"]')) {
+    const r = Array.from(document.querySelectorAll(sel)).find(r => r.checked);
+    if (r) atuais = [(r.labels && r.labels[0] && r.labels[0].innerText) || '', r.value];
+  } else {
+    const el = document.querySelector(sel);
+    if (!el) return 'sem-campo';
+    if (el.tagName === 'SELECT') { const o = el.options[el.selectedIndex]; if (o) atuais = [o.text, o.value]; }
+    else atuais = [el.value];
+  }
+  const igual = v => {
+    if (tipo === 'telefone') { const a = dig(v), e = dig(esperado); return e !== '' && (a === e || (a.endsWith(e) && a.length - e.length <= 3)); }
+    if (tipo === 'ddi') { const e = dig(esperado); return e !== '' && new RegExp('(^|[^0-9])\\+?' + e + '([^0-9]|$)').test(v); }
+    return norm(v) !== '' && norm(v) === norm(esperado);
+  };
+  return atuais.some(igual) ? 'igual' : 'diferente';
 }`
 
 // scriptClicar clica no primeiro botão visível e ativo cujo texto normalizado casa com padrao e não com evitar.
