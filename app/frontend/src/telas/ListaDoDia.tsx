@@ -1,7 +1,7 @@
 // Lista do dia (jc-a2y.6.13, decisão do Vini: aprovar em lote, 1 clique por dia). Mostra as candidaturas preparadas
 // cuja impressão confere NESTA tela, até o que resta do limite de hoje em cada plataforma, com o resumo de cada pacote
 // e a opção de tirar itens. "Aprovar a lista do dia" manda cada item com a SUA impressão, a calculada aqui (M2: o
-// servidor confere uma por uma). RASCUNHO: rota e resposta supostas até o contrato do Faker:
+// servidor confere uma por uma). Contrato do PR #102 (ainda proposta):
 // POST /api/v1/candidaturas/aprovar-lote {itens: [{id, impressao}]} → {aprovadas: [id], recusadas: [{id, motivo}]}.
 import { useMemo, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
@@ -12,13 +12,15 @@ type Cand = {
 };
 type Limite = { limite: number; usadas: number };
 
-// Motivos de recusa por item (lista fechada; desconhecido vira "mudou").
+// Motivos de recusa por item, a lista fechada do contrato (PR #102); um desconhecido vira "mudou".
 const MOTIVO: Record<string, string> = {
   'impressao-mudou': 'o pacote mudou; revise de novo',
   limite: 'passou do limite de hoje da plataforma',
   estado: 'não estava mais para revisar',
-  versao: 'o pacote mudou; revise de novo',
+  'nao-encontrada': 'não está mais na fila',
+  'vaga-fora': 'a vaga saiu de Aplicar ou já foi enviada',
 };
+const MAXIMO_ITENS = 120; // corpo estrito do contrato: de 1 a 120 itens
 
 export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma, onFeito }: {
   candidaturas: Cand[]; calculadas: Record<string, string>; limites: Record<string, Limite>;
@@ -48,7 +50,8 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
   const alternar = (id: string) => setTiradas(t => { const n = new Set(t); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   async function aprovar() {
-    const lista = escolhidas.map(c => ({ c, impressao: calculadas[c.id] })).filter(x => x.impressao && x.impressao === x.c.impressao);
+    // Na ordem da tela: é a ordem em que o servidor aplica o limite do dia.
+    const lista = escolhidas.map(c => ({ c, impressao: calculadas[c.id] })).filter(x => x.impressao && x.impressao === x.c.impressao).slice(0, MAXIMO_ITENS);
     if (!lista.length) return;
     const ok = await app.perguntar({
       titulo: lista.length === 1 ? 'Aprovar 1 candidatura hoje?' : `Aprovar ${lista.length} candidaturas hoje?`,

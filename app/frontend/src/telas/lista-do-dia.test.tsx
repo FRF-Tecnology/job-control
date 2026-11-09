@@ -99,6 +99,17 @@ describe('Lista do dia', () => {
     expect(dois.avisos).toContainEqual({ texto: 'Só você pode aprovar a lista, por esta tela.', erro: true });
   });
 
+  it('motivos do contrato (nao-encontrada, vaga-fora) em frase fixa; itens vão na ordem da tela', async () => {
+    const { gravacoes, avisos } = montar({
+      candidaturas: [cand('b', 'linkedin', 'preparada', 2, '2026-11-09T10:05:00-03:00'), cand('a', 'linkedin', 'preparada', 1, '2026-11-09T10:01:00-03:00'), cand('c', 'gupy', 'preparada', 3, '2026-11-09T10:09:00-03:00')],
+      calculadas: { a: IMP(1), b: IMP(2), c: IMP(3) },
+      retorno: { aprovadas: ['a'], recusadas: [{ id: 'b', motivo: 'nao-encontrada' }, { id: 'c', motivo: 'vaga-fora' }] },
+    });
+    await clicar(aprovarLista());
+    expect(gravacoes[0].corpo.itens.map((i: any) => i.id)).toEqual(['a', 'b', 'c']); // da mais antiga para a mais nova, como na tela
+    expect(avisos).toContainEqual({ texto: 'Empresa B — Dev ficou de fora: não está mais na fila.', erro: true });
+    expect(avisos).toContainEqual({ texto: 'Empresa C — Dev ficou de fora: a vaga saiu de Aplicar ou já foi enviada.', erro: true });
+  });
   it('nada preparado e conferido: a seção não aparece', () => {
     montar({ candidaturas: [cand('a', 'linkedin', 'aprovada', 1)], calculadas: {} });
     expect(screen.queryByRole('region', { name: 'Lista do dia' })).toBeNull();
