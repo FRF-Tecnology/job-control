@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/curriculos"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
@@ -231,7 +232,7 @@ func TestFilaCurriculoDoServidor(t *testing.T) {
 	pastaCV := filepath.Join(f.pasta, "curriculos")
 	os.Mkdir(filepath.Join(pastaCV, "pasta.pdf"), 0o700)
 	grande, _ := os.Create(filepath.Join(pastaCV, "grande.pdf"))
-	grande.Truncate(maxBytesCurriculo + 1)
+	grande.Truncate(curriculos.MaxBytes + 1)
 	grande.Close()
 	os.WriteFile(filepath.Join(f.pasta, "fora.pdf"), pdfFicticio, 0o600)
 	for _, nome := range []string{"nao-existe.pdf", "../fora.pdf", `..\fora.pdf`, "pasta.pdf", "grande.pdf", "C:fora.pdf", "cv-pt.pdf:fluxo", "cv-pt.PDF.exe"} {
@@ -333,7 +334,7 @@ func TestFilaLimiteDiario(t *testing.T) {
 
 // O envio é do executor interno: nenhum código de rota chama as funções dele, e nenhuma rota de envio existe.
 func TestFilaSemRotaDeEnvio(t *testing.T) {
-	proibidas := regexp.MustCompile(`dominio\.(IniciarEnvio|MarcarEnviada|BloquearCandidatura|FalharCandidatura|MarcarIncertas|VencerAprovacoes)\b`)
+	proibidas := regexp.MustCompile(`dominio\.(IniciarEnvio|MarcarEnviada|BloquearCandidatura|FalharCandidatura|MarcarIncertas|VencerAprovacoes|EncaminharExterna|TornarIncerta)\b`)
 	var arquivos []string
 	for _, padrao := range []string{"*.go", "../../cmd/*/*.go", "../../app/*.go"} {
 		m, _ := filepath.Glob(padrao)
