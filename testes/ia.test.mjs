@@ -354,3 +354,21 @@ test('google: motivo de bloqueio passa por lista fechada; qualquer outro valor v
     });
   }
 });
+
+// jc-a2y.60: o contrato que o validador não aplicaria por inteiro falha ao carregar, igual ao Go (lerEsquema).
+// Os casos ficam num arquivo só, lido também por internal/ia/esquema_malformado_test.go.
+import { readFileSync } from 'node:fs';
+import { conferirEsquema } from '../nucleo/ia/erro.mjs';
+
+test('conferirEsquema recusa o que o validador ignoraria e aceita o subconjunto tratado', () => {
+  const casos = JSON.parse(readFileSync(new URL('../internal/ia/testdata/esquemas-recusados.json', import.meta.url), 'utf8'));
+  assert.ok(casos.recusados.length > 0 && casos.aceitos.length > 0);
+  for (const c of casos.recusados) {
+    assert.throws(() => conferirEsquema(c.esquema), e => e.message.includes(c.contem), c.nome);
+  }
+  for (const a of casos.aceitos) assert.doesNotThrow(() => conferirEsquema(a), JSON.stringify(a));
+  // Os contratos de verdade passam (funcoes.mjs confere ao carregar).
+  for (const [nome, f] of Object.entries(FUNCOES)) {
+    assert.doesNotThrow(() => { conferirEsquema(f.entrada); conferirEsquema(f.saida); }, nome);
+  }
+});

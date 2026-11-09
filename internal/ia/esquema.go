@@ -30,10 +30,33 @@ func deve(err error, campo string) {
 	}
 }
 
-func lerEsquema(bruto json.RawMessage) *esquema {
+// palavrasTratadas: o que validarEsquema aplica. Outra palavra-chave (minLength, pattern, format, description...)
+// seria ignorada em silêncio, e o contrato pareceria mais forte do que é: falha ao iniciar (jc-a2y.60).
+var palavrasTratadas = map[string]bool{"type": true, "enum": true, "properties": true, "required": true, "additionalProperties": true, "items": true}
+
+var tiposConhecidos = map[string]bool{"string": true, "number": true, "integer": true, "boolean": true, "object": true, "array": true, "null": true}
+
+// recusar: o contrato pede algo que o validador não aplicaria. Mesmas regras de conferirEsquema (nucleo/ia/erro.mjs).
+func recusar(caminho, motivo string) {
+	panic("esquema " + caminho + ": " + motivo)
+}
+
+func lerEsquema(bruto json.RawMessage) *esquema { return lerEsquemaEm(bruto, "$") }
+
+func lerEsquemaEm(bruto json.RawMessage, caminho string) *esquema {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(bruto, &m); err != nil {
 		panic("esquema: " + err.Error())
+	}
+	chaves := make([]string, 0, len(m))
+	for k := range m {
+		chaves = append(chaves, k)
+	}
+	sort.Strings(chaves) // mensagem estável
+	for _, k := range chaves {
+		if !palavrasTratadas[k] {
+			recusar(caminho, "palavra-chave não tratada: "+k)
+		}
 	}
 	e := &esquema{}
 	if t, ok := m["type"]; ok {
@@ -42,6 +65,11 @@ func lerEsquema(bruto json.RawMessage) *esquema {
 			e.Tipos = []string{um}
 		} else {
 			deve(json.Unmarshal(t, &e.Tipos), "type")
+		}
+		for _, x := range e.Tipos {
+			if !tiposConhecidos[x] {
+				recusar(caminho, "tipo desconhecido: "+x)
+			}
 		}
 	}
 	if en, ok := m["enum"]; ok {
@@ -54,17 +82,32 @@ func lerEsquema(bruto json.RawMessage) *esquema {
 		deve(json.Unmarshal(p, &props), "properties")
 		e.Propriedades = map[string]*esquema{}
 		for k, v := range props {
-			e.Propriedades[k] = lerEsquema(v)
+			e.Propriedades[k] = lerEsquemaEm(v, caminho+"."+k)
 		}
 	}
+	// required e additionalProperties só valem junto com properties (validarEsquema só olha os dois lá dentro).
 	if r, ok := m["required"]; ok {
 		deve(json.Unmarshal(r, &e.Obrigatorios), "required")
+		if !e.temPropriedad {
+			recusar(caminho, "required sem properties")
+		}
+		for _, k := range e.Obrigatorios {
+			if _, tem := e.Propriedades[k]; !tem {
+				recusar(caminho, "required com campo que não está em properties: "+k)
+			}
+		}
 	}
-	if a, ok := m["additionalProperties"]; ok && string(a) == "false" {
+	if a, ok := m["additionalProperties"]; ok {
+		if strings.TrimSpace(string(a)) != "false" {
+			recusar(caminho, "additionalProperties só pode ser false")
+		}
+		if !e.temPropriedad {
+			recusar(caminho, "additionalProperties sem properties")
+		}
 		e.SemExtras = true
 	}
 	if i, ok := m["items"]; ok {
-		e.Itens = lerEsquema(i)
+		e.Itens = lerEsquemaEm(i, caminho+"[]")
 	}
 	return e
 }
