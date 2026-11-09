@@ -88,6 +88,11 @@ func vagaDoEndereco(plataforma string, u *url.URL, host string) (id string, ok b
 
 // MesmaVaga diz se o endereço atual da página é a vaga aprovada, num host da lista fechada da plataforma.
 func MesmaVaga(plataforma, aprovada, atual string) bool {
+	if plataforma == PlataformaFormulario { // jc-a2y.7.2: o mesmo formulário, pela URL canônica (sem query nem fragmento)
+		ca, _, okA := FormularioDoEndereco(aprovada)
+		cb, _, okB := FormularioDoEndereco(atual)
+		return okA && okB && ca == cb
+	}
 	ua, hostA, okA := enderecoAnalisado(aprovada)
 	ub, hostB, okB := enderecoAnalisado(atual)
 	if !okA || !okB {

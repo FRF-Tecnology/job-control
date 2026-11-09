@@ -59,6 +59,8 @@ func main() {
 		AoVivo: controleEnvio.AoVivo,
 		// Aviso da pasta de dados nesta abertura, para a tela (GET /dados/pasta, jc-etv.14), sem caminho.
 		AvisoPasta: abertura.Aviso,
+		// Leitura de formulários (jc-a2y.7.2): nil no build padrão (a rota dá 404).
+		LerFormulario: controleEnvio.LerFormulario,
 	})
 
 	app = application.New(application.Options{

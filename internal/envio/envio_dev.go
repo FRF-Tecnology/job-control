@@ -12,6 +12,7 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/executor"
 	"github.com/FRF-Tecnology/job-control/internal/navegador"
 )
@@ -79,5 +80,11 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 		},
 		Janela: nav.Estado,
 		AoVivo: av,
+		// Ler um formulário (jc-a2y.7.2): espera o ciclo atual, como o login; nenhum envio começa no meio da leitura.
+		LerFormulario: func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error) {
+			ciclo.Lock()
+			defer ciclo.Unlock()
+			return nav.LerFormulario(ctx, endereco)
+		},
 	}
 }

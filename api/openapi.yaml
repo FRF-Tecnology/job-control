@@ -402,7 +402,7 @@ paths:
         '429': { description: 'Teto de 40 páginas abertas na plataforma hoje: {erro, plataforma, limite, usadas, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLimite' } } } }
   /candidaturas/limites:
     get:
-      summary: 'Limite diário por plataforma (linkedin, gupy, inhire), quantas já entraram em enviando hoje e quando renova. jc-a2y.7.2 (proposta): formulario entra aqui e em PUT /candidaturas/limites/{plataforma}, com padrão 30'
+      summary: 'Limite diário por plataforma (linkedin, gupy, inhire e formulario), quantas já entraram em enviando hoje e quando renova. formulario (jc-a2y.7.2) entra com o envio do executor, com padrão 30'
       responses:
         '200':
           description: Limites
@@ -415,9 +415,10 @@ paths:
                   linkedin: { $ref: '#/components/schemas/LimiteDiario' }
                   gupy: { $ref: '#/components/schemas/LimiteDiario' }
                   inhire: { $ref: '#/components/schemas/LimiteDiario' }
+                  formulario: { $ref: '#/components/schemas/LimiteDiario' }
   /candidaturas/limites/{plataforma}:
     parameters:
-      - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
+      - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire, formulario] } }
     put:
       x-so-tela: true
       summary: 'Muda o limite diário da plataforma (padrão 30, de 1 a 40)'
@@ -720,8 +721,8 @@ components:
       description: 'enviando e incerta só o executor põe; incerta sai só pela tela (concluir-manual ou reabrir)'
     PlataformaCandidatura:
       type: string
-      enum: [linkedin, gupy, inhire, outra]
-      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo. jc-a2y.7.2 (proposta): formulario, para Google Forms (docs.google.com/forms/d/e/<id>/viewform, docs.google.com/forms/d/<id>/viewform, forms.gle/<id>) e Typeform (<conta>.typeform.com/to/<id>, form.typeform.com/to/<id>), por lista exata de hosts e caminhos, nunca endsWith; URL guardada sem query nem fragmento (sem entry.* nem campos ocultos); conta no limite do dia (padrão 30) e no teto de 40'
+      enum: [linkedin, gupy, inhire, outra, formulario]
+      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo. jc-a2y.7.2: formulario, para Google Forms (docs.google.com/forms/d/e/<id>/viewform, docs.google.com/forms/d/<id>/viewform, forms.gle/<id>) e Typeform (<conta>.typeform.com/to/<id>, form.typeform.com/to/<id>), por lista exata de hosts e caminhos, nunca endsWith; URL guardada sem query nem fragmento (sem entry.* nem campos ocultos); conta no limite do dia (padrão 30) e no teto de 40'
     ConteudoCandidatura:
       type: object
       description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. Campo a mais em qualquer nível dá 400 (nada é gravado). CPF ou RG em qualquer texto dá 400'
@@ -749,7 +750,7 @@ components:
             tipo: { type: string, enum: [CLT, PJ, contractor] }
         respostas:
           type: array
-          description: 'jc-a2y.7.2 (proposta): em formulario, cada item ganha perguntaId (o id da pergunta em estrutura), e a resposta casa com a pergunta pelo texto exato normalizado; sem par, fica em pendentes. Sem IA no primeiro recorte'
+          description: 'jc-a2y.7.2: em formulario, cada item ganha perguntaId (o id da pergunta em estrutura), e a resposta casa com a pergunta pelo texto exato normalizado; sem par, fica em pendentes. Sem IA no primeiro recorte'
           items:
             type: object
             additionalProperties: false
@@ -758,6 +759,7 @@ components:
               pergunta: { type: string }
               resposta: { type: string }
               origem: { type: string, enum: [respostasPadrao, pessoa, ia] }
+              perguntaId: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$', description: 'Só em formulario: o id da pergunta em estrutura.perguntas (jc-a2y.7.2)' }
         mensagem: { type: [string, 'null'] }
     Candidatura:
       type: object
@@ -807,7 +809,7 @@ components:
         clicouEnviarEm: { type: [string, 'null'], description: 'jc-a2y.6.11: marca gravada ANTES do clique final. Com ela, sem confirmação, incerta (M3)' }
         estrutura:
           type: [object, 'null']
-          description: 'jc-a2y.7.2 (proposta): só em formulario, lida por POST /candidaturas/{id}/ler-formulario. Entra na impressão ({vagaId, plataforma, url, conteudo, estrutura}); no envio, o executor relê e compara o hash, e estrutura diferente dá bloqueada/pergunta-nova. Texto da página: dado não confiável, a tela mostra como texto. Nunca guarda a URL nem o link "Editar sua resposta" da página final'
+          description: 'jc-a2y.7.2: só em formulario, lida por POST /candidaturas/{id}/ler-formulario. Entra na impressão ({vagaId, plataforma, url, conteudo, estrutura}); no envio, o executor relê e compara o hash, e estrutura diferente dá bloqueada/pergunta-nova. Texto da página: dado não confiável, a tela mostra como texto. Nunca guarda a URL nem o link "Editar sua resposta" da página final'
           additionalProperties: false
           required: [hash, urlFinal, perguntas]
           properties:
@@ -826,8 +828,8 @@ components:
                   tipo: { type: string, enum: [texto-curto, texto-longo, escolha-unica, multipla-escolha, lista, data, numero, email, telefone, escala, outro] }
                   obrigatoria: { type: boolean }
                   opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
-        pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2 (proposta): ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
-        preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (proposta, decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
+        pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2: ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
+        preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
         leituras: { type: array, items: { type: string }, description: 'jc-a2y.7.2: instantes das leituras do formulário (POST /candidaturas/{id}/ler-formulario). Cada uma abre uma página no navegador do envio e conta no teto de 40 páginas abertas por plataforma no dia, não no limite do dia' }
     AoVivo:
       type: object
