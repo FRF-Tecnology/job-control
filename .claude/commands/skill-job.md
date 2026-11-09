@@ -4,12 +4,12 @@ argument-hint: "[máximo de envios] [dias de busca] [pode ir direto]"
 ---
 # skill-job: candidaturas automáticas ligadas à Central
 
-Argumentos: $ARGUMENTS. Padrão: até 25 envios, vagas dos últimos 3 dias. Com "pode ir direto", pule a confirmação do perfil, se ele estiver completo.
+Argumentos: $ARGUMENTS. Padrão: até 25 envios, vagas dos últimos 3 dias. Com "pode ir direto", pule a confirmação do perfil, se ele estiver completo. Esse argumento não liga o modo `direto`.
 
 Siga o `CLAUDE.md` da Central à risca. Toda gravação passa por `node ferramentas/cli.mjs` (rode da pasta `central-candidaturas`). Nunca edite `dados/*.json` à mão.
 
 ## 0. Central no ar
-1. Veja a porta em `dados/.porta` (padrão 4321) e teste `curl -s localhost:<porta>/api/versao`.
+1. Veja a porta em `dados/.porta` (padrão 4321) e teste `curl -s localhost:<porta>/api/versao`. O `curl` é só para ler: nunca grave pela API HTTP (regra 8 do CLAUDE.md).
 2. Se a Central não responder, suba-a em segundo plano (`node servidor/index.mjs`) ou peça para a pessoa abrir `iniciar.bat`.
 3. Diga o link: http://localhost:<porta>. A pessoa acompanha tudo ao vivo por ali.
 4. A CLI funciona mesmo com a Central fechada. Só os scripts de busca precisam dela.
@@ -28,7 +28,7 @@ Use AskUserQuestion, com até 4 perguntas por chamada e opções prontas quando 
 | Dinheiro | `pretensaoCLT`, `pretensaoPJ`, `pretensaoUSD` (só números; USD para contractor no exterior), `salarioAtual`, `contratos` | opções: CLT / PJ / ambos |
 | Expectativas | `filtros.niveis`, `filtros.modelo`, `filtros.pularSe`, `palavrasBusca` | níveis Júnior/Pleno/Sênior; Remoto/Híbrido/Presencial; stacks a evitar |
 | Formação e idiomas | `formacao` (cursando? conclusão?), `ingles`, `espanhol`, `inicio` | opções de nível |
-| Funcionamento | `modo` (`revisar` = aplico só o que você aprovar; `direto` = aplico o grupo A sozinho), `diasFollowUp` | opções |
+| Funcionamento | `modo` (`revisar` = aplico só o que você aprovar; `direto` = aplico o grupo A sozinho), `diasFollowUp` | `modo`: só mostre o atual. Para `direto`, peça que a pessoa marque "Aplicar direto" na tela Perfil; não grave (regra 8). Voltar para `revisar` pode. `diasFollowUp`: opções |
 | Currículos | `curriculos.PT` / `curriculos.EN` (PDFs em `dados/curriculos/`), `curriculosLinkedin.PT` / `.EN` (início do nome do arquivo no LinkedIn) | confira se os arquivos existem |
 | Respostas padrão | `respostasPadrao[]`: `{pergunta, resposta}` para tecnologias que surgem nos formulários | grave toda resposta nova dada no meio de uma candidatura |
 
@@ -48,7 +48,7 @@ Antes de aplicar, leia o currículo PDF. É a fonte do que é verdade sobre a ex
 1. Liste as vagas: `cli.mjs listar --etapa descoberta`.
 2. Leia a descrição de cada vaga com `LI.desc(id, 0, 900)` e depois `(900, 900)`. Pule o que cair em `filtros.pularSe`:
    `cli.mjs mover <id> pulada --motivo <Sênior|Inglês|Diploma|Stack|Presencial/Local|Documento|Duplicada|Vaga fechada|Outro>`.
-3. Se `modo` = `direto`, o grupo A segue para aplicação. Grupos B e C e as dúvidas ficam em Descoberta, com o alerta: `editar <id> --json '{"motivoClaude":"..."}'`.
+3. Se `modo` = `direto` (ligado pela pessoa), o grupo A segue para aplicação pela `fila-aplicar`; não mova nada para `aplicar`. Grupos B e C e as dúvidas ficam em Descoberta, com o alerta: `editar <id> --json '{"motivoClaude":"..."}'`.
 4. A fila de aplicação é `cli.mjs fila-aplicar`: no modo `revisar`, só as vagas que a pessoa aprovou na Triagem; no modo `direto`, também o grupo A. Só a pessoa liga o modo `direto` (a Central recusa essa mudança vinda do assistente).
 5. A mesma empresa repostando a vaga em várias cidades conta uma vez. Marque as cópias como Duplicada.
 
@@ -90,4 +90,4 @@ Antes de aplicar, leia o currículo PDF. É a fonte do que é verdade sobre a ex
 | Vaga em inglês com inglês avançado obrigatório e perfil Conversacional | `pulada --motivo Inglês` |
 | A pessoa respondeu algo novo no chat | Grave na hora com `cli.mjs perfil --json` (`respostasPadrao`) |
 
-Nunca invente experiência, nunca envie mensagens sem um "pode mandar" e nunca clique em prompts de permissão do navegador.
+Nunca invente experiência, nunca envie mensagens sem um "pode mandar", nunca clique em prompts de permissão do navegador e nunca aprove vaga para `aplicar` nem ligue o modo `direto` pela pessoa, por nenhum caminho (regra 8 do CLAUDE.md).
