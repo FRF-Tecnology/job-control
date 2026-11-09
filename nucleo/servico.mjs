@@ -50,6 +50,12 @@ function novoEvento(estado, vagaId, tipo, texto, ctx) {
   return { id: `ev-${agora}-${String(n).padStart(6, '0')}-${Math.random().toString(36).slice(2, 6)}`, contaId: contaDe(ctx), vagaId, tipo, data: agora, autor, texto: texto ?? '' };
 }
 
+// jc-a2y.28: a etapa "aplicar" é a aprovação da pessoa na Triagem, e o /aplicar envia a partir dela.
+// O assistente (autor diferente de "eu": MCP e CLI) não grava essa aprovação e só adiciona vagas em descoberta.
+export const ERRO_APLICAR_SO_PESSOA = 'só a pessoa aprova uma vaga para aplicar (pela Triagem)';
+export const ERRO_ADICIONAR_SO_DESCOBERTA = 'o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa';
+const ehPessoa = ctx => (ctx?.autor ?? 'eu') === 'eu';
+
 export function adicionarVaga(estado, dados, ctx, { forcar: forcarLote = false } = {}) {
   if (!dados || typeof dados !== 'object' || Array.isArray(dados)) throw new ErroValidacao(['vaga vazia ou inválida']);
   // "forcar" pode vir no próprio item (vaga republicada) ou valer para o lote inteiro.
@@ -60,6 +66,7 @@ export function adicionarVaga(estado, dados, ctx, { forcar: forcarLote = false }
     ...resto,
     contaId: contaDe(ctx),
   };
+  if (!ehPessoa(ctx) && vaga.etapa !== 'descoberta') throw new ErroValidacao([ERRO_ADICIONAR_SO_DESCOBERTA]);
   exigirValida(vaga);
   const mesmoId = estado.vagas.find(v => v.id === vaga.id);
   const dup = mesmoId ?? (forcar ? null : acharDuplicata(estado.vagas, vaga));
@@ -73,6 +80,7 @@ export function adicionarVaga(estado, dados, ctx, { forcar: forcarLote = false }
 
 export function moverVaga(estado, id, etapa, extras = {}, ctx) {
   if (!ETAPAS.includes(etapa)) throw new ErroValidacao([`etapa desconhecida: ${etapa}`]);
+  if (etapa === 'aplicar' && !ehPessoa(ctx)) throw new ErroValidacao([ERRO_APLICAR_SO_PESSOA]);
   const novo = clonar(estado);
   const i = acharIndice(novo, id);
   const antes = novo.vagas[i];
@@ -243,4 +251,12 @@ export function descartarEmail(estado, idMensagem) {
   if (!r) throw new Error(`email não encontrado: ${idMensagem}`);
   r.status = 'descartado';
   return { estado: novo, resultado: { idMensagem, status: 'descartado' } };
+}
+
+// Fila do /aplicar (jc-a2y.28): vagas em aplicar cuja aprovação mais recente (evento "aplicar") é da pessoa e, no modo
+// direto, o grupo A em descoberta. Vaga posta em aplicar pelo assistente (dado antigo) nunca entra.
+export function filaAplicar(estado) {
+  const aprovadaPelaPessoa = id => estado.eventos.filter(ev => ev.vagaId === id && ev.tipo === 'aplicar').at(-1)?.autor === 'eu';
+  const direto = estado.perfil?.modo === 'direto';
+  return estado.vagas.filter(v => (v.etapa === 'aplicar' && aprovadaPelaPessoa(v.id)) || (direto && v.etapa === 'descoberta' && v.aderencia === 'A'));
 }
