@@ -8,7 +8,8 @@ const aqui = dirname(fileURLToPath(import.meta.url));
 
 // A jornada de "usuário novo" roda contra o servidor de desenvolvimento (API Go + telas compiladas)
 // com uma pasta de dados vazia. Antes: npm run build (gera dist/).
-const pasta = mkdtempSync(join(tmpdir(), 'central-e2e-'));
+// Exposta aos testes (ex.: currículo fictício na pasta de currículos); os workers herdam a variável e usam a mesma pasta.
+const pasta = (process.env.CENTRAL_E2E_PASTA ??= mkdtempSync(join(tmpdir(), 'central-e2e-')));
 const raiz = resolve(aqui, '../..');
 
 export default defineConfig({
