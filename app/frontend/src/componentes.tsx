@@ -1,6 +1,13 @@
 // Peças pequenas usadas em várias telas.
 import type { ReactNode } from 'react';
-import { nomeEtapa } from './util';
+import { nomeEtapa, safeHref } from './util';
+
+// Link para fora do app, em outra janela. Sem endereço http(s), mostra `semLink` (ou nada).
+export function LinkExterno({ url, className, children, semLink = null }: { url: unknown; className?: string; children: ReactNode; semLink?: ReactNode }) {
+  const href = safeHref(url);
+  if (!href) return <>{semLink}</>;
+  return <a className={className} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+}
 
 // Ícone de linha (24x24) a partir dos caminhos SVG.
 export function Icone({ d, children }: { d?: string; children?: ReactNode }) {

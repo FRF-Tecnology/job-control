@@ -2,7 +2,7 @@
 // Três caminhos: a própria assinatura (CLI oficial no PC), a própria chave de API, ou modelos gratuitos.
 import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../app/contexto';
-import { Convite } from '../componentes';
+import { Convite, LinkExterno } from '../componentes';
 
 type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string };
 type EstadoIA = {
@@ -80,7 +80,7 @@ export function TelaConectarIA() {
                 <div className="acoes">
                   {pronto
                     ? <button className="botao p" type="button" disabled={!!ocupado || ia.provedor === c.provedor} onClick={() => usar(c.provedor)}>{ia.provedor === c.provedor ? 'Em uso' : ocupado === c.provedor ? 'Conectando…' : 'Usar'}</button>
-                    : <a className="botao-fantasma p" href={c.instalar} target="_blank" rel="noopener">Como instalar</a>}
+                    : <LinkExterno url={c.instalar} className="botao-fantasma p">Como instalar</LinkExterno>}
                 </div>
               </li>
             );

@@ -35,3 +35,17 @@ export function plural(n: number, um: string, varios: string) {
 }
 
 export const encode = encodeURIComponent;
+
+// Único jeito de um endereço de fora (vaga, plataforma, instalação) virar href: só http(s).
+// javascript:, data:, file: e o resto ficam sem link (jc-a2y.29).
+export function safeHref(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
+  const t = url.trim();
+  if (!/^https?:\/\//i.test(t)) return undefined;
+  try {
+    const u = new URL(t);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
+}

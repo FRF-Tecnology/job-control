@@ -4,7 +4,7 @@ import { useApp, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
-import { Icone } from '../componentes';
+import { Icone, LinkExterno } from '../componentes';
 import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode } from '../util';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
@@ -82,7 +82,7 @@ function AcoesBloqueada({ v }: { v: any }) {
   const app = useApp();
   return (
     <>
-      {v.link && <a className="botao p" href={v.link} target="_blank" rel="noopener">Abrir vaga</a>}
+      <LinkExterno url={v.link} className="botao p">Abrir vaga</LinkExterno>
       <button className="botao-fantasma p" type="button" onClick={() => app.mover(v.id, 'enviada', {}, `${v.empresa}: marcada como enviada`)}>Enviei</button>
       <button className="botao-fantasma p" type="button" onClick={async () => {
         const m = await app.perguntar({ titulo: 'Desistir desta vaga?', opcoes: ['Documento', 'Outro'], campo: 'Motivo', confirmar: 'Pular vaga' });
@@ -288,7 +288,7 @@ export function TelaHoje() {
                 {emProcesso.map((v: any) => (
                   <li key={v.id} className="linha">
                     <LinkVaga v={v} />
-                    <div className="acoes">{v.link && <a className="botao-fantasma p" href={v.link} target="_blank" rel="noopener">Abrir</a>}</div>
+                    <div className="acoes"><LinkExterno url={v.link} className="botao-fantasma p">Abrir</LinkExterno></div>
                     <div className="sub">{[NOMES_SUB[v.subEtapa] ?? nomeEtapa(v.etapa), v.pendencia, v.notas].filter(Boolean).join(' · ')}</div>
                   </li>
                 ))}

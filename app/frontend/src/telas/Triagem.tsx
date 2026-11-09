@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useApp } from '../app/contexto';
 import { MOTIVOS_PULO, mercadoDe, noFoco } from '../dominio/modelo';
-import { Icone } from '../componentes';
+import { Icone, LinkExterno } from '../componentes';
 import { dataCurta, encode, nomePlataforma, plural } from '../util';
 
 const DECISOES: Record<string, string> = { aplicar: 'Aplicar', pular: 'Pular', perguntar: 'Na dúvida' };
@@ -167,7 +167,7 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
       {v.notas && <div className="motivo"><b>Notas</b>{v.notas}</div>}
       {opiniao && <div className="motivo" role="status"><b>Opinião da IA</b>{`${DECISOES[opiniao.decisao] ?? opiniao.decisao} · grupo ${opiniao.aderencia}${opiniao.motivoPulo ? ` · ${opiniao.motivoPulo}` : ''}. ${opiniao.motivo}`}</div>}
       <div className="acoes">
-        {v.link && <a className="botao-fantasma p" href={v.link} target="_blank" rel="noopener">Ler a vaga completa</a>}
+        <LinkExterno url={v.link} className="botao-fantasma p">Ler a vaga completa</LinkExterno>
         <button className="botao-fantasma p" type="button" onClick={depois}>Decidir depois</button>
         {!opiniao && <button className="botao-fantasma p" type="button" disabled={pensando} onClick={pedirOpiniao}>{pensando ? 'A IA está lendo…' : 'Opinião da IA'}</button>}
       </div>
