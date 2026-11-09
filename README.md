@@ -65,6 +65,16 @@ Ferramentas: `resumo`, `vagas_listar`, `vaga_detalhe`, `vaga_duplicada`, `vaga_a
 - A Central só atende o próprio computador. Os scripts de busca usam uma chave local (`dados/.chave`).
 - Na primeira busca, o Chrome pode perguntar se o LinkedIn, a Gupy ou a InHire podem **acessar dispositivos da rede local**. Permitir deixa as vagas irem direto para a Central. Se você negar, o Claude copia as vagas em partes (mais lento, mas funciona).
 
+## Testar o app novo no Mac (versão de teste)
+Cada execução do CI gera o Applyer para Mac com chip Apple (M1 ou mais novo). É só para teste: **não tem assinatura da Apple** (isso fica para a P8).
+1. No GitHub, abra **Actions**, escolha uma execução verde do CI e baixe o artefato **`Applyer-macos-arm64.zip`**. É preciso estar logado; o artefato some depois de 7 dias.
+2. Abra o zip: sai o `Applyer.app`. Mova-o para **Aplicativos**, se quiser.
+3. Na primeira vez, o macOS bloqueia, porque o app não é de um desenvolvedor identificado:
+   - **macOS 15 (Sequoia) ou mais novo:** tente abrir, feche o aviso e vá em **Ajustes do Sistema > Privacidade e Segurança**. Lá embaixo, clique em **Abrir Mesmo Assim** e confirme.
+   - **macOS 14 ou mais antigo:** clique com o botão direito no `Applyer.app`, escolha **Abrir** e depois **Abrir** de novo.
+
+   Se aparecer que o app "está danificado", rode no Terminal: `xattr -dr com.apple.quarantine /Applications/Applyer.app` (ajuste o caminho se ele estiver em outra pasta).
+
 ## Para quem mexe no código
 - `nucleo/`: regras (validação, deduplicação, funil, follow-up). Puro e testado.
   - `nucleo/armazens/`: onde os dados moram (`arquivos` no modo local, `memoria` nos testes; Postgres na nuvem depois).

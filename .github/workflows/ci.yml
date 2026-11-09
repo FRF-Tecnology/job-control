@@ -68,6 +68,72 @@ jobs:
           npx playwright install chromium
           npm run e2e
 
+  # App no macOS (Apple Silicon): testes e um .app de TESTE como artefato do run (jc-a2y.64).
+  # Sem assinatura da Apple, notarização ou release: isso é da P8 e exige conta Apple Developer.
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - name: Instalar wails3
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+      - name: Gerar bindings e telas
+        working-directory: app
+        run: |
+          wails3 generate bindings -clean=true -ts -i
+          cd frontend
+          npm ci
+          npm run build
+      - name: Testes das telas (Vitest)
+        working-directory: app/frontend
+        run: npm test
+      - run: go vet ./...
+      - name: go vet do build com envio (envio_dev)
+        run: go vet -tags envio_dev ./...
+      - run: go test ./...
+      # Navegador de verdade (Chrome ou Edge do runner): os testes aparecem pelo nome e o passo falha se algum
+      # foi pulado ou não passou.
+      - name: Navegador de verdade no macOS
+        shell: bash
+        run: |
+          ls -d "/Applications/Google Chrome.app" "/Applications/Microsoft Edge.app" 2>/dev/null || true
+          testes="TestNavegadorAbreSemJanela TestModoDaJanelaSoPorPedido TestLoginAbreJanelaESegura TestEnvioComNavegadorDeVerdade TestIntegradoTelaAPIExecutor"
+          go test -count=1 -v -run "^($(echo $testes | tr ' ' '|'))\$" ./internal/navegador/ | tee navegador-macos.log
+          for t in $testes; do
+            grep -q -- "--- PASS: $t " navegador-macos.log || { echo "::error::$t não passou no macOS (pulado ou ausente)"; exit 1; }
+          done
+      # O Taskfile gera bin/central.app (nome interno) com assinatura ad-hoc local, sem identidade da Apple.
+      # O zip sai com ditto, que guarda o bit de execução, e sobe sem novo zip (archive: false).
+      - name: Empacotar o .app de teste
+        shell: bash
+        working-directory: app
+        run: |
+          wails3 package
+          mkdir -p ../pacote
+          ditto bin/central.app ../pacote/Applyer.app
+          test -x ../pacote/Applyer.app/Contents/MacOS/central
+          lipo -archs ../pacote/Applyer.app/Contents/MacOS/central | grep -qw arm64
+          codesign --verify --deep --strict ../pacote/Applyer.app
+          cd ../pacote && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64.zip
+          ls -l Applyer-macos-arm64.zip
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: pacote/Applyer-macos-arm64.zip
+          archive: false
+          retention-days: 7
+          if-no-files-found: error
+
   # Repositório público: nenhum segredo pode entrar.
   segredos:
     runs-on: ubuntu-latest
