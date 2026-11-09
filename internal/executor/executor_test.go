@@ -33,12 +33,20 @@ type paginaFalsa struct {
 	errPorCampo  map[string]error // erro do Preencher só naquele campo (ex.: ErrSemOpcao)
 	iguais       map[string]bool  // Igual: o valor que a página trouxe é o do pacote
 	conferidos   []string
+	desmarcados  []string
+	errDesmarcar error
 	errEnviar    error
 	confirma     bool
 	aoPreencher  func()
 	etapas       [][]Campo // formulário em etapas (vazio: uma etapa só, com campos)
 	urls         []string  // URLAtual por chamada (vazio: final)
 	aoAnexar     func()
+	aoEnviar     func()
+	// botao: o rótulo do botão de candidatura que a página mostra antes do formulário ("" = o formulário já está).
+	botao              string
+	aoAbrirFormulario  func()
+	errAbrirFormulario error
+	abriuFormulario    int
 
 	chamadasBloqueio int
 	etapa            int
@@ -55,6 +63,22 @@ func (p *paginaFalsa) Abrir(ctx context.Context, u string) (string, error) {
 		p.final = u
 	}
 	return p.final, p.errAbrir
+}
+func (p *paginaFalsa) BotaoDeCandidatura(ctx context.Context) (string, error) {
+	if p.abriuFormulario > 0 {
+		return "", nil
+	}
+	return p.botao, nil
+}
+func (p *paginaFalsa) AbrirFormulario(ctx context.Context, rotulo string) error {
+	if rotulo != p.botao {
+		return errors.New("rótulo diferente do lido")
+	}
+	if p.aoAbrirFormulario != nil {
+		p.aoAbrirFormulario()
+	}
+	p.abriuFormulario++
+	return p.errAbrirFormulario
 }
 func (p *paginaFalsa) Bloqueio(ctx context.Context) (string, error) {
 	i := p.chamadasBloqueio
@@ -98,7 +122,14 @@ func (p *paginaFalsa) Preencher(ctx context.Context, c Campo, v string) error {
 	p.preenchidos[c.ID] = v
 	return nil
 }
-func (p *paginaFalsa) Igual(ctx context.Context, c Campo, esperado string) (bool, error) {
+func (p *paginaFalsa) Desmarcar(ctx context.Context, c Campo) error {
+	if p.errDesmarcar != nil {
+		return p.errDesmarcar
+	}
+	p.desmarcados = append(p.desmarcados, c.ID)
+	return nil
+}
+func (p *paginaFalsa) Igual(ctx context.Context, c Campo, esperados []string) (bool, error) {
 	p.conferidos = append(p.conferidos, c.ID)
 	return p.iguais[c.ID], nil
 }
@@ -115,6 +146,9 @@ func (p *paginaFalsa) Anexar(ctx context.Context, c Campo, caminho string) error
 	return nil
 }
 func (p *paginaFalsa) Enviar(ctx context.Context) error {
+	if p.aoEnviar != nil {
+		p.aoEnviar()
+	}
 	p.enviou++
 	return p.errEnviar
 }
@@ -460,15 +494,19 @@ func TestIncertaEFalha(t *testing.T) {
 		t.Fatalf("cliques %d/%d, páginas %d", semConfirmar.enviou, erroNoClique.enviou, s.nav.abertas)
 	}
 
+	// Erro ao abrir (antes de interagir): volta para aprovada, sem contar no limite (jc-a2y.6.11). Erro ao preencher
+	// (já interagiu): falhou, como antes.
 	abrir := novaPagina()
 	abrir.errAbrir = errors.New("rede")
 	preencher := novaPagina()
 	preencher.errPreencher = errors.New("campo sumiu")
 	s2 := novoCenario(t, abrir, preencher)
-	for _, id := range []string{s2.aprovada("linkedin", linkLI), s2.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")} {
-		if d := s2.enviar(id); d.Estado != dominio.CandFalhou || d.Motivo != "erro-tecnico" {
-			t.Fatalf("%s = %+v", id, d)
-		}
+	idAbrir, idPreencher := s2.aprovada("linkedin", linkLI), s2.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	if d := s2.enviar(idAbrir); d.Estado != dominio.CandAprovada || d.Motivo != "erro-tecnico" || s2.cand(idAbrir)["estado"] != "aprovada" {
+		t.Fatalf("erro ao abrir = %+v", d)
+	}
+	if d := s2.enviar(idPreencher); d.Estado != dominio.CandFalhou || d.Motivo != "erro-tecnico" {
+		t.Fatalf("erro ao preencher = %+v", d)
 	}
 	if preencher.enviou != 0 {
 		t.Fatal("clicou depois de erro ao preencher")
@@ -493,11 +531,12 @@ func TestCanceladoAntesDoClique(t *testing.T) {
 // M2 no instante do envio: limite atingido ou aprovação vencida não mudam nada.
 func TestRecusaNaEntrada(t *testing.T) {
 	s := novoCenario(t, novaPagina(), novaPagina())
+	a := s.aprovada("linkedin", linkLI)
+	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	// O limite cai depois das aprovações (o aprovar já conta as pendentes, jc-a2y.6.13): o executor é a 2ª barreira.
 	if err := s.arm.GravarLimiteCandidatura(context.Background(), "linkedin", 1); err != nil {
 		t.Fatal(err)
 	}
-	a := s.aprovada("linkedin", linkLI)
-	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
 	s.enviar(a)
 	antes := fmt.Sprint(s.cand(b))
 	var el *dominio.ErroLimite
@@ -516,30 +555,54 @@ func TestRecusaNaEntrada(t *testing.T) {
 }
 
 // Ao abrir o app: enviando vira incerta e aprovação vencida volta a preparada.
+// Ao abrir o app (M3 e jc-a2y.6.11): enviando COM marca gravada (caiu depois de interagir) vira incerta; SEM marca
+// (caiu antes) volta para aprovada, contando como volta; no dia seguinte, a aprovação vence.
 func TestIniciar(t *testing.T) {
 	s := novoCenario(t)
 	a := s.aprovada("linkedin", linkLI)
 	b := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	c := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000003")
 	s.gravar(func(e dominio.Estado) (dominio.Estado, error) {
-		v, _ := dominio.NumeroDe(s.cand(a)["versao"])
-		e, _, err := dominio.IniciarEnvio(e, a, int(v), s.agora, nil)
+		for _, id := range []string{a, c} {
+			v, _ := dominio.NumeroDe(s.cand(id)["versao"])
+			var err error
+			if e, _, err = dominio.IniciarEnvio(e, id, int(v), s.agora, nil); err != nil {
+				return e, err
+			}
+		}
+		e, _, err := dominio.MarcarTentativa(e, a, dominio.MarcaInteragiu, s.agora) // a caiu depois da marca
 		return e, err
 	})
-	s.agora = time.Date(2026, 11, 10, 8, 0, 0, 0, sp)
+	s.agora = s.agora.Add(time.Hour)
 	incertas, vencidas, err := s.x.Iniciar(context.Background())
-	if err != nil || incertas != 1 || vencidas != 1 || s.cand(a)["estado"] != "incerta" || s.cand(b)["estado"] != "preparada" {
+	if err != nil || incertas != 1 || vencidas != 0 || s.cand(a)["estado"] != "incerta" || s.cand(b)["estado"] != "aprovada" {
 		t.Fatalf("Iniciar = %d %d %v; %v %v", incertas, vencidas, err, s.cand(a)["estado"], s.cand(b)["estado"])
+	}
+	cc := s.cand(c)
+	if cc["estado"] != "aprovada" || len(dominio.ListaDe(cc["retentativas"])) != 1 || dominio.Texto(cc["proximaTentativaEm"]) == "" || len(dominio.ListaDe(cc["tentativas"])) != 0 {
+		t.Fatalf("sem marca, ao abrir = %v", cc)
+	}
+	if !strings.Contains(strings.Join(s.logs, "\n"), "1 incerta(s), 1 devolvida(s)") {
+		t.Errorf("logs = %v", s.logs)
+	}
+	// No dia seguinte, as aprovações vencem.
+	s.agora = time.Date(2026, 11, 10, 8, 0, 0, 0, sp)
+	if _, vencidas, _ := s.x.Iniciar(context.Background()); vencidas != 2 || s.cand(b)["estado"] != "preparada" || s.cand(c)["estado"] != "preparada" {
+		t.Fatalf("dia seguinte: vencidas %d, %v %v", vencidas, s.cand(b)["estado"], s.cand(c)["estado"])
 	}
 }
 
 // A fila: da aprovação mais antiga para a mais nova, com intervalo entre candidaturas, pulando a plataforma no limite.
 func TestEnviarAprovadas(t *testing.T) {
 	s := novoCenario(t, novaPagina(), novaPagina())
-	s.arm.GravarLimiteCandidatura(context.Background(), "linkedin", 1)
 	li1 := s.aprovada("linkedin", linkLI)
 	ou := s.aprovada("Site da empresa", "https://carreiras.exemplo.com/1")
 	li2 := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
 	gp := s.aprovada("gupy", "https://empresa-teste.gupy.io/jobs/1")
+	// O limite cai depois das aprovações (o aprovar já conta as pendentes, jc-a2y.6.13).
+	if err := s.arm.GravarLimiteCandidatura(context.Background(), "linkedin", 1); err != nil {
+		t.Fatal(err)
+	}
 	ds, err := s.x.EnviarAprovadas(context.Background())
 	if err != nil {
 		t.Fatal(err)

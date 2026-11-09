@@ -131,32 +131,34 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   const eventos = (await (await page.request.get('/api/v1/estado')).json()).eventos.filter((e: any) => e.tipo === 'aplicar' && e.vagaId.startsWith('ext-grupo-'));
   expect(eventos.map((e: any) => `${e.vagaId}:${e.autor}`).sort()).toEqual(['ext-grupo-a-1:eu', 'ext-grupo-a-2:eu']);
 
-  // 9. Fila (P5, jc-a2y.6.3.1 e .6.3.3): a pessoa prepara a candidatura pela tela, com o pacote vindo do perfil e
-  //    da pasta de currículos; a impressão que a tela calcula bate com a do servidor ("Conferida nesta tela");
-  //    depois edita o pacote. Currículo e dados fictícios.
+  // 9. Fila (P5, jc-a2y.6.3.1, .6.3.3 e .6.12): a vaga que chega a Aplicar ganha a candidatura preparada sozinha,
+  //    com o pacote vindo do perfil e da pasta de currículos; a impressão que a tela calcula bate com a do servidor
+  //    ("Conferida nesta tela"); depois a pessoa edita o pacote. Currículo e dados fictícios.
   const pasta = process.env.CENTRAL_E2E_PASTA!;
   mkdirSync(join(pasta, 'curriculos'), { recursive: true });
   writeFileSync(join(pasta, 'curriculos', 'curriculo-exemplo.pdf'), '%PDF-1.4\n% curriculo ficticio para teste\n');
   const vagaFila = 'li-fila-exemplo-1';
   const nova = await page.request.post('/api/v1/vagas', { data: { id: vagaFila, empresa: 'Empresa Fila Exemplo', titulo: 'Pessoa Dev Fila', link: 'https://www.linkedin.com/jobs/view/987654321', plataforma: 'linkedin' } });
   expect(nova.status(), await nova.text()).toBe(201);
+  // Outras abas dos testes em paralelo usam o mesmo servidor e também preparam sozinhas: o aviso só é exigido se foi
+  // ESTA aba que criou (201). Se outra chegou antes, esta recebe 409 (ou nem tenta) e não avisa.
+  const preparosDaAba: number[] = [];
+  page.on('response', r => { if (r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/candidaturas') preparosDaAba.push(r.status()); });
   const movida = await page.request.post(`/api/v1/vagas/${vagaFila}/mover`, { data: { etapa: 'aplicar' } });
   expect(movida.ok(), await movida.text()).toBe(true);
   await ir(page, 'fila');
-  const pronta = page.getByRole('region', { name: 'Prontas para preparar' }).getByRole('listitem').filter({ hasText: 'Empresa Fila Exemplo — Pessoa Dev Fila' });
-  await pronta.getByRole('button', { name: 'Preparar candidatura' }).click();
-  const form = pronta.getByRole('form', { name: 'Pacote da candidatura' });
-  await expect(form.getByLabel('Currículo')).toHaveValue('curriculo-exemplo.pdf');
-  await expect(form.getByLabel('Nome')).toHaveValue('Ana Teste'); // do perfil (passo 2)
-  await form.getByRole('button', { name: 'Adicionar resposta' }).click();
-  await form.getByLabel('Pergunta 1', { exact: true }).fill('Anos com React?');
-  await form.getByLabel('Resposta 1', { exact: true }).fill('3');
-  await form.getByRole('button', { name: 'Preparar candidatura' }).click();
-  await avisou(page, 'Candidatura preparada. Revise o pacote e aprove.');
-  const cands = await (await page.request.get('/api/v1/candidaturas')).json();
-  const criada = cands.find((c: any) => c.vagaId === vagaFila);
+  // Preparada sozinha: ninguém clicou em "Preparar". Ela nasce "preparada" (nada aprovado nem enviado).
+  const daVaga = async () => ((await (await page.request.get('/api/v1/candidaturas')).json()) as any[]).find(c => c.vagaId === vagaFila);
+  await expect.poll(daVaga, { timeout: 15_000 }).toBeTruthy();
+  const criada = await daVaga();
+  expect(criada.estado).toBe('preparada');
   expect(criada.conteudo.curriculo.arquivo).toBe('curriculo-exemplo.pdf');
-  expect(criada.conteudo.respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }]);
+  expect(criada.conteudo.contato.nome).toBe('Ana Teste'); // do perfil (passo 2)
+  const avisouPreparo = async () => ((await page.evaluate(() => (window as any).__avisos as string[])) ?? []).some(t => /preparadas? sozinhas?: revise/.test(t));
+  // Espera o aviso, ou esta aba ter tentado e só ter recebido 409 (outra aba preparou tudo antes).
+  await expect.poll(async () => (await avisouPreparo()) || (preparosDaAba.length > 0 && !preparosDaAba.includes(201)), { timeout: 10_000 }).toBe(true).catch(() => {});
+  if (preparosDaAba.includes(201)) await expect.poll(avisouPreparo).toBe(true); // esta aba criou: o aviso é obrigatório
+  else test.info().annotations.push({ type: 'corrida', description: `outra aba preparou antes (respostas desta aba: ${preparosDaAba.join(',') || 'nenhuma'})` });
   const naFila = page.getByTestId(criada.id);
   await expect(naFila.getByText('Para revisar')).toBeVisible();
   // O selo fica à vista; o código, recolhido em "Detalhes técnicos" (jc-a2y.6.3.5).
@@ -164,13 +166,17 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect(naFila.getByText(criada.impressao)).toBeHidden();
   await naFila.getByText('Detalhes técnicos').click();
   await expect(naFila.getByText(criada.impressao)).toBeVisible();
-  // Editar: a mensagem muda, a impressão muda e continua conferida.
+  // Editar: a pessoa acrescenta uma resposta e a mensagem; a impressão muda e continua conferida.
   await naFila.getByRole('button', { name: 'Editar pacote' }).click();
+  await naFila.getByRole('button', { name: 'Adicionar resposta' }).click();
+  await naFila.getByLabel('Pergunta 1', { exact: true }).fill('Anos com React?');
+  await naFila.getByLabel('Resposta 1', { exact: true }).fill('3');
   await naFila.getByLabel('Mensagem').fill('Olá, tenho interesse na vaga.');
   await naFila.getByRole('button', { name: 'Salvar pacote' }).click();
   await avisou(page, 'Pacote atualizado.');
   const editada = (await (await page.request.get(`/api/v1/candidaturas/${criada.id}`)).json());
   expect(editada.conteudo.mensagem).toBe('Olá, tenho interesse na vaga.');
+  expect(editada.conteudo.respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }]);
   expect(editada.impressao).not.toBe(criada.impressao);
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
   await naFila.getByText('Detalhes técnicos').click();

@@ -101,6 +101,13 @@ func novoServidor(t *testing.T) *servidorFicticio {
 		"empresa-teste.gupy.io POST /jobs/9000001/apply":    receber(true),
 		"ats.exemplo.io GET /form/1":                        pagina("ats-externo.html"),
 		"ats.exemplo.io POST /form/1/enviar":                receber(true),
+		// P0 da .6.5: a sessão caiu e o LinkedIn manda para o authwall.
+		"www.linkedin.com GET /jobs/view/9000000015": func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/authwall?trk=ficticio", http.StatusFound)
+		},
+		"www.linkedin.com GET /authwall": func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, `<!doctype html><html><body><h1>Entre para ver esta vaga</h1></body></html>`)
+		},
 		"www.linkedin.com GET /jobs/view/9000000003": func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "https://ats.exemplo.io/form/1", http.StatusFound)
 		},
@@ -310,6 +317,9 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 			}
 			// Só o pacote: nome, e-mail e telefone dele e o país do código +55 do telefone dele; nada a mais.
 			quer := map[string]string{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com", "tel": "11900000000", "ddi": "BR"}
+			if v.tel != "" {
+				quer["tel"] = v.tel // igual ao do pacote: o app não reescreve
+			}
 			for k, q := range quer {
 				if e.campos.Get(k) != q {
 					t.Errorf("%s: campo %s = %q; queria %q", v.descricao, k, e.campos.Get(k), q)
@@ -321,6 +331,25 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 				}
 			}
 		}
+	})
+
+	// Antes de interagir: volta para aprovada e o LinkedIn fica em precisa-entrar (jc-a2y.6.11).
+	t.Run("LinkedIn manda para o authwall: volta por login, sem enviar (P0 da .6.5, .6.11)", func(t *testing.T) {
+		antes := len(srv.envios())
+		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000015"))
+		if d.Estado != dominio.CandAprovada || d.Motivo != "login" || len(srv.envios()) != antes {
+			t.Fatalf("desfecho = %+v, envios %d → %d", d, antes, len(srv.envios()))
+		}
+		if st := s.arm.Plataformas(context.Background()).DaPlataforma("linkedin", s.agora); st.Estado != dominio.PlataformaPrecisaEntrar {
+			t.Fatalf("linkedin = %+v", st)
+		}
+		if strings.Contains(saida.String(), "authwall") {
+			t.Error("o endereço foi para o log")
+		}
+		// A pessoa entrou de novo (fictício): o LinkedIn volta para os próximos casos.
+		s.arm.MudarPlataformas(context.Background(), func(p dominio.Plataformas, _ bool) (dominio.Plataformas, error) {
+			return p.RetomarPlataforma("linkedin", s.agora)
+		})
 	})
 
 	t.Run("Gupy pede CPF: bloqueia sem enviar", func(t *testing.T) {

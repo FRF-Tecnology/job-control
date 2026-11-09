@@ -7,10 +7,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/chromedp/chromedp"
+
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
 // jc-a2y.6.7: como o navegador é aberto, com um navegador falso (testdata/falso) que anota os argumentos e a
@@ -103,6 +106,8 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	srv := novoServidor(t)
 	dados := t.TempDir()
 	nav := navegadorDeTeste(t, srv, dados)
+	var avisos atomic.Int32 // jc-a2y.6.11: a pessoa fechou a janela de login
+	nav.QuandoFecharLogin(func() { avisos.Add(1) })
 
 	if err := nav.AbrirLogin("https://www.linkedin.com/login"); err != nil {
 		t.Fatal(err)
@@ -130,6 +135,12 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	if nav.Ocupado() {
 		t.Fatal("depois de fechar a janela, o login continua aberto")
 	}
+	for avisos.Load() == 0 && time.Now().Before(prazo) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if n := avisos.Load(); n != 1 {
+		t.Fatalf("avisos de login fechado = %d; queria 1", n)
+	}
 	pag, err := nav.NovaPagina(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -140,5 +151,39 @@ func TestLoginAbreJanelaESegura(t *testing.T) {
 	nav.mu.Unlock()
 	if visivel {
 		t.Fatal("depois do login, o envio abriu com janela")
+	}
+	pag.Fechar()
+
+	// O app fecha o navegador com o login aberto (sair, apagar, fechar o app): não é login da pessoa, não avisa.
+	if err := nav.AbrirLogin("https://www.linkedin.com/login"); err != nil {
+		t.Fatal(err)
+	}
+	nav.Fechar()
+	time.Sleep(time.Second)
+	if n := avisos.Load(); n != 1 {
+		t.Fatalf("o app fechou o login e avisou: avisos = %d", n)
+	}
+}
+
+// P0 da .6.5: com "Ver o envio" ligado (janela visível), a candidatura abre a vaga e envia como no modo sem janela.
+// Abre janela: SÓ NO CI.
+func TestEnvioVisivelNavegaNaVaga(t *testing.T) {
+	if os.Getenv("CI") != "true" {
+		t.Skip("abre uma janela visível: só no CI")
+	}
+	srv := novoServidor(t)
+	dados := t.TempDir()
+	nav := navegadorDeTeste(t, srv, dados)
+	nav.MostrarEnvio(true)
+	s := novoCenario(t, nav, dados)
+	d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000001"))
+	if d.Estado != dominio.CandEnviada {
+		t.Fatalf("visível: desfecho = %+v", d)
+	}
+	nav.mu.Lock()
+	visivel := nav.visivelAgora
+	nav.mu.Unlock()
+	if !visivel {
+		t.Fatal("o envio não abriu no modo visível")
 	}
 }

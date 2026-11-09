@@ -27,6 +27,7 @@ var _ executor.Pagina = (*pagina)(nil)
 const (
 	tempoAbrir       = 45 * time.Second
 	tempoAcao        = 20 * time.Second
+	tempoNavegacao   = 15 * time.Second // até a aba sair do about:blank
 	tempoConfirmacao = 15 * time.Second
 )
 
@@ -51,7 +52,7 @@ func (p *pagina) fazer(ctx context.Context, limite time.Duration, passos ...chro
 // Padrões dos botões (texto normalizado: sem acento, minúsculo). Abrir o formulário e avançar nunca clicam em
 // enviar; nada clica em botão que leva para fora ("no site da empresa").
 const (
-	botaoAbrir   = `^(candidatura simplificada|easy apply|candidatar-se|candidate-se|candidatar|quero me candidatar|inscrever-se|aplicar|aplicar agora|apply|apply now|postularse|postular|postularme|solicitar empleo)$`
+	botaoAbrir   = `^(candidatura simplificada|easy apply|solicitud sencilla|candidatar-se|candidate-se|candidatar|quero me candidatar|inscrever-se|aplicar|aplicar agora|apply|apply now|postularse|postular|postularme|solicitar empleo)$`
 	botaoProxima = `^(avancar|proximo|proxima|proxima etapa|continuar|seguinte|next|continue|siguiente|continuar al siguiente paso|revisar|review)\b`
 	botaoEnviar  = `^(enviar|enviar candidatura|enviar inscricao|finalizar candidatura|concluir candidatura|submit|submit application|send application|enviar solicitud|enviar postulacion|postularme ahora)\b`
 	botaoFora    = `site|website|externo|external|sitio|empresa`
@@ -59,22 +60,68 @@ const (
 
 var confirmacao = regexp.MustCompile(`candidatura (foi )?(enviada|recebida|realizada)|recebemos (a )?sua candidatura|inscricao (realizada|enviada|confirmada)|obrigad[oa] por se candidatar|application (was )?(sent|submitted|received)|your application (was|has been) (sent|submitted|received)|thank you for applying|solicitud enviada|postulacion (enviada|recibida)|hemos recibido tu (postulacion|solicitud)|gracias por postularte`)
 
-// Abrir navega para a vaga aprovada e, se a página só tem a descrição, clica no botão de candidatura da própria
-// plataforma (nunca no de site externo). Devolve onde a página parou.
+// Abrir só navega para a vaga aprovada (nenhum clique) e devolve onde a página parou. O botão de candidatura fica
+// com BotaoDeCandidatura e AbrirFormulario, para o executor gravar a marca antes do clique (revisão do CyberSec no
+// #101).
 func (p *pagina) Abrir(ctx context.Context, url string) (string, error) {
 	if err := p.fazer(ctx, tempoAbrir, chromedp.Navigate(url), chromedp.WaitReady(chromedp.CSS("body"))); err != nil {
 		return "", err
 	}
+	// A navegação tem de ter saído do about:blank antes de o executor conferir o endereço (P0 da .6.5).
+	if err := p.esperarEndereco(ctx); err != nil {
+		return "", err
+	}
+	return p.URLAtual(ctx)
+}
+
+// BotaoDeCandidatura só lê: com a página sem formulário, o rótulo normalizado do botão de candidatura da própria
+// plataforma (nunca o de site externo); "" quando já há formulário ou não há botão.
+func (p *pagina) BotaoDeCandidatura(ctx context.Context) (string, error) {
 	r, err := p.retrato(ctx)
 	if err != nil {
 		return "", err
 	}
-	if len(executor.ClassificarCampos(r)) == 0 {
-		if _, err := p.clicar(ctx, botaoAbrir, botaoFora); err != nil {
-			return "", err
+	if len(executor.ClassificarCampos(r)) > 0 {
+		return "", nil
+	}
+	expr, err := chamada(scriptAcharBotao, botaoAbrir, botaoFora)
+	if err != nil {
+		return "", err
+	}
+	return rodar(ctx, p, tempoAcao, chromedp.Evaluate[string](expr))
+}
+
+// AbrirFormulario clica no botão de candidatura com exatamente esse rótulo (normalizado). Sem ele, erro: a página
+// mudou entre ler e clicar.
+func (p *pagina) AbrirFormulario(ctx context.Context, rotulo string) error {
+	clicou, err := p.clicar(ctx, "^"+regexp.QuoteMeta(rotulo)+"$", botaoFora)
+	if err != nil {
+		return err
+	}
+	if !clicou {
+		return errors.New("navegador: o botão de candidatura sumiu")
+	}
+	return nil
+}
+
+// esperarEndereco espera a aba sair do about:blank (endereço http ou https), até tempoNavegacao. Se não sair,
+// segue: o executor vê o about:blank e registra erro técnico, nunca site-externo.
+func (p *pagina) esperarEndereco(ctx context.Context) error {
+	fim := time.Now().Add(tempoNavegacao)
+	for {
+		u, err := p.URLAtual(ctx)
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://") || time.Now().After(fim) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
 		}
 	}
-	return p.URLAtual(ctx)
 }
 
 func (p *pagina) URLAtual(ctx context.Context) (string, error) {
@@ -142,8 +189,11 @@ func (p *pagina) Preencher(ctx context.Context, c executor.Campo, valor string) 
 
 // Igual confere dentro da página se o valor que o campo já tem é o esperado. Só "igual", "diferente" ou "sem-campo"
 // voltam: o valor da página nunca sai dela (jc-a2y.6.5.1).
-func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperado string) (bool, error) {
-	js, err := chamada(scriptIgual, c.ID, esperado, c.Tipo)
+func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperados []string) (bool, error) {
+	if len(esperados) == 0 {
+		return false, nil
+	}
+	js, err := chamada(scriptIgual, c.ID, esperados, c.Tipo)
 	if err != nil {
 		return false, err
 	}
@@ -158,6 +208,23 @@ func (p *pagina) Igual(ctx context.Context, c executor.Campo, esperado string) (
 		return false, nil
 	}
 	return false, fmt.Errorf("navegador: não conferiu (%s)", res) // só o código fixo
+}
+
+// Desmarcar desmarca a caixa (clique, como a pessoa faria, para o formulário saber) e confere que ficou desmarcada.
+// Nunca marca: caixa já desmarcada fica como está (jc-a2y.6.5.2).
+func (p *pagina) Desmarcar(ctx context.Context, c executor.Campo) error {
+	js, err := chamada(scriptDesmarcar, c.ID)
+	if err != nil {
+		return err
+	}
+	res, err := rodar(ctx, p, tempoAcao, chromedp.Evaluate[string](js))
+	if err != nil {
+		return err
+	}
+	if res != "ok" {
+		return fmt.Errorf("navegador: não desmarcou (%s)", res) // só o código fixo
+	}
+	return nil
 }
 
 // Anexar põe no campo de arquivo o caminho que o executor passou (a cópia conferida, #43).
@@ -312,7 +379,14 @@ const scriptPreencher = `(sel, valor) => {
 
 // scriptIgual compara o valor atual do campo com o esperado, por tipo: e-mail e nome sem diferença de caixa e acento,
 // telefone pelos dígitos (aceita o código do país na frente), código do país pelo número. Devolve só o resultado.
-const scriptIgual = `(sel, esperado, tipo) => {
+const scriptDesmarcar = `(sel) => {
+  const el = document.querySelector(sel);
+  if (!el || el.type !== 'checkbox') return 'sem-campo';
+  if (el.checked) el.click();
+  return el.checked ? 'continua-marcada' : 'ok';
+}`
+
+const scriptIgual = `(sel, esperados, tipo) => {
   const norm = s => (s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const dig = s => (s || '').replace(/\D+/g, '');
   let atuais = [];
@@ -326,11 +400,27 @@ const scriptIgual = `(sel, esperado, tipo) => {
     else atuais = [el.value];
   }
   const igual = v => {
-    if (tipo === 'telefone') { const a = dig(v), e = dig(esperado); return e !== '' && (a === e || (a.endsWith(e) && a.length - e.length <= 3)); }
-    if (tipo === 'ddi') { const e = dig(esperado); return e !== '' && new RegExp('(^|[^0-9])\\+?' + e + '([^0-9]|$)').test(v); }
-    return norm(v) !== '' && norm(v) === norm(esperado);
+    return esperados.some(esperado => {
+      if (tipo === 'telefone') { const e = dig(esperado); return e !== '' && dig(v) === e; }
+      if (tipo === 'ddi') { const e = dig(esperado); return e !== '' && new RegExp('(^|[^0-9])\\+?' + e + '([^0-9]|$)').test(v); }
+      return norm(v) !== '' && norm(v) === norm(esperado);
+    });
   };
   return atuais.some(igual) ? 'igual' : 'diferente';
+}`
+
+// scriptAcharBotao devolve o texto normalizado do primeiro botão visível e ativo que casa com padrao e não com
+// evitar, ou "" (só lê; o mesmo critério do scriptClicar).
+const scriptAcharBotao = `(padrao, evitar) => {
+  const norm = s => (s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const visivel = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden' && (r.width > 0 || r.height > 0); };
+  const re = new RegExp(padrao), fora = new RegExp(evitar);
+  for (const b of Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], [role=button]'))) {
+    if (!visivel(b) || b.disabled || b.getAttribute('aria-disabled') === 'true') continue;
+    const t = norm(b.innerText || b.value || b.getAttribute('aria-label'));
+    if (re.test(t) && !fora.test(t)) return t;
+  }
+  return '';
 }`
 
 // scriptClicar clica no primeiro botão visível e ativo cujo texto normalizado casa com padrao e não com evitar.

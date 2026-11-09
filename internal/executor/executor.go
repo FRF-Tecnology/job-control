@@ -19,6 +19,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -123,10 +124,14 @@ func (x *Executor) gravar(ctx context.Context, op func(e dominio.Estado, d domin
 	return x.gravarCom(ctx, x.arm.Gravar, op)
 }
 
-// gravarSeLiberado: o mesmo, mas com o envio pausado nada é gravado (armazem.ErrEnvioPausado), na mesma transação.
-// É o caminho de toda ação que começa um envio (jc-a2y.51).
-func (x *Executor) gravarSeLiberado(ctx context.Context, op func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error)) (dominio.Objeto, error) {
-	return x.gravarCom(ctx, x.arm.GravarSeEnvioLiberado, op)
+// gravarSeLiberado: o mesmo, mas com o envio pausado (armazem.ErrEnvioPausado) ou a plataforma fora de ativa
+// (armazem.ErrPlataformaParada) nada é gravado, na mesma transação. É o caminho de toda ação que começa um envio
+// (jc-a2y.51, jc-a2y.6.11).
+func (x *Executor) gravarSeLiberado(ctx context.Context, plataforma string, op func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error)) (dominio.Objeto, error) {
+	agora := x.o.Relogio()
+	return x.gravarCom(ctx, func(ctx context.Context, fn func(dominio.Estado) (dominio.Estado, error)) error {
+		return x.arm.GravarSeLiberado(ctx, plataforma, agora, fn)
+	}, op)
 }
 
 func (x *Executor) gravarCom(ctx context.Context, gravar func(context.Context, func(dominio.Estado) (dominio.Estado, error)) error, op func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error)) (dominio.Objeto, error) {
@@ -139,7 +144,8 @@ func (x *Executor) gravarCom(ctx context.Context, gravar func(context.Context, f
 	return res, err
 }
 
-// Iniciar roda ao abrir o app: enviando vira incerta (M3) e aprovação vencida volta a preparada, numa transação.
+// Iniciar roda ao abrir o app, numa transação: enviando sem marca gravada volta para aprovada (conta como volta,
+// jc-a2y.6.11); enviando com marca vira incerta (M3); aprovação vencida volta a preparada.
 func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err error) {
 	// Ao abrir o app, o envio começa sempre PAUSADO (recomendação do CyberSec no #59), e isso vem PRIMEIRO, sozinho:
 	// se a gravação das incertas falhar (banco ocupado pela CLI, disco), o envio já está pausado. Só a tela retoma.
@@ -147,13 +153,14 @@ func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err err
 		return 0, 0, err
 	}
 	agora := x.o.Relogio()
+	devolvidas := 0
 	err = x.arm.Gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
-		e, incertas = dominio.MarcarIncertas(e, agora)
+		e, incertas, devolvidas = dominio.RecuperarAoAbrir(e, agora)
 		e, vencidas = dominio.VencerAprovacoes(e, agora)
 		return e, nil
 	})
-	if err == nil && (incertas > 0 || vencidas > 0) {
-		x.o.Log("executor: ao abrir, %d incerta(s) e %d aprovação(ões) vencida(s)", incertas, vencidas)
+	if err == nil && (incertas > 0 || vencidas > 0 || devolvidas > 0) {
+		x.o.Log("executor: ao abrir, %d incerta(s), %d devolvida(s) e %d aprovação(ões) vencida(s)", incertas, devolvidas, vencidas)
 	}
 	return incertas, vencidas, err
 }
@@ -219,6 +226,15 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 		if semLimite[plataforma] {
 			continue
 		}
+		agora := x.o.Relogio()
+		if s := x.arm.Plataformas(ctx).DaPlataforma(plataforma, agora); s.Estado != dominio.PlataformaAtiva {
+			semLimite[plataforma] = true
+			x.o.Log("executor: %s pulada (plataforma %s %s)", o["id"], plataforma, s.Estado)
+			continue
+		}
+		if quando, err := time.Parse(time.RFC3339, dominio.Texto(o["proximaTentativaEm"])); err == nil && agora.Before(quando) {
+			continue // devolvida (jc-a2y.6.11): espera a hora marcada, gravada no banco
+		}
 		_, automatico := dominio.LimiteDe(nil, plataforma)
 		if automatico && x.limiteAtingido(ctx, plataforma) { // não espera à toa por uma que vai dar 429
 			semLimite[plataforma] = true
@@ -244,6 +260,10 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 		case errors.Is(err, armazem.ErrEnvioPausado):
 			x.o.Log("executor: envio pausado")
 			return desfechos, nil
+		case errors.Is(err, armazem.ErrPlataformaParada):
+			semLimite[plataforma] = true
+			x.o.Log("executor: %s pulada (plataforma %s parada)", o["id"], plataforma)
+			continue
 		case err != nil:
 			return desfechos, err
 		}
@@ -288,7 +308,7 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 
 	// "outra": sem envio automático, nem abre a página.
 	if _, automatico := dominio.LimiteDe(nil, plataforma); !automatico {
-		if _, err := x.gravarSeLiberado(ctx, func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
+		if _, err := x.gravarSeLiberado(ctx, plataforma, func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
 			return dominio.EncaminharExterna(e, id, agora, d)
 		}); err != nil {
 			return Desfecho{}, err
@@ -306,13 +326,48 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 	if x.antesDeIniciar != nil {
 		x.antesDeIniciar()
 	}
-	if _, err := x.gravarSeLiberado(ctx, func(e dominio.Estado, _ dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
+	o, err := x.gravarSeLiberado(ctx, plataforma, func(e dominio.Estado, _ dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
 		return dominio.IniciarEnvio(e, id, int(versao), agora, limites)
-	}); err != nil {
+	})
+	if err != nil {
 		return Desfecho{}, err
 	}
 	x.o.Log("executor: %s enviando", id)
-	return x.concluir(ctx, id, x.preencherEEnviar(ctx, c))
+	t := &tentativa{x: x, id: id}
+	if v, ok := dominio.NumeroDe(o["versao"]); ok {
+		t.versao = int(v)
+	}
+	return x.concluir(ctx, plataforma, t, x.preencherEEnviar(ctx, c, t))
+}
+
+// rotulosEasyApply: o botão do Easy Apply do LinkedIn (PT, EN, ES), que só abre o formulário na própria página, sem
+// registrar nada. Lista fechada, texto inteiro (decisão do CyberSec no #99/#101).
+var rotulosEasyApply = regexp.MustCompile(`^(candidatura simplificada|easy apply|solicitud sencilla)$`)
+
+// AbreSemMarca: o clique no botão de candidatura pode vir antes da marca "interagiu"? Só no LinkedIn com o rótulo do
+// Easy Apply. Na Gupy, na InHire e em qualquer outro rótulo, a marca vem antes.
+func AbreSemMarca(plataforma, rotulo string) bool {
+	return plataforma == "linkedin" && rotulosEasyApply.MatchString(rotulo)
+}
+
+// tentativa guarda o que o executor já fez na página (jc-a2y.6.11). A marca é gravada no banco ANTES do passo; se a
+// gravação falhar, o passo não acontece (falhou), e a candidatura também não volta sozinha.
+type tentativa struct {
+	x         *Executor
+	id        string
+	versao    int  // a lida ao entrar em enviando
+	interagiu bool // pediu para gravar a marca (gravou ou não): daqui em diante, nunca volta sozinha
+}
+
+func (t *tentativa) marcar(ctx context.Context, marca string) error {
+	if t.interagiu && marca == dominio.MarcaInteragiu {
+		return nil
+	}
+	t.interagiu = true
+	_, err := t.x.gravar(ctx, func(e dominio.Estado, _ dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
+		return dominio.MarcarTentativa(e, t.id, marca, t.x.o.Relogio())
+	})
+	return err
 }
 
 // passo é o que o envio decidiu: falhar, bloquear, ficar incerta ou enviada.
@@ -330,7 +385,7 @@ func bloqueada(motivo string) passo {
 	return passo{estado: dominio.CandBloqueada, motivo: motivo}
 }
 
-func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo {
+func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *tentativa) passo {
 	plataforma, aprovada := dominio.Texto(c["plataforma"]), dominio.Texto(c["url"])
 	conteudo := dominio.ObjetoDe(c["conteudo"])
 	cv := dominio.ObjetoDe(conteudo["curriculo"])
@@ -363,8 +418,25 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 	if err != nil {
 		return falhou("erro-tecnico", err)
 	}
-	if !enderecoConfere(plataforma, aprovada, final) {
-		return bloqueada("site-externo")
+	if p, parou := x.motivoDoEndereco(plataforma, aprovada, final); parou {
+		return p
+	}
+	// Botão que abre o formulário (revisão do CyberSec no #101): na Gupy, na InHire e no LinkedIn sem Easy Apply, o
+	// clique pode já registrar a candidatura. A marca é gravada ANTES dele; só o Easy Apply do LinkedIn (lista fechada
+	// de rótulos) abre o formulário sem marca.
+	rotulo, err := pag.BotaoDeCandidatura(ctx)
+	if err != nil {
+		return falhou("erro-tecnico", err)
+	}
+	if rotulo != "" {
+		if !AbreSemMarca(plataforma, rotulo) {
+			if err := t.marcar(ctx, dominio.MarcaInteragiu); err != nil {
+				return falhou("erro-tecnico", err)
+			}
+		}
+		if err := pag.AbrirFormulario(ctx, rotulo); err != nil {
+			return falhou("erro-tecnico", err)
+		}
 	}
 
 	// Formulário em etapas: em cada uma, confere o endereço e o bloqueio, planeja todos os campos (M1) antes de
@@ -391,9 +463,21 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 			if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
 				return falhou("erro-tecnico", err)
 			}
+			if !a.conferir { // conferir só lê a página
+				if err := t.marcar(ctx, dominio.MarcaInteragiu); err != nil {
+					return falhou("erro-tecnico", err)
+				}
+			}
+			if a.desmarcar {
+				if err := pag.Desmarcar(ctx, a.campo); err != nil {
+					return falhou("erro-tecnico", err) // sem a certeza de que desmarcou, não envia
+				}
+				x.o.Log("executor: caixa %s desmarcada", a.campo.Tipo) // só o tipo
+				continue
+			}
 			if a.conferir {
 				// Contato que a página já trouxe: só passa se for igual ao do pacote, e o app não mexe (jc-a2y.6.5.1).
-				igual, err := pag.Igual(ctx, a.campo, a.valor)
+				igual, err := pag.Igual(ctx, a.campo, esperados(a.campo.Tipo, a.valor))
 				if err != nil {
 					return falhou("erro-tecnico", err)
 				}
@@ -422,6 +506,9 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 		if err := x.pausa(ctx, x.o.EntreAcoes); err != nil {
 			return falhou("erro-tecnico", err)
 		}
+		if err := t.marcar(ctx, dominio.MarcaInteragiu); err != nil { // avançar é interagir
+			return falhou("erro-tecnico", err)
+		}
 		mais, err := pag.Proxima(ctx)
 		if err != nil {
 			return falhou("erro-tecnico", err)
@@ -438,6 +525,9 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto) passo
 	// M3: do clique em diante, sem confirmação, fica incerta.
 	if ctx.Err() != nil {
 		return falhou("erro-tecnico", ctx.Err())
+	}
+	if err := t.marcar(ctx, dominio.MarcaClicouEnviar); err != nil {
+		return falhou("erro-tecnico", err)
 	}
 	if err := pag.Enviar(ctx); err != nil {
 		// Sem o botão final, nada foi clicado: bloqueada (a pessoa confere), não incerta (jc-a2y.6.5.1).
@@ -468,17 +558,36 @@ func (x *Executor) conferirEndereco(ctx context.Context, pag Pagina, plataforma,
 	if err != nil {
 		return falhou("erro-tecnico", err), true
 	}
-	if !enderecoConfere(plataforma, aprovada, atual) {
-		return bloqueada("site-externo"), true
+	return x.motivoDoEndereco(plataforma, aprovada, atual)
+}
+
+// errPaginaEmBranco: a página do envio não navegou (about:blank): erro técnico, nunca site-externo (P0 da .6.5).
+var errPaginaEmBranco = errors.New("executor: a página não saiu do about:blank")
+
+// motivoDoEndereco decide o que fazer quando a página não está na vaga aprovada, e registra só a categoria (nunca
+// o endereço, que pode trazer dado): about:blank → falhou/erro-tecnico; login, authwall ou verificação →
+// bloqueada/login; outro host ou outra vaga → bloqueada/site-externo.
+func (x *Executor) motivoDoEndereco(plataforma, aprovada, atual string) (passo, bool) {
+	categoria := dominio.EnderecoFinal(plataforma, aprovada, atual)
+	if categoria == "" {
+		return passo{}, false
 	}
-	return passo{}, false
+	x.o.Log("executor: endereço final: %s", categoria)
+	switch categoria {
+	case dominio.EnderecoVazio:
+		return falhou("erro-tecnico", errPaginaEmBranco), true
+	case dominio.EnderecoLogin:
+		return bloqueada("login"), true
+	}
+	return bloqueada("site-externo"), true
 }
 
 type acao struct {
-	campo    Campo
-	valor    string
-	anexar   bool
-	conferir bool // contato que a página já trouxe: só confere se é igual ao pacote, sem alterar
+	campo     Campo
+	valor     string
+	anexar    bool
+	conferir  bool // contato que a página já trouxe: só confere se é igual ao pacote, sem alterar
+	desmarcar bool // "Seguir <empresa>" que a página trouxe marcada: o app desmarca (jc-a2y.6.5.2)
 }
 
 // planejar decide o que fazer com cada campo da etapa, antes de digitar qualquer coisa (M1). Um campo que bloqueia
@@ -490,6 +599,10 @@ func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
 		switch {
 		case motivo != "":
 			return nil, motivo
+		case campo.Tipo == CampoSeguir:
+			if campo.Preenchido {
+				plano = append(plano, acao{campo: campo, desmarcar: true})
+			}
 		case campo.Preenchido && valor != "" && conferivel(campo.Tipo):
 			plano = append(plano, acao{campo: campo, valor: valor, conferir: true})
 		case campo.Tipo == CampoCurriculo:
@@ -505,6 +618,35 @@ func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
 // CyberSec, jc-a2y.6.5.1): nome, e-mail, telefone e código do país.
 func conferivel(tipo string) bool {
 	return tipo == CampoNome || tipo == CampoEmail || tipo == CampoTelefone || tipo == CampoDDI
+}
+
+// esperados: os valores que contam como iguais ao do pacote. Telefone: os mesmos dígitos, ou o código do país
+// seguido do número nacional, nada mais (nota do CyberSec no #89). Os outros tipos: o próprio valor.
+func esperados(tipo, valor string) []string {
+	if tipo != CampoTelefone {
+		return []string{valor}
+	}
+	digitos := func(s string) string {
+		var b strings.Builder
+		for _, r := range s {
+			if r >= '0' && r <= '9' {
+				b.WriteRune(r)
+			}
+		}
+		return b.String()
+	}
+	todos := digitos(valor)
+	ddi := digitos(ddiDoTelefone(valor))
+	if todos == "" {
+		return nil
+	}
+	if strings.HasPrefix(strings.TrimSpace(valor), "+") {
+		if ddi == "" || !strings.HasPrefix(todos, ddi) {
+			return []string{todos}
+		}
+		return []string{todos, strings.TrimPrefix(todos, ddi)} // com e sem o código do país
+	}
+	return []string{todos, ddi + todos}
 }
 
 // ddiDoTelefone: o código do país do telefone do pacote. "+55 11 9..." dá "+55". Sem "+", o número é nacional e o
@@ -543,35 +685,124 @@ func (x *Executor) conferirBloqueio(ctx context.Context, pag Pagina) (passo, boo
 	return passo{}, false
 }
 
-// concluir grava o desfecho do envio (a candidatura está em enviando).
-func (x *Executor) concluir(ctx context.Context, id string, p passo) (Desfecho, error) {
-	agora := x.o.Relogio()
-	_, err := x.gravar(ctx, func(e dominio.Estado, d dominio.Ctx) (dominio.Estado, dominio.Objeto, error) {
+// concluir grava o desfecho do envio (a candidatura está em enviando) e o efeito dele na plataforma, na mesma
+// transação (jc-a2y.6.11). Falha técnica ou sessão caída ANTES de interagir (sem marca) devolve a candidatura para
+// aprovada (dominio.DevolverAprovada, que confere a marca gravada, a versão e a impressão); se o domínio recusar,
+// vale o desfecho de sempre. Incerta nunca volta.
+func (x *Executor) concluir(ctx context.Context, plataforma string, t *tentativa, p passo) (Desfecho, error) {
+	id, agora := t.id, x.o.Relogio()
+	volta := ""
+	if !t.interagiu {
+		switch {
+		case p.estado == dominio.CandFalhou && p.motivo == "erro-tecnico":
+			volta = "erro-tecnico"
+		case p.estado == dominio.CandBloqueada && p.motivo == "login":
+			volta = "login"
+		}
+	}
+	var final dominio.Objeto
+	var antes, depois dominio.EstadoPlataforma
+	devolveu := false
+	err := x.arm.GravarComPlataformas(context.WithoutCancel(ctx), func(e dominio.Estado, pl dominio.Plataformas) (dominio.Estado, dominio.Plataformas, error) {
+		antes, devolveu = pl.DaPlataforma(plataforma, agora), false
+		if volta != "" {
+			novo, o, err := dominio.DevolverAprovada(e, id, t.versao, volta, agora)
+			var ec *dominio.ErroConflito
+			switch {
+			case err == nil:
+				final, devolveu = o, true
+				pl = pl.RegistrarResultado(plataforma, volta, agora)
+				depois = pl.DaPlataforma(plataforma, agora)
+				return novo, pl, nil
+			case !errors.As(err, &ec):
+				return e, pl, err
+			}
+			// Recusou (marca gravada, versão ou impressão): segue o desfecho de sempre.
+		}
+		var novo dominio.Estado
+		var o dominio.Objeto
+		var err error
 		switch p.estado {
 		case dominio.CandEnviada:
-			return dominio.MarcarEnviada(e, id, agora, d)
+			novo, o, err = dominio.MarcarEnviada(e, id, agora, x.ctx(e))
 		case dominio.CandBloqueada:
-			return dominio.BloquearCandidatura(e, id, p.motivo, agora, d)
+			novo, o, err = dominio.BloquearCandidatura(e, id, p.motivo, agora, x.ctx(e))
 		case dominio.CandFalhou:
-			return dominio.FalharCandidatura(e, id, p.motivo, agora)
+			novo, o, err = dominio.FalharCandidatura(e, id, p.motivo, agora)
 		default:
-			return dominio.TornarIncerta(e, id, agora)
+			novo, o, err = dominio.TornarIncerta(e, id, agora)
 		}
+		if err != nil {
+			return e, pl, err
+		}
+		final = o
+		pl = pl.RegistrarResultado(plataforma, codigoDoPasso(p), agora)
+		depois = pl.DaPlataforma(plataforma, agora)
+		return novo, pl, nil
 	})
 	if err != nil {
 		// Fica em enviando; ao abrir o app de novo, vira incerta (M3).
 		x.o.Log("executor: %s não gravou o desfecho (%T)", id, err)
 		return Desfecho{}, err
 	}
+	if depois.Estado != antes.Estado && depois.Estado != dominio.PlataformaAtiva {
+		x.o.Log("envio: plataforma %s %s (%s)", plataforma, depois.Estado, depois.Motivo) // só códigos
+	}
+	estado, motivo := dominio.Texto(final["estado"]), p.motivo
+	if devolveu {
+		motivo = volta
+		if estado == dominio.CandFalhou { // a 4ª volta: falhou/erro-tecnico, como antes
+			motivo = "erro-tecnico"
+		} else {
+			x.o.Log("executor: %s devolvida (%s, %d/%d) %s", id, volta, len(dominio.ListaDe(final["retentativas"])), dominio.MaxRetentativas, estado)
+			if p.err != nil {
+				x.o.Log("executor: %s falha antes de interagir (%s)", id, tipoDoErro(p.err))
+			}
+			return Desfecho{ID: id, Estado: estado, Motivo: motivo}, nil
+		}
+	}
 	switch {
 	case p.err != nil:
-		x.o.Log("executor: %s %s %s (%s)", id, p.estado, p.motivo, tipoDoErro(p.err))
-	case p.motivo != "":
-		x.o.Log("executor: %s %s (%s)", id, p.estado, p.motivo)
+		x.o.Log("executor: %s %s %s (%s)", id, estado, motivo, tipoDoErro(p.err))
+	case motivo != "":
+		x.o.Log("executor: %s %s (%s)", id, estado, motivo)
 	default:
-		x.o.Log("executor: %s %s", id, p.estado)
+		x.o.Log("executor: %s %s", id, estado)
 	}
-	return Desfecho{ID: id, Estado: p.estado, Motivo: p.motivo}, nil
+	return Desfecho{ID: id, Estado: estado, Motivo: motivo}, nil
+}
+
+// codigoDoPasso: o código fechado do resultado, para o estado da plataforma.
+func codigoDoPasso(p passo) string {
+	switch p.estado {
+	case dominio.CandEnviada:
+		return "enviada"
+	case dominio.CandIncerta:
+		return "incerta"
+	}
+	return p.motivo
+}
+
+// LiberarDepoisDoLogin: a pessoa fechou a janela "Entrar nas plataformas". As plataformas em precisa-entrar voltam
+// a ativa, só com o envio geral liberado (conferido na mesma transação); com ele pausado, ficam como estão.
+func (x *Executor) LiberarDepoisDoLogin(ctx context.Context) {
+	agora := x.o.Relogio()
+	var liberadas []string
+	_, err := x.arm.MudarPlataformas(ctx, func(p dominio.Plataformas, pausado bool) (dominio.Plataformas, error) {
+		if pausado {
+			return p, nil
+		}
+		n, l := p.LiberarDepoisDoLogin(agora)
+		liberadas = l
+		return n, nil
+	})
+	if err != nil {
+		x.o.Log("envio: plataformas depois do login (%s)", tipoDoErro(err))
+		return
+	}
+	for _, p := range liberadas {
+		x.o.Log("envio: plataforma %s ativa (login)", p)
+	}
 }
 
 // tipoDoErro: só o tipo (M7); o texto do erro pode ter caminho, URL ou texto da página.
@@ -601,6 +832,14 @@ func valorDoCampo(conteudo dominio.Objeto, c Campo) (valor, motivo string) {
 		return "", "" // aceite opcional fica sem marcar
 	}
 	if c.Tipo == CampoCurriculo {
+		return "", ""
+	}
+	// "Seguir <empresa>": opcional, fica desmarcada (o planejar desmarca a que veio marcada); obrigatória, a pessoa
+	// decide (aprovado pelo CyberSec no #89).
+	if c.Tipo == CampoSeguir {
+		if c.Obrigatorio {
+			return "", "pergunta-nova"
+		}
 		return "", ""
 	}
 	contato := dominio.ObjetoDe(conteudo["contato"])

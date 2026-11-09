@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,6 +35,12 @@ type paginaDeRetratos struct {
 func (p *paginaDeRetratos) Abrir(ctx context.Context, u string) (string, error) {
 	return p.etapas[0].URL, nil
 }
+
+// As páginas fictícias já começam no formulário: sem botão de candidatura.
+func (p *paginaDeRetratos) BotaoDeCandidatura(ctx context.Context) (string, error) { return "", nil }
+func (p *paginaDeRetratos) AbrirFormulario(ctx context.Context, rotulo string) error {
+	return errors.New("sem botão de candidatura")
+}
 func (p *paginaDeRetratos) URLAtual(ctx context.Context) (string, error) {
 	return p.etapas[p.i].URL, nil
 }
@@ -47,7 +54,8 @@ func (p *paginaDeRetratos) Preencher(ctx context.Context, c Campo, v string) err
 	p.preenchidos[c.ID] = v
 	return nil
 }
-func (p *paginaDeRetratos) Igual(context.Context, Campo, string) (bool, error) { return false, nil }
+func (p *paginaDeRetratos) Igual(context.Context, Campo, []string) (bool, error) { return false, nil }
+func (p *paginaDeRetratos) Desmarcar(context.Context, Campo) error               { return nil }
 func (p *paginaDeRetratos) Anexar(ctx context.Context, c Campo, caminho string) error {
 	p.anexos++
 	return nil
@@ -89,7 +97,7 @@ func lerPaginas(t *testing.T) []paginaFicticia {
 }
 
 // Cada página fictícia, do começo ao fim pelo executor: o desfecho bate, e nada é enviado quando bloqueia.
-// Juntas, as páginas cobrem os 14 motivos.
+// Juntas, as páginas cobrem os 15 motivos.
 func TestPaginasFicticias(t *testing.T) {
 	cobertos := map[string]bool{}
 	for _, pf := range lerPaginas(t) {
@@ -167,7 +175,8 @@ func TestClassificarCampos(t *testing.T) {
 		{CampoDaPagina{Tipo: "select", Rotulo: "Banco", Nome: "agencia"}, "dado-bancario"},
 		{CampoDaPagina{Tipo: "radio", Rotulo: "Gênero"}, "dado-sensivel"},
 		{CampoDaPagina{Tipo: "checkbox", Rotulo: "Aceito os termos"}, "termos"},
-		{CampoDaPagina{Tipo: "checkbox", Rotulo: "Seguir a Empresa Teste"}, CampoOutro},
+		{CampoDaPagina{Tipo: "checkbox", Rotulo: "Seguir a Empresa Teste"}, CampoSeguir}, // jc-a2y.6.5.2: o app só desmarca
+		{CampoDaPagina{Tipo: "checkbox", Rotulo: "Quero receber a newsletter"}, CampoOutro},
 		{CampoDaPagina{Tipo: "select", Rotulo: "Nível de inglês"}, CampoPergunta},
 	}
 	for _, k := range casos {

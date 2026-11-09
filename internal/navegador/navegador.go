@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/browser"
+	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 
 	"github.com/FRF-Tecnology/job-control/internal/executor"
@@ -48,6 +49,16 @@ type Navegador struct {
 	visivelAgora bool            // o navegador aberto agora tem janela
 	loginCtx     context.Context // navegador da janela de login da pessoa; enquanto vivo, nenhuma página do envio abre
 	abertas      int             // páginas do envio abertas agora
+	// aoFecharLogin roda quando a PESSOA fecha a janela de login (não quando o app fecha o navegador): as plataformas
+	// em precisa-entrar podem voltar (jc-a2y.6.11).
+	aoFecharLogin func()
+}
+
+// QuandoFecharLogin registra o que fazer quando a pessoa fecha a janela "Entrar nas plataformas".
+func (n *Navegador) QuandoFecharLogin(f func()) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.aoFecharLogin = f
 }
 
 var _ executor.Navegador = (*Navegador)(nil)
@@ -139,6 +150,7 @@ func (n *Navegador) NovaPagina(ctx context.Context) (executor.Pagina, error) {
 		return nil, err
 	}
 	navCtx := n.navCtx
+	visivel := n.visivelAgora
 	n.abertas++
 	n.mu.Unlock()
 
@@ -147,6 +159,14 @@ func (n *Navegador) NovaPagina(ctx context.Context) (executor.Pagina, error) {
 		fechar()
 		n.paginaFechada()
 		return nil, err
+	}
+	// "Ver o envio": a aba do envio vai para a frente dentro da janela do Chrome do app (não da área de trabalho), para
+	// a pessoa não ficar olhando a aba inicial em branco (P0 da .6.5). Sem janela, não precisa.
+	if visivel {
+		if c := chromedp.FromContext(aba); c != nil && c.Target != nil {
+			// Só visual: erro não para o envio.
+			_, _ = chromedp.CallBrowser(aba, target.ActivateTarget, target.ActivateTargetParams{TargetID: c.Target.TargetID})
+		}
 	}
 	var uma sync.Once
 	return &pagina{aba: aba, fechar: func() { fechar(); uma.Do(n.paginaFechada) }}, nil
@@ -219,12 +239,17 @@ func (n *Navegador) AbrirLogin(endereco string) error {
 	go func() {
 		<-navCtx.Done() // a pessoa fechou a janela (o navegador saiu) ou o app fechou o navegador
 		n.mu.Lock()
-		defer n.mu.Unlock()
 		if n.navCtx == navCtx {
 			n.fecharSemTrava()
 		}
+		var avisar func()
 		if n.loginCtx == navCtx { // um login novo, aberto depois, não é desfeito
 			n.loginCtx = nil
+			avisar = n.aoFecharLogin // Fechar (o app) já zerou loginCtx: aí não avisa
+		}
+		n.mu.Unlock()
+		if avisar != nil {
+			avisar()
 		}
 	}()
 	return nil

@@ -22,17 +22,27 @@ type Navegador interface {
 // Pagina é uma aba do navegador do app. Nada do que ela devolve (rótulos, textos, URL) muda a fila: o executor
 // só escolhe entre resultados de listas fechadas, e nada disso vai para o log.
 type Pagina interface {
-	// Abrir navega para o endereço aprovado e devolve o endereço onde a página parou (depois de redirecionar).
+	// Abrir navega para o endereço aprovado e devolve o endereço onde a página parou (depois de redirecionar). Só
+	// navega: não clica em nada (revisão do CyberSec no #101).
 	Abrir(ctx context.Context, url string) (final string, err error)
+	// BotaoDeCandidatura só lê: quando a página ainda não mostra o formulário, devolve o rótulo normalizado (sem
+	// acento, minúsculo) do botão da própria plataforma que o abriria; "" quando o formulário já está na página ou
+	// não há botão. Nunca devolve botão que leva para fora.
+	BotaoDeCandidatura(ctx context.Context) (rotulo string, err error)
+	// AbrirFormulario clica no botão de candidatura com exatamente esse rótulo. Na Gupy, na InHire e no LinkedIn sem
+	// Easy Apply, esse clique pode já registrar a candidatura: o executor grava a marca antes (jc-a2y.6.11).
+	AbrirFormulario(ctx context.Context, rotulo string) error
 	// Bloqueio devolve um motivo da lista fechada (PendenciaDoMotivo) quando a página pede algo que só a pessoa
 	// faz, ou "" quando não há nada. Motivo fora da lista vira "outro".
 	Bloqueio(ctx context.Context) (motivo string, err error)
 	// Campos lista os campos do formulário de candidatura.
 	Campos(ctx context.Context) ([]Campo, error)
 	Preencher(ctx context.Context, c Campo, valor string) error
-	// Igual confere, dentro da página, se o valor que o campo já tem é o esperado (e-mail sem diferença de caixa,
-	// telefone pelos dígitos, código do país pelo número). O valor da página nunca volta (jc-a2y.6.5.1).
-	Igual(ctx context.Context, c Campo, esperado string) (bool, error)
+	// Igual confere, dentro da página, se o valor que o campo já tem é um dos esperados (e-mail e nome sem diferença
+	// de caixa, telefone com os mesmos dígitos, código do país pelo número). O valor da página nunca volta.
+	Igual(ctx context.Context, c Campo, esperados []string) (bool, error)
+	// Desmarcar desmarca uma caixa marcada e confere que ficou desmarcada. Nunca marca (jc-a2y.6.5.2).
+	Desmarcar(ctx context.Context, c Campo) error
 	// Anexar põe o arquivo do caminho no campo (o executor passa uma cópia já conferida, nunca o original).
 	Anexar(ctx context.Context, c Campo, caminho string) error
 	// URLAtual é onde a página está agora (o executor confere a cada etapa e logo antes do clique).
@@ -53,7 +63,8 @@ const (
 	CampoNome      = "nome"
 	CampoEmail     = "email"
 	CampoTelefone  = "telefone"
-	CampoDDI       = "ddi" // código do país do telefone
+	CampoDDI       = "ddi"    // código do país do telefone
+	CampoSeguir    = "seguir" // caixa "Seguir <empresa>": o app só desmarca, nunca marca (jc-a2y.6.5.2)
 	CampoCidade    = "cidade"
 	CampoPretensao = "pretensao"
 	CampoMensagem  = "mensagem"

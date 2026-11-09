@@ -123,6 +123,9 @@ h3 { font-size: 1.05rem; }
 /* Envio ligado e não pausado (jc-a2y.51): visível em todas as telas, leva à Fila para pausar. */
 .marca-envio { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--verde); padding: 6px 12px; border-radius: 999px; background: var(--verde-suave); text-decoration: none; white-space: nowrap; }
 .marca-envio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+/* Com o envio ligado, a marca ocupa o lugar do "Dados locais" (que só some quando está tudo bem; desconectado, ele volta),
+   para o menu caber inteiro (jc-a2y.66). */
+.topo-pe:has(.marca-envio) .status-conexao.ok { display: none; }
 .botao-icone { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 0; background: transparent; cursor: pointer; color: var(--tinta-2); }
 .botao-icone:hover { background: var(--superficie-2); color: var(--tinta); }
 .botao-icone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -490,7 +493,21 @@ dialog form { display: grid; gap: 16px; }
 .envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
 .envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
 .envio-janelas h3 { margin: 0; font-size: .95rem; }
-.login-aberto { margin: 0; padding: 8px 12px; border-radius: var(--raio-p); background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
+.envio-proxima { display: grid; gap: 2px; } .envio-proxima p { margin: 0; } .envio-proxima p:first-child { font-weight: 600; overflow-wrap: anywhere; } /* jc-a2y.6.10 */
+.login-aberto { margin: 0; padding: 8px 12px; border-radius: var(--raio-p); background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+/* Lista do dia (jc-a2y.6.13): aprovar em lote, com o resumo de cada pacote e a opção de tirar itens. */
+.lista-do-dia { border: 1px solid var(--linha-2); border-radius: var(--raio); padding: 16px 20px; display: grid; gap: 12px; margin-bottom: 24px; }
+.lista-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.lista-do-dia h2 { margin: 0; font-size: 1.05rem; } .lista-do-dia p { margin: 0; }
+.lista-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lista-itens label { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; min-height: 44px; cursor: pointer; }
+.lista-itens input[type="checkbox"] { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--destaque); }
+.lista-itens label > span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.lista-itens li { display: flex; align-items: flex-start; gap: 8px; }
+.lista-itens li > label { flex: 1; min-width: 0; }
+.lista-itens li > .botao-fantasma { flex: none; min-height: 44px; }
+.lista-itens .rever { color: var(--ambar); font-weight: 600; } /* começa desmarcado: revise um a um */
+/* Preparar e editar o pacote (P5, jc-a2y.6.3.3). */
 .prontas { margin-bottom: 24px; }
 .pronta { display: grid; gap: 16px; padding: 16px 20px; }
 .pronta-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }

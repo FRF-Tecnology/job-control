@@ -13,6 +13,7 @@ type variantePreenchida struct {
 	id        string
 	email     string // e-mail já marcado no select ("" = nenhum)
 	ddi       bool   // código do país +55 já marcado
+	tel       string // telefone já escrito pela página ("" = vazio)
 	extra     string // HTML a mais dentro do formulário
 	enviada   bool   // o que se espera do executor
 	motivo    string // motivo esperado quando bloqueia
@@ -29,6 +30,10 @@ var variantesPreenchidas = []variantePreenchida{
 		extra: `<label><input type="checkbox" id="termos" name="termos" checked> Li e aceito os termos de uso</label>`},
 	{id: "9000000009", email: "pessoa@exemplo.com", ddi: true, motivo: "pergunta-nova", descricao: "texto livre já preenchido: bloqueia",
 		extra: `<label for="porque">Por que você quer trabalhar aqui?</label><textarea id="porque" name="porque">Texto de uma candidatura anterior</textarea>`},
+	{id: "9000000012", email: "pessoa@exemplo.com", ddi: true, enviada: true, descricao: "Seguir a empresa já marcado: o app desmarca e envia sem ele",
+		extra: `<label><input type="checkbox" id="seguir" name="seguir" checked> Seguir Empresa Teste</label>`},
+	{id: "9000000013", email: "pessoa@exemplo.com", ddi: true, tel: "+55 (11) 90000-0000", enviada: true, descricao: "telefone já escrito igual ao do pacote, com o código do país: fica"},
+	{id: "9000000014", email: "pessoa@exemplo.com", ddi: true, tel: "011900000000", motivo: "pergunta-nova", descricao: "telefone já escrito com dígito a mais: bloqueia"},
 	{id: "9000000010", email: "pessoa@exemplo.com", ddi: true, motivo: "pergunta-nova", descricao: "currículo anterior já escolhido: bloqueia",
 		extra: `<fieldset><legend>Escolha um currículo enviado antes</legend><label><input type="radio" name="cvantigo" value="cv-antigo.pdf" checked>cv-antigo.pdf</label><label><input type="radio" name="cvantigo" value="outro.pdf">outro.pdf</label></fieldset>`},
 }
@@ -46,7 +51,7 @@ func paginaPreenchida(v variantePreenchida) http.HandlerFunc {
 			opcao("conta@exemplo.com", "conta@exemplo.com", v.email == "conta@exemplo.com")
 		ddi := opcao("", "Selecione", !v.ddi) + opcao("BR", "Brasil (+55)", v.ddi) + opcao("PT", "Portugal (+351)", false) // valor por país, como no LinkedIn
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, strings.NewReplacer("{{ID}}", v.id, "{{EMAIL}}", email, "{{DDI}}", ddi, "{{EXTRA}}", v.extra).Replace(`<!doctype html>
+		fmt.Fprint(w, strings.NewReplacer("{{ID}}", v.id, "{{TEL}}", v.tel, "{{EMAIL}}", email, "{{DDI}}", ddi, "{{EXTRA}}", v.extra).Replace(`<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><title>Dev Go - Empresa Teste</title></head>
 <body>
   <h1>Dev Go</h1><p>Empresa Teste. Trabalho remoto.</p>
@@ -57,7 +62,7 @@ func paginaPreenchida(v variantePreenchida) http.HandlerFunc {
       <label for="nome">Nome completo</label><input id="nome" name="nome" required>
       <label for="email">E-mail</label><select id="email" name="email" required>{{EMAIL}}</select>
       <label for="ddi">Código do país</label><select id="ddi" name="ddi" required>{{DDI}}</select>
-      <label for="tel">Telefone celular</label><input id="tel" name="tel" type="tel" required>
+      <label for="tel">Telefone celular</label><input id="tel" name="tel" type="tel" value="{{TEL}}" required>
       <label for="cv">Currículo (PDF)</label><input id="cv" name="cv" type="file" accept=".pdf" required>
       {{EXTRA}}
       <button type="submit">Enviar candidatura</button>

@@ -42,7 +42,9 @@ func re(s string) *regexp.Regexp { return regexp.MustCompile(s) }
 var (
 	quadroCaptcha = re(`recaptcha|hcaptcha|challenges\.cloudflare\.com|turnstile|arkoselabs|funcaptcha|geetest`)
 	campoCaptcha  = re(`g-recaptcha-response|h-captcha-response|cf-turnstile-response|captcha`)
-	textoCaptcha  = re(`nao sou (um )?robo|i'?m not a robot|verify (that )?you are (a )?human|verifique (que )?(voce )?(e )?humano|confirme que (voce )?(e )?humano|resolva o desafio|no soy (un )?robot|verifica que eres humano|confirma que eres humano`)
+	// Aviso sobre a conta (jc-a2y.6.11): atividade incomum, conta restrita ou suspensa. A plataforma para até amanhã.
+	textoAvisoConta = re(`(atividade|atividades) (incomum|incomuns|suspeita|suspeitas|incomum na sua conta)|unusual activity|suspicious activity|actividad (inusual|sospechosa)|(sua|a sua) conta (foi |esta |esta temporariamente )?(restrita|suspensa|bloqueada|limitada)|restringimos (a )?sua conta|your account (has been |is |was )?(temporarily )?(restricted|suspended|locked|limited)|we('ve| have) (temporarily )?restricted your account|tu cuenta (ha sido |fue |esta )?(temporalmente )?(restringida|suspendida|bloqueada|limitada)|restringimos tu cuenta`)
+	textoCaptcha    = re(`nao sou (um )?robo|i'?m not a robot|verify (that )?you are (a )?human|verifique (que )?(voce )?(e )?humano|confirme que (voce )?(e )?humano|resolva o desafio|no soy (un )?robot|verifica que eres humano|confirma que eres humano`)
 
 	textoCriarConta = re(`crie (sua|uma) conta|criar (sua |uma )?conta|cadastre-se|faca seu cadastro|create (an |your )?account|sign up|join now|registre-se|crea (tu|una) cuenta|crear (una |tu )?cuenta|registrate|registrarse|create a profile`)
 	textoEntrar     = re(`\b(faca|fazer) (o )?login\b|\b(entre|entrar) (na|com) (sua )?conta\b|\bentrar para continuar\b|\biniciar sessao\b|\bsign in\b|\blog in\b|\bsua sessao (expirou|terminou)\b|\bsession (has )?expired\b|\bpara continuar, entre\b|\binicia (la )?sesion\b|\biniciar sesion para\b|\bingresa (a|con) tu cuenta\b|\btu sesion (expiro|ha expirado|caduco)\b|\bpara continuar, inicia sesion\b`)
@@ -56,6 +58,9 @@ var (
 	rotuloCurriculo = re(`curriculo|\bcv\b|resume|curriculum|hoja de vida`)
 	rotuloNome      = re(`^(seu )?nome( completo)?$|^full name$|^name$|^first and last name$|^nome e sobrenome$|^nombre( completo)?$|^nombre y apellidos?$|^your name$`)
 	rotuloEmail     = re(`e-?mail|correo`)
+	// rotuloSeguir: lista fechada, só a caixa "Seguir <empresa>" do Easy Apply (PT e ES: Seguir; EN: Follow).
+	// Newsletter, novidades e consentimento não entram (termos continua bloqueando).
+	rotuloSeguir    = re(`^(seguir|follow)\b`)
 	rotuloDDI       = re(`codigo (do|de) pais|country code|\bddi\b|prefixo (do|de) pais|codigo telefonico|indicativo|prefijo`)
 	rotuloTelefone  = re(`telefone|celular|whatsapp|\bphone\b|\bmobile\b|\bfone\b|telefono|\bmovil\b`)
 	rotuloCidade    = re(`^cidade|\bcity\b|localizacao|\blocation\b|onde (voce )?mora|^ciudad|donde vives`)
@@ -85,6 +90,9 @@ func DetectarBloqueio(r Retrato) string {
 	}
 	if textoCaptcha.MatchString(texto) {
 		return "captcha"
+	}
+	if textoAvisoConta.MatchString(texto) {
+		return "aviso-conta"
 	}
 	for _, c := range r.Campos {
 		if c.Autocomplete == "one-time-code" {
@@ -181,6 +189,8 @@ func tipoDoCampo(c CampoDaPagina) string {
 		return CampoPretensao
 	case rotuloMensagem.MatchString(rotulo):
 		return CampoMensagem
+	case tipoHTML == "checkbox" && rotuloSeguir.MatchString(rotulo):
+		return CampoSeguir
 	case tipoHTML == "checkbox" || rotulo == "":
 		return CampoOutro
 	}
