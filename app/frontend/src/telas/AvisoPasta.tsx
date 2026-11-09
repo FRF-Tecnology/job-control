@@ -23,7 +23,8 @@ export function AvisoPasta() {
   const [visto, setVisto] = useState(() => { try { return sessionStorage.getItem(VISTO); } catch { return null; } });
   useEffect(() => {
     // Servidor sem a rota (404) ou erro: sem aviso. Só os códigos da lista fechada viram aviso.
-    app.api('/api/v1/dados/pasta').then(r => setAviso(typeof r?.aviso === 'string' && r.aviso in FRASES ? r.aviso : null)).catch(() => setAviso(null));
+    // Só chave própria da lista: "toString" ou "constructor" passariam num "in" (nota do CyberSec no #118).
+    app.api('/api/v1/dados/pasta').then(r => setAviso(typeof r?.aviso === 'string' && Object.prototype.hasOwnProperty.call(FRASES, r.aviso) ? r.aviso : null)).catch(() => setAviso(null));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!aviso || visto === aviso) return null;

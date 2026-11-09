@@ -32,6 +32,9 @@ describe('Aviso da pasta de dados', () => {
   it.each([
     ['aviso null (com migradaEm, que é só informação)', { aviso: null, migradaEm: '2026-11-09T10:00:00-03:00' }],
     ['código fora da lista', { aviso: '<b>outro</b>', migradaEm: null }],
+    ['"toString" (herdado do Object)', { aviso: 'toString', migradaEm: null }],
+    ['"constructor" (herdado do Object)', { aviso: 'constructor', migradaEm: null }],
+    ['"__proto__"', { aviso: '__proto__', migradaEm: null }],
   ])('%s: nada aparece', async (_n, resposta) => {
     await montar(resposta);
     expect(screen.queryByRole('status')).toBeNull();
