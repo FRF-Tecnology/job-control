@@ -80,9 +80,15 @@ paths:
         '409': { description: 'O pedido não tem proposta: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /emails:
     get: { summary: 'Emails registrados (?status=, ?vaga=)' }
-    post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica. jc-a2y.7.3 (proposta, decisão do PO): mesma regra da leitura pelo navegador, para qualquer autor. Recusa e oferta nunca mudam a vaga aqui: o email fica a-confirmar, e só a pessoa confirma pela tela (POST /emails/{idMensagem}/confirmar). Entrevista e teste aplicam sozinhos (em-processo com pendência) só com remetente de domínio conhecido da vaga; senão, a-confirmar. Confirmação e outro só registram' }
-  /emails/{idMensagem}/ligar: { post: { summary: 'Liga um email sem vaga: {vagaId}. jc-a2y.7.3 (proposta): ligado pela pessoa (autor eu, pela tela), a mudança aplica como hoje; ligado por outro autor, recusa e oferta ficam a-confirmar' } }
-  /emails/{idMensagem}/descartar: { post: { summary: 'Tira da lista "sem vaga". jc-a2y.7.3 (proposta): também descarta um email a-confirmar, sem mudar a vaga' } }
+    post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica. jc-a2y.7.3 (proposta): email.idMensagem com o padrão ^[^\x00-\x1f/]{1,200}$ (sem caractere de controle nem barra), senão 400. Decisão do PO: mesma regra da leitura pelo navegador, para qualquer autor. Recusa e oferta nunca mudam a vaga aqui: o email fica a-confirmar, e só a pessoa confirma pela tela (POST /emails/{idMensagem}/confirmar). Entrevista e teste aplicam sozinhos (em-processo com pendência) só com remetente de domínio conhecido da vaga; senão, a-confirmar. Confirmação e outro só registram' }
+  /emails/{idMensagem}/ligar:
+    parameters:
+      - { name: idMensagem, in: path, required: true, schema: { type: string, pattern: '^[^\x00-\x1f/]{1,200}$' }, description: 'jc-a2y.7.3 (proposta): 1 a 200 caracteres, sem caractere de controle nem barra. Na leitura pelo navegador, gmail:<id da conversa>:<AAAAMMDDhhmm da última mensagem>, para uma mensagem nova na mesma conversa ser lida; no POST /emails, o id que o assistente mandou, com o mesmo padrão' }
+    post: { summary: 'Liga um email sem vaga: {vagaId}. jc-a2y.7.3 (proposta): ligado pela pessoa (autor eu, pela tela), a mudança aplica como hoje; ligado por outro autor, recusa e oferta ficam a-confirmar' }
+  /emails/{idMensagem}/descartar:
+    parameters:
+      - { name: idMensagem, in: path, required: true, schema: { type: string, pattern: '^[^\x00-\x1f/]{1,200}$' }, description: 'jc-a2y.7.3 (proposta): 1 a 200 caracteres, sem caractere de controle nem barra. Na leitura pelo navegador, gmail:<id da conversa>:<AAAAMMDDhhmm da última mensagem>, para uma mensagem nova na mesma conversa ser lida; no POST /emails, o id que o assistente mandou, com o mesmo padrão' }
+    post: { summary: 'Tira da lista "sem vaga". jc-a2y.7.3 (proposta): também descarta um email a-confirmar, sem mudar a vaga' }
   # E-mails pelo navegador (jc-a2y.7.3, docs/propostas/emails-navegador.md). Gmail web, só leitura, num perfil do
   # navegador só para e-mail. Nunca envia, responde, arquiva, apaga, marca nem abre a mensagem. Só a tela, e só no
   # build com o envio (404 no padrão e no central-dev).
@@ -134,7 +140,7 @@ paths:
         '429': { description: 'Intervalo mínimo entre leituras: {erro, renovaEm}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroIntervaloEmails' } } } }
   /emails/{idMensagem}/confirmar:
     parameters:
-      - { name: idMensagem, in: path, required: true, schema: { type: string, maxLength: 200 }, description: 'Na leitura pelo navegador, gmail:<id da conversa>:<AAAAMMDDhhmm da última mensagem>, para uma mensagem nova na mesma conversa ser lida; no POST /emails, o id que o assistente mandou' }
+      - { name: idMensagem, in: path, required: true, schema: { type: string, pattern: '^[^\x00-\x1f/]{1,200}$' }, description: 'jc-a2y.7.3 (proposta): 1 a 200 caracteres, sem caractere de controle nem barra. Na leitura pelo navegador, gmail:<id da conversa>:<AAAAMMDDhhmm da última mensagem>, para uma mensagem nova na mesma conversa ser lida; no POST /emails, o id que o assistente mandou, com o mesmo padrão' }
     post:
       x-proposta: true
       x-so-tela: true
