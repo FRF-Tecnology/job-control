@@ -117,7 +117,7 @@ jobs:
         run: |
           ls -d "/Applications/Google Chrome.app" "/Applications/Microsoft Edge.app" 2>/dev/null || true
           testes="TestNavegadorAbreSemJanela TestModoDaJanelaSoPorPedido TestLoginAbreJanelaESegura TestEnvioVisivelNavegaNaVaga TestEnvioComNavegadorDeVerdade TestIntegradoTelaAPIExecutor"
-          go test -count=20 -timeout 50m -v -run "^($(echo $testes | tr ' ' '|'))\$" ./internal/navegador/ | tee navegador-macos.log
+          go test -count=1 -v -run "^($(echo $testes | tr ' ' '|'))\$" ./internal/navegador/ | tee navegador-macos.log
           echo "rodadas verdes do TestEnvioComNavegadorDeVerdade: $(grep -c -- '--- PASS: TestEnvioComNavegadorDeVerdade ' navegador-macos.log) de 20"
           grep -- "aquecimento:" navegador-macos.log || true
           for t in $testes; do

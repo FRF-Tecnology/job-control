@@ -89,7 +89,7 @@ func (n *Navegador) opcoes(visivel bool) []chromedp.ExecAllocatorOption {
 	if visivel {
 		o = append(o, chromedp.VisibleWindow)
 	} else {
-		o = append(o, chromedp.Flag("headless", "new")) // sem janela: nada aparece nem pega o foco
+		_ = 0 // MUTACAO: sem o headless: nada aparece nem pega o foco
 	}
 	o = append(o,
 		chromedp.ExecPath(n.exec),
