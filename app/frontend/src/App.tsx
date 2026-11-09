@@ -112,10 +112,10 @@ export default function App() {
       } else if (e instanceof ErroApi) {
         // A API respondeu, mas com erro (ex.: dados corrompidos).
         setConexao({ texto: 'Erro nos dados', estado: 'off' });
-        setFalha({ titulo: 'A Central encontrou um problema nos dados', texto: e.message });
+        setFalha({ titulo: 'O Applyer encontrou um problema nos dados', texto: e.message });
       } else {
         setConexao({ texto: 'Desconectado', estado: 'off' });
-        if (!temEstado.current) setFalha({ titulo: 'A Central não está respondendo', texto: 'Feche e abra o app de novo. Se continuar, os dados estão salvos na pasta do app.' });
+        if (!temEstado.current) setFalha({ titulo: 'O Applyer não está respondendo', texto: 'Feche e abra o app de novo. Se continuar, os dados estão salvos na pasta do app.' });
       }
       return;
     }
@@ -204,7 +204,7 @@ export default function App() {
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
-    document.title = `${tela.nome} · Central de Candidaturas`;
+    document.title = `${tela.nome} · Applyer`;
     main.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [tela.rota]);
@@ -230,9 +230,9 @@ export default function App() {
       <a className="pular-link" href="#conteudo" onClick={e => { e.preventDefault(); main.current?.focus(); }}>Ir para o conteúdo</a>
       <header className="topo-app">
         <div className="topo-dentro">
-          <a className="marca" href="#/hoje" aria-label="Central de Candidaturas — início">
+          <a className="marca" href="#/hoje" aria-label="Applyer — início">
             <img src="/icone.svg" alt="" width={28} height={28} />
-            <span>Central</span>
+            <span>Applyer</span>
           </a>
           <Menu atual={tela.rota} contador={contador} />
           <div className="topo-pe">
