@@ -57,6 +57,14 @@ func TestDadosPasta(t *testing.T) {
 	if o["migradaEm"] != nil || strings.Contains(strings.ToLower(strings.Join(chaves(o), ",")), "caminho") {
 		t.Fatalf("meta estranha = %v", o)
 	}
+	// Texto que não é data RFC3339 (um caminho, por exemplo) não passa.
+	for _, ruim := range []string{`C:\Users\Pessoa\AppData`, "ontem", "2026-11-09", "2026-11-09 10:00:00"} {
+		arm.GravarMeta(context.Background(), "pasta", map[string]any{"migradaEm": ruim})
+		o, _ = chamarEnvio(t, a, "GET", "/dados/pasta", nil, "eu").Corpo.(map[string]any)
+		if o["migradaEm"] != nil {
+			t.Errorf("migradaEm %q passou: %v", ruim, o)
+		}
+	}
 	// Só GET.
 	if r := chamarEnvio(t, a, "POST", "/dados/pasta", Objeto{}, "eu"); r.Status != 404 {
 		t.Fatalf("POST = %d", r.Status)
