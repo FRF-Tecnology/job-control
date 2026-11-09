@@ -280,10 +280,10 @@ for (const prov of [provAnthropic, provOpenai, provGoogle]) {
   });
 }
 
-// Nenhum valor do corpo de erro entra na mensagem: 7 ecos × 3 campos × 3 provedores (revisão CyberSec do PR #15, v2).
+// Nenhum valor do corpo de erro entra na mensagem: 8 ecos × 3 campos × 3 provedores (revisão CyberSec do PR #15, v2).
 const SENTINELA = 'sk-ant-api03-SENTINELAvazaKEYfragmento_ABC-123xyz'; // fictícia; gitleaks:allow
 const RUN = 'SENTINELAvazaKEYfragmento_ABC';
-const ECOS = { exato: RUN, 'caixa-baixa': RUN.toLowerCase(), 'caixa-alta': RUN.toUpperCase(), prefixado: 'x' + RUN,
+const ECOS = { exato: RUN, 'caixa-baixa': RUN.toLowerCase(), 'caixa-alta': RUN.toUpperCase(), prefixado: 'x' + RUN, 'err_prefixo': 'err_' + RUN,
   sufixado: RUN + '_err', 'trecho+caixa': RUN.slice(0, 12).toLowerCase() + '_code', inicio: 'sk_ant_api' };
 const semLetrasDaSentinela = (msg) => {
   const baixa = msg.toLowerCase();

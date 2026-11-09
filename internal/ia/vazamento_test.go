@@ -78,7 +78,7 @@ func TestErroHTTPNaoRepeteAChave(t *testing.T) {
 // Sentinela fictícia com trechos só de letras e "_", como numa chave base64url (revisão CyberSec do PR #15, v2).
 const sentinelaFicticia = "sk-ant-api03-SENTINELAvazaKEYfragmento_ABC-123xyz" // gitleaks:allow
 
-// ecosAlterados são trechos da sentinela com caixa trocada, prefixo, sufixo ou "_" no lugar de "-".
+// ecosAlterados são trechos da sentinela com caixa trocada, prefixo, sufixo ou "_" no lugar de "-" (CyberSec e QA).
 func ecosAlterados() map[string]string {
 	run := "SENTINELAvazaKEYfragmento_ABC"
 	return map[string]string{
@@ -86,6 +86,7 @@ func ecosAlterados() map[string]string {
 		"caixa-baixa":  strings.ToLower(run),
 		"caixa-alta":   strings.ToUpper(run),
 		"prefixado":    "x" + run,
+		"err_prefixo":  "err_" + run,
 		"sufixado":     run + "_err",
 		"trecho+caixa": strings.ToLower(run[:12]) + "_code",
 		"inicio":       "sk_ant_api",
@@ -110,7 +111,7 @@ func semLetrasDaSentinela(t *testing.T, msg string) {
 	}
 }
 
-// Nenhum valor do corpo de erro entra na mensagem: 7 ecos × 3 campos (code, type, status) × 3 provedores.
+// Nenhum valor do corpo de erro entra na mensagem: 8 ecos × 3 campos (code, type, status) × 3 provedores.
 func TestNenhumValorDoCorpoNaMensagem(t *testing.T) {
 	for _, prov := range []string{"anthropic", "openai", "google"} {
 		for _, campo := range []string{"code", "type", "status"} {
