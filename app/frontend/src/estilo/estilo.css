@@ -220,6 +220,8 @@ a.cartao-num:hover { transform: translateY(-2px); }
 .convite strong { font: 700 1.8rem var(--fonte-display); letter-spacing: -.03em; }
 .convite.azul { background: var(--destaque); color: #fff; }
 .convite.azul .botao { background: #fff; color: var(--destaque); }
+.convite.ambar { background: var(--ambar-suave); } /* pede a pessoa (ex.: IA em uso não pronta, falta a chave) */
+.convite.ambar strong { color: var(--ambar); }
 
 /* funil em barras */
 .funil-barras { display: grid; gap: 14px; padding: 22px; border-radius: var(--raio); background: var(--superficie-2); }
@@ -330,6 +332,7 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 /* ---------- plataformas / perfil ---------- */
 .plataformas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .plataforma { border-radius: var(--raio); padding: 20px 22px; display: grid; gap: 10px; background: var(--superficie-2); border-top: 4px solid var(--cor, var(--linha)); }
+.plataforma select.situacao { width: auto; min-height: 30px; padding: 2px 8px; }
 .plataforma.s-automatizada { --cor: var(--destaque); } .plataforma.s-manual { --cor: var(--e-em-processo); }
 .plataforma.s-a-testar { --cor: var(--ambar); } .plataforma.s-descartada { --cor: var(--e-pulada); }
 .formulario { display: grid; gap: 16px; max-width: 860px; }
@@ -413,3 +416,13 @@ dialog form { display: grid; gap: 16px; }
 }
 .item-acao .selo-n svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .item-acao select { width: auto; flex: 1 1 220px; min-height: 34px; padding: 4px 10px; }
+
+/* Alvos de toque (jc-a2y.39): com ponteiro grosso (tela de toque), todo controle tem pelo menos 44 px.
+   Com mouse, o tamanho compacto do desktop continua. */
+@media (any-pointer: coarse) {
+  .botao.p, .botao-fantasma.p, .seletor button, .sugestoes button, .item-acao select, .plataforma select.situacao { min-height: 44px; }
+  .botao-icone { width: 44px; height: 44px; }
+  .marca, .plataforma h2 a { min-height: 44px; }
+  .plataforma h2 a { display: inline-flex; align-items: center; }
+  .funil-barras a { min-height: 44px; }
+}

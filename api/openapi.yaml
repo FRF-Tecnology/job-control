@@ -82,7 +82,7 @@ paths:
               required: [provedor]
               properties:
                 provedor: { type: string, enum: [nenhum, anthropic, openai, google, claude-cli, codex-cli, gemini-cli] }
-                modelo: { type: string, description: 'Obrigatório para openai e google (sem padrão)' }
+                modelo: { type: string, description: 'Obrigatório para openai e google (sem padrão). Só letras, números, espaço e . , _ : / \ = + @ ~ -, e não pode começar com -: o modelo vira argumento da CLI; outro caso dá 400 e nada é gravado (jc-a2y.43)' }
                 url: { type: string, pattern: '^https://', description: 'Endereço compatível (ex.: OpenRouter); só https' }
       responses:
         '200': { description: Conexão gravada, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
