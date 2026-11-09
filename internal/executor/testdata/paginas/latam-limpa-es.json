@@ -1,0 +1,78 @@
+{
+ "descricao": "latam-limpa-es",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "enviada"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Desarrollador Go en Empresa Prueba. Trabajo remoto. Contáctanos si tienes dudas.",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nombre completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "Correo electrónico",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Teléfono móvil",
+     "obrigatorio": true
+    },
+    {
+     "id": "cv",
+     "tipo": "file",
+     "rotulo": "Hoja de vida (PDF)",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Preguntas adicionales",
+   "campos": [
+    {
+     "id": "clave",
+     "tipo": "textarea",
+     "rotulo": "¿Cuáles son tus habilidades clave?",
+     "obrigatorio": false
+    },
+    {
+     "id": "bd",
+     "tipo": "select",
+     "rotulo": "Experiencia con bases de datos",
+     "obrigatorio": false
+    },
+    {
+     "id": "remoto",
+     "tipo": "radio",
+     "rotulo": "Disponibilidad para trabajo remoto",
+     "obrigatorio": false
+    },
+    {
+     "id": "ingles",
+     "tipo": "select",
+     "rotulo": "Nivel de inglés",
+     "obrigatorio": false
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Enviar solicitud"
+   ]
+  }
+ ]
+}

@@ -3,14 +3,18 @@ package ia
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
-	"unicode/utf16"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
@@ -44,22 +48,60 @@ type Provedor interface {
 
 const tempoLimite = 120 * time.Second
 
-func cortarUTF16(s string, n int) string {
-	u := utf16.Encode([]rune(s))
-	if len(u) <= n {
-		return s
+// semRedirecionamento: o cliente nunca segue redirecionamento. As APIs de IA não precisam, e seguir mandaria
+// os cabeçalhos com a chave (x-api-key, x-goog-api-key) para outro endereço. O 3xx volta como erro do provedor.
+func semRedirecionamento(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+// mensagemHTTP é o texto público e fixo de cada status de erro do provedor.
+func mensagemHTTP(status int) string {
+	switch {
+	case status >= 300 && status <= 399:
+		return "o provedor mandou para outro endereço, e o app não segue (confira o endereço)"
+	case status == 400:
+		return "pedido recusado (confira o modelo e as opções)"
+	case status == 401:
+		return "chave recusada (confira a chave de API)"
+	case status == 403:
+		return "acesso negado (confira a chave e o plano da conta)"
+	case status == 404:
+		return "modelo ou endereço não encontrado"
+	case status == 408 || status == 504:
+		return "o provedor demorou demais"
+	case status == 413:
+		return "pedido grande demais"
+	case status == 429:
+		return "limite de uso atingido; tente mais tarde"
+	case status >= 500:
+		return "o provedor está com problema; tente mais tarde"
 	}
-	return string(utf16.Decode(u[:n]))
+	return "o provedor recusou o pedido"
 }
 
-// postarJSON: rede, 5xx e 429 viram erro reintentável (aciona a rota reserva). A chave nunca aparece em mensagem de erro.
-func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, chave string, cabecalhos map[string]string, corpo any) (map[string]any, error) {
-	limpar := func(s string) string {
-		if chave == "" {
-			return s
-		}
-		return strings.ReplaceAll(s, chave, "***")
+// motivoRede descreve a falha sem repetir o texto dela (que traz o endereço e pode trazer dados do pedido).
+func motivoRede(err error) string {
+	var dns *net.DNSError
+	var cert *tls.CertificateVerificationError
+	var autoridade x509.UnknownAuthorityError
+	var nome x509.HostnameError
+	var invalido x509.CertificateInvalidError
+	var ne net.Error
+	switch {
+	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &ne) && ne.Timeout():
+		return "tempo esgotado"
+	case errors.As(err, &dns):
+		return "endereço não encontrado"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "conexão recusada"
+	case errors.As(err, &cert), errors.As(err, &autoridade), errors.As(err, &nome), errors.As(err, &invalido):
+		return "certificado inválido"
 	}
+	return "sem conexão com o provedor"
+}
+
+// postarJSON: rede, 5xx e 429 viram erro reintentável (aciona a rota reserva).
+// A mensagem de erro é sempre um texto fixo nosso: nenhum valor do corpo do provedor nem o texto da falha de rede
+// entram, porque podem ecoar a chave (inteira, escapada, codificada, em partes ou com a caixa trocada).
+func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, chave string, cabecalhos map[string]string, corpo any) (map[string]any, error) {
 	dados, _ := json.Marshal(corpo)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endereco, bytes.NewReader(dados))
 	if err != nil {
@@ -71,13 +113,14 @@ func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, c
 	}
 	resp, err := cliente.Do(req)
 	if err != nil {
-		return nil, &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: falha de rede (%s)", provedor, limpar(err.Error())), Provedor: provedor, Reintentavel: true}
+		return nil, &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: falha de rede (%s)", provedor, motivoRede(err)), Provedor: provedor, Reintentavel: true}
 	}
 	defer resp.Body.Close()
 	bruto, _ := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		reintentavel := resp.StatusCode == 429 || resp.StatusCode >= 500
-		return nil, &ErroIA{Tipo: "provedor", Mensagem: fmt.Sprintf("%s: HTTP %d %s", provedor, resp.StatusCode, cortarUTF16(limpar(string(bruto)), 300)), Provedor: provedor, Status: resp.StatusCode, Reintentavel: reintentavel}
+		msg := fmt.Sprintf("%s: HTTP %d %s", provedor, resp.StatusCode, mensagemHTTP(resp.StatusCode))
+		return nil, &ErroIA{Tipo: "provedor", Mensagem: msg, Provedor: provedor, Status: resp.StatusCode, Reintentavel: reintentavel}
 	}
 	var r map[string]any
 	if err := json.Unmarshal(bruto, &r); err != nil {
@@ -99,6 +142,24 @@ func inteiro(v any) *int {
 		return &n
 	}
 	return nil
+}
+
+// motivosBloqueioGoogle: lista fechada dos motivos de bloqueio do Gemini para textos nossos (jc-a2y.21).
+// Com URL própria o servidor controla o motivo; valor fora da lista não aparece.
+var motivosBloqueioGoogle = map[string]string{
+	"SAFETY":             "segurança",
+	"BLOCKLIST":          "termos proibidos",
+	"PROHIBITED_CONTENT": "conteúdo proibido",
+	"IMAGE_SAFETY":       "segurança de imagem",
+}
+
+func motivoBloqueioGoogle(motivo any) string {
+	if m, ok := motivo.(string); ok {
+		if texto, conhecido := motivosBloqueioGoogle[m]; conhecido {
+			return texto
+		}
+	}
+	return "motivo não informado"
 }
 
 func recusa(provedor, msg string) error {
@@ -205,7 +266,7 @@ func (g google) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor,
 		return RespostaProvedor{}, err
 	}
 	if motivo := dominio.ObjetoDe(r["promptFeedback"])["blockReason"]; dominio.Verdadeiro(motivo) {
-		return RespostaProvedor{}, recusa("google", "bloqueado ("+dominio.JSString(motivo)+")")
+		return RespostaProvedor{}, recusa("google", "bloqueado ("+motivoBloqueioGoogle(motivo)+")")
 	}
 	var b strings.Builder
 	if l := dominio.ListaDe(r["candidates"]); len(l) > 0 {

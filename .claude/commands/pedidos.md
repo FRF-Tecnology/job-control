@@ -7,6 +7,8 @@ description: Faz os pedidos que a pessoa digitou na caixa "O que vamos fazer hoj
      Respeite o foco do perfil (`perfil.foco`: internacional, nacional ou ambos) e a ordem de prioridade do CLAUDE.md.
    - Todas as regras do CLAUDE.md continuam valendo: nada de CPF, senha, login ou mensagem enviada sem "pode mandar".
      Se o pedido esbarrar numa delas, não faça essa parte e explique na resposta.
+   - Pedido para aprovar vagas ("aplica as do grupo A") ou ligar o modo `direto`: não faça, por nenhum caminho (regra 8 do CLAUDE.md).
+     Liste as vagas e peça que a pessoa aperte A na tela Triagem, ou marque "Aplicar direto" na tela Perfil.
    - Se o pedido for ambíguo, pergunte à pessoa antes de agir.
 3. Ao terminar cada um: `node ferramentas/cli.mjs pedido <id> feito "<resposta curta>"`.
    A resposta aparece na tela Hoje (ex.: "4 enviadas, 1 travou no login da Gupy").

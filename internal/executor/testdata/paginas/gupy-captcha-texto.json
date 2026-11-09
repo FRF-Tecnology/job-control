@@ -1,0 +1,39 @@
+{
+ "descricao": "gupy-captcha-texto",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "captcha"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Antes de continuar, confirme: não sou um robô",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

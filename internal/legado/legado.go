@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -85,8 +86,27 @@ func Ler(dir string) (dominio.Estado, Relatorio, error) {
 		}
 		sort.Strings(rel.Curriculos)
 	}
+	limparLinks(e, &rel)
 	verificar(e, &rel)
 	return e, rel, nil
+}
+
+var reHTTP = regexp.MustCompile(`(?i)^https?://`)
+
+// limparLinks tira o link de vaga que não comece com http(s):// (ex.: javascript:, data:). Na janela
+// do app ele viraria script com acesso à API local (jc-a2y.29). A vaga entra; o aviso não repete o link.
+func limparLinks(e dominio.Estado, rel *Relatorio) {
+	for _, v := range e.Vagas {
+		bruto, tem := v["link"]
+		if !tem || bruto == nil || bruto == "" {
+			continue
+		}
+		if s, ok := bruto.(string); ok && reHTTP.MatchString(s) {
+			continue
+		}
+		delete(v, "link")
+		rel.Avisos = append(rel.Avisos, dominio.CampoJS(v, "id")+": link fora de http(s) removido")
+	}
 }
 
 // verificar aplica as mesmas regras da Central: documento (CPF/RG) bloqueia; o resto vira aviso.
@@ -154,9 +174,14 @@ func copiar(de, para string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(d, o); err != nil {
-		d.Close()
-		return err
+	// Cópia pela metade não fica na pasta de currículos: com erro ao copiar ou ao fechar, o destino é apagado
+	// (jc-a2y.15, gosec G104).
+	_, err = io.Copy(d, o)
+	if errFechar := d.Close(); err == nil {
+		err = errFechar
 	}
-	return d.Close()
+	if err != nil {
+		os.Remove(para)
+	}
+	return err
 }

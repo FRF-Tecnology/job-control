@@ -14777,10 +14777,10 @@
    },
    "erro": {
     "tipo": "entrada",
-    "mensagem": "entrada inválida para responderPergunta: $.tipoCampo: valor fora da lista (\"data\")",
+    "mensagem": "entrada inválida para responderPergunta: $.tipoCampo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipoCampo: valor fora da lista (\"data\")"
+     "$.tipoCampo: valor fora da lista"
     ]
    }
   },
@@ -25956,10 +25956,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -25982,10 +25982,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26056,10 +26056,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -26113,10 +26113,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -26139,10 +26139,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26213,10 +26213,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -26270,10 +26270,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -26296,10 +26296,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26370,10 +26370,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -26427,10 +26427,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -26453,10 +26453,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26527,10 +26527,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -26584,10 +26584,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -26610,10 +26610,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26684,10 +26684,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -26741,10 +26741,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -26767,10 +26767,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26841,10 +26841,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -26898,10 +26898,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -26924,10 +26924,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -26998,10 +26998,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27055,10 +27055,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -27081,10 +27081,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -27155,10 +27155,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27212,10 +27212,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -27238,10 +27238,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -27312,10 +27312,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27369,10 +27369,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -27395,10 +27395,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -27469,10 +27469,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27526,10 +27526,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -27552,10 +27552,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -27626,10 +27626,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27683,10 +27683,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -27709,10 +27709,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -27783,10 +27783,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27840,10 +27840,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -27866,10 +27866,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -27940,10 +27940,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -27997,10 +27997,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28023,10 +28023,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -28097,10 +28097,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -28154,10 +28154,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28180,10 +28180,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -28254,10 +28254,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -28311,10 +28311,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28337,10 +28337,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -28411,10 +28411,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -28468,10 +28468,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28494,10 +28494,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -28568,10 +28568,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -28625,10 +28625,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28651,10 +28651,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -28725,10 +28725,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -28782,10 +28782,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28808,10 +28808,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -28882,10 +28882,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -28939,10 +28939,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -28965,10 +28965,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29039,10 +29039,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -29096,10 +29096,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -29122,10 +29122,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29196,10 +29196,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -29253,10 +29253,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -29279,10 +29279,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29353,10 +29353,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -29410,10 +29410,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -29436,10 +29436,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29510,10 +29510,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -29567,10 +29567,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -29593,10 +29593,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29667,10 +29667,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -29724,10 +29724,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -29750,10 +29750,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29824,10 +29824,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -29881,10 +29881,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -29907,10 +29907,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -29981,10 +29981,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30038,10 +30038,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -30064,10 +30064,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -30138,10 +30138,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30195,10 +30195,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -30221,10 +30221,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -30295,10 +30295,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30352,10 +30352,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -30378,10 +30378,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -30452,10 +30452,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30509,10 +30509,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -30535,10 +30535,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -30609,10 +30609,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30666,10 +30666,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -30692,10 +30692,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -30766,10 +30766,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30823,10 +30823,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -30849,10 +30849,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -30923,10 +30923,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -30980,10 +30980,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -31006,10 +31006,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -31080,10 +31080,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -31137,10 +31137,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -31163,10 +31163,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -31237,10 +31237,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -31294,10 +31294,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -31320,10 +31320,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -31394,10 +31394,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -31451,10 +31451,10 @@
    "bruto": "{\"decisao\":\"talvez\",\"aderencia\":\"A\",\"motivo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista (\"talvez\")",
+    "mensagem": "saída fora do contrato de triarVaga: $.decisao: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.decisao: valor fora da lista (\"talvez\")"
+     "$.decisao: valor fora da lista"
     ]
    }
   },
@@ -31477,10 +31477,10 @@
    "bruto": "{\"decisao\":\"aplicar\",\"aderencia\":\"A\",\"motivo\":\"x\",\"extra\":1}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.extra: campo não previsto",
+    "mensagem": "saída fora do contrato de triarVaga: $: campo não previsto",
     "regra": null,
     "erros": [
-     "$.extra: campo não previsto"
+     "$: campo não previsto"
     ]
    }
   },
@@ -31551,10 +31551,10 @@
    "bruto": "{\"decisao\":\"pular\",\"aderencia\":\"Z\",\"motivo\":3}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista (\"Z\"); $.motivo: esperado string, veio integer",
+    "mensagem": "saída fora do contrato de triarVaga: $.aderencia: valor fora da lista; $.motivo: esperado string, veio integer",
     "regra": null,
     "erros": [
-     "$.aderencia: valor fora da lista (\"Z\")",
+     "$.aderencia: valor fora da lista",
      "$.motivo: esperado string, veio integer"
     ]
    }
@@ -31608,7 +31608,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31619,7 +31619,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31630,7 +31630,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31641,7 +31641,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31667,7 +31667,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31706,7 +31706,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31760,7 +31760,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31771,7 +31771,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31782,7 +31782,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31793,7 +31793,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31819,7 +31819,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31858,7 +31858,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31912,7 +31912,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31923,7 +31923,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31934,7 +31934,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31945,7 +31945,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -31971,7 +31971,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32010,7 +32010,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32064,7 +32064,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32075,7 +32075,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32086,7 +32086,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32097,7 +32097,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32123,7 +32123,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32162,7 +32162,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32216,7 +32216,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32227,7 +32227,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32238,7 +32238,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32249,7 +32249,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32275,7 +32275,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32314,7 +32314,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32368,7 +32368,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32379,7 +32379,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32390,7 +32390,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32401,7 +32401,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32427,7 +32427,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32466,7 +32466,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32492,7 +32492,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32503,7 +32503,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32514,7 +32514,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32538,7 +32538,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32579,7 +32579,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32618,7 +32618,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32644,7 +32644,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32655,7 +32655,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32666,7 +32666,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32690,7 +32690,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32731,7 +32731,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32770,7 +32770,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32781,7 +32781,7 @@
    "bruto": "{\"resposta\":\"5\",\"fonte\":\"nenhuma\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"5\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32792,7 +32792,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32803,7 +32803,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32814,7 +32814,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32838,7 +32838,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32879,7 +32879,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32903,7 +32903,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"Tenho muita experiência\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32914,7 +32914,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -32966,7 +32966,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32977,7 +32977,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32988,7 +32988,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -32999,7 +32999,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33025,7 +33025,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33049,7 +33049,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Tenho muita experiência\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33060,7 +33060,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33112,7 +33112,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33123,7 +33123,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33134,7 +33134,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33145,7 +33145,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33171,7 +33171,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33195,7 +33195,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Tenho muita experiência\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33206,7 +33206,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33258,7 +33258,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"cinco anos\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33269,7 +33269,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Sim\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33280,7 +33280,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"talvez\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33291,7 +33291,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"yes\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33317,7 +33317,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"123.456.789-09\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33341,7 +33341,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"Tenho muita experiência\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33352,7 +33352,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo numérico com resposta não numérica: \"2-3\"",
+    "mensagem": "campo numérico com resposta não numérica",
     "regra": "numero-so-digitos",
     "erros": null
    }
@@ -33363,7 +33363,7 @@
    "bruto": "{\"resposta\":\"5\",\"fonte\":\"nenhuma\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"5\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33374,7 +33374,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33385,7 +33385,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33396,7 +33396,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33420,7 +33420,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33461,7 +33461,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33485,7 +33485,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"Tenho muita experiência\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33496,7 +33496,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33507,7 +33507,7 @@
    "bruto": "{\"resposta\":\"5\",\"fonte\":\"nenhuma\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"5\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33518,7 +33518,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33529,7 +33529,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33540,7 +33540,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33564,7 +33564,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33605,7 +33605,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33629,7 +33629,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"Tenho muita experiência\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33640,7 +33640,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33651,7 +33651,7 @@
    "bruto": "{\"resposta\":\"5\",\"fonte\":\"nenhuma\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"5\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33662,7 +33662,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33673,7 +33673,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33684,7 +33684,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33708,7 +33708,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33749,7 +33749,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33773,7 +33773,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"Tenho muita experiência\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33784,7 +33784,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33795,7 +33795,7 @@
    "bruto": "{\"resposta\":\"5\",\"fonte\":\"nenhuma\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"5\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33806,7 +33806,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33817,7 +33817,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"R$ 5.000\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33828,7 +33828,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"cinco anos\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33852,7 +33852,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"talvez\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33893,7 +33893,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"123.456.789-09\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33917,7 +33917,7 @@
    "bruto": "{\"resposta\":\"Tenho muita experiência\",\"fonte\":\"nenhuma\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"Tenho muita experiência\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33928,7 +33928,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "campo sim/não com resposta \"2-3\"",
+    "mensagem": "campo sim/não com resposta que não é sim nem não",
     "regra": "sim-nao-valido",
     "erros": null
    }
@@ -33956,7 +33956,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"3\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -33967,7 +33967,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"R$ 5.000\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -33978,7 +33978,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"cinco anos\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -33989,7 +33989,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"Sim\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34000,7 +34000,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"talvez\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34011,7 +34011,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"yes\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34037,7 +34037,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"123.456.789-09\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34078,7 +34078,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"2-3\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34104,7 +34104,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"3\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34115,7 +34115,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"R$ 5.000\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34126,7 +34126,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"cinco anos\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34137,7 +34137,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"Sim\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34148,7 +34148,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"talvez\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34159,7 +34159,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"yes\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34185,7 +34185,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"123.456.789-09\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34224,7 +34224,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"2-3\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34250,7 +34250,7 @@
    "bruto": "{\"resposta\":\"3\",\"fonte\":\"curriculo\",\"confianca\":0.9}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"3\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34261,7 +34261,7 @@
    "bruto": "{\"resposta\":\"R$ 5.000\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"R$ 5.000\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34272,7 +34272,7 @@
    "bruto": "{\"resposta\":\"cinco anos\",\"fonte\":\"perfil\",\"confianca\":0.8}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"cinco anos\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34283,7 +34283,7 @@
    "bruto": "{\"resposta\":\"Sim\",\"fonte\":\"curriculo\",\"confianca\":0.7}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"Sim\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34294,7 +34294,7 @@
    "bruto": "{\"resposta\":\"talvez\",\"fonte\":\"perfil\",\"confianca\":0.4}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"talvez\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34305,7 +34305,7 @@
    "bruto": "{\"resposta\":\"yes\",\"fonte\":\"respostasPadrao\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"yes\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34331,7 +34331,7 @@
    "bruto": "{\"resposta\":\"123.456.789-09\",\"fonte\":\"perfil\",\"confianca\":1}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"123.456.789-09\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -34370,7 +34370,7 @@
    "bruto": "{\"resposta\":\"2-3\",\"fonte\":\"perfil\",\"confianca\":0.5}",
    "erro": {
     "tipo": "regra",
-    "mensagem": "opção fora da lista: \"2-3\"",
+    "mensagem": "a resposta não é uma das opções do campo",
     "regra": "opcao-da-lista",
     "erros": null
    }
@@ -35695,10 +35695,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -35750,10 +35750,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -35805,10 +35805,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -35860,10 +35860,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -35915,10 +35915,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -35970,10 +35970,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -36025,10 +36025,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -36080,10 +36080,10 @@
    "bruto": "{\"tipo\":\"spam\",\"vagaId\":null,\"resumo\":\"x\"}",
    "erro": {
     "tipo": "esquema",
-    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista (\"spam\")",
+    "mensagem": "saída fora do contrato de classificarEmail: $.tipo: valor fora da lista",
     "regra": null,
     "erros": [
-     "$.tipo: valor fora da lista (\"spam\")"
+     "$.tipo: valor fora da lista"
     ]
    }
   },
@@ -37739,7 +37739,285 @@
    },
    "erro": {
     "tipo": "provedor",
-    "mensagem": "google: bloqueado (SAFETY)",
+    "mensagem": "google: bloqueado (segurança)",
+    "regra": null,
+    "erros": null
+   }
+  },
+  {
+   "provedor": "google",
+   "modelo": "modelo-google",
+   "chave": "chave-google",
+   "opcoes": {},
+   "prompt": {
+    "sistema": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}",
+    "mensagem": "Vaga:\nundefined\n\nPerfil:\n{}",
+    "esquema": {
+     "type": "object",
+     "properties": {
+      "decisao": {
+       "type": "string",
+       "enum": [
+        "aplicar",
+        "pular",
+        "perguntar"
+       ]
+      },
+      "aderencia": {
+       "type": "string",
+       "enum": [
+        "A",
+        "B",
+        "C"
+       ]
+      },
+      "motivo": {
+       "type": "string"
+      },
+      "motivoPulo": {
+       "type": "string",
+       "enum": [
+        "Sênior",
+        "Inglês",
+        "Diploma",
+        "Stack",
+        "Presencial/Local",
+        "Documento",
+        "Duplicada",
+        "Vaga fechada",
+        "Outro"
+       ]
+      }
+     },
+     "required": [
+      "decisao",
+      "aderencia",
+      "motivo"
+     ],
+     "additionalProperties": false
+    },
+    "nomeEsquema": "triarVaga"
+   },
+   "resposta": {
+    "promptFeedback": {
+     "blockReason": "sk_ant_SENTINELA fulano@exemplo.com"
+    }
+   },
+   "pedido": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/modelo-google:generateContent",
+    "headers": {
+     "content-type": "application/json",
+     "x-goog-api-key": "chave-google"
+    },
+    "corpo": {
+     "systemInstruction": {
+      "parts": [
+       {
+        "text": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}"
+       }
+      ]
+     },
+     "contents": [
+      {
+       "role": "user",
+       "parts": [
+        {
+         "text": "Vaga:\nundefined\n\nPerfil:\n{}"
+        }
+       ]
+      }
+     ],
+     "generationConfig": {
+      "responseMimeType": "application/json",
+      "responseJsonSchema": {
+       "type": "object",
+       "properties": {
+        "decisao": {
+         "type": "string",
+         "enum": [
+          "aplicar",
+          "pular",
+          "perguntar"
+         ]
+        },
+        "aderencia": {
+         "type": "string",
+         "enum": [
+          "A",
+          "B",
+          "C"
+         ]
+        },
+        "motivo": {
+         "type": "string"
+        },
+        "motivoPulo": {
+         "type": "string",
+         "enum": [
+          "Sênior",
+          "Inglês",
+          "Diploma",
+          "Stack",
+          "Presencial/Local",
+          "Documento",
+          "Duplicada",
+          "Vaga fechada",
+          "Outro"
+         ]
+        }
+       },
+       "required": [
+        "decisao",
+        "aderencia",
+        "motivo"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   },
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "google: bloqueado (motivo não informado)",
+    "regra": null,
+    "erros": null
+   }
+  },
+  {
+   "provedor": "google",
+   "modelo": "modelo-google",
+   "chave": "chave-google",
+   "opcoes": {},
+   "prompt": {
+    "sistema": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}",
+    "mensagem": "Vaga:\nundefined\n\nPerfil:\n{}",
+    "esquema": {
+     "type": "object",
+     "properties": {
+      "decisao": {
+       "type": "string",
+       "enum": [
+        "aplicar",
+        "pular",
+        "perguntar"
+       ]
+      },
+      "aderencia": {
+       "type": "string",
+       "enum": [
+        "A",
+        "B",
+        "C"
+       ]
+      },
+      "motivo": {
+       "type": "string"
+      },
+      "motivoPulo": {
+       "type": "string",
+       "enum": [
+        "Sênior",
+        "Inglês",
+        "Diploma",
+        "Stack",
+        "Presencial/Local",
+        "Documento",
+        "Duplicada",
+        "Vaga fechada",
+        "Outro"
+       ]
+      }
+     },
+     "required": [
+      "decisao",
+      "aderencia",
+      "motivo"
+     ],
+     "additionalProperties": false
+    },
+    "nomeEsquema": "triarVaga"
+   },
+   "resposta": {
+    "promptFeedback": {
+     "blockReason": "toString"
+    }
+   },
+   "pedido": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/modelo-google:generateContent",
+    "headers": {
+     "content-type": "application/json",
+     "x-goog-api-key": "chave-google"
+    },
+    "corpo": {
+     "systemInstruction": {
+      "parts": [
+       {
+        "text": "Você faz a triagem de vagas para uma pessoa candidata.\nCompare a vaga com o perfil (nível, modelo de trabalho, stack, inglês, formação, filtros.pularSe, prioridadeVagas).\naderencia: A = encaixa bem, B = encaixa em parte, C = encaixa pouco.\ndecisao: \"aplicar\" só se está dentro dos filtros; \"pular\" se bate em filtros.pularSe (informe motivoPulo); \"perguntar\" na dúvida.\nmotivoPulo: \"Sênior\" = nível acima do perfil (Staff, Principal, Lead, Master, 10+ anos); \"Stack\" = tecnologia principal fora do perfil;\n\"Presencial/Local\" = exige presencial, híbrido ou morar numa cidade; \"Inglês\", \"Diploma\", \"Documento\" quando for isso; \"Outro\" no resto\n(ex.: pagamento abaixo da pretensão, trabalho de treinar/avaliar IA que não é vaga, exigência de domínio que a pessoa não tem).\nVaga que exige CPF antes de aplicar, conta com senha ou teste pessoal não é \"aplicar\" direto: use \"perguntar\".\nmotivo: uma frase curta.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"decisao\":{\"type\":\"string\",\"enum\":[\"aplicar\",\"pular\",\"perguntar\"]},\"aderencia\":{\"type\":\"string\",\"enum\":[\"A\",\"B\",\"C\"]},\"motivo\":{\"type\":\"string\"},\"motivoPulo\":{\"type\":\"string\",\"enum\":[\"Sênior\",\"Inglês\",\"Diploma\",\"Stack\",\"Presencial/Local\",\"Documento\",\"Duplicada\",\"Vaga fechada\",\"Outro\"]}},\"required\":[\"decisao\",\"aderencia\",\"motivo\"],\"additionalProperties\":false}"
+       }
+      ]
+     },
+     "contents": [
+      {
+       "role": "user",
+       "parts": [
+        {
+         "text": "Vaga:\nundefined\n\nPerfil:\n{}"
+        }
+       ]
+      }
+     ],
+     "generationConfig": {
+      "responseMimeType": "application/json",
+      "responseJsonSchema": {
+       "type": "object",
+       "properties": {
+        "decisao": {
+         "type": "string",
+         "enum": [
+          "aplicar",
+          "pular",
+          "perguntar"
+         ]
+        },
+        "aderencia": {
+         "type": "string",
+         "enum": [
+          "A",
+          "B",
+          "C"
+         ]
+        },
+        "motivo": {
+         "type": "string"
+        },
+        "motivoPulo": {
+         "type": "string",
+         "enum": [
+          "Sênior",
+          "Inglês",
+          "Diploma",
+          "Stack",
+          "Presencial/Local",
+          "Documento",
+          "Duplicada",
+          "Vaga fechada",
+          "Outro"
+         ]
+        }
+       },
+       "required": [
+        "decisao",
+        "aderencia",
+        "motivo"
+       ],
+       "additionalProperties": false
+      }
+     }
+    }
+   },
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "google: bloqueado (motivo não informado)",
     "regra": null,
     "erros": null
    }
@@ -37751,7 +38029,7 @@
    "corpo": "devagar",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 429 devagar",
+    "mensagem": "anthropic: HTTP 429 limite de uso atingido; tente mais tarde",
     "regra": null,
     "erros": null,
     "reintentavel": true
@@ -37762,7 +38040,7 @@
    "corpo": "quebrou chave-anthropic",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 500 quebrou ***",
+    "mensagem": "anthropic: HTTP 500 o provedor está com problema; tente mais tarde",
     "regra": null,
     "erros": null,
     "reintentavel": true
@@ -37773,7 +38051,7 @@
    "corpo": "{\"error\":\"modelo inválido\"}",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 400 {\"error\":\"modelo inválido\"}",
+    "mensagem": "anthropic: HTTP 400 pedido recusado (confira o modelo e as opções)",
     "regra": null,
     "erros": null,
     "reintentavel": false
@@ -37784,7 +38062,7 @@
    "corpo": "chave-anthropic inválida",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 401 *** inválida",
+    "mensagem": "anthropic: HTTP 401 chave recusada (confira a chave de API)",
     "regra": null,
     "erros": null,
     "reintentavel": false
@@ -37799,6 +38077,114 @@
     "regra": null,
     "erros": null,
     "reintentavel": null
+   }
+  },
+  {
+   "status": 401,
+   "corpo": "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"rejected: chave-FICTICIA-0123\\\\/abc+XYZ=fim9876\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 401 chave recusada (confira a chave de API)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 404,
+   "corpo": "{\"error\":{\"message\":\"model x not found (chave-FICTICIA-0123%2Fabc%2BXYZ%3Dfim9876)\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 404 modelo ou endereço não encontrado",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 403,
+   "corpo": "{\"error\":{\"code\":403,\"message\":\"blocked: chave-FICTICIA...9876\",\"status\":\"PERMISSION_DENIED\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 403 acesso negado (confira a chave e o plano da conta)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 400,
+   "corpo": "{\"error\":{\"type\":\"FICTICIA\",\"message\":\"0123/abc+XYZ=fim9876\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 400 pedido recusado (confira o modelo e as opções)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 503,
+   "corpo": "<html>chave-FICTICIA-0123/abc+XYZ=fim9876</html>",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 503 o provedor está com problema; tente mais tarde",
+    "regra": null,
+    "erros": null,
+    "reintentavel": true
+   }
+  },
+  {
+   "status": 408,
+   "corpo": "",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 408 o provedor demorou demais",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 307,
+   "corpo": "",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 307 o provedor mandou para outro endereço, e o app não segue (confira o endereço)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 308,
+   "corpo": "{\"error\":{\"type\":\"moved\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 308 o provedor mandou para outro endereço, e o app não segue (confira o endereço)",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
+   }
+  },
+  {
+   "status": 418,
+   "corpo": "{\"error\":{\"code\":\"codigo com espaço\",\"message\":\"x\"}}",
+   "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
+   "erro": {
+    "tipo": "provedor",
+    "mensagem": "anthropic: HTTP 418 o provedor recusou o pedido",
+    "regra": null,
+    "erros": null,
+    "reintentavel": false
    }
   }
  ],

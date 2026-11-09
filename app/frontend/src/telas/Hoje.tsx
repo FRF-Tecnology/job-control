@@ -4,7 +4,7 @@ import { useApp, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
-import { Icone } from '../componentes';
+import { Icone, LinkExterno } from '../componentes';
 import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode } from '../util';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
@@ -16,6 +16,8 @@ const FUNIL = [
 
 // Pedidos que a própria tela resolve na hora; o resto vira pedido para o assistente (/pedidos).
 const ATALHOS: [RegExp, string][] = [
+  // As aprovadas se preparam e se aprovam na Fila; o envio é pelo app, não um pedido ao assistente (jc-a2y.56).
+  [/\bfila\b|\bprepar/, '#/fila'],
   [/\btri(ar|agem)\b|decidir|vagas novas/, '#/triagem'],
   [/respond|retorno|entrevista|processo|oferta/, '#/quadro'],
   [/n[uú]meros|taxa|funil|semana|m[eé]tric/, '#/numeros'],
@@ -51,8 +53,10 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
 function sugestoesPara(foco: string, nAplicar: number, nDescoberta: number) {
   const buscar = ({ internacional: 'Buscar vagas USD LATAM', nacional: 'Buscar vagas CLT/PJ remotas', ambos: 'Buscar vagas novas' } as Record<string, string>)[foco];
   const qual = ({ internacional: ' internacionais', nacional: ' nacionais', ambos: '' } as Record<string, string>)[foco];
+  const qualUma = ({ internacional: ' internacional', nacional: ' nacional', ambos: '' } as Record<string, string>)[foco];
+  const preparar = nAplicar === 1 ? `Preparar a vaga${qualUma} aprovada na Fila` : `Preparar as ${nAplicar} vagas${qual} aprovadas na Fila`;
   return [
-    nAplicar ? `Aplicar nas ${nAplicar}${qual} aprovadas` : buscar,
+    nAplicar ? preparar : buscar,
     nAplicar ? buscar : null,
     nDescoberta ? `Triar ${plural(nDescoberta, 'vaga nova', 'vagas novas')}` : null,
     'Quem me respondeu?',
@@ -82,7 +86,7 @@ function AcoesBloqueada({ v }: { v: any }) {
   const app = useApp();
   return (
     <>
-      {v.link && <a className="botao p" href={v.link} target="_blank" rel="noopener">Abrir vaga</a>}
+      <LinkExterno url={v.link} className="botao p">Abrir vaga</LinkExterno>
       <button className="botao-fantasma p" type="button" onClick={() => app.mover(v.id, 'enviada', {}, `${v.empresa}: marcada como enviada`)}>Enviei</button>
       <button className="botao-fantasma p" type="button" onClick={async () => {
         const m = await app.perguntar({ titulo: 'Desistir desta vaga?', opcoes: ['Documento', 'Outro'], campo: 'Motivo', confirmar: 'Pular vaga' });
@@ -288,7 +292,7 @@ export function TelaHoje() {
                 {emProcesso.map((v: any) => (
                   <li key={v.id} className="linha">
                     <LinkVaga v={v} />
-                    <div className="acoes">{v.link && <a className="botao-fantasma p" href={v.link} target="_blank" rel="noopener">Abrir</a>}</div>
+                    <div className="acoes"><LinkExterno url={v.link} className="botao-fantasma p">Abrir</LinkExterno></div>
                     <div className="sub">{[NOMES_SUB[v.subEtapa] ?? nomeEtapa(v.etapa), v.pendencia, v.notas].filter(Boolean).join(' · ')}</div>
                   </li>
                 ))}

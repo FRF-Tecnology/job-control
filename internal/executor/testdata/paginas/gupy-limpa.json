@@ -1,0 +1,68 @@
+{
+ "descricao": "gupy-limpa",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "enviada"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Empresa Teste. Candidatura para Dev Go. Etapa 1 de 1",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    },
+    {
+     "id": "cv",
+     "tipo": "file",
+     "rotulo": "Currículo (PDF)",
+     "obrigatorio": true
+    },
+    {
+     "id": "anos",
+     "tipo": "number",
+     "rotulo": "Anos de experiência com Go *",
+     "obrigatorio": true
+    },
+    {
+     "id": "bd",
+     "tipo": "select",
+     "rotulo": "Experiência com banco de dados?",
+     "obrigatorio": true
+    },
+    {
+     "id": "remoto",
+     "tipo": "radio",
+     "rotulo": "Disponível para trabalho remoto?",
+     "obrigatorio": false
+    },
+    {
+     "id": "pret",
+     "tipo": "text",
+     "rotulo": "Pretensão salarial (PJ)",
+     "obrigatorio": false
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Enviar candidatura"
+   ]
+  }
+ ]
+}

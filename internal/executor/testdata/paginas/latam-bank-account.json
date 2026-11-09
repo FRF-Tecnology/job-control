@@ -1,0 +1,45 @@
+{
+ "descricao": "latam-bank-account",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "dado-bancario"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Direct deposit",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Full name",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "Email",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Phone",
+     "obrigatorio": true
+    },
+    {
+     "id": "ba",
+     "tipo": "text",
+     "rotulo": "Bank account",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  }
+ ]
+}

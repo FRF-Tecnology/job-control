@@ -3,8 +3,12 @@ module github.com/FRF-Tecnology/job-control
 go 1.26.0
 
 require (
+	github.com/chromedp/cdproto v0.159.0
+	github.com/chromedp/chromedp v0.21.1
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/wailsapp/wails/v3 v3.1.0
+	github.com/zalando/go-keyring v0.2.8
+	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.62.0
 )
@@ -14,6 +18,7 @@ require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/go-json-experiment/json v0.0.0-20260213210345-44df1a37e875 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -22,7 +27,6 @@ require (
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sethvargo/go-retry v0.5.0 // indirect
-	github.com/zalando/go-keyring v0.2.8 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect

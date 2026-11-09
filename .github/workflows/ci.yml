@@ -13,8 +13,10 @@ jobs:
   node:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
       - run: npm test
@@ -23,11 +25,14 @@ jobs:
   app:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@v4
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -58,10 +63,25 @@ jobs:
   segredos:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: gitleaks
         run: |
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar xz gitleaks
+          # 1º caminho: binário do GitHub Releases. Só roda se bater com o sha256 do
+          # gitleaks_8.28.0_checksums.txt oficial; checksum errado derruba o job.
+          # Reserva, só se o download falhar (o Releases já ficou horas em 504): a mesma
+          # v8.28.0 compilada pelo proxy do Go, conferida pelo sum.golang.org, sem "direct".
+          url=https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          if curl -sSfL --retry 3 --retry-delay 5 --retry-all-errors --connect-timeout 20 -o gitleaks.tar.gz "$url"; then
+            echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tar.gz" | sha256sum -c -
+            tar xzf gitleaks.tar.gz gitleaks
+          else
+            echo "::warning::GitHub Releases indisponível; instalando gitleaks v8.28.0 pelo proxy do Go"
+            # Go do próprio runner (PATH ou tool cache); GOTOOLCHAIN=auto baixa do proxy se for velho.
+            command -v go >/dev/null || PATH="$(ls -d /opt/hostedtoolcache/go/*/x64/bin | sort -V | tail -1):$PATH"
+            GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org GOFLAGS= GOBIN="$PWD" \
+              go install github.com/zricethezav/gitleaks/v8@v8.28.0
+          fi
           ./gitleaks git --redact --verbose .

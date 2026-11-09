@@ -56,7 +56,7 @@ export const REGRAS = [
       const numeros = String(s.resposta).match(/\d[\d.,]*/g) ?? [];
       if (numeros.length === 1 && /^\d{1,3}([.,]\d{3})+$/.test(numeros[0])) return { ...s, resposta: numeros[0].replace(/\D/g, '') };
       if (numeros.length === 1 && /^\d+$/.test(numeros[0])) return { ...s, resposta: numeros[0] };
-      return bloquear('numero-so-digitos', `campo numérico com resposta não numérica: "${s.resposta}"`);
+      return bloquear('numero-so-digitos', 'campo numérico com resposta não numérica');
     },
   },
   {
@@ -65,7 +65,7 @@ export const REGRAS = [
     aplicar: (s, e) => {
       if (s.parar || e.tipoCampo !== 'opcao') return s;
       const achada = (e.opcoes ?? []).find(o => normalizar(o) === normalizar(s.resposta));
-      return achada != null ? { ...s, resposta: achada } : bloquear('opcao-da-lista', `opção fora da lista: "${s.resposta}"`);
+      return achada != null ? { ...s, resposta: achada } : bloquear('opcao-da-lista', 'a resposta não é uma das opções do campo');
     },
   },
   {
@@ -75,7 +75,7 @@ export const REGRAS = [
       if (s.parar || e.tipoCampo !== 'sim-nao') return s;
       const r = normalizar(s.resposta);
       const mapa = { sim: 'Sim', nao: 'Não', yes: 'Yes', no: 'No' };
-      return mapa[r] ? { ...s, resposta: mapa[r] } : bloquear('sim-nao-valido', `campo sim/não com resposta "${s.resposta}"`);
+      return mapa[r] ? { ...s, resposta: mapa[r] } : bloquear('sim-nao-valido', 'campo sim/não com resposta que não é sim nem não');
     },
   },
   {

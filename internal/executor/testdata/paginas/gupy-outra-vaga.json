@@ -1,0 +1,39 @@
+{
+ "descricao": "gupy-outra-vaga",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "site-externo"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000099/apply",
+   "texto": "Candidatura",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

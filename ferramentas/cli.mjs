@@ -9,6 +9,7 @@ import { criarArmazem } from '../nucleo/armazenamento.mjs';
 import { criarApi, PREFIXO } from '../servidor/api.mjs';
 import { randomBytes } from 'node:crypto';
 import { hojeISO, somarDias, lerValor } from '../nucleo/modelo.mjs';
+import { filaAplicar } from '../nucleo/servico.mjs';
 import { existsSync } from 'node:fs';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,6 +32,7 @@ const AJUDA = `Uso: node ferramentas/cli.mjs <comando> [opções]
 
   resumo                                   números do dia (JSON)
   listar [--etapa e] [--plataforma p]      uma vaga por linha
+  fila-aplicar                             vagas que a pessoa aprovou (e o grupo A no modo direto): a fila do /aplicar
   ver <id>                                 vaga completa + eventos (JSON)
   dup <empresa> <título>                   avisa se a vaga já existe
   add --json '{...}' | --arquivo x.json | --uri <lista codificada>
@@ -94,6 +96,13 @@ async function comandos(cmd, o) {
     case 'listar': {
       const q = new URLSearchParams(Object.entries({ etapa: o.etapa, plataforma: o.plataforma }).filter(([, v]) => typeof v === 'string'));
       const vs = await chamar('GET', `/vagas${q.size ? `?${q}` : ''}`);
+      for (const v of vs) console.log([v.id, v.etapa, v.empresa, v.titulo, v.plataforma, v.aderencia ?? '', v.link ?? ''].join(' | '));
+      return console.log(`(${vs.length})`);
+    }
+
+    case 'fila-aplicar': {
+      // Só o que a pessoa aprovou na Triagem (jc-a2y.28). Vaga em aplicar sem aprovação dela não entra.
+      const vs = filaAplicar(await chamar('GET', '/estado'));
       for (const v of vs) console.log([v.id, v.etapa, v.empresa, v.titulo, v.plataforma, v.aderencia ?? '', v.link ?? ''].join(' | '));
       return console.log(`(${vs.length})`);
     }

@@ -1,10 +1,20 @@
 // Conectar IA: a pessoa escolhe a IA que vai triar vagas, responder formulários e escrever mensagens.
 // Três caminhos: a própria assinatura (CLI oficial no PC), a própria chave de API, ou modelos gratuitos.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/contexto';
-import { Convite } from '../componentes';
+import { Convite, LinkExterno } from '../componentes';
 
-type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string };
+// pronta/aviso (contrato 0.4.2): instalada num formato que o app não usa (ex.: Claude .cmd no Windows) vem com
+// pronta false e um aviso fixo do back. Sem o campo (API antiga), vale como pronta.
+// motivo (contrato 0.4.5, só com pronta false): "formato" se resolve instalando a versão nativa (ex.: Claude .cmd);
+// "politica" é regra do app (Codex e Gemini por enquanto) e o caminho é uma chave de API.
+type CLI = { provedor: string; comando: string; nome: string; plano: string; instalar: string; verificada: boolean; instalada: boolean; logada: boolean | null; versao?: string; pronta?: boolean; aviso?: string; motivo?: 'formato' | 'politica' };
+// Para "Usar chave de API": o provedor de chave equivalente a cada CLI.
+const CHAVE_DA_CLI: Record<string, string> = { 'claude-cli': 'anthropic', 'codex-cli': 'openai', 'gemini-cli': 'google' };
+const naoPronta = (c?: CLI) => !!c && c.instalada && c.pronta === false;
+const AVISO_PADRAO = 'O app não consegue usar esta instalação. Veja como instalar a versão indicada.';
+// O aviso do back vem em minúscula (cabe no meio de uma frase); na tela ele é frase própria.
+const avisoDe = (c: CLI) => { const t = c.aviso?.trim() || AVISO_PADRAO; return t[0].toUpperCase() + t.slice(1); };
 type EstadoIA = {
   configurada: boolean; provedor?: string; modelo?: string; url?: string;
   chaves: Record<string, string | null>; clis: CLI[]; gratis: { disponivel: boolean };
@@ -20,6 +30,17 @@ const CHAVES = [
   { provedor: 'openai', nome: 'OpenAI ou compatível (ex.: OpenRouter)', modelo: '', ajuda: 'platform.openai.com → API keys, ou a chave do serviço compatível' },
   { provedor: 'google', nome: 'Google (Gemini)', modelo: '', ajuda: 'aistudio.google.com → Get API key' },
 ];
+// A chave fica presa ao endereço configurado na hora em que é gravada (jc-a2y.27); a tela mostra qual é (jc-a2y.40).
+// Endereços padrão iguais aos de internal/ia/provedores.go.
+const HOST_PADRAO: Record<string, string> = { anthropic: 'api.anthropic.com', openai: 'api.openai.com', google: 'generativelanguage.googleapis.com' };
+// Só o host (sem caminho, usuário ou senha), em minúsculas; "" se não for um endereço https válido.
+const hostDe = (endereco?: string) => {
+  try { const u = new URL((endereco ?? '').trim()); return u.protocol === 'https:' ? u.host.toLowerCase().replace(/\.$/, '') : ''; } catch { return ''; }
+};
+const destinoDe = (provedor: string, endereco?: string) => {
+  const proprio = (endereco ?? '').trim();
+  return proprio ? { host: hostDe(proprio) || 'endereço inválido (use https://)', padrao: false } : { host: HOST_PADRAO[provedor] ?? '', padrao: true };
+};
 
 export function TelaConectarIA() {
   const app = useApp();
@@ -29,9 +50,47 @@ export function TelaConectarIA() {
   const [chave, setChave] = useState('');
   const [modelo, setModelo] = useState('');
   const [url, setUrl] = useState('');
+  const campoChave = useRef<HTMLInputElement>(null);
 
-  const ler = useCallback(async () => setIA(await app.api('/api/v1/ia')), [app]);
-  useEffect(() => { ler().catch(e => app.aviso(e.message, true)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const ler = useCallback(async () => { const d: EstadoIA = await app.api('/api/v1/ia'); setIA(d); return d; }, [app]);
+  // Na primeira leitura, o formulário já vem com o provedor de chave em uso, o modelo e o endereço dele: salvar sem
+  // redigitar o endereço não volta para o padrão (o que apagaria a chave).
+  useEffect(() => {
+    ler().then(d => {
+      if (d.configurada && CHAVES.some(c => c.provedor === d.provedor)) { setEscolha(d.provedor!); setModelo(d.modelo ?? ''); setUrl(d.url ?? ''); }
+    }).catch(e => app.aviso(e.message, true));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const escolher = (provedor: string) => {
+    const emUso = ia?.configurada && ia.provedor === provedor;
+    setEscolha(provedor); setModelo(emUso ? ia!.modelo ?? '' : ''); setUrl(emUso ? ia!.url ?? '' : '');
+  };
+  // Leva à seção de chave já com o provedor equivalente escolhido; o foco rola a tela até o campo.
+  const usarChave = (cliProvedor: string) => { escolher(CHAVE_DA_CLI[cliProvedor] ?? 'anthropic'); campoChave.current?.focus(); };
+  const acaoNaoPronta = (c: CLI, classe: string) => c.motivo === 'politica'
+    ? <button className={classe} type="button" onClick={() => usarChave(c.provedor)}>Usar chave de API</button>
+    : <LinkExterno url={c.instalar} className={classe}>Como instalar</LinkExterno>;
+  const salvarChave = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    const nova = chave.trim();
+    if (nova && nova.length < 10) { app.aviso('Cole a chave de API inteira.', true); campoChave.current?.focus(); return; }
+    setOcupado(escolha);
+    try {
+      // Endereço antes da chave: a chave é presa ao endereço configurado no momento em que é gravada.
+      const r = await app.api('/api/v1/ia/config', 'PUT', { provedor: escolha, modelo, url });
+      if (nova) await app.api(`/api/v1/ia/chaves/${escolha}`, 'PUT', { chave: nova });
+      setChave('');
+      app.limpar();
+      if (r?.chaveApagada && !nova) {
+        app.aviso(`A chave salva foi apagada porque o endereço mudou para ${destinoDe(escolha, url).host}. Cole a chave de novo.`, true);
+        await ler();
+        campoChave.current?.focus();
+      } else {
+        app.aviso(`${NOMES[escolha]} conectado`);
+        await ler();
+      }
+    } catch (e) { app.aviso((e as Error).message, true); } finally { setOcupado(null); }
+  };
 
   const fazer = async (rotulo: string, fn: () => Promise<unknown>, msg?: string) => {
     setOcupado(rotulo);
@@ -45,7 +104,15 @@ export function TelaConectarIA() {
 
   if (!ia) return <div><header className="cabecalho"><div><h1>Conectar IA</h1><p>Procurando as IAs deste computador…</p></div></header></div>;
   const ativa = ia.configurada ? NOMES[ia.provedor!] ?? ia.provedor : null;
+  const cliAtiva = ia.clis.find(c => c.provedor === ia.provedor);
   const opcaoChave = CHAVES.find(c => c.provedor === escolha)!;
+  const faltaChave = ia.configurada && CHAVES.some(c => c.provedor === ia.provedor) && !ia.chaves[ia.provedor!];
+  const destino = destinoDe(escolha, url);
+  // No resumo do topo, o endereço da chave em uso: um endereço trocado (por script, por exemplo) fica à vista.
+  const destinoAtivo = ia.provedor ? destinoDe(ia.provedor, ia.url) : null;
+  const resumoChave = ia.configurada && CHAVES.some(c => c.provedor === ia.provedor) && destinoAtivo
+    ? `Chave para ${destinoAtivo.host} (${destinoAtivo.padrao ? 'padrão' : 'endereço próprio'}). ` : '';
+  const desconectar = <button className="botao-fantasma" type="button" disabled={!!ocupado} onClick={() => fazer('nenhum', () => app.api('/api/v1/ia/config', 'PUT', { provedor: 'nenhum' }), 'IA desconectada')}>Desconectar</button>;
 
   return (
     <div className="conectar-ia">
@@ -53,11 +120,25 @@ export function TelaConectarIA() {
         <div><h1>Conectar IA</h1><p>A IA tria vagas, responde formulários e escreve rascunhos de mensagem. Você escolhe qual usar e troca quando quiser.</p></div>
       </header>
 
-      {ativa ? (
-        <Convite azul titulo={`Conectada: ${ativa}`} texto={`${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
+      {ativa && naoPronta(cliAtiva) ? (
+        <Convite ambar titulo={`Conectada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
+          <span className="acoes">
+            {acaoNaoPronta(cliAtiva!, 'botao p')}
+            {desconectar}
+          </span>
+        </Convite>
+      ) : ativa && faltaChave ? (
+        <Convite ambar titulo={`Falta a chave: ${ativa}`} texto={`Cole a chave de API para ${destinoDe(ia.provedor!, ia.url).host}.`}>
+          <span className="acoes">
+            <button className="botao p" type="button" onClick={() => { escolher(ia.provedor!); campoChave.current?.focus(); }}>Colar a chave</button>
+            {desconectar}
+          </span>
+        </Convite>
+      ) : ativa ? (
+        <Convite azul titulo={`Conectada: ${ativa}`} texto={`${resumoChave}${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
           <span className="acoes">
             <button className="botao" type="button" disabled={!!ocupado} onClick={testar}>{ocupado === 'testar' ? 'Testando…' : 'Testar conexão'}</button>
-            <button className="botao-fantasma" type="button" disabled={!!ocupado} onClick={() => fazer('nenhum', () => app.api('/api/v1/ia/config', 'PUT', { provedor: 'nenhum' }), 'IA desconectada')}>Desconectar</button>
+            {desconectar}
           </span>
         </Convite>
       ) : <Convite titulo="Nenhuma IA conectada" texto="Escolha um dos caminhos abaixo. Sem IA, a Central funciona, mas a triagem e as mensagens ficam por sua conta." />}
@@ -67,20 +148,21 @@ export function TelaConectarIA() {
         <p className="pequeno mudo">O app usa o programa oficial que você já tem no computador, com o seu login. Nada é cobrado à parte.</p>
         <ul className="lista-cartao">
           {ia.clis.map(c => {
-            const pronto = c.instalada && c.logada !== false;
-            const estado = !c.instalada ? 'Não instalado' : c.logada === false ? 'Faça login' : c.verificada ? 'Pronto' : 'Pronto · não testado';
+            const pronto = c.instalada && !naoPronta(c) && c.logada !== false;
+            const estado = !c.instalada ? 'Não instalado' : naoPronta(c) ? 'Não pronto' : c.logada === false ? 'Faça login' : c.verificada ? 'Pronto' : 'Pronto · não testado';
             return (
               <li key={c.provedor} className="item-acao">
                 <span className={`selo-n${pronto ? '' : ' ambar'}`}>{c.nome[0]}</span>
                 <div>
                   <strong>{c.nome}</strong>
                   <span className="sub">{`${c.plano} · ${estado}${c.versao ? ` · ${c.versao}` : ''}`}</span>
-                  {c.instalada && c.logada === false && <span className="sub">{`No terminal, rode: ${c.comando} auth login`}</span>}
+                  {naoPronta(c) && <span className="sub aviso-cli">{avisoDe(c)}</span>}
+                  {c.instalada && !naoPronta(c) && c.logada === false && <span className="sub">{`No terminal, rode: ${c.comando} auth login`}</span>}
                 </div>
                 <div className="acoes">
                   {pronto
                     ? <button className="botao p" type="button" disabled={!!ocupado || ia.provedor === c.provedor} onClick={() => usar(c.provedor)}>{ia.provedor === c.provedor ? 'Em uso' : ocupado === c.provedor ? 'Conectando…' : 'Usar'}</button>
-                    : <a className="botao-fantasma p" href={c.instalar} target="_blank" rel="noopener">Como instalar</a>}
+                    : acaoNaoPronta(c, 'botao-fantasma p')}
                 </div>
               </li>
             );
@@ -91,23 +173,18 @@ export function TelaConectarIA() {
       <section className="bloco">
         <header><h2>Usar minha chave de API</h2></header>
         <p className="pequeno mudo">A chave fica no cofre do sistema deste computador. A Central nunca mostra a chave inteira e não a envia para nenhum outro lugar.</p>
-        <form className="formulario" onSubmit={ev => {
-          ev.preventDefault();
-          fazer(escolha, async () => {
-            if (chave.trim()) await app.api(`/api/v1/ia/chaves/${escolha}`, 'PUT', { chave });
-            await app.api('/api/v1/ia/config', 'PUT', { provedor: escolha, modelo, url });
-            setChave('');
-            app.limpar();
-          }, `${NOMES[escolha]} conectado`);
-        }}>
+        <form className="formulario" onSubmit={salvarChave}>
           <div className="duas">
             <label className="campo"><span>Provedor</span>
-              <select value={escolha} onChange={ev => { setEscolha(ev.target.value); setModelo(''); setUrl(''); }}>
+              <select value={escolha} onChange={ev => escolher(ev.target.value)}>
                 {CHAVES.map(c => <option key={c.provedor} value={c.provedor}>{c.nome}</option>)}
               </select>
             </label>
             <label className="campo"><span>{`Chave de API${ia.chaves[escolha] ? ` (salva: ${ia.chaves[escolha]})` : ''}`}</span>
-              <input type="password" autoComplete="off" value={chave} onChange={ev => setChave(ev.target.value)} placeholder={ia.chaves[escolha] ? 'deixe em branco para manter a salva' : opcaoChave.ajuda} />
+              <input ref={campoChave} type="password" autoComplete="off" value={chave} onChange={ev => setChave(ev.target.value)} placeholder={ia.chaves[escolha] ? 'deixe em branco para manter a salva' : opcaoChave.ajuda} />
+              {destino.padrao
+                ? <small className="destino-chave">A chave vai para <strong>{destino.host}</strong> (padrão)</small>
+                : <small className="destino-chave proprio">A chave vai para um endereço próprio: <strong>{destino.host}</strong></small>}
             </label>
             <label className="campo"><span>Modelo</span>
               <input type="text" value={modelo} onChange={ev => setModelo(ev.target.value)} placeholder={opcaoChave.modelo || 'nome do modelo na sua conta'} />

@@ -12,6 +12,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/api"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/config"
+	"github.com/FRF-Tecnology/job-control/internal/envio"
 	modelodados "github.com/FRF-Tecnology/job-control/modelo-dados"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -33,12 +34,25 @@ func main() {
 	if _, err := banco.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
 		log.Fatalf("primeira vez: %v", err)
 	}
+	// Envio de candidaturas: desligado no build padrão (não faz nada); só o build -tags envio_dev liga o executor.
+	controleEnvio := envio.Ligar(ctx, banco, pasta)
+	defer controleEnvio.Parar()
 
-	app := application.New(application.Options{
+	// Depois de "apagar meus dados", o app fecha (o banco já foi fechado e apagado).
+	var app *application.App
+	local := api.Nova(banco, api.Opcoes{
+		PararEnvio:      controleEnvio.Parar,
+		SuspenderEnvio:  controleEnvio.Suspender,
+		FecharNavegador: controleEnvio.FecharNavegador,
+		AoApagar:        func() { app.Quit() },
+		EnvioLigado:     envio.Ligado,
+	})
+
+	app = application.New(application.Options{
 		Name:        "Central de Candidaturas",
 		Description: "Busca, triagem e acompanhamento de candidaturas",
 		Assets: application.AssetOptions{
-			Handler: rotear(api.Nova(banco, api.Opcoes{}).Handler(), application.AssetFileServerFS(telas)),
+			Handler: rotear(local.Handler(), application.AssetFileServerFS(telas)),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,

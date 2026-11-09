@@ -1,9 +1,9 @@
 // Triagem: uma vaga por vez. Arraste o cartão (direita aplica, esquerda pula) ou use os botões / teclas A, P, →.
 // Porte de web/telas/triagem.mjs.
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, type App } from '../app/contexto';
 import { MOTIVOS_PULO, mercadoDe, noFoco } from '../dominio/modelo';
-import { Icone } from '../componentes';
+import { Icone, LinkExterno } from '../componentes';
 import { dataCurta, encode, nomePlataforma, plural } from '../util';
 
 const DECISOES: Record<string, string> = { aplicar: 'Aplicar', pular: 'Pular', perguntar: 'Na dúvida' };
@@ -28,12 +28,36 @@ export function TelaTriagem() {
   const grupoA = fila.filter((x: any) => x.aderencia === 'A');
 
   const umaVez = (fn: () => Promise<unknown>) => async () => { if (ocupado) return; ocupado = true; try { await fn(); } finally { ocupado = false; } };
-  const aplicar = v && umaVez(() => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a fila do Claude`));
+  const aplicar = v && umaVez(() => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a Fila`));
   const pular = v && umaVez(async () => {
     const motivo = await app.perguntar({ titulo: 'Por que pular?', texto: `${v.empresa} — ${v.titulo}`, opcoes: MOTIVOS_PULO });
     if (motivo) await app.mover(v.id, 'pulada', { motivo }, 'Pulada');
   });
   const depois = () => { if (v) { puladasNestaSessao.add(v.id); redesenhar(n => n + 1); } };
+
+  // Aprovar todas do grupo A (jc-a2y.31): a pessoa vê a lista e a contagem e confirma. Pela tela, o autor é "eu".
+  const aprovarGrupoA = umaVez(async () => {
+    const lista = grupoA;
+    const quantas = plural(lista.length, 'vaga', 'vagas');
+    const ok = await app.perguntar({
+      titulo: `Aprovar ${quantas} do grupo A?`,
+      texto: 'Elas vão para a Fila, onde você prepara e aprova o pacote de cada uma. As outras continuam aqui.',
+      itens: lista.map((x: any) => `${x.empresa} — ${x.titulo}`),
+      confirmar: `Aprovar ${quantas}`,
+    });
+    if (ok === null) return;
+    try {
+      const r = await aprovarLista(app, lista);
+      await app.recarregar();
+      if (r.aprovadas || r.mudaram) {
+        const feito = r.aprovadas ? `${plural(r.aprovadas, 'vaga foi', 'vagas foram')} para a Fila.` : 'Nenhuma vaga foi aprovada.';
+        app.aviso(r.mudaram ? `${feito} ${plural(r.mudaram, 'mudou antes e ficou como estava', 'mudaram antes e ficaram como estavam')}.` : feito);
+      }
+      r.falhas.forEach(f => app.aviso(f, true));
+    } catch (e) {
+      app.aviso((e as Error).message, true);
+    }
+  });
 
   useEffect(() => {
     if (!v) return;
@@ -57,10 +81,7 @@ export function TelaTriagem() {
           : 'Nenhuma vaga esperando decisão.'}</p>
       </div>
       {grupoA.length > 1 && (
-        <button className="botao-fantasma" type="button" onClick={async () => {
-          const ok = await app.perguntar({ titulo: `Aprovar as ${grupoA.length} vagas do grupo A?`, texto: 'Elas vão para a fila do Claude aplicar.', confirmar: 'Aprovar todas' });
-          if (ok !== null) for (const x of grupoA) await app.mover(x.id, 'aplicar', {});
-        }}>{`Aprovar todo o grupo A (${grupoA.length})`}</button>
+        <button className="botao-fantasma" type="button" onClick={aprovarGrupoA}>{`Aprovar todas do grupo A (${grupoA.length})`}</button>
       )}
     </header>
   );
@@ -100,9 +121,30 @@ export function TelaTriagem() {
         <button className="redondo sim" type="button" aria-label="Aplicar na vaga (tecla A)" onClick={aplicar!}><Icone d="M6 12.5l4 4L18 8" /></button>
       </div>
       <div className="legenda-decisao" aria-hidden="true"><span>Pular · P</span><span>Detalhes</span><span>Aplicar · A</span></div>
-      <p className="pequeno mudo" style={{ textAlign: 'center', marginTop: '18px' }}>{`${fila.length - 1 > 0 ? `Depois desta, mais ${fila.length - 1}.` : 'É a última.'} Aprovadas vão para a fila; o Claude envia na próxima rodada.`}</p>
+      <p className="pequeno mudo" style={{ textAlign: 'center', marginTop: '18px' }}>{`${fila.length - 1 > 0 ? `Depois desta, mais ${fila.length - 1}.` : 'É a última.'} Aprovadas vão para a Fila; o envio acontece pelo app quando você retomar.`}</p>
     </div>
   );
+}
+
+// Reconfere o estado antes de gravar: vaga que saiu da Descoberta ou do grupo A, ou cuja empresa ou título
+// mudou desde a confirmação, fica como está (a pessoa aprovou o que viu). Grava uma por vez e recarrega uma vez só.
+async function aprovarLista(app: App, lista: any[]) {
+  const atuais = new Map<string, any>(((await app.api('/api/v1/estado')).vagas ?? []).map((x: any) => [x.id, x]));
+  let aprovadas = 0;
+  let mudaram = 0;
+  const falhas: string[] = [];
+  for (const x of lista) {
+    const agora = atuais.get(x.id);
+    const igual = agora && agora.etapa === 'descoberta' && agora.aderencia === 'A' && agora.empresa === x.empresa && agora.titulo === x.titulo;
+    if (!igual) { mudaram++; continue; }
+    try {
+      await app.api(`/api/v1/vagas/${encode(x.id)}/mover`, 'POST', { etapa: 'aplicar' });
+      aprovadas++;
+    } catch (e) {
+      falhas.push(`Não deu para aprovar ${x.empresa}: ${(e as Error).message}`);
+    }
+  }
+  return { aprovadas, mudaram, falhas };
 }
 
 // O cartão da vaga. Arrastar com dedo ou mouse: a decisão vem do lado em que ele é solto.
@@ -167,7 +209,7 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
       {v.notas && <div className="motivo"><b>Notas</b>{v.notas}</div>}
       {opiniao && <div className="motivo" role="status"><b>Opinião da IA</b>{`${DECISOES[opiniao.decisao] ?? opiniao.decisao} · grupo ${opiniao.aderencia}${opiniao.motivoPulo ? ` · ${opiniao.motivoPulo}` : ''}. ${opiniao.motivo}`}</div>}
       <div className="acoes">
-        {v.link && <a className="botao-fantasma p" href={v.link} target="_blank" rel="noopener">Ler a vaga completa</a>}
+        <LinkExterno url={v.link} className="botao-fantasma p">Ler a vaga completa</LinkExterno>
         <button className="botao-fantasma p" type="button" onClick={depois}>Decidir depois</button>
         {!opiniao && <button className="botao-fantasma p" type="button" disabled={pensando} onClick={pedirOpiniao}>{pensando ? 'A IA está lendo…' : 'Opinião da IA'}</button>}
       </div>

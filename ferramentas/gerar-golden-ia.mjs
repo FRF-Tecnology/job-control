@@ -109,7 +109,7 @@ const respostasProvedor = {
     { stop_reason: 'refusal', content: [] }],
   openai: [{ choices: [{ message: { content: '{"a":1}' } }], usage: { prompt_tokens: 90, completion_tokens: 12 } }, { choices: [{ message: { refusal: 'não' } }] }, { choices: [] }],
   google: [{ candidates: [{ content: { parts: [{ text: 'pensando', thought: true }, { text: '{"a":1}' }] } }], usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 7, thoughtsTokenCount: 20 } },
-    { promptFeedback: { blockReason: 'SAFETY' } }],
+    { promptFeedback: { blockReason: 'SAFETY' } }, { promptFeedback: { blockReason: 'sk_ant_SENTINELA fulano@exemplo.com' } }, { promptFeedback: { blockReason: 'toString' } }],
 };
 for (const [nome, mod] of Object.entries({ anthropic, openai, google })) {
   for (const [i, resposta] of respostasProvedor[nome].entries()) {
@@ -134,6 +134,24 @@ for (const [status, corpo] of [[429, 'devagar'], [500, 'quebrou chave-anthropic'
   try { await anthropic.chamar({ fetch, chave: 'chave-anthropic', modelo: 'm', ...p0 }); } catch (e) { errosHttp.push({ status, corpo, erro: { ...erroDe(e), reintentavel: e.reintentavel ?? null } }); }
 }
 try { await anthropic.chamar({ fetch: async () => new Response('x'), chave: '', modelo: 'm', ...p0 }); } catch (e) { errosHttp.push({ status: 0, corpo: 'sem chave', erro: { ...erroDe(e), reintentavel: e.reintentavel ?? null } }); }
+// Corpos de erro no formato de cada provedor, ecoando uma chave fictícia de várias formas (jc-a2y.18).
+// A mensagem só pode ter o texto fixo do status: nenhum valor do corpo entra.
+const chaveEco = 'chave-FICTICIA-0123/abc+XYZ=fim9876';
+const ecos = [chaveEco, chaveEco.replaceAll('/', '\\/'), encodeURIComponent(chaveEco), chaveEco.slice(0, 14) + '...' + chaveEco.slice(-4), chaveEco.slice(-20)];
+for (const [status, corpo] of [
+  [401, JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: `rejected: ${ecos[1]}` } })],
+  [404, JSON.stringify({ error: { message: `model x not found (${ecos[2]})`, type: 'invalid_request_error', code: 'model_not_found' } })],
+  [403, JSON.stringify({ error: { code: 403, message: `blocked: ${ecos[3]}`, status: 'PERMISSION_DENIED' } })],
+  [400, JSON.stringify({ error: { type: 'FICTICIA', message: ecos[4] } })],
+  [503, `<html>${ecos[0]}</html>`],
+  [408, ''],
+  [307, ''],
+  [308, JSON.stringify({ error: { type: 'moved' } })],
+  [418, JSON.stringify({ error: { code: 'codigo com espaço', message: 'x' } })],
+]) {
+  const fetch = async () => new Response(corpo, { status });
+  try { await anthropic.chamar({ fetch, chave: chaveEco, modelo: 'm', ...p0 }); } catch (e) { errosHttp.push({ status, corpo, chave: chaveEco, erro: { ...erroDe(e), reintentavel: e.reintentavel ?? null } }); }
+}
 
 const custos = [['claude-haiku-5-5', 1000, 200], ['claude-opus-5-5', 1_000_000, 0], ['gpt-x', 10, 10], ['claude-sonnet-5-5', null, 3]].map(([m, a, b]) => ({ modelo: m, entrada: a, saida: b, custo: custoEstimado(m, a, b) }));
 

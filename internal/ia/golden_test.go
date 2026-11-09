@@ -75,6 +75,7 @@ var golden struct {
 	ErrosHTTP []struct {
 		Status int         `json:"status"`
 		Corpo  string      `json:"corpo"`
+		Chave  string      `json:"chave"`
 		Erro   *erroGolden `json:"erro"`
 	} `json:"errosHttp"`
 	Custos []struct {
@@ -236,18 +237,22 @@ func TestPedidosDosProvedores(t *testing.T) {
 
 func TestErrosHTTPeChave(t *testing.T) {
 	p := MontarPrompt("triarVaga", Objeto{"vaga": Objeto{}, "perfil": Objeto{}})
-	for _, c := range golden.ErrosHTTP {
-		t.Run(fmt.Sprint(c.Status), func(t *testing.T) {
+	for i, c := range golden.ErrosHTTP {
+		t.Run(fmt.Sprint(i, "-", c.Status), func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(c.Status)
 				io.WriteString(w, c.Corpo)
 			}))
 			defer srv.Close()
 			chave := "chave-anthropic"
+			if c.Chave != "" {
+				chave = c.Chave
+			}
 			if c.Status == 0 {
 				chave = ""
 			}
-			_, err := anthropic{http.DefaultClient}.Chamar(context.Background(), PedidoProvedor{Modelo: "m", Chave: chave, Opcoes: OpcoesProvedor{URL: srv.URL}, Prompt: p})
+			// O cliente de verdade da IA (com a política de não seguir redirecionamento).
+			_, err := Nova(Config{}, nil, nil).Provedores["anthropic"].Chamar(context.Background(), PedidoProvedor{Modelo: "m", Chave: chave, Opcoes: OpcoesProvedor{URL: srv.URL}, Prompt: p})
 			conferirErro(t, err, c.Erro)
 		})
 	}

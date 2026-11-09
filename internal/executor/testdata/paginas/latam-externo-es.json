@@ -1,0 +1,21 @@
+{
+ "descricao": "latam-externo-es",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "site-externo"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001",
+   "texto": "Desarrollador Go en Empresa Prueba",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Postularse en el sitio de la empresa",
+    "Guardar"
+   ]
+  }
+ ]
+}

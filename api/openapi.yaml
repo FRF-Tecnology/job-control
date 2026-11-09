@@ -1,12 +1,20 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.2.0
+  version: 0.4.12
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
     gravada em internal/api/testdata/golden-api.json. Erros: 400 validação ({erro, erros}),
-    404 não encontrado, 409 duplicata ({erro, existente}), 415 sem JSON, 403 gravação de outro site.
+    404 não encontrado, 409 duplicata ({erro, existente}), 415 sem JSON, 403 gravação de outro site,
+    413 corpo grande demais. Rotas /ia (só no app Go): 422 saída da IA fora do contrato ou bloqueada
+    pela guarda, 502 provedor fora ({erro, tipo, regra}). 500 erro inesperado: sempre
+    {erro: "erro interno do app; tente de novo"}, sem detalhe do erro; o log registra só método, caminho
+    sem query e o tipo do erro (jc-a2y.13). 429 limite diário da plataforma ({erro, plataforma, limite,
+    usadas, renovaEm}). O teste internal/api/contrato_test.go confere este arquivo contra as rotas da API;
+    operações com x-proposta: true estão no contrato, mas ainda não são atendidas. 403 também quando o assistente
+    (CLI, MCP) pede uma ação só da pessoa (x-so-tela). 503 {erro} em qualquer rota depois de "apagar meus dados",
+    até o app fechar.
 servers:
   - url: /api/v1
 paths:
@@ -16,20 +24,20 @@ paths:
   /resumo: { get: { summary: Números do dia } }
   /vagas:
     get: { summary: 'Lista de vagas (?etapa=, ?plataforma=)' }
-    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item)' }
+    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28)' }
   /vagas/importar: { post: { summary: 'Importa vagas de fora: só cria em Descoberta (etapa, envio e datas são ignorados)' } }
   /vagas/{id}:
     get: { summary: Vaga com os eventos dela }
     patch: { summary: 'Muda campos editáveis (notasAntes recusa edição em conflito)' }
-  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}' } }
+  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28)' } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
   /followups: { get: { summary: Follow-ups vencidos com a mensagem sugerida } }
   /perfil:
     get: { summary: Perfil }
-    put: { summary: Troca o perfil inteiro }
-    patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados)' }
+    put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28)' }
+    patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28)' }
   /plataformas: { get: { summary: Plataformas } }
   /plataformas/{id}: { put: { summary: Cria ou atualiza }, patch: { summary: Cria ou atualiza } }
   /rodadas: { get: { summary: Rodadas } }
@@ -49,3 +57,609 @@ paths:
   /historico.md: { get: { summary: Histórico em Markdown } }
   /exportar.csv: { get: { summary: 'Vagas em CSV (; e BOM para o Excel)' } }
   /backup: { post: { summary: 'Backup do dia ({criado, data})' } }
+
+  # IA da pessoa (internal/api/ia.go). A chave de API só entra (PUT) e vai para o cofre do sistema;
+  # os campos de chave das respostas trazem só o final ("…" + 4 últimos caracteres).
+  # 502 (tipo provedor): o erro é sempre texto fixo nosso. Nos provedores por chave, nenhum valor do corpo do
+  # provedor entra (jc-a2y.18); nas CLIs, nem o stderr nem o erro do processo entram, só a classe da falha; na
+  # recusa do Google, o motivo passa por uma lista fechada de textos nossos (jc-a2y.21).
+  /ia:
+    get:
+      summary: 'O que está conectado, CLIs detectadas, chaves salvas (só o final) e uso dos últimos 30 dias. A detecção das CLIs fica em cache por 45 s; PUT /ia/config e POST /ia/testar renovam (jc-a2y.44)'
+      responses:
+        '200': { description: Estado da IA, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoIA' } } } }
+  /ia/config:
+    get:
+      summary: 'Só o que está conectado (rápido: não procura CLIs)'
+      responses:
+        '200': { description: Conexão atual, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
+    put:
+      summary: 'Escolhe o provedor; "nenhum" desconecta. Modelo vazio usa o padrão do provedor. codex-cli e gemini-cli dão 400 até haver travas de ferramentas (jc-a2y.26). Trocar o host (url) de um provedor com chave apaga a chave salva para o host antigo e responde chaveApagada: true; a pessoa cola de novo (jc-a2y.27)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provedor]
+              properties:
+                provedor: { type: string, enum: [nenhum, anthropic, openai, google, claude-cli, codex-cli, gemini-cli] }
+                modelo: { type: string, description: 'Obrigatório para openai e google (sem padrão). Só letras, números, espaço e . , _ : / \ = + @ ~ -, e não pode começar com -: o modelo vira argumento da CLI; outro caso dá 400 e nada é gravado (jc-a2y.43)' }
+                url: { type: string, pattern: '^https://', description: 'Endereço compatível (ex.: OpenRouter); só https' }
+      responses:
+        '200': { description: Conexão gravada, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+  /ia/chaves/{provedor}:
+    parameters:
+      - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google] } }
+    put:
+      summary: 'Salva a chave de API no cofre do sistema, presa ao host configurado agora para o provedor (o padrão, se não houver url própria). A chave só é usada nesse host (jc-a2y.27)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chave]
+              properties:
+                chave: { type: string, minLength: 10, writeOnly: true, description: 'Espaços nas pontas são tirados' }
+      responses:
+        '200': { description: Chave salva, content: { application/json: { schema: { $ref: '#/components/schemas/ChaveSalva' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+    delete:
+      summary: 'Apaga a chave do cofre'
+      responses:
+        '200': { description: 'Chave apagada (final: null)', content: { application/json: { schema: { $ref: '#/components/schemas/ChaveSalva' } } } }
+        '400': { $ref: '#/components/responses/Erro' }
+  /ia/testar:
+    post:
+      summary: 'Triagem de uma vaga fictícia para ver se a IA responde (não grava nada além do uso)'
+      responses:
+        '200':
+          description: A IA respondeu dentro do contrato
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, ms, saida]
+                properties:
+                  ok: { type: boolean, const: true }
+                  ms: { type: integer, description: Tempo da chamada }
+                  saida: { $ref: '#/components/schemas/Triagem' }
+        '400': { $ref: '#/components/responses/ErroIAConfig' }
+        '422': { $ref: '#/components/responses/ErroIAContrato' }
+        '502': { $ref: '#/components/responses/ErroIAProvedor' }
+  /ia/triar/{vagaId}:
+    parameters:
+      - { name: vagaId, in: path, required: true, schema: { type: string } }
+    post:
+      summary: 'Opinião da IA sobre a vaga (não muda a vaga)'
+      responses:
+        '200': { description: Opinião, content: { application/json: { schema: { $ref: '#/components/schemas/Triagem' } } } }
+        '400': { $ref: '#/components/responses/ErroIAConfig' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '422': { $ref: '#/components/responses/ErroIAContrato' }
+        '502': { $ref: '#/components/responses/ErroIAProvedor' }
+  /ia/mensagem/{vagaId}:
+    parameters:
+      - { name: vagaId, in: path, required: true, schema: { type: string } }
+    post:
+      summary: 'Rascunho de follow-up no idioma da vaga (nunca é enviado sozinho)'
+      responses:
+        '200':
+          description: Rascunho
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [texto]
+                additionalProperties: false
+                properties:
+                  assunto: { type: string }
+                  texto: { type: string }
+        '400': { $ref: '#/components/responses/ErroIAConfig' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '422': { $ref: '#/components/responses/ErroIAContrato' }
+        '502': { $ref: '#/components/responses/ErroIAProvedor' }
+
+
+  # Fila de candidaturas (P5, jc-a2y.6.1; proposta em docs/propostas/p5-contrato-fila.md). Atendida desde a 0.4.8
+  # (jc-a2y.6.2.2). x-so-tela: true = só a pessoa; vindo do assistente (CLI, MCP) dá 403. Corpo com campo fora do
+  # esquema dá 400 em todas as rotas da fila que gravam (nas sem corpo, qualquer campo); nada é gravado. O sha256 do
+  # currículo é sempre calculado pelo servidor a partir do arquivo; o que vier no pedido é ignorado.
+  # Uma candidatura é o pacote exato que vai para a vaga. A aprovação vale para aquela impressão, uma vez, até o fim
+  # do dia local. Só a pessoa (tela) e o executor interno (sem rota HTTP) mudam o estado; texto de vaga, página ou IA nunca.
+  /candidaturas:
+    get:
+      summary: 'Fila de candidaturas (?estado=)'
+      parameters:
+        - { name: estado, in: query, required: false, schema: { $ref: '#/components/schemas/EstadoCandidatura' } }
+      responses:
+        '200': { description: Lista, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Candidatura' } } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+    post:
+      x-so-tela: true
+      summary: 'Cria a candidatura de uma vaga na etapa aplicar (ou grupo A em descoberta no modo direto) → preparada (201)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [vagaId, conteudo]
+              properties:
+                vagaId: { type: string }
+                conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
+      responses:
+        '201': { description: Criada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, pattern: '^cand-' } }
+    get:
+      summary: Uma candidatura
+      responses:
+        '200': { description: Candidatura, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '404': { $ref: '#/components/responses/Erro' }
+  /candidaturas/{id}/conteudo:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      x-so-tela: true
+      summary: 'Troca o conteúdo em preparada ou aprovada; aprovada volta a preparada e perde a aprovação'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [conteudo, versao]
+              properties:
+                conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
+                versao: { type: integer, description: 'Versão que a tela leu; diferente da atual dá 409' }
+      responses:
+        '200': { description: Candidatura atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/aprovar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-so-tela: true
+      summary: 'preparada → aprovada, só se a impressão enviada for a atual; vale uma vez, até o fim do dia local'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [impressao]
+              properties:
+                impressao: { type: string, pattern: '^sha256:v1:', description: 'A impressão que a tela mostrou' }
+      responses:
+        '200': { description: Aprovada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+        '429': { $ref: '#/components/responses/LimiteDiario' }
+  /candidaturas/{id}/revogar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: 'aprovada → preparada (tira a aprovação)'
+      responses:
+        '200': { description: Revogada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/cancelar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-so-tela: true
+      summary: 'preparada, aprovada, bloqueada ou falhou → cancelada, estado final (incerta não pode ser cancelada); só pela tela'
+      responses:
+        '200': { description: Cancelada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/reabrir:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-so-tela: true
+      summary: 'bloqueada, falhou ou incerta → preparada; enviar de novo exige nova aprovação'
+      responses:
+        '200': { description: Reaberta, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/{id}/concluir-manual:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      x-so-tela: true
+      summary: 'bloqueada ou incerta → enviada: a pessoa enviou sozinha ou conferiu na plataforma; a vaga vai para enviada na mesma transação'
+      responses:
+        '200': { description: Enviada, content: { application/json: { schema: { $ref: '#/components/schemas/Candidatura' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '409': { $ref: '#/components/responses/ConflitoCandidatura' }
+  /candidaturas/limites:
+    get:
+      summary: 'Limite diário por plataforma (linkedin, gupy, inhire), quantas já entraram em enviando hoje e quando renova'
+      responses:
+        '200':
+          description: Limites
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [linkedin, gupy, inhire]
+                properties:
+                  linkedin: { $ref: '#/components/schemas/LimiteDiario' }
+                  gupy: { $ref: '#/components/schemas/LimiteDiario' }
+                  inhire: { $ref: '#/components/schemas/LimiteDiario' }
+  /candidaturas/limites/{plataforma}:
+    parameters:
+      - { name: plataforma, in: path, required: true, schema: { type: string, enum: [linkedin, gupy, inhire] } }
+    put:
+      x-so-tela: true
+      summary: 'Muda o limite diário da plataforma (padrão 30, de 1 a 40)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [limite]
+              properties:
+                limite: { type: integer, minimum: 1, maximum: 40 }
+      responses:
+        '200': { description: Limite gravado, content: { application/json: { schema: { $ref: '#/components/schemas/LimiteDiario' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '404': { $ref: '#/components/responses/Erro' }
+
+  # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
+  # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
+  # sistema na resposta nem no log.
+  /dados/apagar:
+    post:
+      x-so-tela: true
+      summary: 'Apaga os dados do app neste computador: banco (vagas, fila, perfil, eventos, limites), currículos copiados, backups locais, perfil do navegador e chaves de IA no cofre do sistema. Só esses caminhos, nunca a pasta inteira (CENTRAL_PASTA pode ser uma pasta da pessoa); junção ou link para fora é removido como link. Não apaga o login das CLIs de IA, os arquivos originais dos currículos nem o cache da janela do app (WebView2/WebKit). Depois de responder, o app fecha (fechar sempre true, também na falha parcial); ao abrir de novo, é um usuário novo'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmacao]
+              properties:
+                confirmacao: { type: string, const: 'APAGAR MEUS DADOS', description: 'A frase que a pessoa digitou na tela, exatamente; outra dá 400 e nada é apagado' }
+      responses:
+        '200': { description: 'O que foi apagado e o que faltou (completo false quando faltou algo); fechar true', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+        '503': { description: 'Os dados já foram apagados e o app está fechando: {erro}. Vale para qualquer rota depois de apagar', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /navegador/sair:
+    post:
+      x-so-tela: true
+      summary: 'Sair das plataformas: apaga só o perfil do navegador do app (sessão e cookies de LinkedIn, Gupy e InHire). Os dados ficam; o app continua aberto'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'apagado [navegador] ou faltou [navegador]; fechar false', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+
+  # Envio (jc-a2y.51; achado 2 da revisão integrada jc-a2y.6.4). O executor só existe no build envio_dev; no build
+  # padrão, ligado é false e nada é enviado. Começa PAUSADO (por padrão, depois de apagar os dados e quando o estado
+  # gravado falta ou está corrompido). O executor confere pausado antes de cada entrada em enviando; pausar não corta
+  # a candidatura que já está em enviando (ela termina no desfecho dela). Pausar e retomar ficam na meta e não mudam
+  # a /versao; os desfechos gravam no banco e mudam.
+  /envio:
+    get:
+      summary: 'Estado do envio: ligado (este build traz o executor), pausado, a candidatura em enviando agora e os últimos desfechos (sem conteúdo, M7)'
+      parameters:
+        - { name: desde, in: query, required: false, schema: { type: string, format: date-time }, description: 'Só os desfechos com em depois deste instante' }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+  /envio/pausar:
+    post:
+      summary: 'Pausa o envio: nenhuma candidatura nova entra em enviando até retomar. Qualquer autor pode (só reduz o risco, como revogar)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+  /envio/retomar:
+    post:
+      x-so-tela: true
+      summary: 'Retoma o envio das candidaturas aprovadas. Só a pessoa, pela tela'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Estado do envio, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoEnvio' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+
+components:
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties: { erro: { type: string } }
+    ErroValidacao:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string }
+        erros: { type: array, items: { type: string } }
+    ErroIA:
+      type: object
+      required: [erro, tipo, regra]
+      properties:
+        erro: { type: string, description: 'Texto para a pessoa. No 502, sempre texto fixo nosso, sem texto vindo do provedor ou da CLI' }
+        tipo: { type: string, description: 'config ou entrada (400), provedor (502), regra ou esquema (422)' }
+        regra: { type: [string, 'null'], description: Regra da guarda que bloqueou }
+    ConfigIA:
+      type: object
+      required: [configurada]
+      properties:
+        configurada: { type: boolean }
+        provedor: { type: string }
+        modelo: { type: string }
+        chaveApagada: { type: boolean, description: 'Só no PUT: true quando a troca de host apagou a chave salva (jc-a2y.27)' }
+    ChaveSalva:
+      type: object
+      required: [provedor, final]
+      properties:
+        provedor: { type: string }
+        final: { type: [string, 'null'], description: '"…" + 4 últimos caracteres; null sem chave' }
+    EstadoCLI:
+      type: object
+      properties:
+        provedor: { type: string }
+        comando: { type: string }
+        nome: { type: string }
+        plano: { type: string }
+        instalar: { type: string }
+        verificada: { type: boolean, description: Testada de verdade pelo projeto }
+        instalada: { type: boolean }
+        logada: { type: [boolean, 'null'], description: null quando não dá para saber sem chamar a IA }
+        versao: { type: string }
+        pronta: { type: boolean, description: 'Instalada e num formato que o app pode usar com segurança. Ex.: o Claude instalado como .cmd (npm, Windows) fica instalada: true, pronta: false (jc-a2y.25)' }
+        aviso: { type: string, description: 'Texto fixo nosso quando pronta é false, com o que a pessoa faz (ex.: instalar a versão nativa .exe). Codex e Gemini ficam pronta: false até haver travas de ferramentas (jc-a2y.26)' }
+        motivo: { type: string, enum: [formato, politica], description: 'Só quando pronta é false. formato: a CLI está instalada num formato que o app não usa com segurança, e instalar a versão nativa resolve (ex.: Claude .cmd); politica: a CLI está fora do app por regra de segurança, e o caminho é usar uma chave de API (ex.: Codex e Gemini, jc-a2y.26)' }
+    EstadoIA:
+      type: object
+      required: [configurada, chaves, clis, gratis, uso]
+      properties:
+        configurada: { type: boolean }
+        provedor: { type: string }
+        modelo: { type: string }
+        url: { type: string }
+        chaves:
+          type: object
+          description: 'Um campo por provedor com chave (anthropic, openai, google): final ou null'
+          additionalProperties: { type: [string, 'null'] }
+        clis: { type: array, items: { $ref: '#/components/schemas/EstadoCLI' } }
+        gratis:
+          type: object
+          properties: { disponivel: { type: boolean, description: 'Modelos gratuitos: false até a P7' } }
+        uso:
+          type: object
+          description: Só contagens e custo; nenhum conteúdo
+          properties:
+            chamadas: { type: integer }
+            falhas: { type: integer }
+            custoEstimadoUSD: { type: number }
+    Triagem:
+      type: object
+      required: [decisao, aderencia, motivo]
+      additionalProperties: false
+      properties:
+        decisao: { type: string, enum: [aplicar, pular, perguntar] }
+        aderencia: { type: string, enum: [A, B, C] }
+        motivo: { type: string }
+        motivoPulo: { type: string, enum: [Sênior, Inglês, Diploma, Stack, Presencial/Local, Documento, Duplicada, Vaga fechada, Outro] }
+    EstadoCandidatura:
+      type: string
+      enum: [preparada, aprovada, enviando, enviada, bloqueada, falhou, incerta, cancelada]
+      description: 'enviando e incerta só o executor põe; incerta sai só pela tela (concluir-manual ou reabrir)'
+    PlataformaCandidatura:
+      type: string
+      enum: [linkedin, gupy, inhire, outra]
+      description: 'outra não tem envio automático: o executor marca bloqueada/site-externo'
+    ConteudoCandidatura:
+      type: object
+      description: 'Tudo o que o executor pode preencher; campo pedido fora daqui vira bloqueada/pergunta-nova. Campo a mais em qualquer nível dá 400 (nada é gravado). CPF ou RG em qualquer texto dá 400'
+      additionalProperties: false
+      required: [curriculo, idioma, respostas]
+      properties:
+        curriculo:
+          type: object
+          additionalProperties: false
+          required: [arquivo]
+          properties:
+            arquivo: { type: string, pattern: '^[^/\\:]+\.pdf$', description: 'Nome de um PDF dentro da pasta de currículos, nunca caminho; o servidor confere que existe ali depois de analisar o caminho' }
+            sha256: { type: string, readOnly: true, description: 'Calculado pelo servidor; o executor confere de novo antes de anexar' }
+        idioma: { type: string, enum: [pt, en] }
+        contato:
+          type: [object, 'null']
+          additionalProperties: false
+          properties: { nome: { type: string }, email: { type: string }, telefone: { type: string }, cidade: { type: string } }
+        pretensao:
+          type: [object, 'null']
+          additionalProperties: false
+          properties:
+            valor: { type: number }
+            moeda: { type: string, enum: [BRL, USD, EUR] }
+            tipo: { type: string, enum: [CLT, PJ, contractor] }
+        respostas:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [pergunta, resposta, origem]
+            properties:
+              pergunta: { type: string }
+              resposta: { type: string }
+              origem: { type: string, enum: [respostasPadrao, pessoa, ia] }
+        mensagem: { type: [string, 'null'] }
+    Candidatura:
+      type: object
+      required: [id, vagaId, plataforma, url, estado, conteudo, impressao, aprovacao, bloqueio, resultado, versao, criadaEm, atualizadaEm]
+      properties:
+        id: { type: string, pattern: '^cand-' }
+        vagaId: { type: string }
+        plataforma: { $ref: '#/components/schemas/PlataformaCandidatura' }
+        url: { type: string, pattern: '^https://', description: 'Host da plataforma (linkedin.com, gupy.io, inhire.app e subdomínios), conferido depois de analisar a URL. No envio, o executor aperta (lista fechada, jc-a2y.6.2.5): LinkedIn em linkedin.com, www ou subdomínio de país de 2 letras, com a vaga em /jobs/view/<n> ou currentJobId=<n>; Gupy só no host da empresa aprovado, em /jobs/<n>; InHire no host da empresa aprovado, em /vagas/<id>, ou em form-app.inhire.app com o id aprovado inteiro no endereço. Fora disso, bloqueada/site-externo' }
+        estado: { $ref: '#/components/schemas/EstadoCandidatura' }
+        conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
+        impressao: { type: string, pattern: '^sha256:v1:', description: 'sha256 do JSON canônico (RFC 8785) de {vagaId, plataforma, url, conteudo}' }
+        aprovacao:
+          type: [object, 'null']
+          properties:
+            em: { type: string }
+            impressao: { type: string }
+            validaAte: { type: string, description: 'Fim do dia local, com offset (ex.: 2026-11-09T23:59:59-03:00)' }
+            fuso: { type: string, description: 'Ex.: America/Sao_Paulo' }
+        bloqueio:
+          type: [object, 'null']
+          properties:
+            motivo: { $ref: '#/components/schemas/MotivoBloqueio' }
+            pendencia: { type: string, description: 'Texto fixo nosso por motivo; nada da página' }
+            em: { type: string }
+        resultado:
+          type: [object, 'null']
+          properties:
+            em: { type: string }
+            tipo: { type: string, enum: [enviada, falhou, incerto, manual] }
+            detalhe: { type: string, description: 'Texto fixo nosso' }
+        versao: { type: integer }
+        criadaEm: { type: string }
+        atualizadaEm: { type: string }
+    EstadoEnvio:
+      type: object
+      additionalProperties: false
+      required: [ligado, pausado, enviandoAgora, desfechos]
+      properties:
+        ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
+        pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
+        enviandoAgora:
+          type: [object, 'null']
+          additionalProperties: false
+          required: [id, desde]
+          properties:
+            id: { type: string, pattern: '^cand-' }
+            desde: { type: string, description: 'Quando entrou em enviando' }
+        desfechos:
+          type: array
+          maxItems: 20
+          description: 'Até 20, do mais novo para o mais antigo. Para a vaga, a pendência e o detalhe, GET /candidaturas/{id}'
+          items: { $ref: '#/components/schemas/Desfecho' }
+    Desfecho:
+      type: object
+      additionalProperties: false
+      required: [id, estado, motivo, em]
+      properties:
+        id: { type: string, pattern: '^cand-' }
+        estado: { type: string, enum: [enviada, bloqueada, falhou, incerta] }
+        motivo: { oneOf: [{ $ref: '#/components/schemas/MotivoBloqueio' }, { type: 'null' }], description: 'Só em bloqueada' }
+        em: { type: string }
+    ItemApagado:
+      type: string
+      enum: [banco, curriculos, backups, navegador, chaves]
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema'
+    ResultadoApagar:
+      type: object
+      additionalProperties: false
+      required: [apagado, faltou, completo, fechar]
+      properties:
+        apagado: { type: array, items: { $ref: '#/components/schemas/ItemApagado' } }
+        faltou: { type: array, items: { $ref: '#/components/schemas/ItemApagado' }, description: 'O que não saiu (arquivo preso, cofre recusou); a tela mostra o que restou' }
+        completo: { type: boolean }
+        fechar: { type: boolean, description: 'true em /dados/apagar: o app fecha logo depois de responder' }
+    MotivoBloqueio:
+      type: string
+      enum: [cpf, rg, senha, dado-bancario, captcha, login, conta, teste-pessoal, documento, dado-sensivel, termos, pergunta-nova, site-externo, outro]
+    LimiteDiario:
+      type: object
+      required: [limite, usadas, renovaEm]
+      properties:
+        limite: { type: integer, minimum: 1, maximum: 40, description: 'Padrão 30' }
+        usadas: { type: integer, description: 'Candidaturas que entraram em enviando hoje (falha e incerta contam)' }
+        renovaEm: { type: string, description: 'Início do próximo dia local, com offset' }
+    ErroLimite:
+      type: object
+      required: [erro, plataforma, limite, usadas, renovaEm]
+      properties:
+        erro: { type: string }
+        plataforma: { type: string }
+        limite: { type: integer }
+        usadas: { type: integer }
+        renovaEm: { type: string }
+    ErroConflitoCandidatura:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoCandidatura' }
+        impressaoAtual: { type: string, description: 'Só quando a impressão enviada não é a atual' }
+        existente: { type: string, description: 'Só na duplicata: id da candidatura ativa ou da vaga já enviada' }
+  responses:
+    Erro:
+      description: '{erro}'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } }
+    Validacao:
+      description: 'Entrada inválida ({erro, erros}) ou provedor sem chave ({erro})'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroValidacao' } } }
+    EnvioEmAndamento:
+      description: 'Há candidatura em enviando (o executor está numa página): {erro, estado: enviando}. Nada é apagado'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroConflitoCandidatura' } } }
+    SoTela:
+      description: 'Ação só da pessoa (tela), pedida pelo assistente (CLI, MCP): {erro}'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } }
+    ErroIAConfig:
+      description: 'Nenhuma IA conectada, CLI ausente, sem chave ou entrada inválida (tipo config ou entrada)'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
+    ErroIAContrato:
+      description: 'Saída da IA fora do contrato (tipo esquema) ou bloqueada pela guarda (tipo regra); não troca de modelo'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
+    ErroIAProvedor:
+      description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor). Provedores por chave: "<provedor>: HTTP <status> <texto fixo do status>" ou "<provedor>: falha de rede (<motivo fixo>)", sem valor do corpo do provedor. CLIs: "<cli>: <texto fixo da classe da falha>" (sem login, saiu com código N, não rodou, sem resposta, respondeu com erro, tempo esgotado). Google bloqueado: "google: bloqueado (<motivo de uma lista fechada>)"'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
+    ConflitoCandidatura:
+      description: 'Estado não permite a ação ({erro, estado}), impressão mudou ({erro, impressaoAtual}), versão velha, duplicata ({erro, existente}) ou vaga fora da etapa'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroConflitoCandidatura' } } }
+    LimiteDiario:
+      description: 'Limite diário da plataforma atingido'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroLimite' } } }

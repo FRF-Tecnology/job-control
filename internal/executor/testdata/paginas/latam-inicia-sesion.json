@@ -1,0 +1,33 @@
+{
+ "descricao": "latam-inicia-sesion",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "login"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Inicia sesión para postularte a esta vacante",
+   "campos": [
+    {
+     "id": "u",
+     "tipo": "email",
+     "rotulo": "Correo electrónico",
+     "obrigatorio": true
+    },
+    {
+     "id": "p",
+     "tipo": "password",
+     "rotulo": "Contraseña",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  }
+ ]
+}
