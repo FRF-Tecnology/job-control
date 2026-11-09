@@ -1,7 +1,6 @@
 package ia
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -29,7 +28,7 @@ func TestErroDaCLINaoRepeteTextoDeFora(t *testing.T) {
 			}
 			t.Run(qual+"/"+c.modo, func(t *testing.T) {
 				comCLIFalsaNome(t, qual, c.modo)
-				_, err := cli{qual: qual}.Chamar(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
+				_, err := chamarSemPortao(qual, PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
 				var e *ErroIA
 				if !errors.As(err, &e) {
 					t.Fatalf("erro inesperado: %v", err)

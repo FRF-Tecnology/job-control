@@ -2,6 +2,7 @@ package ia
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -33,7 +34,7 @@ func TestArgsSegurosParaCmd(t *testing.T) {
 // Gemini (qualquer sistema): o pedido vai pelo stdin e o argv não leva o texto da vaga. A CLI falsa confere os dois.
 func TestGeminiRecebePedidoPeloStdin(t *testing.T) {
 	comCLIFalsaNome(t, "gemini", "gemini-stdin")
-	s, err := cli{qual: "gemini"}.Chamar(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
+	s, err := chamarGemini(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
 	if err != nil || s.Texto == "" {
 		t.Fatalf("gemini = %+v, %v", s, err)
 	}
@@ -45,6 +46,53 @@ func TestDetectarCLIsSemNadaInstalado(t *testing.T) {
 	for _, e := range DetectarCLIs(context.Background()) {
 		if e.Instalada || e.Pronta || e.Aviso != "" {
 			t.Errorf("%s: %+v", e.Comando, e)
+		}
+	}
+}
+
+// chamarSemPortao roda a CLI sem a trava do jc-a2y.26, para os testes continuarem cobrindo o código do Codex e do
+// Gemini (argv, stdin e mensagens fixas) enquanto eles estão fora do app.
+func chamarSemPortao(qual string, p PedidoProvedor) (RespostaProvedor, error) {
+	switch qual {
+	case "codex":
+		return chamarCodex(context.Background(), p)
+	case "gemini":
+		return chamarGemini(context.Background(), p)
+	}
+	return cli{qual: qual}.Chamar(context.Background(), p)
+}
+
+// jc-a2y.26: Codex e Gemini ficam fora do app até haver travas de ferramentas conferidas. A trava vem antes de procurar
+// a CLI e de rodar qualquer coisa; o Claude continua.
+func TestCodexEGeminiForaDoApp(t *testing.T) {
+	t.Setenv("PATH", t.TempDir()) // nenhuma CLI instalada: a mensagem tem de ser a da trava, não "não instalada"
+	for _, qual := range []string{"codex", "gemini"} {
+		_, err := cli{qual: qual}.Chamar(context.Background(), PedidoProvedor{Prompt: MontarPrompt("triarVaga", entradaTriagem)})
+		var e *ErroIA
+		if !errors.As(err, &e) || e.Tipo != "config" || e.Mensagem != qual+"-cli: "+msgSemTrava {
+			t.Fatalf("%s: erro = %v", qual, err)
+		}
+		if msg, fora := CLIIndisponivel(qual + "-cli"); !fora || msg != msgSemTrava {
+			t.Fatalf("%s: CLIIndisponivel = %q %v", qual, msg, fora)
+		}
+	}
+	for _, p := range []string{"claude-cli", "anthropic", "openai", "google", "codex", "gemini", ""} {
+		if _, fora := CLIIndisponivel(p); fora {
+			t.Fatalf("%q não deveria ficar fora", p)
+		}
+	}
+}
+
+// Com Codex e Gemini instalados, a tela Conectar IA os vê como instalados e não prontos, com o aviso fixo.
+func TestDetectarCLIsMarcaCodexEGeminiNaoProntos(t *testing.T) {
+	comCLIFalsaNome(t, "codex", "mudo")
+	comCLIFalsaNome(t, "gemini", "mudo")
+	for _, e := range DetectarCLIs(context.Background()) {
+		if e.Comando == "claude" {
+			continue
+		}
+		if !e.Instalada || e.Pronta || e.Aviso != msgSemTrava {
+			t.Errorf("%s: instalada=%v pronta=%v aviso=%q", e.Comando, e.Instalada, e.Pronta, e.Aviso)
 		}
 	}
 }
