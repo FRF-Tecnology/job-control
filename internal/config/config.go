@@ -122,6 +122,21 @@ func EhPastaPadrao(p string) bool {
 	return MesmaPasta(p, filepath.Join(base, NomePasta)) || MesmaPasta(p, filepath.Join(base, NomePastaAntiga))
 }
 
+// PastaAntigaQueFicou: com a pasta padrão nova em uso, a antiga ("Central de Candidaturas"), se ela ainda existe como
+// pasta de verdade (o caso pasta-antiga-ficou). Ela guarda dados da pessoa, e "apagar meus dados" e "sair das
+// plataformas" a limpam também (LGPD, revisão do CyberSec no #113). Com outra pasta em uso, ou sem a antiga: "".
+func PastaAntigaQueFicou(emUso string) string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	antiga := filepath.Join(base, NomePastaAntiga)
+	if !MesmaPasta(emUso, filepath.Join(base, NomePasta)) || !ehPastaDeVerdade(antiga) {
+		return ""
+	}
+	return antiga
+}
+
 // MesmaPasta diz se dois caminhos são a mesma pasta (limpos e absolutos; no Windows, sem diferenciar maiúsculas).
 func MesmaPasta(a, b string) bool {
 	limpar := func(p string) string {

@@ -804,8 +804,8 @@ components:
         em: { type: string }
     ItemApagado:
       type: string
-      enum: [banco, curriculos, backups, navegador, chaves]
-      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema'
+      enum: [banco, curriculos, backups, navegador, chaves, pasta-antiga]
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe'
     ResultadoApagar:
       type: object
       additionalProperties: false
