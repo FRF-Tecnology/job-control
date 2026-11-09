@@ -39,27 +39,7 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 	var ciclo sync.Mutex // um ciclo da fila por vez; Suspender segura até soltar
 	go func() {
 		defer close(feito)
-		ciclo.Lock()
-		if _, _, err := x.Iniciar(ctx); err != nil {
-			log.Printf("envio: ao abrir (%T)", err)
-		}
-		ciclo.Unlock()
-		t := time.NewTicker(intervaloDaFila)
-		defer t.Stop()
-		for {
-			ciclo.Lock()
-			if ctx.Err() == nil {
-				if _, err := x.EnviarAprovadas(ctx); err != nil && ctx.Err() == nil {
-					log.Printf("envio: fila (%T)", err)
-				}
-			}
-			ciclo.Unlock()
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-			}
-		}
+		x.Rodar(ctx, intervaloDaFila, &ciclo) // Iniciar falhando não entra no laço
 	}()
 	return Controle{
 		Parar: func() {

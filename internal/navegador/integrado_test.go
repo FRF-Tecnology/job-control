@@ -174,8 +174,29 @@ func TestIntegradoTelaAPIExecutor(t *testing.T) {
 	if st, _ := tela("POST", "/candidaturas/"+id+"/aprovar", map[string]any{"impressao": impressaoDaTela(ler(id))}); st != 200 {
 		t.Fatal("aprovar final falhou")
 	}
+	// 8a) jc-a2y.51: o envio começa PAUSADO. Pausado, a aprovada não é enviada; o assistente não retoma.
+	if st, e := tela("GET", "/envio", nil); st != 200 || e["pausado"] != true {
+		t.Fatalf("estado do envio no começo = %d %v", st, e)
+	}
+	if n := enviarFila("pausado"); n != 0 {
+		t.Fatalf("pausado enviou %d", n)
+	}
+	if st := assistente("POST", "/envio/retomar", api.Objeto{}); st != 403 {
+		t.Errorf("assistente retomar = %d; queria 403", st)
+	}
+	if n := enviarFila("depois do assistente"); n != 0 {
+		t.Fatalf("o assistente retomou: enviou %d", n)
+	}
+	if st, e := tela("POST", "/envio/retomar", map[string]any{}); st != 200 || e["pausado"] != false {
+		t.Fatalf("retomar pela tela = %d %v", st, e)
+	}
+	// 8b) Retomado pela pessoa, a aprovada é enviada uma vez.
 	if n := enviarFila("aprovada"); n != 1 {
 		t.Fatalf("aprovada enviou %d; queria 1", n)
+	}
+	// O desfecho aparece no estado do envio, sem conteúdo.
+	if st, e := tela("GET", "/envio", nil); st != 200 || len(e["desfechos"].([]any)) != 1 || e["desfechos"].([]any)[0].(map[string]any)["estado"] != "enviada" {
+		t.Errorf("desfechos = %d %v", st, e["desfechos"])
 	}
 	// Só o pacote aprovado chegou ao servidor fictício: os campos da página e o PDF conferido.
 	envios := srv.envios()
@@ -192,10 +213,17 @@ func TestIntegradoTelaAPIExecutor(t *testing.T) {
 		t.Errorf("estado final = %v", e["estado"])
 	}
 	_, est := tela("GET", "/estado", nil)
+	achou := false
 	for _, v := range est["vagas"].([]any) {
-		if o := v.(map[string]any); o["id"] == "v-int-1" && o["etapa"] != "enviada" {
-			t.Errorf("vaga ficou em %v", o["etapa"])
+		if o := v.(map[string]any); o["id"] == "v-int-1" {
+			achou = true
+			if o["etapa"] != "enviada" {
+				t.Errorf("vaga ficou em %v", o["etapa"])
+			}
 		}
+	}
+	if !achou {
+		t.Error("a vaga sumiu do /estado") // nota do CyberSec no #55
 	}
 	// 9) A aprovação foi consumida: rodar de novo não reenvia.
 	if n := enviarFila("depois do envio"); n != 0 {

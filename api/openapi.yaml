@@ -379,7 +379,6 @@ paths:
   # a /versao; os desfechos gravam no banco e mudam.
   /envio:
     get:
-      x-proposta: true
       summary: 'Estado do envio: ligado (este build traz o executor), pausado, a candidatura em enviando agora e os últimos desfechos (sem conteúdo, M7)'
       parameters:
         - { name: desde, in: query, required: false, schema: { type: string, format: date-time }, description: 'Só os desfechos com em depois deste instante' }
@@ -388,7 +387,6 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
   /envio/pausar:
     post:
-      x-proposta: true
       summary: 'Pausa o envio: nenhuma candidatura nova entra em enviando até retomar. Qualquer autor pode (só reduz o risco, como revogar)'
       requestBody:
         required: true
@@ -400,7 +398,6 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
   /envio/retomar:
     post:
-      x-proposta: true
       x-so-tela: true
       summary: 'Retoma o envio das candidaturas aprovadas. Só a pessoa, pela tela'
       requestBody:
