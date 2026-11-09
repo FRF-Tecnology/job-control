@@ -209,6 +209,9 @@ func TestPropostasAindaSemRota(t *testing.T) {
 		}
 		p := concreto(modelo)
 		for _, m := range metodosHTTP {
+			if ativas.tem(p, m) {
+				continue // outro caminho atendido casa com este (ex.: GET /candidaturas/aprovar-lote é o GET /candidaturas/{id})
+			}
 			r, err := a.Chamar(context.Background(), Pedido{Metodo: m, Caminho: Prefixo + p, Corpo: Objeto{}})
 			if err != nil || !rotaInexistente(r) {
 				t.Errorf("%s %s (chamado como %s) já é atendido (status %d, erro %v): tire x-proposta do contrato", m, modelo, p, r.Status, err)
