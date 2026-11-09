@@ -19,6 +19,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -339,6 +340,16 @@ func (x *Executor) Enviar(ctx context.Context, id string) (Desfecho, error) {
 	return x.concluir(ctx, plataforma, t, x.preencherEEnviar(ctx, c, t))
 }
 
+// rotulosEasyApply: o botão do Easy Apply do LinkedIn (PT, EN, ES), que só abre o formulário na própria página, sem
+// registrar nada. Lista fechada, texto inteiro (decisão do CyberSec no #99/#101).
+var rotulosEasyApply = regexp.MustCompile(`^(candidatura simplificada|easy apply|solicitud sencilla)$`)
+
+// AbreSemMarca: o clique no botão de candidatura pode vir antes da marca "interagiu"? Só no LinkedIn com o rótulo do
+// Easy Apply. Na Gupy, na InHire e em qualquer outro rótulo, a marca vem antes.
+func AbreSemMarca(plataforma, rotulo string) bool {
+	return plataforma == "linkedin" && rotulosEasyApply.MatchString(rotulo)
+}
+
 // tentativa guarda o que o executor já fez na página (jc-a2y.6.11). A marca é gravada no banco ANTES do passo; se a
 // gravação falhar, o passo não acontece (falhou), e a candidatura também não volta sozinha.
 type tentativa struct {
@@ -409,6 +420,23 @@ func (x *Executor) preencherEEnviar(ctx context.Context, c dominio.Objeto, t *te
 	}
 	if !enderecoConfere(plataforma, aprovada, final) {
 		return bloqueada("site-externo")
+	}
+	// Botão que abre o formulário (revisão do CyberSec no #101): na Gupy, na InHire e no LinkedIn sem Easy Apply, o
+	// clique pode já registrar a candidatura. A marca é gravada ANTES dele; só o Easy Apply do LinkedIn (lista fechada
+	// de rótulos) abre o formulário sem marca.
+	rotulo, err := pag.BotaoDeCandidatura(ctx)
+	if err != nil {
+		return falhou("erro-tecnico", err)
+	}
+	if rotulo != "" {
+		if !AbreSemMarca(plataforma, rotulo) {
+			if err := t.marcar(ctx, dominio.MarcaInteragiu); err != nil {
+				return falhou("erro-tecnico", err)
+			}
+		}
+		if err := pag.AbrirFormulario(ctx, rotulo); err != nil {
+			return falhou("erro-tecnico", err)
+		}
 	}
 
 	// Formulário em etapas: em cada uma, confere o endereço e o bloqueio, planeja todos os campos (M1) antes de

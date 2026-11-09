@@ -314,3 +314,65 @@ func TestIncertaNuncaVolta(t *testing.T) {
 		t.Fatalf("incerta voltou: %v", ds)
 	}
 }
+
+// Revisão do CyberSec no #101 (ALTO): o botão que abre o formulário pode já registrar a candidatura (Gupy, InHire e
+// LinkedIn sem Easy Apply). A marca é gravada ANTES do clique; uma falha depois dele nunca volta. Só o Easy Apply do
+// LinkedIn (lista fechada de rótulos) abre sem marca, e aí a falha seguinte volta.
+func TestBotaoDeCandidaturaComMarca(t *testing.T) {
+	casos := []struct {
+		nome, plataforma, link, botao, estado string
+	}{
+		{"Gupy com Candidatar-se", "gupy", linkGupy, "candidatar-se", dominio.CandFalhou},
+		{"InHire com Inscrever-se", "inhire", "https://empresa-teste.inhire.app/vagas/abc-123", "inscrever-se", dominio.CandFalhou},
+		{"LinkedIn sem Easy Apply", "linkedin", linkLI, "candidatar-se", dominio.CandFalhou},
+		{"LinkedIn Easy Apply (PT)", "linkedin", linkLI, "candidatura simplificada", dominio.CandAprovada},
+		{"LinkedIn Easy Apply (EN)", "linkedin", linkLI, "easy apply", dominio.CandAprovada},
+		{"LinkedIn Easy Apply (ES)", "linkedin", linkLI, "solicitud sencilla", dominio.CandAprovada},
+	}
+	for _, c := range casos {
+		p := novaPagina()
+		p.botao = c.botao
+		p.errAbrirFormulario = errors.New("a página caiu depois do clique")
+		s := novoCenario(t, p)
+		id := s.aprovada(c.plataforma, c.link)
+		var marcaNoClique any
+		p.aoAbrirFormulario = func() { marcaNoClique = s.cand(id)["interagiuEm"] }
+		d := s.enviar(id)
+		if d.Estado != c.estado || s.cand(id)["estado"] != c.estado {
+			t.Errorf("%s: desfecho = %+v; queria %s", c.nome, d, c.estado)
+		}
+		comMarca := dominio.Texto(marcaNoClique) != ""
+		if comMarca != (c.estado == dominio.CandFalhou) {
+			t.Errorf("%s: marca gravada antes do clique = %v", c.nome, comMarca)
+		}
+		if c.estado == dominio.CandFalhou && len(dominio.ListaDe(s.cand(id)["retentativas"])) != 0 {
+			t.Errorf("%s: voltou depois de clicar", c.nome)
+		}
+	}
+}
+
+// Sem falha, o botão abre o formulário e o envio segue normal (a marca fica gravada uma vez só).
+func TestBotaoDeCandidaturaEnviaNormal(t *testing.T) {
+	p := novaPagina()
+	p.botao = "candidatar-se"
+	s := novoCenario(t, p)
+	id := s.aprovada("gupy", linkGupy)
+	if d := s.enviar(id); d.Estado != dominio.CandEnviada || p.abriuFormulario != 1 || p.enviou != 1 {
+		t.Fatalf("desfecho = %+v, abriu %d, enviou %d", d, p.abriuFormulario, p.enviou)
+	}
+}
+
+func TestAbreSemMarca(t *testing.T) {
+	for _, c := range []struct {
+		plataforma, rotulo string
+		quer               bool
+	}{
+		{"linkedin", "candidatura simplificada", true}, {"linkedin", "easy apply", true}, {"linkedin", "solicitud sencilla", true},
+		{"linkedin", "candidatar-se", false}, {"linkedin", "easy apply now", false}, {"linkedin", "apply", false},
+		{"gupy", "candidatura simplificada", false}, {"inhire", "easy apply", false}, {"gupy", "candidatar-se", false},
+	} {
+		if got := AbreSemMarca(c.plataforma, c.rotulo); got != c.quer {
+			t.Errorf("%s %q = %v", c.plataforma, c.rotulo, got)
+		}
+	}
+}

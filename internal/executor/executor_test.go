@@ -42,6 +42,11 @@ type paginaFalsa struct {
 	urls         []string  // URLAtual por chamada (vazio: final)
 	aoAnexar     func()
 	aoEnviar     func()
+	// botao: o rótulo do botão de candidatura que a página mostra antes do formulário ("" = o formulário já está).
+	botao              string
+	aoAbrirFormulario  func()
+	errAbrirFormulario error
+	abriuFormulario    int
 
 	chamadasBloqueio int
 	etapa            int
@@ -58,6 +63,22 @@ func (p *paginaFalsa) Abrir(ctx context.Context, u string) (string, error) {
 		p.final = u
 	}
 	return p.final, p.errAbrir
+}
+func (p *paginaFalsa) BotaoDeCandidatura(ctx context.Context) (string, error) {
+	if p.abriuFormulario > 0 {
+		return "", nil
+	}
+	return p.botao, nil
+}
+func (p *paginaFalsa) AbrirFormulario(ctx context.Context, rotulo string) error {
+	if rotulo != p.botao {
+		return errors.New("rótulo diferente do lido")
+	}
+	if p.aoAbrirFormulario != nil {
+		p.aoAbrirFormulario()
+	}
+	p.abriuFormulario++
+	return p.errAbrirFormulario
 }
 func (p *paginaFalsa) Bloqueio(ctx context.Context) (string, error) {
 	i := p.chamadasBloqueio

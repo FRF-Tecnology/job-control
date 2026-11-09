@@ -51,7 +51,7 @@ func (p *pagina) fazer(ctx context.Context, limite time.Duration, passos ...chro
 // Padrões dos botões (texto normalizado: sem acento, minúsculo). Abrir o formulário e avançar nunca clicam em
 // enviar; nada clica em botão que leva para fora ("no site da empresa").
 const (
-	botaoAbrir   = `^(candidatura simplificada|easy apply|candidatar-se|candidate-se|candidatar|quero me candidatar|inscrever-se|aplicar|aplicar agora|apply|apply now|postularse|postular|postularme|solicitar empleo)$`
+	botaoAbrir   = `^(candidatura simplificada|easy apply|solicitud sencilla|candidatar-se|candidate-se|candidatar|quero me candidatar|inscrever-se|aplicar|aplicar agora|apply|apply now|postularse|postular|postularme|solicitar empleo)$`
 	botaoProxima = `^(avancar|proximo|proxima|proxima etapa|continuar|seguinte|next|continue|siguiente|continuar al siguiente paso|revisar|review)\b`
 	botaoEnviar  = `^(enviar|enviar candidatura|enviar inscricao|finalizar candidatura|concluir candidatura|submit|submit application|send application|enviar solicitud|enviar postulacion|postularme ahora)\b`
 	botaoFora    = `site|website|externo|external|sitio|empresa`
@@ -59,22 +59,44 @@ const (
 
 var confirmacao = regexp.MustCompile(`candidatura (foi )?(enviada|recebida|realizada)|recebemos (a )?sua candidatura|inscricao (realizada|enviada|confirmada)|obrigad[oa] por se candidatar|application (was )?(sent|submitted|received)|your application (was|has been) (sent|submitted|received)|thank you for applying|solicitud enviada|postulacion (enviada|recibida)|hemos recibido tu (postulacion|solicitud)|gracias por postularte`)
 
-// Abrir navega para a vaga aprovada e, se a página só tem a descrição, clica no botão de candidatura da própria
-// plataforma (nunca no de site externo). Devolve onde a página parou.
+// Abrir só navega para a vaga aprovada (nenhum clique) e devolve onde a página parou. O botão de candidatura fica
+// com BotaoDeCandidatura e AbrirFormulario, para o executor gravar a marca antes do clique (revisão do CyberSec no
+// #101).
 func (p *pagina) Abrir(ctx context.Context, url string) (string, error) {
 	if err := p.fazer(ctx, tempoAbrir, chromedp.Navigate(url), chromedp.WaitReady(chromedp.CSS("body"))); err != nil {
 		return "", err
 	}
+	return p.URLAtual(ctx)
+}
+
+// BotaoDeCandidatura só lê: com a página sem formulário, o rótulo normalizado do botão de candidatura da própria
+// plataforma (nunca o de site externo); "" quando já há formulário ou não há botão.
+func (p *pagina) BotaoDeCandidatura(ctx context.Context) (string, error) {
 	r, err := p.retrato(ctx)
 	if err != nil {
 		return "", err
 	}
-	if len(executor.ClassificarCampos(r)) == 0 {
-		if _, err := p.clicar(ctx, botaoAbrir, botaoFora); err != nil {
-			return "", err
-		}
+	if len(executor.ClassificarCampos(r)) > 0 {
+		return "", nil
 	}
-	return p.URLAtual(ctx)
+	expr, err := chamada(scriptAcharBotao, botaoAbrir, botaoFora)
+	if err != nil {
+		return "", err
+	}
+	return rodar(ctx, p, tempoAcao, chromedp.Evaluate[string](expr))
+}
+
+// AbrirFormulario clica no botão de candidatura com exatamente esse rótulo (normalizado). Sem ele, erro: a página
+// mudou entre ler e clicar.
+func (p *pagina) AbrirFormulario(ctx context.Context, rotulo string) error {
+	clicou, err := p.clicar(ctx, "^"+regexp.QuoteMeta(rotulo)+"$", botaoFora)
+	if err != nil {
+		return err
+	}
+	if !clicou {
+		return errors.New("navegador: o botão de candidatura sumiu")
+	}
+	return nil
 }
 
 func (p *pagina) URLAtual(ctx context.Context) (string, error) {
@@ -360,6 +382,20 @@ const scriptIgual = `(sel, esperados, tipo) => {
     });
   };
   return atuais.some(igual) ? 'igual' : 'diferente';
+}`
+
+// scriptAcharBotao devolve o texto normalizado do primeiro botão visível e ativo que casa com padrao e não com
+// evitar, ou "" (só lê; o mesmo critério do scriptClicar).
+const scriptAcharBotao = `(padrao, evitar) => {
+  const norm = s => (s || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const visivel = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden' && (r.width > 0 || r.height > 0); };
+  const re = new RegExp(padrao), fora = new RegExp(evitar);
+  for (const b of Array.from(document.querySelectorAll('button, input[type=submit], input[type=button], [role=button]'))) {
+    if (!visivel(b) || b.disabled || b.getAttribute('aria-disabled') === 'true') continue;
+    const t = norm(b.innerText || b.value || b.getAttribute('aria-label'));
+    if (re.test(t) && !fora.test(t)) return t;
+  }
+  return '';
 }`
 
 // scriptClicar clica no primeiro botão visível e ativo cujo texto normalizado casa com padrao e não com evitar.
