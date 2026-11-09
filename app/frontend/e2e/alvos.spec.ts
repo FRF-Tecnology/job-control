@@ -4,14 +4,31 @@ import { expect, test } from '@playwright/test';
 
 const TELAS = ['hoje', 'triagem', 'fila', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil', 'ia'];
 
+// Estado da IA fictício (jc-edx): o back procura as CLIs no PC, o que demora com a máquina cheia; aqui só importa o
+// tamanho dos controles. As três situações de CLI aparecem: pronta, instalada mas não pronta, e não instalada.
+const CLI = { verificada: true, instalada: true, logada: true, versao: '1.0.0', pronta: true };
+const IA_FICTICIA = {
+  configurada: false, chaves: { anthropic: null, openai: null, google: null }, gratis: { disponivel: true },
+  uso: { chamadas: 0, falhas: 0, custoEstimadoUSD: 0 },
+  clis: [
+    { ...CLI, provedor: 'claude-cli', comando: 'claude', nome: 'Claude Code', plano: 'Claude Pro ou Max', instalar: 'https://docs.anthropic.com/claude-code' },
+    { ...CLI, provedor: 'codex-cli', comando: 'codex', nome: 'Codex CLI', plano: 'ChatGPT Plus', instalar: 'https://github.com/openai/codex', pronta: false, motivo: 'politica', aviso: 'ainda não testado neste app' },
+    { ...CLI, provedor: 'gemini-cli', comando: 'gemini', nome: 'Gemini CLI', plano: 'Conta Google', instalar: 'https://github.com/google-gemini/gemini-cli', instalada: false, logada: null, versao: undefined },
+  ],
+};
+
 test('celular: controles com alvo de toque de 44 px', async ({ page }, info) => {
   test.skip(info.project.name !== 'celular', 'alvo de toque é do celular (ponteiro grosso)');
+  await page.route('**/api/v1/ia', r => r.request().method() === 'GET' ? r.fulfill({ json: IA_FICTICIA }) : r.continue());
   const pequenos: string[] = [];
   for (const rota of TELAS) {
     await page.goto(`/#/${rota}`);
     await expect(page.locator('main#conteudo')).not.toBeEmpty();
-    // A lista de CLIs da Conectar IA chega depois (o back procura as CLIs): mede só quando ela aparece.
-    if (rota === 'ia') await expect(page.getByRole('heading', { name: 'Usar minha assinatura' })).toBeVisible({ timeout: 15_000 });
+    // A lista de CLIs vem da resposta interceptada acima: mede quando ela aparece, com as três CLIs.
+    if (rota === 'ia') {
+      await expect(page.getByRole('heading', { name: 'Usar minha assinatura' })).toBeVisible();
+      for (const nome of ['Claude Code', 'Codex CLI', 'Gemini CLI']) await expect(page.getByText(nome).first()).toBeVisible();
+    }
     pequenos.push(...await page.evaluate(r => {
       const sel = 'button, a[href], select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, [role=button]';
       return [...document.querySelectorAll<HTMLElement>(sel)].flatMap(el => {
