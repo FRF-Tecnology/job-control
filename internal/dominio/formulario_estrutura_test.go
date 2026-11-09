@@ -203,3 +203,37 @@ func TestFormularioSemChuteEImpressaoDaEstrutura(t *testing.T) {
 		t.Fatal("aceitou forms.gle como destino")
 	}
 }
+
+// Achado médio do CyberSec no #120: pergunta sensível (CPF, RG, senha, banco, documento, dado sensível, termos) nunca
+// é preenchida, nem por uma respostasPadrao que a pessoa (ou uma IA pelo /perfil) tenha gravado. A estrutura com uma
+// delas é recusada com o motivo do detector, para a leitura bloquear a candidatura (parte 2). Dados fictícios.
+func TestEstruturaComPerguntaSensivel(t *testing.T) {
+	e, c, agora := formularioPreparado(t)
+	e.Perfil = Objeto{"respostasPadrao": []any{
+		Objeto{"pergunta": "Qual o seu CPF?", "resposta": "000.000.000-00"},
+		Objeto{"pergunta": "Senha de acesso", "resposta": "senha-ficticia"},
+	}}
+	for texto, motivo := range map[string]string{
+		"Qual o seu CPF?":              "cpf",
+		"Senha de acesso":              "senha",
+		"Agência e conta bancária":     "dado-bancario",
+		"Data de nascimento":           "dado-sensivel",
+		"Li e aceito os termos de uso": "termos",
+	} {
+		perguntas := []PerguntaFormulario{{ID: "ok", Texto: "Opcional?", Tipo: "texto-curto"}, {ID: "s", Texto: texto, Tipo: "texto-curto", Obrigatoria: true}}
+		novo, _, err := GravarEstruturaFormulario(e, c.ID, perguntas, urlTypeform, agora)
+		var eb *ErroBloqueioLeitura
+		if !errors.As(err, &eb) || eb.Motivo != motivo {
+			t.Errorf("%q: erro %v; queria bloqueio %s", texto, err, motivo)
+			continue
+		}
+		if emJSONTeste(novo) != emJSONTeste(e) || strings.Contains(emJSONTeste(Estado{Candidaturas: novo.Candidaturas}), "000.000.000-00") {
+			t.Errorf("%q: gravou ou preencheu", texto)
+		}
+	}
+	// Defesa a mais: o casamento exato nunca devolve resposta para pergunta sensível.
+	rs := respostasDoFormulario(e.Perfil, Objeto{}, []PerguntaFormulario{{ID: "s", Texto: "Qual o seu CPF?", Tipo: "texto-curto"}})
+	if len(rs) != 0 {
+		t.Fatalf("respostas = %v", rs)
+	}
+}
