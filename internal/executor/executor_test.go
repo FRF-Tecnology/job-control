@@ -41,6 +41,7 @@ type paginaFalsa struct {
 	etapas       [][]Campo // formulário em etapas (vazio: uma etapa só, com campos)
 	urls         []string  // URLAtual por chamada (vazio: final)
 	aoAnexar     func()
+	aoEnviar     func()
 
 	chamadasBloqueio int
 	etapa            int
@@ -124,6 +125,9 @@ func (p *paginaFalsa) Anexar(ctx context.Context, c Campo, caminho string) error
 	return nil
 }
 func (p *paginaFalsa) Enviar(ctx context.Context) error {
+	if p.aoEnviar != nil {
+		p.aoEnviar()
+	}
 	p.enviou++
 	return p.errEnviar
 }
@@ -469,15 +473,19 @@ func TestIncertaEFalha(t *testing.T) {
 		t.Fatalf("cliques %d/%d, páginas %d", semConfirmar.enviou, erroNoClique.enviou, s.nav.abertas)
 	}
 
+	// Erro ao abrir (antes de interagir): volta para aprovada, sem contar no limite (jc-a2y.6.11). Erro ao preencher
+	// (já interagiu): falhou, como antes.
 	abrir := novaPagina()
 	abrir.errAbrir = errors.New("rede")
 	preencher := novaPagina()
 	preencher.errPreencher = errors.New("campo sumiu")
 	s2 := novoCenario(t, abrir, preencher)
-	for _, id := range []string{s2.aprovada("linkedin", linkLI), s2.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")} {
-		if d := s2.enviar(id); d.Estado != dominio.CandFalhou || d.Motivo != "erro-tecnico" {
-			t.Fatalf("%s = %+v", id, d)
-		}
+	idAbrir, idPreencher := s2.aprovada("linkedin", linkLI), s2.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000002")
+	if d := s2.enviar(idAbrir); d.Estado != dominio.CandAprovada || d.Motivo != "erro-tecnico" || s2.cand(idAbrir)["estado"] != "aprovada" {
+		t.Fatalf("erro ao abrir = %+v", d)
+	}
+	if d := s2.enviar(idPreencher); d.Estado != dominio.CandFalhou || d.Motivo != "erro-tecnico" {
+		t.Fatalf("erro ao preencher = %+v", d)
 	}
 	if preencher.enviou != 0 {
 		t.Fatal("clicou depois de erro ao preencher")

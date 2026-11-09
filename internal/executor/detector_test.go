@@ -90,7 +90,7 @@ func lerPaginas(t *testing.T) []paginaFicticia {
 }
 
 // Cada página fictícia, do começo ao fim pelo executor: o desfecho bate, e nada é enviado quando bloqueia.
-// Juntas, as páginas cobrem os 14 motivos.
+// Juntas, as páginas cobrem os 15 motivos.
 func TestPaginasFicticias(t *testing.T) {
 	cobertos := map[string]bool{}
 	for _, pf := range lerPaginas(t) {

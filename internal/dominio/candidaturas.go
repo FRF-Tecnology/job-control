@@ -39,6 +39,7 @@ var PendenciaDoMotivo = map[string]string{
 	"senha":         "A página pede uma senha: entre você e envie",
 	"dado-bancario": "A página pede dados bancários: preencha você",
 	"captcha":       "A página tem captcha: resolva você e envie",
+	"aviso-conta":   "A plataforma mostrou um aviso sobre a sua conta: veja você antes de tentar de novo",
 	"login":         "A sessão caiu ou pede verificação (2FA ou código): entre você",
 	"conta":         "A plataforma pede para criar conta: crie você",
 	"teste-pessoal": "A vaga pede teste pessoal (comportamental, vídeo ou entrevista por IA): faça você",

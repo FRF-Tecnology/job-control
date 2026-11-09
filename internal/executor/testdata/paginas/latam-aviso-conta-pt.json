@@ -1,0 +1,20 @@
+{
+ "descricao": "latam-aviso-conta-pt",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "aviso-conta"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Detectamos atividade incomum. Sua conta está temporariamente restrita.",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Voltar"
+   ]
+  }
+ ]
+}
