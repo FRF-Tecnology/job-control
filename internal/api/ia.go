@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -39,6 +41,37 @@ var (
 	reNomeProv = regexp.MustCompile(`^[a-z-]+$`)
 )
 
+// chaveHosts guarda, por provedor, o host para o qual a chave do cofre foi colada ("" = endereço padrão).
+// Não é segredo: só o host (jc-a2y.27).
+const chaveHosts = "ia-chaves-host"
+
+// hostDe: host em minúsculas, sem ponto final, com porta; "" quando não há URL própria (endereço padrão).
+// URL que não dá para ler vira um valor que nunca bate com outro host.
+func hostDe(endereco string) string {
+	endereco = trimEspacos(endereco)
+	if endereco == "" {
+		return ""
+	}
+	u, err := url.Parse(endereco)
+	if err != nil || u.Hostname() == "" {
+		return "inválido:" + endereco
+	}
+	h := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	if p := u.Port(); p != "" && p != "443" { // 443 é o padrão do https
+		h += ":" + p
+	}
+	return h
+}
+
+func (a *API) hostsDasChaves(ctx context.Context) (map[string]string, error) {
+	hosts := map[string]string{}
+	_, err := a.arm.LerMeta(ctx, chaveHosts, &hosts)
+	if hosts == nil {
+		hosts = map[string]string{}
+	}
+	return hosts, err
+}
+
 func (a *API) configIA(ctx context.Context) (ia.Config, error) {
 	var cfg ia.Config
 	_, err := a.arm.LerMeta(ctx, chaveConfig, &cfg)
@@ -50,7 +83,19 @@ func (a *API) novaIA(ctx context.Context) (*ia.IA, error) {
 	if err != nil {
 		return nil, err
 	}
-	x := ia.Nova(cfg, func(p string) string { c, _ := a.cofre.Ler(p); return c }, func(u ia.Uso) {
+	hosts, err := a.hostsDasChaves(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// jc-a2y.27: a chave só sai para o host para o qual foi colada ("" = endereço padrão do provedor).
+	chave := func(p string) string {
+		c, _ := a.cofre.Ler(p)
+		if c == "" || hosts[p] != hostDe(cfg.Provedores[p].URL) {
+			return ""
+		}
+		return c
+	}
+	x := ia.Nova(cfg, chave, func(u ia.Uso) {
 		// Medir não pode derrubar a resposta.
 		_ = a.arm.RegistrarUso(context.Background(), u.Data[:10], u)
 	})
@@ -104,8 +149,16 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		if !contem(comChave, prov) {
 			return Resposta{}, true, falha(400, "este provedor não usa chave de API")
 		}
+		hosts, err := a.hostsDasChaves(ctx)
+		if err != nil {
+			return Resposta{}, true, err
+		}
 		if m == "DELETE" {
 			if err := a.cofre.Apagar(prov); err != nil {
+				return Resposta{}, true, err
+			}
+			delete(hosts, prov)
+			if err := a.arm.GravarMeta(ctx, chaveHosts, hosts); err != nil {
 				return Resposta{}, true, err
 			}
 			r, err := ok(Objeto{"provedor": prov, "final": nil})
@@ -115,7 +168,16 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		if chave = trimEspacos(chave); len(chave) < 10 {
 			return Resposta{}, true, &dominio.ErroValidacao{Erros: []string{"cole a chave de API inteira"}}
 		}
+		cfg, err := a.configIA(ctx)
+		if err != nil {
+			return Resposta{}, true, err
+		}
 		if err := a.cofre.Gravar(prov, chave); err != nil {
+			return Resposta{}, true, err
+		}
+		// A chave fica presa ao host configurado agora para este provedor (jc-a2y.27).
+		hosts[prov] = hostDe(cfg.Provedores[prov].URL)
+		if err := a.arm.GravarMeta(ctx, chaveHosts, hosts); err != nil {
 			return Resposta{}, true, err
 		}
 		r, err := ok(Objeto{"provedor": prov, "final": segredos.Final(chave)})
@@ -231,10 +293,29 @@ func (a *API) configurarIA(ctx context.Context, c Objeto) (Resposta, error) {
 		}
 		cfg.Provedores = map[string]ia.OpcoesProvedor{prov: {URL: trimEspacos(u)}}
 	}
+	// jc-a2y.27: trocar o host de um provedor com chave apaga a chave salva para o host antigo; a pessoa cola de novo,
+	// já vendo o endereço novo. Chave salva antes desta regra conta como do endereço padrão.
+	apagada := false
+	if contem(comChave, prov) {
+		hosts, err := a.hostsDasChaves(ctx)
+		if err != nil {
+			return Resposta{}, err
+		}
+		if salva, _ := a.cofre.Ler(prov); salva != "" && hosts[prov] != hostDe(cfg.Provedores[prov].URL) {
+			if err := a.cofre.Apagar(prov); err != nil {
+				return Resposta{}, err
+			}
+			delete(hosts, prov)
+			if err := a.arm.GravarMeta(ctx, chaveHosts, hosts); err != nil {
+				return Resposta{}, err
+			}
+			apagada = true
+		}
+	}
 	if err := a.arm.GravarMeta(ctx, chaveConfig, cfg); err != nil {
 		return Resposta{}, err
 	}
-	return ok(Objeto{"configurada": true, "provedor": prov, "modelo": modelo})
+	return ok(Objeto{"configurada": true, "provedor": prov, "modelo": modelo, "chaveApagada": apagada})
 }
 
 var reHTTPS = regexp.MustCompile(`^https://`)
