@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -26,15 +27,15 @@ import (
 func main() {
 	pasta, err := config.PastaDados()
 	if err != nil {
-		log.Fatal(err)
+		falhar("pasta de dados", err)
 	}
 	arm, err := armazem.Abrir(context.Background(), config.CaminhoBanco(pasta))
 	if err != nil {
-		log.Fatal(err)
+		falhar("banco", err)
 	}
 	defer arm.Fechar()
 	if _, err := arm.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
-		log.Fatalf("primeira vez: %v", err)
+		falhar("primeira vez", err)
 	}
 	telas := os.Getenv("CENTRAL_TELAS")
 	if telas == "" {
@@ -43,7 +44,7 @@ func main() {
 	// Painel do envio sem executor: no build envio_dev, aparece ligado e abre pausado (como o app); no padrão, desligado.
 	if painelDoEnvio {
 		if err := arm.GravarEnvioPausado(context.Background(), true); err != nil {
-			log.Fatalf("envio: %v", err)
+			falhar("envio", err)
 		}
 	}
 	// Depois de "apagar meus dados", o processo sai (o banco já foi fechado e apagado).
@@ -69,6 +70,16 @@ func main() {
 	if porta == "" {
 		porta = "4500"
 	}
-	log.Printf("Central (desenvolvimento) em http://localhost:%s — dados em %s", porta, pasta)
+	log.Print(mensagemDePartida(porta))
 	log.Fatal(novoServidor("127.0.0.1:"+porta, h).ListenAndServe()) // com tempos limite (jc-a2y.14)
+}
+
+// mensagemDePartida diz onde a Central abriu e de onde veio a pasta, sem o caminho (que traz o nome do usuário).
+func mensagemDePartida(porta string) string {
+	return fmt.Sprintf("Central (desenvolvimento) em http://localhost:%s — %s", porta, config.OrigemPasta())
+}
+
+// falhar encerra com o erro de partida sem o caminho da pasta de dados nem o da pasta do usuário.
+func falhar(etapa string, err error) {
+	log.Fatalf("%s: %s", etapa, config.OcultarCaminhos(err.Error()))
 }
