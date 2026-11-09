@@ -1,0 +1,67 @@
+{
+ "descricao": "hosts-inhire-parecido",
+ "plataforma": "inhire",
+ "url": "https://empresa-teste.inhire.app/vagas/9000002/dev-go",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "site-externo"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.inhire.app/vagas/9000002/dev-go",
+   "texto": "Empresa Teste. Candidate-se",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    },
+    {
+     "id": "cv",
+     "tipo": "file",
+     "rotulo": "Currículo (PDF)",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://form-app.inhire.app.evil.com/?jobId=9000002",
+   "texto": "Questionário da vaga",
+   "campos": [
+    {
+     "id": "anos",
+     "tipo": "number",
+     "rotulo": "Anos de experiência com Go *",
+     "obrigatorio": true
+    },
+    {
+     "id": "bd",
+     "tipo": "select",
+     "rotulo": "Experiência com banco de dados?",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}
