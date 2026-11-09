@@ -80,7 +80,7 @@ O log fica **fora** da pasta de dados, para não ser apagado no passo 8. Confira
 |---|---|
 | Abrir | O painel do envio diz **ligado e pausado**. Abrir o app sempre pausa. No log: `envio: executor LIGADO`. |
 | Triagem | A vaga está em `aplicar`, aprovada pela pessoa (aperte A, se não estiver na Fila). |
-| Limite | Pôr o limite do LinkedIn em **1** para o dia. |
+| Limite | A Fila mostra o limite de hoje (LinkedIn 30). Não há tela para mudá-lo, e não precisa: só **uma** candidatura é aprovada no dia. |
 | Preparar | A Fila mostra o pacote inteiro: currículo (só o nome do PDF), contato, respostas e mensagem. Nada de CPF, RG, senha ou banco; o pacote recusa isso com 400. |
 | Aprovar | A impressão mostrada é a que vai. A aprovação vale uma vez e até 23:59:59 de hoje. |
 
