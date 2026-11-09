@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.4.8
+  version: 0.4.9
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -464,7 +464,7 @@ components:
         id: { type: string, pattern: '^cand-' }
         vagaId: { type: string }
         plataforma: { $ref: '#/components/schemas/PlataformaCandidatura' }
-        url: { type: string, pattern: '^https://', description: 'Host da plataforma (linkedin.com, gupy.io, inhire.app e subdomínios), conferido depois de analisar a URL' }
+        url: { type: string, pattern: '^https://', description: 'Host da plataforma (linkedin.com, gupy.io, inhire.app e subdomínios), conferido depois de analisar a URL. No envio, o executor aperta (lista fechada, jc-a2y.6.2.5): LinkedIn em linkedin.com, www ou subdomínio de país de 2 letras, com a vaga em /jobs/view/<n> ou currentJobId=<n>; Gupy só no host da empresa aprovado, em /jobs/<n>; InHire no host da empresa aprovado, em /vagas/<id>, ou em form-app.inhire.app com o id aprovado inteiro no endereço. Fora disso, bloqueada/site-externo' }
         estado: { $ref: '#/components/schemas/EstadoCandidatura' }
         conteudo: { $ref: '#/components/schemas/ConteudoCandidatura' }
         impressao: { type: string, pattern: '^sha256:v1:', description: 'sha256 do JSON canônico (RFC 8785) de {vagaId, plataforma, url, conteudo}' }
