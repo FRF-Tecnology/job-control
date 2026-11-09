@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/browser"
+	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 
 	"github.com/FRF-Tecnology/job-control/internal/executor"
@@ -143,6 +144,7 @@ func (n *Navegador) NovaPagina(ctx context.Context) (executor.Pagina, error) {
 		return nil, err
 	}
 	navCtx := n.navCtx
+	visivel := n.visivelAgora
 	n.abertas++
 	n.mu.Unlock()
 
@@ -151,6 +153,14 @@ func (n *Navegador) NovaPagina(ctx context.Context) (executor.Pagina, error) {
 		fechar()
 		n.paginaFechada()
 		return nil, err
+	}
+	// "Ver o envio": a aba do envio vai para a frente dentro da janela do Chrome do app (não da área de trabalho), para
+	// a pessoa não ficar olhando a aba inicial em branco (P0 da .6.5). Sem janela, não precisa.
+	if visivel {
+		if c := chromedp.FromContext(aba); c != nil && c.Target != nil {
+			// Só visual: erro não para o envio.
+			_, _ = chromedp.CallBrowser(aba, target.ActivateTarget, target.ActivateTargetParams{TargetID: c.Target.TargetID})
+		}
 	}
 	if obs := n.aoVivo; obs != nil {
 		go assistir(aba, obs) // termina quando a aba fecha

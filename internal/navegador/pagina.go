@@ -27,6 +27,7 @@ var _ executor.Pagina = (*pagina)(nil)
 const (
 	tempoAbrir       = 45 * time.Second
 	tempoAcao        = 20 * time.Second
+	tempoNavegacao   = 15 * time.Second // até a aba sair do about:blank
 	tempoConfirmacao = 15 * time.Second
 )
 
@@ -65,6 +66,10 @@ func (p *pagina) Abrir(ctx context.Context, url string) (string, error) {
 	if err := p.fazer(ctx, tempoAbrir, chromedp.Navigate(url), chromedp.WaitReady(chromedp.CSS("body"))); err != nil {
 		return "", err
 	}
+	// A navegação tem de ter saído do about:blank antes de o executor conferir o endereço (P0 da .6.5).
+	if err := p.esperarEndereco(ctx); err != nil {
+		return "", err
+	}
 	r, err := p.retrato(ctx)
 	if err != nil {
 		return "", err
@@ -75,6 +80,26 @@ func (p *pagina) Abrir(ctx context.Context, url string) (string, error) {
 		}
 	}
 	return p.URLAtual(ctx)
+}
+
+// esperarEndereco espera a aba sair do about:blank (endereço http ou https), até tempoNavegacao. Se não sair,
+// segue: o executor vê o about:blank e registra erro técnico, nunca site-externo.
+func (p *pagina) esperarEndereco(ctx context.Context) error {
+	fim := time.Now().Add(tempoNavegacao)
+	for {
+		u, err := p.URLAtual(ctx)
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://") || time.Now().After(fim) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
 }
 
 func (p *pagina) URLAtual(ctx context.Context) (string, error) {
