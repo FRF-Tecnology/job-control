@@ -2,9 +2,13 @@
 // Só leitura neste passo; aprovar e as outras ações chegam no jc-a2y.6.3.2. A impressão é recalculada aqui a
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
 import { useCallback, useEffect, useState } from 'react';
-import { useApp } from '../app/contexto';
+import { ErroApi, useApp } from '../app/contexto';
 import { impressaoCandidatura } from '../app/impressao';
+import { pacoteInicial, type Conteudo as ConteudoPacote } from '../app/pacote';
 import { Convite } from '../componentes';
+import { mercadoDe } from '../dominio/modelo';
+import { encode } from '../util';
+import { PacoteForm } from './PacoteForm';
 
 type EstadoCand = 'preparada' | 'aprovada' | 'enviando' | 'enviada' | 'bloqueada' | 'falhou' | 'incerta' | 'cancelada';
 type Resposta = { pergunta: string; resposta: string; origem: string };
@@ -81,6 +85,9 @@ export function TelaFila() {
   const [limites, setLimites] = useState<Record<string, Limite> | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
   const [conferidas, setConferidas] = useState<Record<string, 'ok' | 'diferente'>>({});
+  const [preparando, setPreparando] = useState<string | null>(null); // id da vaga com o formulário aberto
+  const [editando, setEditando] = useState<string | null>(null); // id da candidatura em edição
+  const [ocupado, setOcupado] = useState(false);
 
   const ler = useCallback(async () => {
     try {
@@ -100,6 +107,39 @@ export function TelaFila() {
     return () => { vivo = false; };
   }, [lista]);
 
+  // 409 em texto claro: duplicata (traz "existente") ou pacote que mudou enquanto a pessoa editava (versão velha).
+  const explicar = (e: unknown) => {
+    const erro = e as ErroApi;
+    if (erro instanceof ErroApi && erro.status === 409) {
+      if (erro.dados?.existente) return app.aviso('Esta vaga já tem uma candidatura ativa ou já foi enviada. Veja na fila.', true);
+      setEditando(null);
+      ler();
+      return app.aviso('O pacote mudou enquanto você editava. A fila foi atualizada; abra e edite de novo.', true);
+    }
+    app.aviso((e as Error).message, true);
+  };
+  const gravar = async (fn: () => Promise<unknown>, ok: string) => {
+    setOcupado(true);
+    try {
+      await fn();
+      app.aviso(ok);
+      setPreparando(null); setEditando(null);
+      await app.recarregar();
+      await ler();
+    } catch (e) { explicar(e); } finally { setOcupado(false); }
+  };
+  const preparar = (vagaId: string, conteudo: ConteudoPacote) =>
+    gravar(() => app.api('/api/v1/candidaturas', 'POST', { vagaId, conteudo }), 'Candidatura preparada. Revise o pacote e aprove.');
+  // Editar uma aprovada desfaz a aprovação (o servidor volta para preparada): pede confirmação antes.
+  const salvarEdicao = async (c: Candidatura, conteudo: ConteudoPacote) => {
+    if (c.estado === 'aprovada') {
+      const ok = await app.perguntar({ titulo: 'Editar desfaz a aprovação', texto: 'Depois de salvar, o pacote volta para revisão e precisa de nova aprovação.', confirmar: 'Salvar e desfazer a aprovação' });
+      if (ok === null) return;
+    }
+    await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/conteudo`, 'PUT', { conteudo, versao: c.versao }),
+      c.estado === 'aprovada' ? 'Pacote atualizado. Revise e aprove de novo.' : 'Pacote atualizado.');
+  };
+
   const cabecalho = (
     <header className="cabecalho">
       <div><h1>Fila</h1><p>O pacote exato que vai para cada vaga. Nada sai sem a sua aprovação.</p></div>
@@ -110,6 +150,12 @@ export function TelaFila() {
 
   const ordenada = [...lista].sort((a, b) => ORDEM.indexOf(a.estado) - ORDEM.indexOf(b.estado) || b.atualizadaEm.localeCompare(a.atualizadaEm));
   const vaga = (id: string) => app.estado.vagas.find((v: any) => v.id === id);
+  const perfil = app.estado.perfil ?? {};
+  const pdfs: { nome: string }[] = app.estado.curriculos ?? [];
+  // Vagas que podem ganhar candidatura: em Aplicar (ou grupo A em Descoberta no modo direto), sem uma ativa.
+  const ativas = new Set(lista.filter(c => c.estado !== 'cancelada').map(c => c.vagaId));
+  const prontas = (app.estado.vagas ?? []).filter((v: any) => !ativas.has(v.id)
+    && (v.etapa === 'aplicar' || (perfil.modo === 'direto' && v.etapa === 'descoberta' && v.aderencia === 'A')));
 
   return (
     <div className="fila">
@@ -124,8 +170,28 @@ export function TelaFila() {
         ))}
       </section>
 
+      {prontas.length > 0 && (
+        <section className="bloco prontas" aria-label="Prontas para preparar" role="region">
+          <header><h2>Prontas para preparar</h2></header>
+          <ul className="lista-cartao">
+            {prontas.map((v: any) => (
+              <li key={v.id} className="pronta">
+                <div className="pronta-topo">
+                  <strong>{`${v.empresa} — ${v.titulo}`}</strong>
+                  {preparando !== v.id && <button className="botao p" type="button" onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
+                </div>
+                {preparando === v.id && (
+                  <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, perfil, pdfs)} pdfs={pdfs}
+                    rotulo="Preparar candidatura" ocupado={ocupado} onSalvar={k => preparar(v.id, k)} onCancelar={() => setPreparando(null)} />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {ordenada.length === 0 ? (
-        <Convite titulo="Nenhuma candidatura na fila" texto="Quando você preparar a candidatura de uma vaga em Aplicar, ela aparece aqui para revisar e aprovar." />
+        <Convite titulo="Nenhuma candidatura na fila" texto="Prepare a candidatura de uma vaga em Aplicar para revisar o pacote e aprovar." />
       ) : (
         <ol className="fila-lista">
           {ordenada.map(c => {
@@ -144,6 +210,13 @@ export function TelaFila() {
                     <span className={`chip cand-${c.estado}`}>{rotulo(c)}</span>
                   </header>
                   <p className="situacao">{situacao(c)}</p>
+                  {editando === c.id ? (
+                    <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} rotulo="Salvar pacote" ocupado={ocupado}
+                      onSalvar={k => salvarEdicao(c, k)} onCancelar={() => setEditando(null)} />
+                  ) : (<>
+                  {(c.estado === 'preparada' || c.estado === 'aprovada') && (
+                    <div className="acoes"><button className="botao-fantasma p" type="button" onClick={() => { setPreparando(null); setEditando(c.id); }}>Editar pacote</button></div>
+                  )}
                   <details className="pacote" open={c.estado === 'preparada'}>
                     <summary>Pacote que vai para a vaga</summary>
                     <dl>
@@ -171,6 +244,7 @@ export function TelaFila() {
                       </dd>
                     </dl>
                   </details>
+                  </>)}
                 </article>
               </li>
             );
