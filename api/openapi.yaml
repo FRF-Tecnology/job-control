@@ -674,6 +674,9 @@ components:
               estado: { type: string, enum: [ativa, pausada, precisa-entrar, parada-hoje] }
               motivo: { type: [string, 'null'], enum: [falhas-seguidas, login, captcha, aviso-conta, null] }
               ate: { type: [string, 'null'], description: 'Só em parada-hoje: 00:00 do dia seguinte (horário local)' }
+              voltasHoje: { type: integer, minimum: 0, description: 'Voltas automáticas para aprovada hoje nesta plataforma (revisão do CyberSec no #99)' }
+              paginasHoje: { type: integer, minimum: 0, description: 'Páginas abertas hoje: tentativas que contam no limite + voltas' }
+              tetoPaginas: { type: integer, description: 'Teto diário de páginas por plataforma (40). Ao chegar nele, a plataforma espera o dia seguinte' }
         janela: { type: string, enum: [oculta, visivel], description: 'Como o navegador abre nas próximas candidaturas. oculta (sem janela, sem foco, mouse nem teclado) a cada abertura do app; visivel só por POST /envio/janela da tela. oculta também no build padrão' }
         login: { type: boolean, description: 'Há uma janela de login aberta pela pessoa (POST /navegador/entrar); enquanto true, o envio espera' }
         enviandoAgora:
