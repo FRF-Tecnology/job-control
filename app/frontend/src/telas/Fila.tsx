@@ -226,7 +226,11 @@ export function TelaFila() {
   return (
     <div className="fila">
       {cabecalho}
-      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} onEstado={setEnvio} />
+      <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} onEstado={setEnvio} fila={{
+        aprovadas: lista.filter(c => c.estado === 'aprovada').map(c => ({ id: c.id, em: c.aprovacao?.em ?? c.atualizadaEm })),
+        paraRevisar: lista.filter(c => c.estado === 'preparada').length,
+        prontas: prontas.length,
+      }} />
       <ListaDoDia candidaturas={lista} calculadas={calculadas} limites={limites} nome={c => nomeCand(c.id)} plataforma={p => PLATAFORMAS[p] ?? p}
         onFeito={() => { app.recarregar(); ler(); }} />
       <section className="limites" aria-label="Limite de hoje" role="region">
