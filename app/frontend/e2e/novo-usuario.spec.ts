@@ -140,6 +140,10 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   const vagaFila = 'li-fila-exemplo-1';
   const nova = await page.request.post('/api/v1/vagas', { data: { id: vagaFila, empresa: 'Empresa Fila Exemplo', titulo: 'Pessoa Dev Fila', link: 'https://www.linkedin.com/jobs/view/987654321', plataforma: 'linkedin' } });
   expect(nova.status(), await nova.text()).toBe(201);
+  // Outras abas dos testes em paralelo usam o mesmo servidor e também preparam sozinhas: o aviso só é exigido se foi
+  // ESTA aba que criou (201). Se outra chegou antes, esta recebe 409 (ou nem tenta) e não avisa.
+  const preparosDaAba: number[] = [];
+  page.on('response', r => { if (r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/candidaturas') preparosDaAba.push(r.status()); });
   const movida = await page.request.post(`/api/v1/vagas/${vagaFila}/mover`, { data: { etapa: 'aplicar' } });
   expect(movida.ok(), await movida.text()).toBe(true);
   await ir(page, 'fila');
@@ -150,7 +154,11 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   expect(criada.estado).toBe('preparada');
   expect(criada.conteudo.curriculo.arquivo).toBe('curriculo-exemplo.pdf');
   expect(criada.conteudo.contato.nome).toBe('Ana Teste'); // do perfil (passo 2)
-  await expect.poll(() => page.evaluate(() => (window as any).__avisos as string[])).toContainEqual(expect.stringMatching(/preparadas? sozinhas?: revise/));
+  const avisouPreparo = async () => ((await page.evaluate(() => (window as any).__avisos as string[])) ?? []).some(t => /preparadas? sozinhas?: revise/.test(t));
+  // Espera o aviso, ou esta aba ter tentado e só ter recebido 409 (outra aba preparou tudo antes).
+  await expect.poll(async () => (await avisouPreparo()) || (preparosDaAba.length > 0 && !preparosDaAba.includes(201)), { timeout: 10_000 }).toBe(true).catch(() => {});
+  if (preparosDaAba.includes(201)) await expect.poll(avisouPreparo).toBe(true); // esta aba criou: o aviso é obrigatório
+  else test.info().annotations.push({ type: 'corrida', description: `outra aba preparou antes (respostas desta aba: ${preparosDaAba.join(',') || 'nenhuma'})` });
   const naFila = page.getByTestId(criada.id);
   await expect(naFila.getByText('Para revisar')).toBeVisible();
   // O selo fica à vista; o código, recolhido em "Detalhes técnicos" (jc-a2y.6.3.5).

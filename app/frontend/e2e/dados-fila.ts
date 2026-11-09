@@ -36,7 +36,11 @@ export async function interceptar(page: Page) {
     const estado = await res.json();
     r.fulfill({ response: res, json: { ...estado, vagas: [...estado.vagas, VAGA] } });
   });
-  await page.route('**/api/v1/candidaturas', r => r.request().method() === 'GET' ? r.fulfill({ json: LISTA }) : r.continue());
+  // O POST também fica aqui: com a lista falsa, o preparo automático desta aba veria as vagas reais da jornada (que roda
+  // em paralelo no mesmo servidor) sem candidatura e criaria uma de verdade antes dela, e a jornada não veria o aviso.
+  await page.route('**/api/v1/candidaturas', r => r.request().method() === 'GET'
+    ? r.fulfill({ json: LISTA })
+    : r.fulfill({ status: 409, json: { erro: 'teste: esta aba não grava', existente: 'cand-prep' } }));
   await page.route('**/api/v1/candidaturas/limites', r => r.fulfill({ json: LIMITES }));
   await page.route('**/api/v1/envio', r => r.fulfill({ json: ENVIO }));
 }
