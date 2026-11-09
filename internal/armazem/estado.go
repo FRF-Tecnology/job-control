@@ -13,7 +13,7 @@ import (
 )
 
 // Coleções guardadas na tabela itens, na ordem em que aparecem no estado.
-var colecoes = []string{"vagas", "eventos", "plataformas", "rodadas", "pedidos", "emails"}
+var colecoes = []string{"vagas", "eventos", "plataformas", "rodadas", "pedidos", "emails", "candidaturas"}
 
 func listaDe(e *dominio.Estado, colecao string) *[]dominio.Objeto {
 	switch colecao {
@@ -29,6 +29,8 @@ func listaDe(e *dominio.Estado, colecao string) *[]dominio.Objeto {
 		return &e.Pedidos
 	case "emails":
 		return &e.Emails
+	case "candidaturas":
+		return &e.Candidaturas
 	}
 	panic("coleção desconhecida: " + colecao)
 }

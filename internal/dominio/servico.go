@@ -19,6 +19,8 @@ type Estado struct {
 	Perfil      Objeto   `json:"perfil"`
 	Pedidos     []Objeto `json:"pedidos"`
 	Emails      []Objeto `json:"emails"`
+	// Candidaturas é a fila da P5. omitempty: conta sem candidaturas sai igual ao estado do Node (golden).
+	Candidaturas []Objeto `json:"candidaturas,omitempty"`
 }
 
 // EstadoVazio é o estado de uma conta nova.
@@ -39,7 +41,7 @@ func clonarLista(l []Objeto) []Objeto {
 
 // Clonar copia o estado inteiro (nada é compartilhado com o original).
 func (e Estado) Clonar() Estado {
-	return Estado{clonarLista(e.Vagas), clonarLista(e.Eventos), clonarLista(e.Plataformas), clonarLista(e.Rodadas), clonarObj(e.Perfil), clonarLista(e.Pedidos), clonarLista(e.Emails)}
+	return Estado{clonarLista(e.Vagas), clonarLista(e.Eventos), clonarLista(e.Plataformas), clonarLista(e.Rodadas), clonarObj(e.Perfil), clonarLista(e.Pedidos), clonarLista(e.Emails), clonarLista(e.Candidaturas)}
 }
 
 // Ctx é o contexto de cada operação: quem fez, quando e de qual conta.
