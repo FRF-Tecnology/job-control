@@ -140,6 +140,9 @@ func TestEnvioNaoPegaFocoNemMouse(t *testing.T) {
 
 	frente := windows.GetForegroundWindow()
 	mouse, temMouse := posicaoDoMouse()
+	// No log do CI: com primeiro plano 0 e sem mouse, o runner não tem área de trabalho e a conferência abaixo não
+	// prova nada; fica registrado.
+	t.Logf("início: janela em primeiro plano 0x%x, mouse legível %v (%d,%d), CI %v", frente, temMouse, mouse.X, mouse.Y, noCI)
 
 	parar := make(chan struct{})
 	var mu sync.Mutex
