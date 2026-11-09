@@ -417,6 +417,24 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '404': { $ref: '#/components/responses/Erro' }
 
+  # Pasta de dados migrada para Applyer (jc-etv.7, docs/propostas/applyer-nomes-internos.md, item 1). Proposta: ainda
+  # não atendida. Nunca traz caminho.
+  /dados/pasta:
+    get:
+      x-proposta: true
+      summary: 'O que aconteceu com a pasta de dados ao abrir o app, para a tela avisar: {aviso, migradaEm}. aviso: null; pasta-antiga-ficou (as duas pastas existem: o app usa a Applyer, e a antiga continua lá para a pessoa decidir; nada é juntado sozinho); ou migracao-adiada (a pasta antiga está em uso por outro programa: o app usa a antiga nesta vez e renomeia na próxima abertura). migradaEm: quando a pasta foi renomeada, ou null. Sem caminho, sem nome de usuário'
+      responses:
+        '200':
+          description: Estado da pasta
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [aviso, migradaEm]
+                properties:
+                  aviso: { type: [string, 'null'], enum: [pasta-antiga-ficou, migracao-adiada, null] }
+                  migradaEm: { type: [string, 'null'] }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.
@@ -836,8 +854,8 @@ components:
         em: { type: string }
     ItemApagado:
       type: string
-      enum: [banco, curriculos, backups, navegador, chaves]
-      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema'
+      enum: [banco, curriculos, backups, navegador, chaves, pasta-antiga]
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe'
     ResultadoApagar:
       type: object
       additionalProperties: false
