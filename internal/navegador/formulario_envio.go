@@ -208,3 +208,9 @@ const scriptResponder = `(id, tipo, valor) => {
   campo.blur();
   return campo.value === valor ? 'ok' : 'nao-ficou';
 }`
+
+var _ executor.NavegadorDeFormulario = (*Navegador)(nil)
+
+// EnviaFormulario: este navegador envia formulário (as páginas são executor.PaginaFormulario). Sem isso, o executor
+// deixa o formulário aprovado esperando, sem tentativa.
+func (n *Navegador) EnviaFormulario() bool { return true }
