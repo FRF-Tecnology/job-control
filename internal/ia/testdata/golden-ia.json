@@ -37807,7 +37807,7 @@
    "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 401 chave recusada (confira a chave de API) [authentication_error]",
+    "mensagem": "anthropic: HTTP 401 chave recusada (confira a chave de API)",
     "regra": null,
     "erros": null,
     "reintentavel": false
@@ -37819,7 +37819,7 @@
    "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 404 modelo ou endereço não encontrado [model_not_found]",
+    "mensagem": "anthropic: HTTP 404 modelo ou endereço não encontrado",
     "regra": null,
     "erros": null,
     "reintentavel": false
@@ -37831,7 +37831,7 @@
    "chave": "chave-FICTICIA-0123/abc+XYZ=fim9876",
    "erro": {
     "tipo": "provedor",
-    "mensagem": "anthropic: HTTP 403 acesso negado (confira a chave e o plano da conta) [PERMISSION_DENIED]",
+    "mensagem": "anthropic: HTTP 403 acesso negado (confira a chave e o plano da conta)",
     "regra": null,
     "erros": null,
     "reintentavel": false

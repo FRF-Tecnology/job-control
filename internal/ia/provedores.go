@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -81,26 +80,6 @@ func mensagemHTTP(status int) string {
 	return "o provedor recusou o pedido"
 }
 
-var reCodigoErro = regexp.MustCompile(`^[A-Za-z_]{3,48}$`)
-
-// codigoErro tira do corpo de erro só um código seguro: error.code, error.type ou error.status (Anthropic, OpenAI, Google).
-// Só letras e "_", e nunca um pedaço da chave.
-func codigoErro(bruto []byte, chave string) string {
-	var j struct {
-		Error map[string]any `json:"error"`
-	}
-	if json.Unmarshal(bruto, &j) != nil || j.Error == nil {
-		return ""
-	}
-	for _, campo := range []string{"code", "type", "status"} {
-		c, _ := j.Error[campo].(string)
-		if reCodigoErro.MatchString(c) && !(chave != "" && strings.Contains(chave, c)) {
-			return c
-		}
-	}
-	return ""
-}
-
 // motivoRede descreve a falha sem repetir o texto dela (que traz o endereço e pode trazer dados do pedido).
 func motivoRede(err error) string {
 	var dns *net.DNSError
@@ -123,8 +102,8 @@ func motivoRede(err error) string {
 }
 
 // postarJSON: rede, 5xx e 429 viram erro reintentável (aciona a rota reserva).
-// A mensagem de erro é sempre um texto fixo nosso: o corpo do provedor e o texto da falha de rede nunca entram,
-// porque podem ecoar a chave (inteira, escapada, codificada ou em partes). Só passa o código curto do provedor.
+// A mensagem de erro é sempre um texto fixo nosso: nenhum valor do corpo do provedor nem o texto da falha de rede
+// entram, porque podem ecoar a chave (inteira, escapada, codificada, em partes ou com a caixa trocada).
 func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, chave string, cabecalhos map[string]string, corpo any) (map[string]any, error) {
 	dados, _ := json.Marshal(corpo)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endereco, bytes.NewReader(dados))
@@ -144,9 +123,6 @@ func postarJSON(ctx context.Context, cliente *http.Client, provedor, endereco, c
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		reintentavel := resp.StatusCode == 429 || resp.StatusCode >= 500
 		msg := fmt.Sprintf("%s: HTTP %d %s", provedor, resp.StatusCode, mensagemHTTP(resp.StatusCode))
-		if c := codigoErro(bruto, chave); c != "" {
-			msg += " [" + c + "]"
-		}
 		return nil, &ErroIA{Tipo: "provedor", Mensagem: msg, Provedor: provedor, Status: resp.StatusCode, Reintentavel: reintentavel}
 	}
 	var r map[string]any

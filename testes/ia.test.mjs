@@ -243,6 +243,7 @@ for (const p of PROVEDORES) {
 import * as provAnthropic from '../nucleo/ia/provedores/anthropic.mjs';
 import * as provOpenai from '../nucleo/ia/provedores/openai.mjs';
 import * as provGoogle from '../nucleo/ia/provedores/google.mjs';
+import { mensagemHttp } from '../nucleo/ia/provedores/http.mjs';
 
 const SEGREDO = 'FICTICIAqwerty0123456789/abcdefXYZ+fim=9876'; // fictício; gitleaks:allow
 const FORMAS = {
@@ -265,7 +266,7 @@ for (const prov of [provAnthropic, provOpenai, provGoogle]) {
           semPedaco(e.message);
           assert.equal(e.tipo, 'provedor', nome);
           assert.equal(e.status, status);
-          assert.ok(e.message.includes(`HTTP ${status} `) && e.message.endsWith('[authentication_error]'), e.message);
+          assert.equal(e.message, `${prov.nome}: HTTP ${status} ${mensagemHttp(status)}`);
           return true;
         });
       }
@@ -276,5 +277,30 @@ for (const prov of [provAnthropic, provOpenai, provGoogle]) {
       assert.equal(e.message, `${prov.nome}: falha de rede (conexão recusada)`);
       return e.reintentavel === true;
     });
+  });
+}
+
+// Nenhum valor do corpo de erro entra na mensagem: 7 ecos × 3 campos × 3 provedores (revisão CyberSec do PR #15, v2).
+const SENTINELA = 'sk-ant-api03-SENTINELAvazaKEYfragmento_ABC-123xyz'; // fictícia; gitleaks:allow
+const RUN = 'SENTINELAvazaKEYfragmento_ABC';
+const ECOS = { exato: RUN, 'caixa-baixa': RUN.toLowerCase(), 'caixa-alta': RUN.toUpperCase(), prefixado: 'x' + RUN,
+  sufixado: RUN + '_err', 'trecho+caixa': RUN.slice(0, 12).toLowerCase() + '_code', inicio: 'sk_ant_api' };
+const semLetrasDaSentinela = (msg) => {
+  const baixa = msg.toLowerCase();
+  for (const t of SENTINELA.match(/[A-Za-z]{4,}/g)) for (let i = 0; i + 4 <= t.length; i++) assert.ok(!baixa.includes(t.slice(i, i + 4).toLowerCase()), `letras da chave na mensagem: ${msg}`);
+  assert.ok(!/sk[_-]ant/.test(baixa), `começo da chave na mensagem: ${msg}`);
+};
+for (const prov of [provAnthropic, provOpenai, provGoogle]) {
+  test(`${prov.nome}: nenhum valor do corpo de erro (code, type, status) entra na mensagem`, async () => {
+    for (const campo of ['code', 'type', 'status']) {
+      for (const [nome, eco] of Object.entries(ECOS)) {
+        const fetch = async () => new Response(JSON.stringify({ error: { [campo]: eco, message: 'x' } }), { status: 401 });
+        await assert.rejects(prov.chamar({ fetch, chave: SENTINELA, modelo: 'modelo-exemplo', sistema: 's', mensagem: 'u' }), (e) => {
+          semLetrasDaSentinela(e.message);
+          assert.equal(e.message, `${prov.nome}: HTTP 401 ${mensagemHttp(401)}`, `${campo}/${nome}`);
+          return true;
+        });
+      }
+    }
   });
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -63,9 +64,9 @@ func TestErroHTTPNaoRepeteAChave(t *testing.T) {
 					defer srv.Close()
 					e := chamarProvedorFalso(t, prov, srv.URL)
 					semPedacoDoSegredo(t, e.Mensagem, segredoFicticio)
-					// Diagnóstico útil continua: tipo, status, reintentável e o código curto do provedor.
+					// Diagnóstico útil continua: tipo, status e reintentável; a mensagem é só o texto fixo do status.
 					if e.Tipo != "provedor" || e.Status != status || e.Reintentavel != (status == 429 || status >= 500) ||
-						!strings.Contains(e.Mensagem, fmt.Sprintf("HTTP %d", status)) || !strings.HasSuffix(e.Mensagem, "[authentication_error]") {
+						e.Mensagem != fmt.Sprintf("%s: HTTP %d %s", prov, status, mensagemHTTP(status)) {
 						t.Fatalf("erro = %+v", e)
 					}
 				})
@@ -74,21 +75,65 @@ func TestErroHTTPNaoRepeteAChave(t *testing.T) {
 	}
 }
 
-// Código do provedor que é pedaço da chave, ou que não é só letras e "_", não passa.
-func TestCodigoDoProvedorSoSeForSeguro(t *testing.T) {
-	casos := map[string]string{
-		`{"error":{"code":"model_not_found"}}`:                 "model_not_found",
-		`{"error":{"code":404,"status":"NOT_FOUND"}}`:          "NOT_FOUND",
-		`{"error":{"type":"FICTICIAqwerty"}}`:                  "", // pedaço da chave
-		`{"error":{"code":"sk-ant-0123"}}`:                     "", // tem "-" e dígitos
-		`{"error":{"code":"tem espaço"}}`:                      "",
-		`{"error":"texto solto"}`:                              "",
-		`não é json ` + segredoFicticio:                        "",
-		`{"error":{"code":"` + strings.Repeat("a", 49) + `"}}`: "",
+// Sentinela fictícia com trechos só de letras e "_", como numa chave base64url (revisão CyberSec do PR #15, v2).
+const sentinelaFicticia = "sk-ant-api03-SENTINELAvazaKEYfragmento_ABC-123xyz" // gitleaks:allow
+
+// ecosAlterados são trechos da sentinela com caixa trocada, prefixo, sufixo ou "_" no lugar de "-".
+func ecosAlterados() map[string]string {
+	run := "SENTINELAvazaKEYfragmento_ABC"
+	return map[string]string{
+		"exato":        run,
+		"caixa-baixa":  strings.ToLower(run),
+		"caixa-alta":   strings.ToUpper(run),
+		"prefixado":    "x" + run,
+		"sufixado":     run + "_err",
+		"trecho+caixa": strings.ToLower(run[:12]) + "_code",
+		"inicio":       "sk_ant_api",
 	}
-	for corpo, quer := range casos {
-		if got := codigoErro([]byte(corpo), segredoFicticio); got != quer {
-			t.Errorf("codigoErro(%s) = %q; queria %q", corpo, got, quer)
+}
+
+// semLetrasDaSentinela falha se a mensagem tiver 4+ letras seguidas da sentinela, em qualquer caixa,
+// ou o começo "sk_ant"/"sk-ant".
+func semLetrasDaSentinela(t *testing.T, msg string) {
+	t.Helper()
+	baixa := strings.ToLower(msg)
+	for _, trecho := range regexp.MustCompile(`[A-Za-z]{4,}`).FindAllString(sentinelaFicticia, -1) {
+		trecho = strings.ToLower(trecho)
+		for i := 0; i+4 <= len(trecho); i++ {
+			if strings.Contains(baixa, trecho[i:i+4]) {
+				t.Fatalf("a mensagem traz letras da chave (%q): %q", trecho[i:i+4], msg)
+			}
+		}
+	}
+	if strings.Contains(baixa, "sk_ant") || strings.Contains(baixa, "sk-ant") {
+		t.Fatalf("a mensagem traz o começo da chave: %q", msg)
+	}
+}
+
+// Nenhum valor do corpo de erro entra na mensagem: 7 ecos × 3 campos (code, type, status) × 3 provedores.
+func TestNenhumValorDoCorpoNaMensagem(t *testing.T) {
+	for _, prov := range []string{"anthropic", "openai", "google"} {
+		for _, campo := range []string{"code", "type", "status"} {
+			for nome, eco := range ecosAlterados() {
+				t.Run(prov+"/"+campo+"/"+nome, func(t *testing.T) {
+					srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(401)
+						fmt.Fprintf(w, `{"error":{%q:%q,"message":"x"}}`, campo, eco)
+					}))
+					defer srv.Close()
+					p := Nova(Config{}, nil, nil).Provedores[prov]
+					_, err := p.Chamar(context.Background(), PedidoProvedor{Modelo: "modelo-exemplo", Chave: sentinelaFicticia,
+						Opcoes: OpcoesProvedor{URL: srv.URL}, Prompt: Prompt{Sistema: "s", Mensagem: "u"}})
+					var e *ErroIA
+					if !errors.As(err, &e) {
+						t.Fatalf("erro inesperado: %v", err)
+					}
+					semLetrasDaSentinela(t, e.Mensagem)
+					if e.Mensagem != prov+": HTTP 401 "+mensagemHTTP(401) {
+						t.Fatalf("mensagem = %q", e.Mensagem)
+					}
+				})
+			}
 		}
 	}
 }

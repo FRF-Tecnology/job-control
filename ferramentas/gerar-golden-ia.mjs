@@ -135,7 +135,7 @@ for (const [status, corpo] of [[429, 'devagar'], [500, 'quebrou chave-anthropic'
 }
 try { await anthropic.chamar({ fetch: async () => new Response('x'), chave: '', modelo: 'm', ...p0 }); } catch (e) { errosHttp.push({ status: 0, corpo: 'sem chave', erro: { ...erroDe(e), reintentavel: e.reintentavel ?? null } }); }
 // Corpos de erro no formato de cada provedor, ecoando uma chave fictícia de várias formas (jc-a2y.18).
-// A mensagem só pode ter texto fixo e, no máximo, o código curto do provedor.
+// A mensagem só pode ter o texto fixo do status: nenhum valor do corpo entra.
 const chaveEco = 'chave-FICTICIA-0123/abc+XYZ=fim9876';
 const ecos = [chaveEco, chaveEco.replaceAll('/', '\\/'), encodeURIComponent(chaveEco), chaveEco.slice(0, 14) + '...' + chaveEco.slice(-4), chaveEco.slice(-20)];
 for (const [status, corpo] of [
