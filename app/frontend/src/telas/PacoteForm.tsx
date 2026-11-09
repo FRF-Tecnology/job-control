@@ -1,6 +1,6 @@
 // Formulário do pacote da candidatura (P5, jc-a2y.6.3.3): preparar e editar. O que está aqui é exatamente o que vai
 // para a vaga. Resposta editada pela pessoa passa a ter origem "Você"; a da IA fica marcada até ser editada.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { avisoCurriculo, conteudoParaEnviar, type Conteudo } from '../app/pacote';
 import { NOME_MOTIVO_SENSIVEL, perguntaSensivel } from '../app/sensivel';
 
@@ -12,6 +12,9 @@ export function PacoteForm({ inicial, pdfs, perfil, rotulo, ocupado, foraDoPacot
   onSalvar: (c: Conteudo) => void; onCancelar: () => void;
 }) {
   const [c, setC] = useState<Conteudo>(() => structuredClone(inicial));
+  // Ao abrir, o foco vai para o primeiro campo, para quem usa teclado ou leitor de tela seguir dali (jc-a2y.59).
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => { formRef.current?.querySelector<HTMLElement>('select, input, textarea')?.focus(); }, []);
   const mudar = (f: (x: Conteudo) => void) => setC(atual => { const n = structuredClone(atual); f(n); return n; });
   const nomes = pdfs.map(p => p.nome);
   if (c.curriculo.arquivo && !nomes.includes(c.curriculo.arquivo)) nomes.unshift(c.curriculo.arquivo);
@@ -22,7 +25,7 @@ export function PacoteForm({ inicial, pdfs, perfil, rotulo, ocupado, foraDoPacot
   const temSensivel = sensiveis.some(Boolean);
 
   return (
-    <form className="formulario pacote-form" aria-label="Pacote da candidatura" onSubmit={ev => { ev.preventDefault(); if (!temSensivel && !semPDF) onSalvar(conteudoParaEnviar(c)); }}>
+    <form ref={formRef} className="formulario pacote-form" aria-label="Pacote da candidatura" onSubmit={ev => { ev.preventDefault(); if (!temSensivel && !semPDF) onSalvar(conteudoParaEnviar(c)); }}>
       <div className="duas">
         <label className="campo"><span>Currículo</span>
           <select value={c.curriculo.arquivo} disabled={semPDF} onChange={ev => { const v = ev.target.value; mudar(x => { x.curriculo = { arquivo: v }; }); }}>
