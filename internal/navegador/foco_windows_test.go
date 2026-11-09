@@ -143,6 +143,10 @@ func TestEnvioNaoPegaFocoNemMouse(t *testing.T) {
 	// No log do CI: com primeiro plano 0 e sem mouse, o runner não tem área de trabalho e a conferência abaixo não
 	// prova nada; fica registrado.
 	t.Logf("início: janela em primeiro plano 0x%x, mouse legível %v (%d,%d), CI %v", frente, temMouse, mouse.X, mouse.Y, noCI)
+	// No CI, sem área de trabalho a conferência passaria sem provar nada (sugestão do Kauai no #76): falha.
+	if noCI && (frente == 0 || !temMouse) {
+		t.Fatalf("CI sem área de trabalho: primeiro plano 0x%x, mouse legível %v; a conferência não provaria nada", frente, temMouse)
+	}
 
 	parar := make(chan struct{})
 	var mu sync.Mutex

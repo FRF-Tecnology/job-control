@@ -121,6 +121,13 @@ O log fica **fora** da pasta de dados, para não ser apagado no passo 8, e em `%
 
 O desfecho também aparece no painel do envio ("Últimos envios").
 
+**Captcha, login ou aviso de conta** (do CyberSec, no #76): se a plataforma mostrar um captcha, pedir login de novo ou exibir um aviso sobre a conta (atividade incomum, verificação, restrição), faça assim:
+- registre no bead `jc-a2y.6.5` o que apareceu e a hora, sem print com dados pessoais;
+- deixe a candidatura em `bloqueada`;
+- **não tente de novo no mesmo dia**: não reabra, não aprove de novo e não aperte Retomar;
+- o Vinicius resolve na plataforma, à mão, se quiser;
+- a próxima tentativa só acontece em outro dia, combinada com o CyberSec.
+
 ## 8. Fechar o dia
 
 1. No app, **Pausar** e depois "Sair das plataformas", que apaga a sessão do LinkedIn do perfil do app.
