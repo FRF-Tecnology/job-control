@@ -8,7 +8,8 @@ info:
     gravada em internal/api/testdata/golden-api.json. Erros: 400 validação ({erro, erros}),
     404 não encontrado, 409 duplicata ({erro, existente}), 415 sem JSON, 403 gravação de outro site,
     413 corpo grande demais. Rotas /ia (só no app Go): 422 saída da IA fora do contrato ou bloqueada
-    pela guarda, 502 provedor fora ({erro, tipo, regra}). O teste internal/api/contrato_test.go
+    pela guarda, 502 provedor fora ({erro, tipo, regra}). 500 erro inesperado ({erro}): hoje o texto
+    é o erro interno e pode trazer o caminho da pasta de dados (risco conhecido, jc-a2y.13). O teste internal/api/contrato_test.go
     confere este arquivo contra as rotas da API.
 servers:
   - url: /api/v1
@@ -54,7 +55,9 @@ paths:
   /backup: { post: { summary: 'Backup do dia ({criado, data})' } }
 
   # IA da pessoa (internal/api/ia.go). A chave de API só entra (PUT) e vai para o cofre do sistema;
-  # nenhuma resposta traz a chave, só o final ("…" + 4 últimos caracteres).
+  # os campos de chave das respostas trazem só o final ("…" + 4 últimos caracteres).
+  # Risco conhecido (jc-a2y.18): o texto de erro do 502 inclui trecho do corpo de erro do provedor e,
+  # se o provedor ecoar a chave escapada ou em partes, ela pode aparecer ali.
   /ia:
     get:
       summary: 'O que está conectado, CLIs detectadas, chaves salvas (só o final) e uso dos últimos 30 dias'
@@ -170,7 +173,7 @@ components:
       type: object
       required: [erro, tipo, regra]
       properties:
-        erro: { type: string }
+        erro: { type: string, description: 'Texto para a pessoa. No 502 inclui até 300 caracteres do erro do provedor (ver jc-a2y.18)' }
         tipo: { type: string, description: 'config ou entrada (400), provedor (502), regra ou esquema (422)' }
         regra: { type: [string, 'null'], description: Regra da guarda que bloqueou }
     ConfigIA:
@@ -244,5 +247,5 @@ components:
       description: 'Saída da IA fora do contrato (tipo esquema) ou bloqueada pela guarda (tipo regra); não troca de modelo'
       content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
     ErroIAProvedor:
-      description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor)'
+      description: 'Provedor fora do ar, tempo esgotado ou HTTP de erro (tipo provedor). O erro repete trecho da resposta do provedor; até jc-a2y.18, não exiba nem registre esse texto achando que está livre de chave'
       content: { application/json: { schema: { $ref: '#/components/schemas/ErroIA' } } }
