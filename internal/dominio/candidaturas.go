@@ -91,9 +91,11 @@ type Candidatura struct {
 	// candidatura nunca volta sozinha para aprovada.
 	InteragiuEm    string `json:"interagiuEm,omitempty"`
 	ClicouEnviarEm string `json:"clicouEnviarEm,omitempty"`
-	Versao         int    `json:"versao"`
-	CriadaEm       string `json:"criadaEm"`
-	AtualizadaEm   string `json:"atualizadaEm"`
+	// Formulário (jc-a2y.7.2): o link trazia pré-preenchimento, que foi tirado (só o fato; os valores nunca ficam).
+	PreenchimentoIgnorado bool   `json:"preenchimentoIgnorado,omitempty"`
+	Versao                int    `json:"versao"`
+	CriadaEm              string `json:"criadaEm"`
+	AtualizadaEm          string `json:"atualizadaEm"`
 }
 
 // Retentativa: uma volta automática para aprovada (instante e código da falha, da lista fechada).
@@ -160,11 +162,15 @@ func soPessoa(ctx Ctx, acao string) error {
 	return &ErroSoPessoa{"só a pessoa pode " + acao + " uma candidatura"}
 }
 
-// PlataformaDaVaga: linkedin, gupy ou inhire pelo campo plataforma da vaga; o resto é "outra".
+// PlataformaDaVaga: linkedin, gupy ou inhire pelo campo plataforma da vaga; link de formulário da lista exata
+// (Google Forms, Typeform, jc-a2y.7.2) é "formulario"; o resto é "outra".
 func PlataformaDaVaga(v Objeto) string {
 	p := strings.ToLower(strings.TrimSpace(texto(v["plataforma"])))
 	if _, ok := hostsDaPlataforma[p]; ok {
 		return p
+	}
+	if _, _, ok := FormularioDoEndereco(texto(v["link"])); ok {
+		return PlataformaFormulario
 	}
 	return "outra"
 }
@@ -173,6 +179,10 @@ func PlataformaDaVaga(v Objeto) string {
 // subdomínio dele. Compara o host já analisado pela biblioteca de URL (M5): "linkedin.com@x.io", "evil-linkedin.com"
 // e "linkedin.com.x.io" não passam. Para "outra", basta https com host.
 func URLDaPlataforma(plataforma, endereco string) bool {
+	if plataforma == PlataformaFormulario { // lista exata de hosts e caminhos (jc-a2y.7.2)
+		_, _, ok := FormularioDoEndereco(endereco)
+		return ok
+	}
 	u, err := url.Parse(strings.TrimSpace(endereco))
 	if err != nil || u.Scheme != "https" || u.User != nil {
 		return false
@@ -441,19 +451,25 @@ func CriarCandidatura(e Estado, vagaID string, conteudo Objeto, agora time.Time,
 	if !URLDaPlataforma(plataforma, link) {
 		return e, nil, validacao("o link da vaga precisa ser https e do site da plataforma (" + plataforma + ")")
 	}
+	// Formulário (jc-a2y.7.2): guarda só a URL canônica; o pré-preenchimento do link é tirado e fica só o fato.
+	preenchido := false
+	if plataforma == PlataformaFormulario {
+		link, preenchido, _ = FormularioDoEndereco(link)
+	}
 	impressao, err := ImpressaoCandidatura(vagaID, plataforma, link, conteudo)
 	if err != nil {
 		return e, nil, err
 	}
 	c := Candidatura{
-		ID:         fmt.Sprintf("cand-%s-%04d-%s", ctx.Agora, len(e.Candidaturas)+1, ctx.sufixo()),
-		VagaID:     vagaID,
-		Plataforma: plataforma,
-		URL:        link,
-		Estado:     CandPreparada,
-		Conteudo:   clonarObj(conteudo),
-		Impressao:  impressao,
-		CriadaEm:   agora.Format(time.RFC3339),
+		ID:                    fmt.Sprintf("cand-%s-%04d-%s", ctx.Agora, len(e.Candidaturas)+1, ctx.sufixo()),
+		VagaID:                vagaID,
+		Plataforma:            plataforma,
+		URL:                   link,
+		Estado:                CandPreparada,
+		Conteudo:              clonarObj(conteudo),
+		Impressao:             impressao,
+		PreenchimentoIgnorado: preenchido,
+		CriadaEm:              agora.Format(time.RFC3339),
 	}
 	novo, o := salvarCandidatura(e, -1, c, agora)
 	return novo, o, nil
