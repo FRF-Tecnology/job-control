@@ -4,7 +4,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // NomePasta é a pasta do app dentro da pasta de configuração do usuário.
@@ -35,9 +34,10 @@ func OrigemPasta() string {
 
 // OcultarCaminhos troca, num texto de erro ou de log, a pasta de dados e a pasta do usuário por marcadores
 // (<CENTRAL_PASTA>, <pasta padrão>, ~), para a saída de partida não mostrar o nome do usuário. Troca também a
-// forma curta do Windows (C:\Users\NOME~1) e a versão com barras normais. Caminhos relativos ficam como estão.
+// forma curta do Windows (C:\Users\NOME~1). No Windows, sem diferenciar maiúsculas e com \ ou / (substituir, em
+// curto_windows.go). Caminhos relativos ficam como estão.
 func OcultarCaminhos(texto string) string {
-	var pares []string
+	var pares [][2]string // forma do caminho e marcador, do mais específico para o mais geral
 	trocar := func(caminho, marcador string) {
 		if caminho == "" || !filepath.IsAbs(caminho) {
 			return
@@ -51,13 +51,10 @@ func OcultarCaminhos(texto string) string {
 			formas = append(formas, c)
 		}
 		for _, f := range formas {
-			pares = append(pares, f, marcador)
-			if s := filepath.ToSlash(f); s != f {
-				pares = append(pares, s, marcador)
-			}
+			pares = append(pares, [2]string{f, marcador})
 		}
 	}
-	// Do mais específico para o mais geral: o Replacer tenta na ordem dos pares quando dois começam no mesmo ponto.
+	// Do mais específico para o mais geral: a CENTRAL_PASTA e a pasta padrão costumam ficar dentro da do usuário.
 	trocar(os.Getenv("CENTRAL_PASTA"), "<CENTRAL_PASTA>")
 	if base, err := os.UserConfigDir(); err == nil {
 		trocar(filepath.Join(base, NomePasta), "<pasta padrão>")
@@ -68,7 +65,7 @@ func OcultarCaminhos(texto string) string {
 	if len(pares) == 0 {
 		return texto
 	}
-	return strings.NewReplacer(pares...).Replace(texto)
+	return substituir(texto, pares)
 }
 
 // CaminhoBanco é o arquivo SQLite dentro da pasta de dados.
