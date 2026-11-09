@@ -116,7 +116,11 @@ func respostaDeErro(err error) (Resposta, bool) {
 		return Resposta{Status: 400, Corpo: Objeto{"erro": ev.Error(), "erros": ev.Erros}}, true
 	case errors.As(err, &ed):
 		return Resposta{Status: 409, Corpo: Objeto{"erro": ed.Error(), "existente": ed.Existente}}, true
-	case reNaoEncontrado.MatchString(err.Error()):
+	}
+	if r, ok := respostaDaFila(err); ok {
+		return r, true
+	}
+	if reNaoEncontrado.MatchString(err.Error()) {
 		return Resposta{Status: 404, Corpo: Objeto{"erro": err.Error()}}, true
 	}
 	return Resposta{}, false
@@ -379,6 +383,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{}, falha(400, "envie um objeto JSON")
 	}
 	c := dominio.ObjetoDe(corpo)
+
+	if strings.HasPrefix(p, "/candidaturas") {
+		if r, feito, err := a.rotasCandidaturas(ctx, m, p, q, c, autor); feito {
+			return r, err
+		}
+	}
 
 	if strings.HasPrefix(p, "/ia") {
 		if r, feito, err := a.rotasIA(ctx, m, p, c); feito {
