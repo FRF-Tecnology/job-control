@@ -9,6 +9,7 @@ import { Convite } from '../componentes';
 import { mercadoDe } from '../dominio/modelo';
 import { encode } from '../util';
 import { PacoteForm } from './PacoteForm';
+import { ListaDoDia } from './ListaDoDia';
 import { entrarNavegador, PainelEnvio, type EstadoEnvio } from './PainelEnvio';
 import { LimiteCartao, type Limite } from './LimiteDiario';
 
@@ -226,6 +227,8 @@ export function TelaFila() {
     <div className="fila">
       {cabecalho}
       <PainelEnvio nome={nomeCand} motivo={m => MOTIVOS[m] ?? 'Outro'} onEstado={setEnvio} />
+      <ListaDoDia candidaturas={lista} calculadas={calculadas} limites={limites} nome={c => nomeCand(c.id)} plataforma={p => PLATAFORMAS[p] ?? p}
+        onFeito={() => { app.recarregar(); ler(); }} />
       <section className="limites" aria-label="Limite de hoje" role="region">
         {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
           <LimiteCartao key={p} plataforma={p} nome={PLATAFORMAS[p]} na={NA_PLATAFORMA[p]} limite={limites[p]}
