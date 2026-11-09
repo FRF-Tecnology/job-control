@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.7.0
+  version: 0.9.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -24,12 +24,12 @@ paths:
   /resumo: { get: { summary: Números do dia } }
   /vagas:
     get: { summary: 'Lista de vagas (?etapa=, ?plataforma=)' }
-    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28)' }
+    post: { summary: 'Cria uma vaga (201; 409 se duplicada), uma lista ou {lista, forcar} (resultado por item). Só a pessoa cria fora de descoberta; o assistente recebe 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta adicionar-vaga de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] }
   /vagas/importar: { post: { summary: 'Importa vagas de fora: só cria em Descoberta (etapa, envio e datas são ignorados)' } }
   /vagas/{id}:
     get: { summary: Vaga com os eventos dela }
     patch: { summary: 'Muda campos editáveis (notasAntes recusa edição em conflito)' }
-  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28)' } }
+  /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1, x-proposta): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
@@ -46,6 +46,40 @@ paths:
     get: { summary: 'Pedidos da caixa "O que vamos fazer hoje?" (?status=)' }
     post: { summary: 'Novo pedido {texto} (201)' }
   /pedidos/{id}/concluir: { post: { summary: 'Conclui com {resposta}' } }
+  # Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md). Proposta: ainda não atendidas.
+  # A IA só propõe UMA ação de um catálogo fechado; nada grava sem a pessoa confirmar na tela a impressão da proposta.
+  # Fora do catálogo para sempre: aprovar, retomar, janela, entrar, modo direto, mover para aplicar, apagar, limite, chaves.
+  /pedidos/{id}/interpretar:
+    post:
+      x-proposta: true
+      x-so-tela: true
+      summary: 'A IA conectada interpreta o pedido aberto e propõe uma ação do catálogo (adicionar-vaga, registrar-etapa, preparar-pacote, responder, recusar). Não grava nada no domínio; guarda a proposta no pedido (status proposta, ou recusado). A IA recebe só o pedido e a lista mínima das vagas (id, empresa, título, etapa, datas). Só a tela (gasta a IA da pessoa); uma interpretação por vez'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'Pedido com a proposta (ou recusado, com o motivo)', content: { application/json: { schema: { $ref: '#/components/schemas/PedidoComProposta' } } } }
+        '400': { description: 'Nenhuma IA conectada, ou corpo inválido: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '404': { description: 'Pedido não encontrado: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'O pedido não está aberto, ou já há uma interpretação em andamento: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '422': { description: 'A IA respondeu fora do contrato, ou com uma ação fora do catálogo: {erro, tipo, regra}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '502': { description: 'Provedor da IA fora: {erro, tipo}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /pedidos/{id}/descartar:
+    post:
+      x-proposta: true
+      summary: 'Descarta a proposta: o pedido volta a aberto. Qualquer autor (só reduz o risco)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: 'Pedido aberto, sem proposta', content: { application/json: { schema: { $ref: '#/components/schemas/PedidoComProposta' } } } }
+        '404': { description: 'Pedido não encontrado: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'O pedido não tem proposta: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /emails:
     get: { summary: 'Emails registrados (?status=, ?vaga=)' }
     post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica' }
@@ -784,6 +818,80 @@ components:
         limite: { type: integer }
         usadas: { type: integer }
         renovaEm: { type: string }
+    PedidoComProposta:
+      type: object
+      required: [id, texto, status]
+      properties:
+        id: { type: string }
+        texto: { type: string, description: 'O que a pessoa digitou (dado não confiável: a tela mostra como texto)' }
+        status: { type: string, enum: [aberto, proposta, recusado, feito] }
+        proposta: { oneOf: [{ $ref: '#/components/schemas/PropostaPedido' }, { type: 'null' }] }
+        resultado:
+          type: [object, 'null']
+          additionalProperties: false
+          description: 'Só em feito'
+          properties:
+            vagaId: { type: string, description: 'adicionar-vaga e registrar-etapa' }
+            abrir: { type: string, pattern: '^#/fila\?preparar=', description: 'preparar-pacote: a tela abre a Fila para a pessoa preparar' }
+    PropostaPedido:
+      type: object
+      additionalProperties: false
+      required: [acao, parametros, resumo, chamada, impressao, falta, criadaEm]
+      properties:
+        acao: { type: string, enum: [adicionar-vaga, registrar-etapa, preparar-pacote, responder, recusar] }
+        parametros:
+          description: 'Um esquema por ação, todos estritos (additionalProperties false); o servidor confere que o esquema é o da acao'
+          oneOf:
+            - title: adicionar-vaga
+              type: object
+              additionalProperties: false
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 500, pattern: '^https://[^/@\s]+(/[^\s]*)?$', description: 'https, sem usuário/senha nem espaço; o servidor não busca' }
+                empresa: { type: string, maxLength: 120 }
+                titulo: { type: string, maxLength: 120 }
+            - title: registrar-etapa
+              type: object
+              additionalProperties: false
+              required: [vagaId, etapa]
+              properties:
+                vagaId: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$' }
+                etapa: { type: string, enum: [enviada, em-processo, oferta, encerrada, pulada], description: 'Nunca aplicar, descoberta nem bloqueada' }
+                motivo: { type: string, enum: [Sênior, Inglês, Diploma, Stack, Presencial/Local, Documento, Duplicada, Vaga fechada, Outro, Reprovada, Sem retorno, Desisti], description: 'Pulada: MotivosPulo; encerrada: MotivosEncerramento; o servidor confere o par' }
+                sub: { type: string, enum: [teste, entrevista-rh, entrevista-tecnica, proposta], description: 'Só com em-processo' }
+            - title: preparar-pacote
+              type: object
+              additionalProperties: false
+              required: [vagaId]
+              properties:
+                vagaId: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$' }
+            - title: responder
+              type: object
+              additionalProperties: false
+              required: [texto]
+              properties:
+                texto: { type: string, maxLength: 1500, pattern: '^[^<>]*$', description: 'Texto puro: a tela mostra como texto, sem link automático' }
+            - title: recusar
+              type: object
+              additionalProperties: false
+              required: [motivo]
+              properties:
+                motivo: { type: string, enum: [so-a-pessoa, fora-do-app, nao-entendi] }
+        resumo: { type: string, description: 'Montado pelo servidor com frases fixas, nunca com texto da IA: o que muda e em qual vaga (empresa e título do banco); em adicionar-vaga, sempre com o host do link. A tela mostra antes de confirmar. No responder, o texto da IA (parametros.texto) aparece à parte, rotulado "resposta da IA"' }
+        chamada:
+          description: 'A chamada à rota que já existe que a tela faz ao confirmar (só adicionar-vaga e registrar-etapa; null nas outras). Montada pelo servidor a partir da ação validada; nunca uma rota fora destas duas'
+          oneOf:
+            - type: 'null'
+            - type: object
+              additionalProperties: false
+              required: [metodo, caminho, corpo]
+              properties:
+                metodo: { type: string, enum: [POST] }
+                caminho: { type: string, pattern: '^/vagas(/[A-Za-z0-9._-]{1,80}/mover)?$' }
+                corpo: { type: object, description: 'POST /vagas: {link, empresa?, titulo?} (descoberta). /mover: {etapa, motivo?, subEtapa?}' }
+        impressao: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$', description: 'sha256 do JSON canônico (RFC 8785, como na Fila) de {pedidoId, acao, parametros}. A tela manda em X-Impressao com X-Pedido; ao confirmar, o servidor exige esta impressão E a chamada recebida igual à guardada' }
+        falta: { type: array, items: { type: string }, description: 'O que ainda fica com a pessoa (frases fixas)' }
+        criadaEm: { type: string }
     ErroLogin:
       type: object
       additionalProperties: false
