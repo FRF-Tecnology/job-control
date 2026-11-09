@@ -20,6 +20,20 @@ async function responder(page: Page, valor: string) {
 
 test.describe.configure({ mode: 'serial' });
 
+// Os avisos somem sozinhos em ~3 s. Numa máquina lenta, conferir o aviso na tela pode chegar tarde e falhar à toa
+// (jc-a2y.55). Cada aviso que aparece fica registrado, e a jornada confere o registro: continua provando que a pessoa
+// viu a mensagem, sem depender do relógio.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.__avisos = [];
+    new MutationObserver(ms => {
+      for (const m of ms) for (const n of m.addedNodes) if (n instanceof HTMLElement && n.classList.contains('aviso')) w.__avisos.push(n.textContent ?? '');
+    }).observe(document, { childList: true, subtree: true });
+  });
+});
+const avisou = (page: Page, texto: string) => expect.poll(() => page.evaluate(() => (window as any).__avisos as string[])).toContain(texto);
+
 test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   test.skip(info.project.name !== 'pc', 'a jornada grava dados; roda só uma vez');
 
@@ -36,7 +50,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await ir(page, 'perfil');
   await page.locator('#perfil-nome').fill('Ana Teste');
   await page.locator('form.formulario button[type=submit]').first().click();
-  await expect(page.getByText('Perfil salvo')).toBeVisible();
+  await avisou(page, 'Perfil salvo');
   await ir(page, 'hoje');
   await expect(page.getByRole('heading', { name: 'Olá, Ana.' })).toBeVisible();
   await expect(page.getByText('1 de 3 prontos')).toBeVisible();
@@ -67,7 +81,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect(coluna.locator('article.cartao')).toHaveCount(1);
   await coluna.locator('article.cartao').click();
   await page.locator('aside.gaveta select').first().selectOption('enviada');
-  await expect(page.getByText('Movida para Enviada')).toBeVisible();
+  await avisou(page, 'Movida para Enviada');
   await expect(page.locator('aside.gaveta .etapa')).toHaveText('Enviada');
 
   // 7. Hoje e Números contam o envio.
@@ -102,7 +116,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
 
   await aprovarTodas.click();
   await dlg.getByRole('button', { name: 'Aprovar 2 vagas' }).click();
-  await expect(page.getByText('2 vagas foram para a fila do Claude.')).toBeVisible();
+  await avisou(page, '2 vagas foram para a fila do Claude.');
   await expect(page.locator('.ficha .empresa')).toHaveText('Empresa ext-grupo-b-1');
   expect(await etapas()).toEqual({ 'ext-grupo-a-1': 'aplicar', 'ext-grupo-a-2': 'aplicar', 'ext-grupo-b-1': 'descoberta' });
   const eventos = (await (await page.request.get('/api/v1/estado')).json()).eventos.filter((e: any) => e.tipo === 'aplicar' && e.vagaId.startsWith('ext-grupo-'));
@@ -129,7 +143,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await form.getByLabel('Pergunta 1', { exact: true }).fill('Anos com React?');
   await form.getByLabel('Resposta 1', { exact: true }).fill('3');
   await form.getByRole('button', { name: 'Preparar candidatura' }).click();
-  await expect(page.getByText('Candidatura preparada. Revise o pacote e aprove.')).toBeVisible();
+  await avisou(page, 'Candidatura preparada. Revise o pacote e aprove.');
   const cands = await (await page.request.get('/api/v1/candidaturas')).json();
   const criada = cands.find((c: any) => c.vagaId === vagaFila);
   expect(criada.conteudo.curriculo.arquivo).toBe('curriculo-exemplo.pdf');
@@ -145,7 +159,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await naFila.getByRole('button', { name: 'Editar pacote' }).click();
   await naFila.getByLabel('Mensagem').fill('Olá, tenho interesse na vaga.');
   await naFila.getByRole('button', { name: 'Salvar pacote' }).click();
-  await expect(page.getByText('Pacote atualizado.')).toBeVisible();
+  await avisou(page, 'Pacote atualizado.');
   const editada = (await (await page.request.get(`/api/v1/candidaturas/${criada.id}`)).json());
   expect(editada.conteudo.mensagem).toBe('Olá, tenho interesse na vaga.');
   expect(editada.impressao).not.toBe(criada.impressao);
@@ -161,15 +175,15 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   const dlgFila = page.locator('dialog#dialogo');
   await expect(dlgFila.getByRole('heading')).toHaveText('Aprovar e enviar este pacote?');
   await dlgFila.getByRole('button', { name: 'Aprovar e enviar' }).click();
-  await expect(page.getByText('Aprovado. O app envia este pacote hoje, uma vez.')).toBeVisible();
+  await avisou(page, 'Aprovado. O app envia este pacote hoje, uma vez.');
   expect(await estadoNaApi()).toBe('aprovada');
   await expect(naFila.getByText(/Aprovada até/)).toBeVisible();
   await naFila.getByRole('button', { name: 'Tirar aprovação' }).click();
-  await expect(page.getByText('Aprovação retirada. O pacote voltou para revisão.')).toBeVisible();
+  await avisou(page, 'Aprovação retirada. O pacote voltou para revisão.');
   expect(await estadoNaApi()).toBe('preparada');
   await naFila.getByRole('button', { name: 'Cancelar candidatura' }).click();
   await dlgFila.getByRole('button', { name: 'Cancelar candidatura' }).click();
-  await expect(page.getByText('Candidatura cancelada.')).toBeVisible();
+  await avisou(page, 'Candidatura cancelada.');
   expect(await estadoNaApi()).toBe('cancelada');
   await expect(naFila.getByText('Cancelada', { exact: true })).toBeVisible();
 });
