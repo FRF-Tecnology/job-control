@@ -66,6 +66,8 @@ Antes, **abra o app uma vez e feche**, com o `CENTRAL_PASTA` do passo 2 (o coman
 - Feche **todas** as janelas desse Chrome e confira que ele não ficou rodando em segundo plano: nenhum ícone do Chrome perto do relógio e nenhum `chrome.exe` desse perfil no Gerenciador de Tarefas. O app não abre o perfil se ele estiver em uso.
 - O app mantém os cookies e regrava as preferências dele ao abrir.
 - ACL (`jc-a2y.52`): `icacls "$env:CENTRAL_PASTA"` e `icacls "$env:CENTRAL_PASTA\navegador"`. Só podem aparecer o usuário, SISTEMA e Administradores. "Usuários autenticados", "Usuários", "Todos", "INTERATIVO", "SERVICE" e "LOTE" não podem aparecer. Depois de o app abrir uma vez, a pasta de dados mostra as três entradas com `(OI)(CI)(F)` e sem `(I)`, porque não herda mais da pasta-mãe (`jc-a2y.58`).
+- Depois do login, confira também o arquivo do cookie: `icacls "$env:CENTRAL_PASTA\navegador\Default\Network\Cookies"`. O Chrome pode acrescentar uma entrada de AppContainer (SID `S-1-15-…`, do sandbox dele), e essa pode ficar. "Usuários autenticados", "Usuários", "Todos", "INTERATIVO", "SERVICE" e "LOTE" não podem aparecer. Se aparecerem, pare e chame o CyberSec.
+- Se o app não abrir com "a pasta de dados pertence a outro usuário deste computador", a pasta foi criada por outra conta. Crie outra, com a sua conta, no passo 2.
 
 ## 4. Parar o fluxo antigo na vaga escolhida (Central Node)
 

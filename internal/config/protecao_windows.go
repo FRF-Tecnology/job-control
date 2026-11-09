@@ -3,6 +3,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
 
@@ -31,6 +32,15 @@ func ProtegerPasta(pasta string) error {
 	if err != nil {
 		return fmt.Errorf("proteger a pasta: %w", err)
 	}
+	// O dono tem WRITE_DAC implícito e reabriria a DACL quando quisesse. Pasta de outro usuário (criada antes por
+	// ele, em C:\Users\Public ou outro disco): falha fechada, sem mexer e sem o caminho (revisão do Fallen no #74).
+	dono, err := lerDonoDe(pasta)
+	if err != nil {
+		return fmt.Errorf("proteger a pasta: %w", err)
+	}
+	if !donoAceito(dono, sids) {
+		return ErrPastaDeOutroUsuario
+	}
 	if protegida, entradas, err := LerDACL(pasta); err == nil && protegida && soEstes(entradas, sids) {
 		return nil
 	}
@@ -53,6 +63,41 @@ func ProtegerPasta(pasta string) error {
 		return fmt.Errorf("proteger a pasta: %w", err)
 	}
 	return nil
+}
+
+// ErrPastaDeOutroUsuario: a pasta de dados pertence a outro usuário deste computador. Sem caminho na mensagem.
+var ErrPastaDeOutroUsuario = errors.New("a pasta de dados pertence a outro usuário deste computador: use outra pasta (CENTRAL_PASTA) criada por você")
+
+// lerDonoDe: só o teste troca (não há como criar, sem ser administrador, uma pasta com outro dono).
+var lerDonoDe = lerDono
+
+// lerDono devolve o dono (OWNER) da pasta.
+func lerDono(caminho string) (*windows.SID, error) {
+	sd, err := windows.GetNamedSecurityInfo(caminho, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
+	if err != nil {
+		return nil, err
+	}
+	dono, _, err := sd.Owner()
+	if err != nil {
+		return nil, err
+	}
+	if dono == nil {
+		return nil, nil
+	}
+	return dono.Copy()
+}
+
+// donoAceito: só o usuário atual, SISTEMA ou Administradores podem ser donos da pasta de dados.
+func donoAceito(dono *windows.SID, aceitos []*windows.SID) bool {
+	if dono == nil {
+		return false
+	}
+	for _, s := range aceitos {
+		if dono.Equals(s) {
+			return true
+		}
+	}
+	return false
 }
 
 // sidDoUsuario é o SID de quem roda o processo.

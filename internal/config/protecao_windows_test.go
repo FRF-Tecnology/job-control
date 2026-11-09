@@ -5,6 +5,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/windows"
@@ -181,5 +182,71 @@ func TestPastaDadosProtegeAPasta(t *testing.T) {
 		if nome == "existente" {
 			conferirSoDoUsuario(t, filepath.Join(p, "curriculos"), false)
 		}
+	}
+}
+
+// Revisão do Fallen no #74: o dono da pasta tem WRITE_DAC implícito e reabre a DACL quando quiser. Se a pasta já
+// existia com outro dono (outro usuário criou a CENTRAL_PASTA em C:\Users\Public), o app não abre.
+func TestDonoAceito(t *testing.T) {
+	sids, err := donos()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range sids { // usuário, SISTEMA e Administradores
+		if !donoAceito(s, sids) {
+			t.Errorf("%s recusado como dono", s)
+		}
+	}
+	for _, texto := range []string{"S-1-5-21-1111111111-2222222222-3333333333-1001", "S-1-5-32-545", "S-1-1-0", "S-1-5-4"} {
+		outro, err := windows.StringToSid(texto) // fictício, Usuários, Todos, INTERATIVO
+		if err != nil {
+			t.Fatal(err)
+		}
+		if donoAceito(outro, sids) {
+			t.Errorf("%s aceito como dono", texto)
+		}
+	}
+	if donoAceito(nil, sids) {
+		t.Error("dono ausente aceito")
+	}
+}
+
+// A pasta criada pelo próprio usuário passa (o dono é ele, ou Administradores quando o processo é elevado).
+func TestDonoDaPastaPropria(t *testing.T) {
+	pasta := filepath.Join(t.TempDir(), "dados")
+	if err := os.MkdirAll(pasta, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := ProtegerPasta(pasta); err != nil {
+		t.Fatalf("pasta do próprio usuário: %v", err)
+	}
+}
+
+// ProtegerPasta numa pasta de outro dono: recusa sem mexer na DACL e sem o caminho na mensagem.
+func TestPastaDeOutroDonoNaoAbre(t *testing.T) {
+	mae := t.TempDir()
+	abrirHeranca(t, mae, false)
+	pasta := filepath.Join(mae, "dados")
+	if err := os.MkdirAll(pasta, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	outro, err := windows.StringToSid("S-1-5-21-1111111111-2222222222-3333333333-1001") // usuário fictício
+	if err != nil {
+		t.Fatal(err)
+	}
+	antes := lerDonoDe
+	lerDonoDe = func(string) (*windows.SID, error) { return outro, nil }
+	t.Cleanup(func() { lerDonoDe = antes })
+
+	err = ProtegerPasta(pasta)
+	if err != ErrPastaDeOutroUsuario || strings.Contains(err.Error(), mae) {
+		t.Fatalf("pasta de outro dono = %v", err)
+	}
+	if protegida, _, _ := LerDACL(pasta); protegida {
+		t.Fatal("mexeu na DACL de uma pasta de outro dono")
+	}
+	t.Setenv("CENTRAL_PASTA", pasta)
+	if _, err := PastaDados(); err != ErrPastaDeOutroUsuario {
+		t.Fatalf("PastaDados = %v", err)
 	}
 }
