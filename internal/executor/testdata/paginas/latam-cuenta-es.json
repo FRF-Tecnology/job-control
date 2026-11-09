@@ -1,0 +1,33 @@
+{
+ "descricao": "latam-cuenta-es",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "conta"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Crea tu cuenta para postularte",
+   "campos": [
+    {
+     "id": "u",
+     "tipo": "email",
+     "rotulo": "Correo electrónico",
+     "obrigatorio": true
+    },
+    {
+     "id": "p",
+     "tipo": "password",
+     "rotulo": "Crea una contraseña",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  }
+ ]
+}

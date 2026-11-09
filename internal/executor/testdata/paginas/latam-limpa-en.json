@@ -1,0 +1,62 @@
+{
+ "descricao": "latam-limpa-en",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "enviada"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Go Developer at Test Company. Remote. Contact us with questions.",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Full name",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "Email",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Phone",
+     "obrigatorio": true
+    },
+    {
+     "id": "cv",
+     "tipo": "file",
+     "rotulo": "Resume",
+     "obrigatorio": true
+    },
+    {
+     "id": "anos",
+     "tipo": "number",
+     "rotulo": "Years of experience with Rust",
+     "obrigatorio": false
+    },
+    {
+     "id": "stake",
+     "tipo": "textarea",
+     "rotulo": "How do you manage stakeholders?",
+     "obrigatorio": false
+    },
+    {
+     "id": "time",
+     "tipo": "number",
+     "rotulo": "Average team size you led",
+     "obrigatorio": false
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Submit application"
+   ]
+  }
+ ]
+}
