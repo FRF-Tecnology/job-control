@@ -27,14 +27,18 @@ O pedido do Vini: o app tem de ser automático e esperto com as falhas. Hoje, qu
 - **Ao abrir o app** (`RecuperarAoAbrir`), uma candidatura que ficou em `enviando` segue a marca gravada:
   - **sem marca** (o app caiu antes de interagir): volta para `aprovada` e conta como volta, com as mesmas regras do item 2 (no máximo 3 e a 4ª vira `falhou`; vencida vira `preparada`);
   - **com qualquer marca:** vira `incerta`, como sempre (M3).
-- **Cliques antes da marca (decisão do CyberSec):**
-  - abrir a página não conta como interação;
-  - no LinkedIn, o botão que abre o Easy Apply também não conta, mas só para os rótulos de uma lista fechada;
-  - na Gupy e na InHire, qualquer clique conta, e a marca é gravada antes dele.
-
-  Hoje o app não clica em nada antes da marca: os únicos cliques são avançar e enviar, os dois depois dela. A regra vale para quando o clique do Easy Apply entrar.
+- **O botão que abre o formulário (decisão e ALTO do CyberSec no #101):**
+  - `Abrir` só navega e não clica em nada;
+  - o botão de candidatura que a página mostra antes do formulário é um passo à parte: `BotaoDeCandidatura` só lê o rótulo, e `AbrirFormulario` clica exatamente nesse rótulo;
+  - o executor grava `interagiuEm` **antes** desse clique. Na Gupy, na InHire e no LinkedIn sem Easy Apply, o clique pode já registrar a candidatura; com a marca, uma falha depois nunca volta e não duplica;
+  - a única exceção é o LinkedIn com o rótulo do Easy Apply, por lista fechada e texto inteiro: `^(candidatura simplificada|easy apply|solicitud sencilla)$`. Esse botão só abre o formulário na própria página;
+  - abrir a página não conta como interação.
 - **Testes e mutações:**
   - **Queda antes e depois da gravação da marca:** sem marca volta, com marca vira incerta.
+  - **Botão de candidatura:**
+    - Gupy, InHire e LinkedIn sem Easy Apply com falha depois do clique: `falhou`, sem volta, com a marca já gravada no clique;
+    - Easy Apply (PT, EN, ES) com falha depois: volta;
+    - mutações que reprovam: sem marca antes do botão; Easy Apply em qualquer plataforma; qualquer rótulo do LinkedIn sem marca.
   - **Mutações que reprovam:**
     - tirar a conferência da marca no domínio;
     - não marcar antes de preencher;
