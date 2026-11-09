@@ -203,6 +203,9 @@ func TestClassificaSeguir(t *testing.T) {
 		"Follow Empresa Teste to stay up to date with their page": CampoSeguir,
 		"Li e aceito os termos de uso":                            "termos",
 		"Aceito receber e-mails":                                  "termos",
+		"Seguir a Empresa Teste para estar al día":                CampoSeguir,
+		"Quero receber novidades da empresa":                      CampoOutro,
+		"Stay up to date with our newsletter":                     CampoOutro,
 	} {
 		c := ClassificarCampos(Retrato{Campos: []CampoDaPagina{{ID: "x", Tipo: "checkbox", Rotulo: rotulo}}})
 		if c[0].Tipo != quer {
