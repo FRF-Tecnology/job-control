@@ -123,6 +123,9 @@ h3 { font-size: 1.05rem; }
 /* Envio ligado e não pausado (jc-a2y.51): visível em todas as telas, leva à Fila para pausar. */
 .marca-envio { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--verde); padding: 6px 12px; border-radius: 999px; background: var(--verde-suave); text-decoration: none; white-space: nowrap; }
 .marca-envio::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+/* Com o envio ligado, a marca ocupa o lugar do "Dados locais" (que só some quando está tudo bem; desconectado, ele volta),
+   para o menu caber inteiro (jc-a2y.66). */
+.topo-pe:has(.marca-envio) .status-conexao.ok { display: none; }
 .botao-icone { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 0; background: transparent; cursor: pointer; color: var(--tinta-2); }
 .botao-icone:hover { background: var(--superficie-2); color: var(--tinta); }
 .botao-icone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

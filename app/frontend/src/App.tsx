@@ -300,8 +300,12 @@ function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)
   }, []);
   useEffect(() => { rolado.current = false; marcar(); }, [atual, marcar]);
   useEffect(() => {
+    // A largura da faixa muda também quando algo no topo aparece (ex.: a marca "Envio ligado"), não só na janela.
+    const n = nav.current;
+    const obs = n && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(marcar) : null;
+    if (n && obs) obs.observe(n);
     window.addEventListener('resize', marcar);
-    return () => window.removeEventListener('resize', marcar);
+    return () => { obs?.disconnect(); window.removeEventListener('resize', marcar); };
   }, [marcar]);
   return (
     <nav aria-label="Seções" ref={nav} onScroll={marcar}>
