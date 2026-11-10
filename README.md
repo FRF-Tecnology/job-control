@@ -59,6 +59,14 @@ Ferramentas: `resumo`, `vagas_listar`, `vaga_detalhe`, `vaga_duplicada`, `vaga_a
 `vaga_editar`, `evento_registrar`, `perfil_ler`, `resposta_padrao`, `followups_vencidos`, `followup_registrar`, `rodada_registrar`,
 `pedidos_listar`, `pedido_concluir`, `emails_registrar`, `emails_sem_vaga`.
 
+### O MCP do app novo ("applyer")
+O `.mcp.json` também registra o servidor **"applyer"** (`go run ./cmd/central-mcp`, precisa do Go), que fala com os dados do
+**app novo** (a pasta Applyer, ou `APPLYER_PASTA`), e não com `dados/`. Use o "central" para a Central em uso hoje e o
+"applyer" só para o app novo. Ele só abre a pasta e o banco que o app já criou (abra o Applyer uma vez antes) e nunca usa o
+cofre nem uma IA. A regra 8 vale igual: ele lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma
+aprovação e pausa o envio. Aprovar, retomar e registrar envio são só da pessoa, pela tela. As ferramentas também saem
+na linha de comando: `go run ./cmd/central-cli ferramentas`. Detalhes em `docs/propostas/mcp-cli.md`.
+
 ## Regras de segurança
 - CPF, RG, senhas e dados bancários nunca são preenchidos pelo Claude nem guardados na Central.
 - O Claude não inventa experiência e não envia mensagens em seu nome sem um "pode mandar".
@@ -67,9 +75,11 @@ Ferramentas: `resumo`, `vagas_listar`, `vaga_detalhe`, `vaga_duplicada`, `vaga_a
 
 ## Testar o app novo no Mac (versão de teste)
 O CI gera o Applyer para Mac com chip Apple (M1 ou mais novo) a cada commit no branch `reescrita-go`. É só para teste: **não tem assinatura da Apple** (isso fica para a P8).
-1. No GitHub, abra **Actions > CI**, filtre pelo branch **`reescrita-go`** e escolha uma execução verde do tipo **push**. Baixe o artefato **`Applyer-macos-arm64.zip`**. É preciso estar logado; o artefato some depois de 7 dias.
+1. No GitHub, abra **Actions > CI**, filtre pelo branch **`reescrita-go`** e escolha uma execução verde do tipo **push**. Baixe um destes artefatos (é preciso estar logado; eles somem depois de 7 dias):
+   - **`Applyer-macos-arm64.zip`**: o app padrão, sem o envio de candidaturas (só para ver as telas);
+   - **`Applyer-macos-arm64-envio.zip`**: o mesmo app com o envio ligado (build `envio_dev`, com o navegador). Use só na máquina de teste.
    **Não use** um `.app` de execução de pull request nem de outro repositório: esses não têm artefato, e um `.app` de outra origem pode ter qualquer coisa dentro.
-2. Confira o arquivo antes de abrir. No Terminal, rode `shasum -a 256 ~/Downloads/Applyer-macos-arm64.zip`. O código precisa ser igual ao `sha256` do resumo da execução (e ao digest ao lado do artefato). Se for diferente, apague o arquivo e não abra.
+2. Confira o arquivo antes de abrir. No Terminal, rode `shasum -a 256 ~/Downloads/<nome do zip que você baixou>`. O código precisa ser igual ao `sha256` do resumo da execução (e ao digest ao lado do artefato). Se for diferente, apague o arquivo e não abra.
 3. Abra o zip: sai o `Applyer.app`. Mova-o para **Aplicativos**, se quiser.
 4. Na primeira vez, o macOS bloqueia, porque o app não é de um desenvolvedor identificado:
    - **macOS 15 (Sequoia) ou mais novo:** tente abrir, feche o aviso e vá em **Ajustes do Sistema > Privacidade e Segurança**. Lá embaixo, clique em **Abrir Mesmo Assim** e confirme.

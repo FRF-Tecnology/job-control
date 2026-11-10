@@ -30,7 +30,7 @@ Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação
 7. Currículo: `dados/curriculos/` (PT ou EN pelo idioma da vaga, caminhos em `perfil.curriculos`).
 8. **Só a pessoa aprova.** O assistente nunca move vaga para `aplicar`, nunca adiciona vaga fora de `descoberta` e nunca liga
    `perfil.modo` = `direto`, nem quando a pessoa pede no chat. Vale para todo caminho que o assistente tiver:
-   - CLI e MCP: a Central já recusa;
+   - CLI e MCP (o "central", da Node, e o "applyer", do app novo): eles já recusam;
    - API HTTP (`curl`, `fetch` ou script em `localhost`, inclusive na porta de `dados/.porta`): ela grava como se fosse a pessoa;
    - telas da Central ou do app pelo navegador: clicar, teclar A na Triagem, marcar "Aplicar direto" no Perfil ou injetar script;
    - os arquivos de dados: editar `dados/*.json`, o `central.db` (SQLite) ou eventos, ou gravar com autor `eu` sem ser a pessoa;
@@ -68,7 +68,9 @@ Nunca clique em prompts de permissão do navegador por ela.
 `/emails` lê os retornos por email (só leitura) e grava com `cli.mjs email --arquivo`: a vaga muda de etapa sozinha e repetir não duplica.
 `/pedidos` faz o que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central (`cli.mjs pedidos` lista; `cli.mjs pedido <id> feito "<resposta>"` conclui).
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
-Com o MCP "central" ligado (`.mcp.json`), prefira as ferramentas dele (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...) aos comandos da CLI: são as mesmas regras, sem shell.
+O `.mcp.json` tem dois servidores MCP; prefira as ferramentas deles aos comandos da CLI (as mesmas regras, sem shell):
+- **"central"** (Node, `mcp/servidor.mjs`): os dados da Central em uso hoje (`dados/`). É o deste fluxo (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...).
+- **"applyer"** (Go, `cmd/central-mcp`): os dados do app novo (a pasta Applyer). Use só quando o trabalho for no app novo. Ele só lê a pasta: nunca cria, migra nem renomeia, e o app tem de ter sido aberto uma vez. Lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma aprovação e pausa o envio. Não registra envio, porque quem envia é o app (docs/propostas/mcp-cli.md). Retomar e aprovar, só a pessoa, pela tela.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.
 
 <!-- rtk-instructions v2 -->
