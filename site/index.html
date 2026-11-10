@@ -20,7 +20,7 @@
 <a class="pular-conteudo" href="#conteudo-principal">Pular para o conteúdo</a>
 <div class="lp" id="lp">
 <div class="fundo" aria-hidden="true"></div>
-<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5865F2" /><stop offset="1" stop-color="#2FBF8A" /></linearGradient><linearGradient id="lgCasco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" /><stop offset="1" stop-color="#D5DBF2" /></linearGradient><linearGradient id="lgVisor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3C40A8" /><stop offset="1" stop-color="#14163F" /></linearGradient><linearGradient id="lgOrelha" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B6F06A" /><stop offset="1" stop-color="#2FB86A" /></linearGradient><linearGradient id="lgFogo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A8F4FF" /><stop offset="1" stop-color="#3FD8F5" stop-opacity="0" /></linearGradient></defs></svg>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5865F2" /><stop offset="1" stop-color="#2FBF8A" /></linearGradient></defs></svg>
 
 <div class="conteudo">
 <header class="topo">
@@ -473,11 +473,182 @@
 </div>
 </section>
 
-<section class="vidro final revela">
-<svg class="robo" viewBox="0 0 140 160" width="110" height="126" aria-hidden="true"><g class="r-flutua"><path class="r-fogo" d="M52 110 Q70 152 88 110 Z" fill="url(#lgFogo)" /><path d="M22 52 L28 14 Q31 7 37 13 L56 36 Z" fill="url(#lgOrelha)" /><path d="M118 52 L112 14 Q109 7 103 13 L84 36 Z" fill="url(#lgOrelha)" /><rect x="16" y="26" width="108" height="88" rx="40" fill="url(#lgCasco)" /><rect x="23" y="39" width="94" height="60" rx="27" fill="#A9B4FF" /><rect x="27" y="43" width="86" height="52" rx="23" fill="url(#lgVisor)" /><g class="r-olhos"><path d="M48 72 Q54 62 60 72" stroke="#5CF0FF" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M80 72 Q86 62 92 72" stroke="#5CF0FF" stroke-width="5" stroke-linecap="round" fill="none" /></g></g></svg>
-<h2 class="h2">Veja quais vagas você aprovaria.</h2>
-<p class="lead">Abra a demonstração e monte uma lista com as vagas que fazem sentido para você.</p>
-<div class="bs somente-js" data-bs>
+<section class="final revela" id="proxima-fase" aria-labelledby="final-titulo">
+  <div class="final-mundo">
+    <svg class="final-cenario" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" fill="none" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="cta-ilhas-ceu" x1="300" y1="35" x2="300" y2="310" gradientUnits="userSpaceOnUse">
+      <stop stop-color="var(--cena-ceu,#252e59)"/><stop offset="1" stop-color="var(--cena-horizonte,#65699e)"/>
+    </linearGradient>
+    <linearGradient id="cta-ilhas-mar" x1="286" y1="209" x2="314" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="var(--cena-mar,#4b7491)"/><stop offset="1" stop-color="var(--cena-mar-fundo,#334b72)"/>
+    </linearGradient>
+    <linearGradient id="cta-ilhas-papel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff8df"/><stop offset="1" stop-color="#e0e2f8"/>
+    </linearGradient>
+    <radialGradient id="cta-ilhas-aura">
+      <stop stop-color="#b3baff" stop-opacity=".32"/><stop offset="1" stop-color="#a1b7ff" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="cta-ilhas-contorno">
+      <path d="M74 232c-15-67 11-126 63-163C195 27 291 24 373 41c100 20 162 79 166 164 4 78-58 123-156 137-120 17-285-14-309-110Z"/>
+    </clipPath>
+    <g id="cta-ilhas-estrela">
+      <path d="m0-5 1.4 3.6L5 0 1.4 1.4 0 5-1.4 1.4-5 0l3.6-1.4Z" fill="#ffedba"/>
+    </g>
+    <g id="cta-ilhas-pedra" stroke="var(--cena-traco,#333557)" stroke-width="1.5" stroke-linejoin="round">
+      <path d="m-9-1 8-5 10 3-1 5-8 4-10-3Z" fill="#b9afd2"/>
+      <path d="m-9-1 8-4 10 2-8 4Z" fill="#e8d4ce"/>
+    </g>
+    <g id="cta-ilhas-arvore" stroke="var(--cena-traco,#333557)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0-5V9" stroke="#696186" stroke-width="3"/>
+      <path d="m0-46 13 22h-6l12 21q-19 10-38 0l12-21h-6Z" fill="#96cbb9"/>
+      <path d="M0-39v32m-9-8L0-7l9-8m-14-12 5 6 6-5" stroke="#65a292" stroke-width="1.5"/>
+    </g>
+  </defs>
+
+  <path d="M74 232c-15-67 11-126 63-163C195 27 291 24 373 41c100 20 162 79 166 164 4 78-58 123-156 137-120 17-285-14-309-110Z" fill="url(#cta-ilhas-ceu)"/>
+  <ellipse cx="306" cy="211" rx="154" ry="143" fill="url(#cta-ilhas-aura)"/>
+
+  <g class="cenario-lua">
+    <circle cx="453" cy="98" r="48" fill="#fff5d9" opacity=".045"/>
+    <circle cx="453" cy="98" r="37" fill="#fff5d9" opacity=".06"/>
+    <path d="M466 70a30 30 0 1 0 15 47 27 27 0 0 1-15-47Z" fill="#ffe7ac"/>
+    <path d="M437 117a26 26 0 0 0 16 6" stroke="#fff5d3" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+  </g>
+  <g class="cenario-estrelas">
+    <use href="#cta-ilhas-estrela" x="167" y="90"/><use href="#cta-ilhas-estrela" x="354" y="83"/>
+    <use href="#cta-ilhas-estrela" x="502" y="161"/><use href="#cta-ilhas-estrela" x="252" y="63"/>
+    <use href="#cta-ilhas-estrela" x="114" y="153"/><use href="#cta-ilhas-estrela" x="393" y="149"/>
+    <path d="m196 137 24-18 30 9 17-25" stroke="#b8c5e7" stroke-opacity=".27" stroke-width="1.2"/>
+    <g fill="#e7ecff"><circle cx="196" cy="137" r="2"/><circle cx="220" cy="119" r="2.3"/><circle cx="250" cy="128" r="1.8"/><circle cx="267" cy="103" r="2.3"/><circle cx="318" cy="60" r="1.4"/><circle cx="391" cy="111" r="1.6"/><circle cx="144" cy="115" r="1.3"/><circle cx="493" cy="130" r="1.2"/><circle cx="304" cy="98" r="1.4"/></g>
+  </g>
+  <g class="cenario-nuvens" fill="#a5aacf" opacity=".19">
+    <path d="M100 124c7-7 16-7 22-4 5-12 24-13 31 1 9-4 21-2 26 6h-79Z"/>
+    <path d="M326 120c5-6 11-8 17-5 4-9 17-9 22 0 8-3 17-1 22 5Z"/>
+    <path d="M417 173c6-7 15-7 21-4 5-10 20-10 26 1 8-3 18-1 23 6h-70Z"/>
+  </g>
+
+  <g class="cenario-colinas" clip-path="url(#cta-ilhas-contorno)">
+    <path d="M70 218c27-5 42-31 67-27s34-37 60-30 40 39 68 34 35-17 60-11 42 36 73 26 43-47 69-41 41 37 69 42l6 45H64Z" fill="#5c6391"/>
+    <path d="M75 222c25-4 40-17 61-12s48-8 69-8 46 25 78 16 39-9 64-2 47 18 78 5 39-21 64-17 35 16 53 17v40H67Z" fill="#7088a3" opacity=".68"/>
+  </g>
+  <path d="M43 310c16-51 79-76 169-83 105-8 221-8 283 27 50 27 76 80 66 121-13 52-91 82-203 91-126 10-271-7-307-57-18-25-19-66-8-99Z" fill="url(#cta-ilhas-mar)"/>
+
+  <g class="cenario-agua" stroke="#a7d7da" stroke-width="2" stroke-linecap="round" opacity=".6">
+    <path d="M58 313h27m-15 8h12m-19 68h29m-11 8h15m61 37h43m-22 8h14M370 441h42m-26 8h17M513 318h31m-11 9h13M423 282h13m-195-41h18m91 18h21M88 349h23m-5 7h8"/>
+    <path d="M220 410q75 13 130-1m-103 14q38 6 61 1M488 293q28 2 38-5M87 290q24 6 49 1" opacity=".6"/>
+  </g>
+  <g class="cenario-reflexos" fill="#b2ddda" opacity=".12">
+    <ellipse cx="300" cy="376" rx="119" ry="15"/><ellipse cx="120" cy="287" rx="56" ry="7"/>
+    <ellipse cx="471" cy="280" rx="52" ry="7"/><ellipse cx="466" cy="430" rx="54" ry="8"/>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-curriculo" stroke="var(--cena-traco,#333557)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m70 253 11 28 29 10 40-8 20-30-35-15Z" fill="#9187bb"/>
+    <path d="m101 265 9 26 16-8 9-26m-53 13 19-5m48 18-9-17" fill="#b3a5d1" stroke="#6e6b98" stroke-width="1.8"/>
+    <path d="M70 253c0-14 23-25 52-25s48 11 48 25-21 23-49 23-51-10-51-23Z" fill="var(--cena-areia,#efd0ac)"/>
+    <path d="M81 249c7-11 23-15 39-15 22 0 39 6 39 15s-15 17-37 17c-20 0-41-6-41-17Z" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.5"/>
+    <use href="#cta-ilhas-arvore" transform="translate(145 244) scale(.55)"/>
+    <path d="m77 259 10 3m55 5 10-3" stroke="#fff0d5" stroke-width="2"/>
+    <g class="cenario-curriculo"><g transform="rotate(-9 111 216)">
+      <path d="M90 182h31l12 12v49q0 4-4 4H90q-4 0-4-4v-57q0-4 4-4Z" fill="url(#cta-ilhas-papel)"/>
+      <path d="M121 182v12h12" fill="#c7c5ed"/>
+      <circle cx="100" cy="201" r="5" fill="#edb697" stroke-width="1.5"/>
+      <path d="M93 213q0-10 7-10t8 10" fill="#9fa3dd" stroke-width="1.5"/>
+      <path d="M115 202h8m-8 6h6m-26 16h26m-26 8h19" stroke="#8b8aa9" stroke-width="2.6"/>
+    </g></g>
+  </g>
+
+  <g class="cenario-trilha">
+    <use href="#cta-ilhas-pedra" x="176" y="274"/><use href="#cta-ilhas-pedra" x="195" y="283"/>
+    <use href="#cta-ilhas-pedra" x="216" y="290"/><use href="#cta-ilhas-pedra" x="413" y="285"/>
+    <use href="#cta-ilhas-pedra" x="432" y="274"/>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-mensagem" stroke="var(--cena-traco,#333557)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m421 251 11 24 31 12 32-10 18-26-47-16Z" fill="#8883b4"/>
+    <path d="m455 262 8 25 15-11 5-18m-51 17 17-14" fill="#b6a6ce" stroke="#716b99" stroke-width="1.8"/>
+    <ellipse cx="467" cy="251" rx="46" ry="20" fill="var(--cena-areia,#efd0ac)"/>
+    <path d="M433 247c4-8 18-11 33-11s32 5 32 12-13 13-31 13-34-7-34-14Z" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.4"/>
+    <use href="#cta-ilhas-arvore" transform="translate(492 242) scale(.52)"/>
+    <g class="cenario-envelope"><g transform="rotate(8 460 222)">
+      <rect x="432" y="202" width="57" height="38" rx="5" fill="#f9d695"/>
+      <path d="m434 206 26 18 27-18m-51 31 17-17m32 17-18-17" stroke="#a77b67" stroke-width="2"/>
+      <circle cx="488" cy="202" r="6" fill="#b0e4c6" stroke-width="1.7"/>
+    </g></g>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-central" stroke="var(--cena-traco,#333557)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m191 315 14 34 29 23 49 15 62-6 39-19 28-39-21-31-113-11Z" fill="#8d81b5"/>
+    <path d="m218 330 16 42 28-9 21 24 19-24 12-35m32 2-1 51 26-25 13 6 12-35" fill="#ad9fc9" stroke="#756b9b" stroke-width="2"/>
+    <path d="m253 338 9 25 18-8m42-10 23 18m-140-14 29-12" stroke="#c7b3d6" stroke-width="2" opacity=".7"/>
+    <path d="M191 314c-2-25 39-49 104-49 59 0 111 16 117 42 7 30-44 51-107 51-58 0-111-18-114-44Z" fill="var(--cena-areia,#efd0ac)"/>
+    <path d="M208 307c1-19 40-34 87-34 49 0 91 15 96 33 5 19-32 35-83 36-53 0-101-15-100-35Z" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.8"/>
+    <path d="M203 318q15 17 48 22m84 8q41-6 55-18" stroke="#fff1d3" stroke-width="3"/>
+    <path d="m234 312 4-8 3 9m-14-2 2-5m120 21 4-8 3 8m-48-51 3-7 3 7" stroke="#659d8d" stroke-width="2"/>
+    <use href="#cta-ilhas-arvore" transform="translate(365 293) scale(.85)"/>
+    <use href="#cta-ilhas-arvore" transform="translate(383 308) scale(.64)"/>
+    <use href="#cta-ilhas-arvore" transform="translate(226 295) scale(.61)"/>
+    <g class="cenario-pedestal">
+      <ellipse cx="296" cy="318" rx="39" ry="10" fill="#436d70" stroke="none" opacity=".22"/>
+      <path d="m267 290 5 24 26 10 26-11 4-23-31-12Z" fill="#b0a5d1"/>
+      <path d="m298 300 0 24 26-11 4-23Z" fill="#8f88ba" stroke-width="2"/>
+      <path d="m267 290 30-12 31 12-30 13Z" fill="#e1d8ec" stroke-width="2.2"/>
+      <path d="m276 291 21-8 22 8-21 8Z" fill="#bbbef1" stroke="none"/>
+      <path d="m279 307 9 4" stroke="#e9e0f5" stroke-width="2"/>
+    </g>
+  </g>
+
+  <g class="cenario-trilha cenario-ponte" stroke="var(--cena-traco,#333557)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M384 342q29 4 53 32l-10 7q-22-26-53-31Z" fill="#c4a58f"/>
+    <path d="m384 344-6 7m15-4-7 7m15-3-8 7m16-2-8 7m17-1-10 6m18 1-10 6" stroke="#8b7277"/>
+    <path d="M379 341v-14m55 49v-14m-55-33q28 0 55 34" fill="none" stroke="#d9c6a4" stroke-width="2.6"/>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-aprovada" stroke="var(--cena-traco,#333557)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m416 393 12 27 27 15 32-7 30-36-39-21Z" fill="#8a80b5"/>
+    <path d="m442 402 13 33 16-15 16 8 9-28" fill="#b4a4cf" stroke="#756b9a" stroke-width="1.8"/>
+    <ellipse cx="466" cy="392" rx="51" ry="22" fill="var(--cena-areia,#efd0ac)"/>
+    <ellipse cx="466" cy="387" rx="36" ry="14" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.5"/>
+    <path d="m463 369-3 21m13-17 3 16" stroke="#79749c" stroke-width="4"/>
+    <g class="cenario-check">
+      <path d="m467 336 10 5 10 2 2 10 5 9-5 9-2 10-10 2-10 5-9-5-11-2-1-10-5-9 5-9 1-10 11-2Z" fill="#c9bdf0"/>
+      <circle cx="467" cy="362" r="17" fill="#b3e3c7" stroke="#747396" stroke-width="1.8"/>
+      <path d="m458 361 6 7 12-15" stroke="#365e59" stroke-width="4"/>
+    </g>
+    <path d="m494 392 4-7 3 6m-65 3 3-7 2 7" stroke="#6da08e" stroke-width="2"/>
+  </g>
+
+  <g class="cenario-marca">
+    <ellipse class="cenario-marca-sombra" cx="297" cy="291" rx="29" ry="7" fill="#535a9e" opacity=".22"/>
+    <g class="cenario-marca-flutua"><g transform="translate(237 157) scale(1.4)">
+      <g transform="translate(-3 -1) scale(1.04)">
+        <path fill="#747EE5" d="M6 26.8q0-3.2 3.2-4.2L51 10q3.4-1 6.2.9l5.6 3.9-45.2 13.7q-3.1 1-3.1 4.1v43L9 77.3q-3 .9-3-2.3z"/>
+        <path fill="#AFB6FF" d="M21 34.4q0-3.2 3.2-4.2L65.8 17.7l21.3 14.1v8L53.9 66.5 42 57.8l-6.1 8.1L54.2 79l32.9-26.5v21.2q0 3.2-3.2 4.2L24.2 96q-3.2 1-3.2-2.3z"/>
+        <path fill="#6670DB" d="m65.8 17.7 21.3 14.1-17.8 5.4q-3.5 1.1-3.5-2.5z"/>
+      </g>
+    </g></g>
+    <g stroke="#d7dbff" stroke-width="1.5" stroke-linecap="round" opacity=".7">
+      <path d="m234 215-7-3m120 32 8 1m-24-88 3-6"/>
+    </g>
+  </g>
+</svg>
+    <nav class="final-destinos somente-js" aria-label="Ilhas da demonstração">
+      <button type="button" class="final-ilha ilha-triagem" data-ir="triagem" aria-label="Abrir Triagem na demonstração"><span>Triagem</span></button>
+      <button type="button" class="final-ilha ilha-lista" data-ir="lista" aria-label="Abrir Lista do dia na demonstração"><span>Lista do dia</span></button>
+      <button type="button" class="final-ilha ilha-quadro" data-ir="quadro" aria-label="Abrir Quadro na demonstração"><span>Quadro</span></button>
+    </nav>
+  </div>
+  <button class="final-pausa somente-js" type="button" data-pausar-final aria-label="Pausar animação do cenário" title="Pausar animação do cenário">
+    <svg class="ic final-pausa-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
+    <svg class="ic final-retoma-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+  </button>
+  <div class="final-conteudo">
+    <h2 class="h2" id="final-titulo">Sua próxima fase <span class="grad">começa aqui.</span></h2>
+    <p class="lead">Monte sua lista de vagas na demonstração.<span class="somente-js"> Escolha no mapa por onde começar.</span></p>
+    <div class="final-acoes">
+      <a class="tecla tecla-p final-demo" href="#app">Explorar a demonstração<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
+      <div class="bs somente-js" data-bs>
 <button class="tecla bs-main" type="button" data-bs-principal disabled><img class="marca-so" data-bs-icone src="marcas/win.svg" alt=""><span data-bs-texto>Baixar para Windows</span></button>
 <button class="tecla bs-seta" type="button" data-bs-seta aria-controls="plataformas-2" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="m5 9 7 6 7-6" /></svg></button>
 <div class="vidro bs-menu cima" data-bs-menu id="plataformas-2" role="group" aria-label="Plataformas" hidden>
@@ -489,8 +660,9 @@
 <button class="bs-item" type="button" data-plat="android" aria-pressed="false"><img class="marca-so" src="marcas/android.svg" alt="">Android<small class="breve">Em breve</small></button>
 </div>
 </div>
-<a class="btn-vidro" href="#app">Explorar a demonstração</a>
-<span class="bs-nota">Os links de download para macOS e Windows serão publicados aqui.</span>
+    </div>
+    <p class="bs-nota">Os links de download para macOS e Windows serão publicados aqui.</p>
+  </div>
 </section>
 
 </main>

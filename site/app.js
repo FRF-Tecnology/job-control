@@ -125,6 +125,7 @@ function desenhar() {
       classe(item, 'on', on); atributo(item, 'aria-pressed', on);
     }
   }
+  posicionarMenuFinal();
 
   // prévia do app
   const p = estado.passo, v = VAGAS[estado.vagaIdx];
@@ -290,6 +291,23 @@ function iniciarDeslize() {
   });
 }
 
+function posicionarMenuFinal() {
+  const grupo = estado.menu;
+  if (!grupo || !grupo.closest('.final')) return;
+  const menu = $('[data-bs-menu]', grupo);
+  if (!matchMedia('(max-height:550px)').matches) {
+    classe(menu, 'cima', true);
+    return;
+  }
+  const botao = grupo.getBoundingClientRect();
+  const limiteTopo = Math.max(0, $('.topo').getBoundingClientRect().bottom);
+  // O menu fica a 14px do botão e a pelo menos 8px do cabeçalho ou da borda da tela.
+  const acima = botao.top - limiteTopo - 22;
+  const abaixo = document.documentElement.clientHeight - botao.bottom - 22;
+  classe(menu, 'cima', acima >= abaixo);
+  menu.style.setProperty('--espaco-menu-final', Math.floor(Math.max(0, acima, abaixo)) + 'px');
+}
+
 function fecharMenu(restaurarFoco = false) {
   const menu = estado.menu;
   if (!menu) return;
@@ -354,7 +372,14 @@ function aoClicar(ev) {
   if ((el = alvo('[data-ir]'))) {
     estado.aba = el.dataset.ir;
     desenhar();
-    return $(`[data-aba="${estado.aba}"]`).focus();
+    const aba = $(`[data-aba="${estado.aba}"]`);
+    if (el.closest('.final-destinos')) {
+      aba.focus({ preventScroll: true });
+      // No celular, a barra de abas tem sua própria rolagem horizontal.
+      aba.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+      return;
+    }
+    return aba.focus();
   }
   if (alvo('[data-aprovar]')) {
     const lote = VAGAS.map((_, i) => i).filter(i => !estado.fora[i]);
@@ -419,6 +444,8 @@ function acompanharRolagem() {
 function iniciar() {
   iniciarDeslize();
   estado.plat = sistemaDaPessoa();
+  window.addEventListener('scroll', posicionarMenuFinal, { passive:true });
+  window.addEventListener('resize', posicionarMenuFinal);
   document.addEventListener('click', aoClicar);
   const explorar = $('.nav-explorar');
   abrirComMouse(explorar, $('summary', explorar), () => explorar.open,
@@ -488,3 +515,70 @@ function iniciarCenasDaRotina() {
   }
 }
 iniciarCenasDaRotina();
+
+function iniciarCenarioFinal() {
+  const secao = $('.final');
+  const pausa = $('[data-pausar-final]', secao);
+  const movimentoReduzido = matchMedia('(prefers-reduced-motion: reduce)');
+  let area = null, quadro = 0, toque = 0;
+  let olharX = 0, olharY = 0;
+
+  function repousar() {
+    cancelAnimationFrame(quadro);
+    quadro = 0;
+    secao.style.removeProperty('--olhar-x');
+    secao.style.removeProperty('--olhar-y');
+    secao.classList.remove('final-interagindo');
+    area = null;
+  }
+
+  pausa.addEventListener('click', () => {
+    const pausada = secao.classList.toggle('final-pausada');
+    const descricao = pausada ? 'Retomar animação do cenário' : 'Pausar animação do cenário';
+    atributo(pausa, 'aria-label', descricao);
+    atributo(pausa, 'title', descricao);
+    repousar();
+  });
+
+  secao.addEventListener('pointermove', evento => {
+    if (evento.pointerType !== 'mouse' || secao.classList.contains('final-pausada')) return;
+    secao.classList.add('final-interagindo');
+    if (movimentoReduzido.matches) return;
+    if (!area) area = secao.getBoundingClientRect();
+    olharX = ((evento.clientX - area.left) / area.width - .5) * 8;
+    olharY = ((evento.clientY - area.top) / area.height - .5) * 6;
+    if (quadro) return;
+    quadro = requestAnimationFrame(() => {
+      quadro = 0;
+      secao.style.setProperty('--olhar-x', olharX + 'px');
+      secao.style.setProperty('--olhar-y', olharY + 'px');
+    });
+  }, { passive: true });
+  secao.addEventListener('pointerleave', repousar);
+  secao.addEventListener('pointerdown', evento => {
+    if (evento.pointerType === 'mouse' || secao.classList.contains('final-pausada')) return;
+    clearTimeout(toque);
+    secao.classList.add('final-toque');
+    toque = setTimeout(() => secao.classList.remove('final-toque'), 1000);
+  }, { passive: true });
+  movimentoReduzido.addEventListener('change', repousar);
+  window.addEventListener('resize', repousar);
+  window.addEventListener('scroll', () => { area = null; }, { passive: true });
+
+  const acompanharAba = () => {
+    secao.classList.toggle('final-sem-visibilidade', document.hidden);
+    if (document.hidden) repousar();
+  };
+  acompanharAba();
+  document.addEventListener('visibilitychange', acompanharAba);
+  if ('IntersectionObserver' in window) {
+    const observador = new IntersectionObserver(entradas => {
+      secao.classList.toggle('em-tela', entradas[0].isIntersecting);
+      if (!entradas[0].isIntersecting) repousar();
+    });
+    observador.observe(secao);
+  } else {
+    secao.classList.add('em-tela');
+  }
+}
+iniciarCenarioFinal();
