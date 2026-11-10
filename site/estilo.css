@@ -77,10 +77,20 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
 .btn-play{display:inline-flex;align-items:center;gap:12px;min-height:54px;padding:0 22px 0 8px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;font-size:16px;font-weight:650;color:var(--texto);background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px var(--aro),0 10px 22px -16px var(--sombra);transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
 .escuro .btn-play{background:rgba(255,255,255,.08)}
 .btn-play:hover{transform:translateY(-2px);color:var(--texto)}
-.play-anel{position:relative;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(140deg,#5865F2,#2FBF8A)}
-.play-anel::before{content:"";position:absolute;inset:-3px;border-radius:50%;pointer-events:none;background:conic-gradient(from -90deg,#b2fff1,#76e4da 18%,#9d9fff 46%,#9d9fff38 68%,#9298ff55 80%,#b2fff1);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px))}
-@media (prefers-reduced-motion:no-preference){.play-anel::before{animation:girar 2.4s linear infinite}}
-@keyframes girar{to{transform:rotate(360deg)}}
+.play-anel{position:relative;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.play-anel::before{
+  content:"";position:absolute;inset:-2px;border-radius:50%;pointer-events:none;
+  /* A ponta fecha a emenda da cauda. O restante da volta é transparente. */
+  background:
+    radial-gradient(circle at 50% 1.25px,#c9fff2 .6px,transparent 1.5px),
+    conic-gradient(transparent 0deg 244deg,#96a2ff00 244deg,#96a2ff38 273deg,#97d4e49c 314deg,#a6eddf 344deg,#c9fff2 359deg,transparent 360deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.6px),#000 calc(100% - 2px),#000 calc(100% - .6px),transparent);
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2.6px),#000 calc(100% - 2px),#000 calc(100% - .6px),transparent);
+}
+@media (prefers-reduced-motion:no-preference){
+  .play-anel::before{animation:orbitar-icone 3.2s linear infinite}
+}
+@keyframes orbitar-icone{from{transform:rotate(-45deg)}to{transform:rotate(315deg)}}
 .btn-vidro{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:16px;font-size:15px;font-weight:650;color:var(--texto);text-decoration:none;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px var(--aro),0 4px 0 rgba(60,70,140,.14);transition:transform .12s ease,box-shadow .12s ease}
 .escuro .btn-vidro{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px var(--aro),0 4px 0 rgba(0,0,0,.35)}
 .btn-vidro:hover{color:var(--texto);transform:translateY(-1px)}
@@ -447,7 +457,6 @@ tr:last-child td{border-bottom:0}
   color:#fff;background:linear-gradient(135deg,#484cc1,#3437a7);
   box-shadow:inset 0 1px 0 #ffffff40,0 4px 0 #252579,0 12px 24px -12px #3539b880;
 }
-.heroi .play-anel{background:#ffffff20}
 .bs .bs-seta{
   color:var(--acento);background:var(--peca);
   box-shadow:inset 0 0 0 1px var(--aro),0 3px 0 var(--linha);
