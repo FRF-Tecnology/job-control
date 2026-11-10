@@ -160,6 +160,36 @@ jobs:
           archive: false
           retention-days: 7
           if-no-files-found: error
+      # 2º pacote (jc-a2y.6.16): o mesmo app com o envio de candidaturas ligado (-tags envio_dev, que traz o chromedp),
+      # para a máquina de teste Mac. Sai depois do padrão, que já está zipado e conferido: o package só refaz o
+      # bin/central e o bundle. O padrão continua sem envio_dev nem chromedp (checagem acima).
+      - name: Empacotar o .app com envio (envio_dev)
+        shell: bash
+        working-directory: app
+        run: |
+          wails3 package EXTRA_TAGS=envio_dev
+          mkdir -p ../pacote-envio
+          ditto bin/central.app ../pacote-envio/Applyer.app
+          app=../pacote-envio/Applyer.app
+          exe="$app/Contents/MacOS/central"
+          test -x "$exe"
+          lipo -archs "$exe" | grep -qw arm64
+          codesign --verify --deep --strict "$app"
+          # Tem de ser o build com envio: sem envio_dev ou sem chromedp, este zip seria igual ao padrão.
+          go version -m "$exe" > build-info-envio.txt
+          grep -qE 'build[[:space:]]+-tags=.*envio_dev' build-info-envio.txt || { echo "::error::o binário do .app com envio não tem envio_dev"; exit 1; }
+          grep -q 'github\.com/chromedp/chromedp' build-info-envio.txt || { echo "::error::o binário do .app com envio não tem chromedp"; exit 1; }
+          cmp -s "$exe" ../pacote/Applyer.app/Contents/MacOS/central && { echo "::error::o binário com envio é igual ao padrão"; exit 1; }
+          cd ../pacote-envio && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64-envio.zip
+          ls -l Applyer-macos-arm64-envio.zip
+          echo "Applyer-macos-arm64-envio.zip sha256: \`$(shasum -a 256 Applyer-macos-arm64-envio.zip | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
+      - if: github.event_name == 'push' && github.repository == 'FRF-Tecnology/job-control'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: pacote-envio/Applyer-macos-arm64-envio.zip
+          archive: false
+          retention-days: 7
+          if-no-files-found: error
 
   # Repositório público: nenhum segredo pode entrar.
   segredos:
