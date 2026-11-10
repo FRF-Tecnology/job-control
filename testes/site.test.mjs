@@ -31,6 +31,22 @@ test('site: o script não tem erro de sintaxe', () => {
   assert.doesNotThrow(() => new vm.Script(ler('tema.js'), { filename: 'tema.js' }));
 });
 
+test('site: a primeira pintura é clara, exceto quando a pessoa já escolheu o tema escuro', () => {
+  for (const temaSalvo of [null, 'inválido', 'claro', 'escuro']) {
+    const meta = {};
+    let classeEscura;
+    const document = {
+      documentElement: { classList: { toggle: (_, ativo) => { classeEscura = ativo; } } },
+      querySelector: seletor => seletor === 'meta[name="theme-color"]' ? meta : null,
+      addEventListener() {},
+    };
+    const window = { matchMedia: () => ({ matches: true, addEventListener() {} }), addEventListener() {} };
+    vm.runInNewContext(ler('tema.js'), { window, document, localStorage: { getItem: () => temaSalvo } });
+    assert.equal(classeEscura, temaSalvo === 'escuro');
+    assert.equal(meta.content, temaSalvo === 'escuro' ? '#0C0E2C' : '#EEF2FB');
+  }
+});
+
 test('site: todo texto que o script liga tem lugar na página', () => {
   const naPagina = new Set(todos(html, /data-liga="([^"]+)"/g));
   const fixas = todos(js, /ligar\('([^'`$]+)'/g);
