@@ -59,6 +59,14 @@ Ferramentas: `resumo`, `vagas_listar`, `vaga_detalhe`, `vaga_duplicada`, `vaga_a
 `vaga_editar`, `evento_registrar`, `perfil_ler`, `resposta_padrao`, `followups_vencidos`, `followup_registrar`, `rodada_registrar`,
 `pedidos_listar`, `pedido_concluir`, `emails_registrar`, `emails_sem_vaga`.
 
+### O MCP do app novo ("applyer")
+O `.mcp.json` também registra o servidor **"applyer"** (`go run ./cmd/central-mcp`, precisa do Go), que fala com os dados do
+**app novo** (a pasta Applyer, ou `APPLYER_PASTA`), e não com `dados/`. Use o "central" para a Central em uso hoje e o
+"applyer" só para o app novo. Ele só abre a pasta e o banco que o app já criou (abra o Applyer uma vez antes) e nunca usa o
+cofre nem uma IA. A regra 8 vale igual: ele lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma
+aprovação e pausa o envio. Aprovar, retomar e registrar envio são só da pessoa, pela tela. As ferramentas também saem
+na linha de comando: `go run ./cmd/central-cli ferramentas`. Detalhes em `docs/propostas/mcp-cli.md`.
+
 ## Regras de segurança
 - CPF, RG, senhas e dados bancários nunca são preenchidos pelo Claude nem guardados na Central.
 - O Claude não inventa experiência e não envia mensagens em seu nome sem um "pode mandar".
