@@ -46,3 +46,28 @@ func perguntaSensivel(pergunta string) string {
 	}
 	return m
 }
+
+// Perguntas cuja resposta é o próprio dado que o app nunca guarda (jc-a2y.7.5): número fiscal, documento de
+// identidade, senha e dado bancário. "documento", "dado-sensivel", "termos" e "captcha" ficam de fora: o perfil pode
+// guardar "Tem passaporte válido? Sim", e essas perguntas já nunca recebem resposta automática num formulário.
+var motivosForaDoPerfil = map[string]bool{"cpf": true, "rg": true, "senha": true, "dado-bancario": true}
+
+// Resposta que não é o dado ("Possui CNPJ?" com "Sim"): sim, n/a, ou uma frase que começa por "não" ou "no".
+var reRespostaSemDado = regexp.MustCompile(`^((sim|yes|si|n/?a)[.!]?|(nao|no)([^a-z0-9].*)?)$`)
+
+// RespostaPadraoSensivel devolve a primeira pergunta de respostasPadrao que pede um desses dados e traz resposta
+// com conteúdo, ou "". É a regra do /perfil, só no Go: vale para o que está sendo gravado, por qualquer autor
+// (a pessoa, o assistente ou uma IA), em português, espanhol e inglês. Em caso de dúvida, recusa.
+func RespostaPadraoSensivel(perfil any) string {
+	for _, e := range lista(obj(perfil)["respostasPadrao"]) {
+		r := obj(e)
+		resposta := Normalizar(r["resposta"])
+		if resposta == "" || reRespostaSemDado.MatchString(resposta) {
+			continue
+		}
+		if pergunta := texto(r["pergunta"]); motivosForaDoPerfil[MotivoDoRotulo(pergunta)] {
+			return pergunta
+		}
+	}
+	return ""
+}
