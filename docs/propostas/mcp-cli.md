@@ -25,8 +25,7 @@ Hoje o assistente (Claude Code) usa o MCP "central" da Central Node (`mcp/servid
 | `vaga_detalhe` | `GET /vagas/{id}` | leitura |
 | `vaga_duplicada` | `GET /duplicatas` | leitura |
 | `vaga_adicionar` | `POST /vagas/importar` | o domínio só cria em `descoberta` |
-| `vaga_mover` | `POST /vagas/{id}/mover` | `aplicar` dá 400 vindo do assistente; os cabeçalhos de pedido não passam |
-| `vaga_registrar_envio` | `POST /vagas/{id}/mover` (`etapa: enviada`) | registra o que já foi enviado fora do app, como na Node |
+| `vaga_mover` | `POST /vagas/{id}/mover` | `aplicar` dá 400 vindo do assistente (domínio); **`enviada` dá 403** pelo canal do assistente (decisão do PO, abaixo); os cabeçalhos de pedido não passam |
 | `vaga_editar` | `PATCH /vagas/{id}` | só os campos editáveis mudam; o domínio ignora o resto, como etapa e datas |
 | `evento_registrar` | `POST /vagas/{id}/eventos` | linha do tempo |
 | `followups_vencidos` | `GET /followups` | leitura |
@@ -42,6 +41,8 @@ Hoje o assistente (Claude Code) usa o MCP "central" da Central Node (`mcp/servid
 | `envio_estado` (nova) | `GET /envio` | leitura, só códigos |
 | `envio_pausar` (nova) | `POST /envio/pausar` | só reduz o risco |
 | `plataforma_pausar` (nova) | `POST /envio/plataformas/{plataforma}/pausar` | só reduz o risco |
+
+**Negado de propósito:** `vaga_registrar_envio`. No app novo, quem envia é o executor, e um envio feito à mão a pessoa marca pela tela (`concluir-manual`). Se o assistente pudesse dizer que algo "foi enviado", poderia falsificar o funil e o limite. Por isso, além de não haver a ferramenta, o `ChamarAssistente` recusa com 403 o `POST /vagas/{id}/mover` com `etapa: enviada`, antes de chegar ao domínio.
 
 **Fora deste recorte:**
 - `emails_registrar` e `emails_sem_vaga`: entram com o `.7.3` (Faker), que define as rotas de e-mail no app Go.
@@ -64,18 +65,17 @@ Hoje o assistente (Claude Code) usa o MCP "central" da Central Node (`mcp/servid
 - **Log:** no stderr, só a ferramenta, o status e o tipo do erro. Nunca os argumentos nem o texto de vagas.
 - **Entrada:** o MCP confere o `inputSchema` (obrigatórios, tipos, enums), e depois a API valida de novo (`soCampos` e o domínio).
 
-## Decisões para o PO e o CyberSec
+## Decidido (PO, no #135)
 
-1. **O autor gravado.** A M4 diz "Autor `mcp` ou `cli`". Hoje o domínio trata como assistente qualquer autor diferente de `eu`, e a Node e os eventos já gravados usam `claude`.
-   - **Recomendo:** o autor dos eventos continua `claude`, e o `canal` (`mcp` ou `cli`) entra no pedido só para a lista de permissão e o log. Assim os dados ficam compatíveis com a Node e com o golden, e a regra 8 continua igual.
-   - A alternativa é gravar `mcp` ou `cli` como autor, e então a tela e o histórico mostram "mcp" ou "cli" onde hoje mostram "claude".
-2. **`vaga_registrar_envio`** fica, como na Node? Ela registra um envio feito fora do app, por exemplo à mão pela pessoa. Recomendo que fique.
-3. **`pedido_concluir`** fica? Ele só grava a resposta em texto. Recomendo que fique.
+1. **O autor gravado é `claude`**, para o MCP e para a CLI. O `canal` (`mcp` ou `cli`) entra no pedido só para a lista de permissão e o log. Os dados ficam compatíveis com a Node e com o golden, e a regra 8 continua igual. (A M4 dizia "Autor `mcp` ou `cli`"; o canal cumpre esse papel.)
+2. **`vaga_registrar_envio` não entra.** Mover para `enviada` pelo canal do assistente dá 403 (acima).
+3. **`pedido_concluir` entra**: ele só grava a resposta em texto.
+4. **O `.mcp.json` só troca para o Go num PR à parte**, depois do código do `.7.4` aprovado.
 
 ## Testes previstos
 
 - **Contrato:** a lista `x-assistente` do contrato é a do código, e nenhuma delas é `x-so-tela`. Toda rota do contrato fora da lista dá 403 pelo canal do assistente, inclusive as que não existem. Mesmo com `X-Pedido` e `X-Impressao` no pedido, eles não passam.
-- **Regras do domínio pelo MCP:** mover para `aplicar` dá 400; vaga nova fica em `descoberta`; `modo: direto` é recusado; CPF dá 400; aprovar, cancelar, criar e editar candidatura dão 403; revogar funciona.
+- **Regras do domínio pelo MCP:** mover para `aplicar` dá 400; mover para `enviada` dá 403 (também com a etapa em maiúsculas ou com espaços); vaga nova fica em `descoberta`; `modo: direto` é recusado; CPF dá 400; aprovar, cancelar, criar e editar candidatura dão 403; revogar funciona.
 - **MCP:** `initialize`, `tools/list` e `tools/call`; o stdout tem só JSON-RPC; uma entrada fora do schema é recusada; a resposta grande é cortada; o log não tem argumentos.
 - **Processos:** o app e o MCP gravam juntos sem perder gravação, e o MCP não segura o banco entre chamadas (apagar a pasta funciona com o MCP parado).
 - **CLI:** os mesmos casos, pelo canal `cli`.
@@ -87,4 +87,4 @@ Hoje o assistente (Claude Code) usa o MCP "central" da Central Node (`mcp/servid
 2. `internal/assistente`: a tabela de ferramentas, o `ChamarAssistente` com a lista e os testes de contrato e de domínio.
 3. `cmd/central-mcp` (stdio).
 4. Os comandos na `central-cli`.
-5. A troca do `.mcp.json`, quando o PO decidir.
+5. A troca do `.mcp.json`, depois do código aprovado.

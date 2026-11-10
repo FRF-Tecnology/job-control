@@ -19,7 +19,9 @@ servers:
   - url: /api/v1
 # jc-a2y.7.4 (proposta, docs/propostas/mcp-cli.md): o que o assistente (MCP e CLI, regra M4) pode chamar. Lista de
 # permissão: método e rota fora dela dão 403 pelo canal do assistente, antes de ler ou gravar. Nenhuma operação
-# x-so-tela entra aqui, e as regras do domínio (regra 8) continuam valendo por cima.
+# x-so-tela entra aqui, e as regras do domínio (regra 8) continuam valendo por cima. POST /vagas/{id}/mover
+# com etapa enviada também dá 403 pelo canal do assistente: só o executor e a pessoa (concluir-manual) registram
+# envio (decisão do PO no #135).
 x-assistente:
   - GET /resumo
   - GET /vagas
