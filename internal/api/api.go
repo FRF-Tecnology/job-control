@@ -141,7 +141,11 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.ContaID == "" {
 		o.ContaID = "local"
 	}
-	if o.Cofre == nil {
+	if o.Canal != "" {
+		// A API do assistente nunca usa o cofre (A2.4 do CyberSec, jc-a2y.7.4): nem o do sistema, nem um que o
+		// binário passe. As rotas /ia/* também estão fora da lista.
+		o.Cofre = cofreDoAssistente{}
+	} else if o.Cofre == nil {
 		// Cada pasta de dados tem as chaves dela no cofre (jc-a2y.65): apagar uma pasta não apaga as de outra.
 		o.Cofre = segredos.Sistema{Servico: segredos.ServicoDaPasta(arm.Pasta())}
 	}

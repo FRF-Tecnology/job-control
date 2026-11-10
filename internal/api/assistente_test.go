@@ -15,6 +15,7 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
+	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
 
 // jc-a2y.7.4 (PR 2): a entrada do assistente (MCP e CLI, regra M4) e os requisitos do CyberSec (A1 a A8, decisões do
@@ -377,4 +378,34 @@ func TestLogDoAssistenteSemConteudo(t *testing.T) {
 			t.Errorf("log tem %q:\n%s", proibido, tudo)
 		}
 	}
+}
+
+// A2.4: a API do assistente nunca usa o cofre (nem o do sistema, nem um que o binário passe).
+func TestAssistenteSemCofre(t *testing.T) {
+	f := novaFila(t)
+	a := Nova(f.arm, Opcoes{Canal: dominio.CanalMCP, Cofre: cofreQueNaoPodeSerUsado{t}})
+	if _, ok := a.cofre.(segredos.Seguro); !ok {
+		t.Fatalf("cofre = %T", a.cofre)
+	}
+	if _, err := a.cofre.Ler("anthropic"); err == nil {
+		t.Fatal("o cofre do assistente leu")
+	}
+	if err := a.cofre.Gravar("anthropic", "sk-ficticia"); err == nil {
+		t.Fatal("o cofre do assistente gravou")
+	}
+}
+
+type cofreQueNaoPodeSerUsado struct{ t *testing.T }
+
+func (c cofreQueNaoPodeSerUsado) Ler(string) (string, error) {
+	c.t.Error("a API do assistente usou o cofre passado")
+	return "", nil
+}
+func (c cofreQueNaoPodeSerUsado) Gravar(string, string) error {
+	c.t.Error("a API do assistente usou o cofre passado")
+	return nil
+}
+func (c cofreQueNaoPodeSerUsado) Apagar(string) error {
+	c.t.Error("a API do assistente usou o cofre passado")
+	return nil
 }

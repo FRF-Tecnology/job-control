@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log"
 	"regexp"
 	"strings"
@@ -135,3 +136,12 @@ func (a *API) ChamarAssistente(ctx context.Context, p Pedido) (Resposta, error) 
 	}
 	return r, err
 }
+
+// cofreDoAssistente: o cofre da API do assistente. Recusa tudo, sem tocar no cofre do sistema.
+type cofreDoAssistente struct{}
+
+var errCofreDoAssistente = errors.New("o assistente não usa o cofre")
+
+func (cofreDoAssistente) Ler(string) (string, error)  { return "", errCofreDoAssistente }
+func (cofreDoAssistente) Gravar(string, string) error { return errCofreDoAssistente }
+func (cofreDoAssistente) Apagar(string) error         { return errCofreDoAssistente }
