@@ -469,6 +469,12 @@ tr:last-child td{border-bottom:0}
 .legenda span{justify-content:center}
 
 .heroi .grad{display:block}
+.fecho-clique{white-space:nowrap}
+.sinal-clique{
+  --ficha-verso:#979DFA;--ficha-frente:#545DE5;--ficha-dobra:#333A96;
+  display:inline-block;width:1.18em;height:1.18em;margin-inline-start:.18em;vertical-align:-.19em;
+}
+.escuro .sinal-clique{--ficha-verso:#747EE5;--ficha-frente:#AFB6FF;--ficha-dobra:#6670DB}
 @media (max-width:900px){
   .app-corpo{display:block;min-height:0}
   .app-lado{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--linha);padding:8px 10px}
