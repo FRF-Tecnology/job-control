@@ -86,9 +86,7 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
     conic-gradient(transparent 0deg 244deg,#96a2ff00 244deg,#96a2ff38 273deg,#97d4e49c 314deg,#a6eddf 344deg,#c9fff2 359deg,transparent 360deg);
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.6px),#000 calc(100% - 2px),#000 calc(100% - .6px),transparent);
   mask:radial-gradient(farthest-side,transparent calc(100% - 2.6px),#000 calc(100% - 2px),#000 calc(100% - .6px),transparent);
-}
-@media (prefers-reduced-motion:no-preference){
-  .play-anel::before{animation:orbitar-icone 3.2s linear infinite}
+  animation:orbitar-icone 3.2s linear infinite;
 }
 @keyframes orbitar-icone{from{transform:rotate(-45deg)}to{transform:rotate(315deg)}}
 .btn-vidro{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:16px;font-size:15px;font-weight:650;color:var(--texto);text-decoration:none;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px var(--aro),0 4px 0 rgba(60,70,140,.14);transition:transform .12s ease,box-shadow .12s ease}
@@ -559,7 +557,8 @@ tr:last-child td{border-bottom:0}
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .lp *,.lp *::before,.lp *::after{animation:none!important;transition:none!important}
+  .lp *,.lp :not(.play-anel)::before,.lp *::after{animation:none!important;transition:none!important}
+  .play-anel::before{animation-duration:5s}
 }
 @media(forced-colors:active){
   .grad,.escuro .grad{color:CanvasText}
