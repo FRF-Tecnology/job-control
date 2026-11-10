@@ -446,17 +446,31 @@ function iniciar() {
 }
 iniciar();
 
-// Ilumina as cenas da rotina uma única vez, quando cada cartão entra na tela.
-if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+// O gesto responde à interação; a animação ambiente só roda nos cartões visíveis.
+function iniciarCenasDaRotina() {
+  const secao = $('#como');
+  const pausa = $('[data-pausar-rotina]', secao);
+  const cartoes = $$('.hora', secao);
+  pausa.addEventListener('click', () => {
+    const pausada = secao.classList.toggle('rotina-pausada');
+    texto(pausa, pausada ? 'Retomar animações' : 'Pausar animações');
+  });
+  const acompanharAba = () => secao.classList.toggle('rotina-sem-visibilidade', document.hidden);
+  acompanharAba();
+  document.addEventListener('visibilitychange', acompanharAba);
+  if (!('IntersectionObserver' in window)) {
+    for (const cartao of cartoes) cartao.classList.add('em-tela');
+    return;
+  }
   const cenas = new IntersectionObserver(entradas => {
     for (const entrada of entradas) {
-      if (!entrada.isIntersecting) continue;
-      entrada.target.classList.add('em-vista');
-      cenas.unobserve(entrada.target);
+      entrada.target.classList.toggle('em-tela', entrada.isIntersecting);
+      if (entrada.isIntersecting) entrada.target.classList.add('em-vista');
     }
-  }, { threshold: 0.2 });
-  for (const cartao of document.querySelectorAll('#como .hora')) {
+  });
+  for (const cartao of cartoes) {
     cartao.classList.add('prepara-luz');
     cenas.observe(cartao);
   }
 }
+iniciarCenasDaRotina();

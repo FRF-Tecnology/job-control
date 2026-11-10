@@ -557,7 +557,7 @@ tr:last-child td{border-bottom:0}
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .lp *,.lp :not(.play-anel)::before,.lp *::after{animation:none!important;transition:none!important}
+  .lp :not(.hora-cena *),.lp :not(.play-anel)::before,.lp *::after{animation:none!important;transition:none!important}
   .play-anel::before{animation-duration:5s}
 }
 @media(forced-colors:active){
@@ -619,64 +619,91 @@ tr:last-child td{border-bottom:0}
     background:linear-gradient(90deg,transparent 91%,#ffffff30 98%,#ffffff70);
     animation:rotina-lente 1.15s cubic-bezier(.45,0,.22,1) both;
   }
-  #como .hora{--gesto:0}
-  #como .hora:has(:focus-visible){--gesto:1}
-  #como .hora-busca{
-    --astro-x:calc(-14px * var(--gesto));--astro-y:calc(-5px * var(--gesto));
-    --estrelas-x:calc(8px * var(--gesto));--estrelas-y:calc(3px * var(--gesto));--tempo-ceu:.82s;
-  }
-  #como .rotina-peca{
-    --x:0px;--y:0px;--angulo:0deg;--tempo:.54s;--atraso:0s;
-    transform-box:fill-box;transform-origin:center;
-    transform:translate(calc(var(--x) * var(--gesto)),calc(var(--y) * var(--gesto))) rotate(calc(var(--angulo) * var(--gesto)));
-    transition:transform var(--tempo) cubic-bezier(.23,.78,.26,1) var(--atraso);
-  }
-  #como .telescopio-eixo{--angulo:-10deg;--tempo:.68s;transform-box:view-box;transform-origin:143px 84px}
-  #como .telescopio-lente{--x:20px;--atraso:.08s}
-  #como .telescopio-ocular{--x:-6px}
-  #como .telescopio-brilho{--x:9px;--y:-6px;--angulo:18deg;--tempo:.72s}
-  #como .pacote-folha{--x:-22px;--y:1px;--angulo:-11deg}
-  #como .pacote-curriculo{--x:-1px;--y:-9px;--angulo:3deg}
-  #como .pacote-carta{--x:20px;--y:1px;--angulo:4deg;--atraso:.04s}
-  #como .rotina-aba-carta{
-    transform-box:view-box;transform-origin:0 96px;transform:scaleY(calc(1 - 1.85 * var(--gesto)));
-    transition:transform .34s ease-out;
-  }
-  #como .rotina-bilhete{
-    opacity:var(--gesto);transform:translateY(calc(-11px * var(--gesto)));
-    transition:transform .44s ease-out .09s,opacity .22s;
-  }
-  #como .triagem-esquerda{--x:-24px;--y:1px;--angulo:-9deg}
-  #como .triagem-direita{--x:23px;--y:-1px;--angulo:10deg}
-  #como .triagem-frente{--x:1px;--y:-11px;--angulo:2deg;--atraso:.04s}
-  #como .triagem-escolha{--x:5px;--y:-9px;--angulo:8deg;--atraso:.09s}
-  #como .revisao-prancheta{--x:-6px;--y:-3px;--angulo:5deg}
-  #como .revisao-carimbo{--x:9px;--y:-7px;--angulo:-12deg}
-  #como .revisao-marca{
-    stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--gesto));
-    opacity:var(--gesto);transition:stroke-dashoffset .32s ease-out var(--atraso,0s),opacity .15s;
-  }
-  #como .revisao-marca:nth-child(2){--atraso:.12s}
-  #como .revisao-marca:nth-child(3){--atraso:.23s}
-  #como .envio-ponteiro{--x:-23px;--y:10px;--angulo:-9deg;--tempo:.45s}
-  #como .envio-barra,#como .envio-linhas{transform-box:fill-box;transform-origin:left center}
-  #como .envio-barra{transform:scaleX(calc(.16 + .84 * var(--gesto)));transition:transform .55s ease-in-out .17s}
-  #como .envio-linhas{transform:scaleX(calc(.75 + .25 * var(--gesto)));transition:transform .5s ease-out}
-  #como .quadro-ficha{--x:32px;--y:3px;--tempo:.58s}
-  #como .quadro-mensagem{--x:13px;--y:-12px;--angulo:-9deg;--atraso:.08s}
-  #como .quadro-aviso{transform-box:fill-box;transform-origin:center;transform:scale(calc(1 + .23 * var(--gesto)));transition:transform .4s ease-out .13s}
 }
-@media (hover:hover) and (prefers-reduced-motion:no-preference){
-  #como .hora:hover{--gesto:1}
+#como{
+  --alcance:1;--brisa:1;--ciclo:4.8s;
 }
-@media (hover:none) and (prefers-reduced-motion:no-preference){
-  #como .hora:active,#como .hora:has(.hora-cena:focus){--gesto:1}
+#como .rotina-pausa{
+  align-self:flex-start;padding:7px 14px;border-radius:999px;border:1px solid var(--linha);
+  background:var(--peca);color:var(--texto2);font:inherit;font-size:.875rem;cursor:pointer;
+}
+#como .hora{--gesto:0}
+#como .hora:has(:focus-visible){--gesto:var(--alcance)}
+#como .hora-busca{
+  --astro-x:calc(-14px * var(--gesto));--astro-y:calc(-5px * var(--gesto));
+  --estrelas-x:calc(8px * var(--gesto));--estrelas-y:calc(3px * var(--gesto));--tempo-ceu:.82s;
+}
+#como .rotina-peca{
+  --x:0px;--y:0px;--angulo:0deg;--tempo:.54s;--atraso:0s;
+  transform-box:fill-box;transform-origin:center;
+  transform:translate(calc(var(--x) * var(--gesto)),calc(var(--y) * var(--gesto))) rotate(calc(var(--angulo) * var(--gesto)));
+  transition:transform var(--tempo) cubic-bezier(.23,.78,.26,1) var(--atraso);
+}
+#como .telescopio-eixo{--angulo:-10deg;--tempo:.68s;transform-box:view-box;transform-origin:143px 84px}
+#como .telescopio-lente{--x:20px;--atraso:.08s}
+#como .telescopio-ocular{--x:-6px}
+#como .telescopio-brilho{--x:9px;--y:-6px;--angulo:18deg;--tempo:.72s}
+#como .pacote-folha{--x:-22px;--y:1px;--angulo:-11deg}
+#como .pacote-curriculo{--x:-1px;--y:-9px;--angulo:3deg}
+#como .pacote-carta{--x:20px;--y:1px;--angulo:4deg;--atraso:.04s}
+#como .rotina-aba-carta{
+  transform-box:view-box;transform-origin:0 96px;transform:scaleY(calc(1 - 1.85 * var(--gesto)));
+  transition:transform .34s ease-out;
+}
+#como .rotina-bilhete{
+  opacity:var(--gesto);transform:translateY(calc(-11px * var(--gesto)));
+  transition:transform .44s ease-out .09s,opacity .22s;
+}
+#como .triagem-esquerda{--x:-24px;--y:1px;--angulo:-9deg}
+#como .triagem-direita{--x:23px;--y:-1px;--angulo:10deg}
+#como .triagem-frente{--x:1px;--y:-11px;--angulo:2deg;--atraso:.04s}
+#como .triagem-escolha{--x:5px;--y:-9px;--angulo:8deg;--atraso:.09s}
+#como .revisao-prancheta{--x:-6px;--y:-3px;--angulo:5deg}
+#como .revisao-carimbo{--x:9px;--y:-7px;--angulo:-12deg}
+#como .revisao-marca{
+  stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--gesto));
+  opacity:var(--gesto);transition:stroke-dashoffset .32s ease-out var(--atraso,0s),opacity .15s;
+}
+#como .revisao-marca:nth-child(2){--atraso:.12s}
+#como .revisao-marca:nth-child(3){--atraso:.23s}
+#como .envio-ponteiro{--x:-23px;--y:10px;--angulo:-9deg;--tempo:.45s}
+#como .envio-barra,#como .envio-linhas{transform-box:fill-box;transform-origin:left center}
+#como .envio-barra{transform:scaleX(calc(.16 + .84 * var(--gesto)));transition:transform .55s ease-in-out .17s}
+#como .envio-linhas{transform:scaleX(calc(.75 + .25 * var(--gesto)));transition:transform .5s ease-out}
+#como .quadro-ficha{--x:32px;--y:3px;--tempo:.58s}
+#como .quadro-mensagem{--x:13px;--y:-12px;--angulo:-9deg;--atraso:.08s}
+#como .quadro-aviso{transform-box:fill-box;transform-origin:center;transform:scale(calc(1 + .23 * var(--gesto)));transition:transform .4s ease-out .13s}
+@media (any-hover:hover){
+  #como .hora:hover{--gesto:var(--alcance)}
+}
+@media (hover:none){
+  #como .hora:active,#como .hora:has(.hora-cena:focus){--gesto:var(--alcance)}
 }
 #como .hora-cena:focus-visible{outline:3px solid var(--acento);outline-offset:3px}
 #como .rotina-bilhete,#como .revisao-marca{pointer-events:none}
+#como .telescopio-lente{--brisa-x:9px;--brisa-y:-2px}
+#como .telescopio-brilho{--brisa-x:3px;--brisa-y:-3px;--brisa-giro:12deg}
+#como .pacote-folha{--brisa-x:-4px;--brisa-y:-4px;--brisa-giro:-4deg}
+#como .pacote-carta{--brisa-x:2px;--brisa-y:-4px;--atraso-ciclo:-.8s}
+#como .triagem-esquerda{--brisa-x:-6px;--brisa-giro:-4deg;--atraso-ciclo:-1.4s}
+#como .triagem-direita{--brisa-x:5px;--brisa-giro:3deg;--atraso-ciclo:-1.4s}
+#como .revisao-carimbo{--brisa-y:-6px;--brisa-giro:5deg;--atraso-ciclo:-2s}
+#como .envio-ponteiro{--brisa-x:-7px;--brisa-y:3px;--atraso-ciclo:-.6s}
+#como .quadro-mensagem{--brisa-x:2px;--brisa-y:-5px;--brisa-giro:-3deg;--atraso-ciclo:-1.8s}
+#como .hora-cena :is(.telescopio-lente,.telescopio-brilho,.pacote-folha,.pacote-carta,.triagem-esquerda,.triagem-direita,.revisao-carimbo,.envio-ponteiro,.quadro-mensagem){
+  animation:rotina-em-repouso var(--ciclo) ease-in-out var(--atraso-ciclo,0s) infinite;
+  animation-play-state:var(--reproducao,paused);
+}
+#como .em-tela{--reproducao:running}
+#como:is(.rotina-pausada,.rotina-sem-visibilidade) .hora{--reproducao:paused}
+#como.rotina-pausada{--alcance:0}
+#como.rotina-pausada .rotina-noite,#como.rotina-pausada .hora-cena::after{display:none}
+@keyframes rotina-em-repouso{
+  0%,100%{translate:0 0;rotate:0deg}
+  50%{translate:calc(var(--brisa-x,0px) * var(--brisa)) calc(var(--brisa-y,0px) * var(--brisa));rotate:calc(var(--brisa-giro,0deg) * var(--brisa))}
+}
 @media (prefers-reduced-motion:reduce){
-  #como .rotina-bilhete,#como .revisao-marca{opacity:0}
-  #como .envio-barra{transform-box:fill-box;transform-origin:left center;transform:scaleX(.16)}
+  #como{--alcance:.72;--brisa:.65;--ciclo:7s}
 }
 @keyframes rotina-amanhecer{from{clip-path:inset(0)}to{clip-path:inset(0 0 0 100%)}}
 @keyframes rotina-lente{
