@@ -29,6 +29,8 @@ type EstadoPlataforma struct {
 	Ate          string `json:"ate,omitempty"` // só em parada-hoje
 	UltimoCodigo string `json:"ultimoCodigo,omitempty"`
 	Seguidas     int    `json:"seguidas,omitempty"`
+	// PausadaPor (jc-a2y.7.4): quem pausou, só em pausada sem motivo. Preenchido pelo servidor, nunca pelo corpo.
+	PausadaPor *Quem `json:"pausadaPor,omitempty"`
 }
 
 // Plataformas: linkedin, gupy e inhire. Sem entrada, a plataforma está ativa.
@@ -108,6 +110,12 @@ func (p Plataformas) RegistrarResultado(plataforma, codigo string, agora time.Ti
 
 // PausarPlataforma: qualquer autor (só reduz o risco). Parada-hoje continua parada-hoje.
 func (p Plataformas) PausarPlataforma(plataforma string, agora time.Time) (Plataformas, error) {
+	return p.PausarPlataformaPor(plataforma, agora, nil)
+}
+
+// PausarPlataformaPor: o mesmo, gravando quem pausou (jc-a2y.7.4). quem vem do servidor (QuemDe), nunca do corpo;
+// fora das combinações válidas, fica sem quem.
+func (p Plataformas) PausarPlataformaPor(plataforma string, agora time.Time, quem *Quem) (Plataformas, error) {
 	if !plataformaDoEnvio(plataforma) {
 		return p, &ErroNaoEncontrado{Msg: "plataforma não encontrada no envio automático: " + plataforma}
 	}
@@ -116,7 +124,10 @@ func (p Plataformas) PausarPlataforma(plataforma string, agora time.Time) (Plata
 	if s.Estado == PlataformaParadaHoje {
 		return n, nil
 	}
-	n[plataforma] = EstadoPlataforma{Estado: PlataformaPausada}
+	if !QuemValido(quem) {
+		quem = nil
+	}
+	n[plataforma] = EstadoPlataforma{Estado: PlataformaPausada, PausadaPor: quem}
 	return n, nil
 }
 
@@ -165,6 +176,9 @@ func (p Plataformas) Lista(agora time.Time) []Objeto {
 		}
 		if s.Estado == PlataformaParadaHoje && s.Ate != "" {
 			o["ate"] = s.Ate
+		}
+		if s.Estado == PlataformaPausada && s.Motivo == "" && QuemValido(s.PausadaPor) {
+			o["pausadaPor"] = Objeto{"autor": s.PausadaPor.Autor, "canal": s.PausadaPor.Canal}
 		}
 		saida = append(saida, o)
 	}

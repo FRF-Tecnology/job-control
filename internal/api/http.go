@@ -45,6 +45,10 @@ func tipoDoErro(err error) string {
 // Rotas antigas /api/x viram /api/v1/x. Gravações exigem JSON e nada vindo de outro site.
 func (a *API) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a.canal != "" { // a API do assistente nunca serve a tela (jc-a2y.7.4)
+			enviar(w, Resposta{Status: 403, Corpo: Objeto{"erro": msgForaDoAssistente}})
+			return
+		}
 		p := r.URL.EscapedPath()
 		if strings.HasPrefix(p, "/api/") && !strings.HasPrefix(p, Prefixo+"/") {
 			p = Prefixo + p[len("/api"):]

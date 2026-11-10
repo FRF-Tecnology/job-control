@@ -7,7 +7,7 @@ import { NOMES_EMAIL } from '../dominio/emails';
 import { Icone, LinkExterno } from '../componentes';
 import { SeusPedidos, type Pedido } from './Pedidos';
 import { AvisoPasta } from './AvisoPasta';
-import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode } from '../util';
+import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode, nomeAssistente } from '../util';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
 const TIPOS_EVENTO: Record<string, string> = { descoberta: 'Encontrada', aplicar: 'Aprovada para aplicar', enviada: 'Enviada', bloqueada: 'Travou', 'em-processo': 'Em processo', oferta: 'Oferta', encerrada: 'Encerrada', pulada: 'Pulada', 'follow-up': 'Follow-up', nota: 'Nota', retorno: 'Retorno', teste: 'Teste', entrevista: 'Entrevista', email: 'Email' };
@@ -329,7 +329,7 @@ export function TelaHoje() {
                   const v: any = porId.get(ev.vagaId);
                   return (
                     <li key={ev.id} className={`e-${ev.tipo}`}>
-                      <time dateTime={ev.data}>{`${dataCurta(ev.data)}${ev.autor === 'claude' ? ' · Claude' : ''}`}</time>
+                      <time dateTime={ev.data}>{`${dataCurta(ev.data)}${ev.autor === 'claude' ? ` · ${ev.canal ? nomeAssistente(ev.canal) : 'Claude'}` : ''}`}</time>
                       <span><b>{TIPOS_EVENTO[ev.tipo] ?? ev.tipo}</b>{' '}{v ? `${v.empresa} — ${v.titulo}` : ev.vagaId}</span>
                     </li>
                   );

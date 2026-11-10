@@ -26,7 +26,7 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 		if err := soCampos(c); err != nil {
 			return Resposta{}, true, err
 		}
-		r, err := a.mudarPausa(ctx, true)
+		r, err := a.mudarPausa(ctx, true, a.quem(autor))
 		if err == nil {
 			a.limparAoVivo()                         // pausado: sem quadro (jc-a2y.6.9)
 			log.Printf("envio: pausado (%s)", autor) // só o fato e o autor
@@ -39,7 +39,7 @@ func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, 
 		if autor != "eu" {
 			return Resposta{}, true, &dominio.ErroSoPessoa{Msg: "só a pessoa retoma o envio"}
 		}
-		r, err := a.mudarPausa(ctx, false)
+		r, err := a.mudarPausa(ctx, false, nil)
 		if err == nil {
 			log.Printf("envio: retomado (%s)", autor)
 		}
@@ -75,7 +75,7 @@ func (a *API) mudarPlataforma(ctx context.Context, plataforma string, retomar bo
 		if retomar {
 			return p.RetomarPlataforma(plataforma, agora)
 		}
-		return p.PausarPlataforma(plataforma, agora)
+		return p.PausarPlataformaPor(plataforma, agora, a.quem(autor))
 	})
 	if err != nil {
 		return Resposta{}, err
@@ -88,11 +88,23 @@ func (a *API) mudarPlataforma(ctx context.Context, plataforma string, retomar bo
 	return a.estadoEnvio(ctx, nil)
 }
 
-func (a *API) mudarPausa(ctx context.Context, pausado bool) (Resposta, error) {
-	if err := a.arm.GravarEnvioPausado(ctx, pausado); err != nil {
+// mudarPausa: pausar grava quem pausou (do servidor, nunca do corpo); retomar apaga.
+func (a *API) mudarPausa(ctx context.Context, pausado bool, quem *dominio.Quem) (Resposta, error) {
+	var err error
+	if pausado {
+		err = a.arm.GravarEnvioPausadoPor(ctx, quem)
+	} else {
+		err = a.arm.GravarEnvioPausado(ctx, false)
+	}
+	if err != nil {
 		return Resposta{}, err
 	}
 	return a.estadoEnvio(ctx, nil)
+}
+
+// quem: quem está chamando, pelo autor e pelo canal desta API (jc-a2y.7.4). Nunca vem do corpo.
+func (a *API) quem(autor string) *dominio.Quem {
+	return dominio.QuemDe(dominio.Ctx{Autor: autor, Canal: a.canal})
 }
 
 // desfechoDe devolve o desfecho de uma candidatura que o executor concluiu, ou ok=false. Enviada à mão
@@ -171,5 +183,10 @@ func (a *API) estadoEnvio(ctx context.Context, q map[string]string) (Resposta, e
 		p["paginasHoje"] = dominio.AberturasNoDia(e, nome, agora)
 		p["tetoPaginas"] = dominio.LimiteMaximo
 	}
-	return ok(Objeto{"ligado": a.envioLigado, "pausado": a.arm.EnvioPausado(ctx), "plataformas": plataformas, "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
+	pausado := a.arm.EnvioPausado(ctx)
+	var pausadoPor any // jc-a2y.7.4: quem pausou; null ao abrir o app e depois de retomar
+	if q := a.arm.EnvioPausadoPor(ctx); pausado && q != nil {
+		pausadoPor = Objeto{"autor": q.Autor, "canal": q.Canal}
+	}
+	return ok(Objeto{"ligado": a.envioLigado, "pausado": pausado, "pausadoPor": pausadoPor, "plataformas": plataformas, "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
 }

@@ -1,6 +1,6 @@
 # Applyer — instruções para o Claude
 
-> O produto se chama **Applyer**. A versão em uso é a **Central** (versão em Node, sai na P8), em http://localhost:4321: neste arquivo, "Central" é sempre ela. O app novo está na seção "Reescrita".
+> O produto se chama **Applyer**. A versão em uso é a **Central** (versão em Node, sai na P8), em http://localhost:4321: neste arquivo, "Central" é sempre ela. O app novo está na seção "Reescrita". Regras do time e do app novo: `AGENTS.md`.
 
 Este projeto organiza a busca de emprego de **uma pessoa por computador**. O perfil dela fica em `dados/perfil.json`.
 Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação, filtros, respostas padrão e modo de trabalho.
@@ -30,7 +30,7 @@ Leia-o antes de qualquer rodada. Ele traz nome, pretensões, inglês, formação
 7. Currículo: `dados/curriculos/` (PT ou EN pelo idioma da vaga, caminhos em `perfil.curriculos`).
 8. **Só a pessoa aprova.** O assistente nunca move vaga para `aplicar`, nunca adiciona vaga fora de `descoberta` e nunca liga
    `perfil.modo` = `direto`, nem quando a pessoa pede no chat. Vale para todo caminho que o assistente tiver:
-   - CLI e MCP: a Central já recusa;
+   - CLI e MCP (o "central", da Node, e o "applyer", do app novo): eles já recusam;
    - API HTTP (`curl`, `fetch` ou script em `localhost`, inclusive na porta de `dados/.porta`): ela grava como se fosse a pessoa;
    - telas da Central ou do app pelo navegador: clicar, teclar A na Triagem, marcar "Aplicar direto" no Perfil ou injetar script;
    - os arquivos de dados: editar `dados/*.json`, o `central.db` (SQLite) ou eventos, ou gravar com autor `eu` sem ser a pessoa;
@@ -68,7 +68,9 @@ Nunca clique em prompts de permissão do navegador por ela.
 `/emails` lê os retornos por email (só leitura) e grava com `cli.mjs email --arquivo`: a vaga muda de etapa sozinha e repetir não duplica.
 `/pedidos` faz o que a pessoa digitou na caixa "O que vamos fazer hoje?" da Central (`cli.mjs pedidos` lista; `cli.mjs pedido <id> feito "<resposta>"` conclui).
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
-Com o MCP "central" ligado (`.mcp.json`), prefira as ferramentas dele (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...) aos comandos da CLI: são as mesmas regras, sem shell.
+O `.mcp.json` tem dois servidores MCP; prefira as ferramentas deles aos comandos da CLI (as mesmas regras, sem shell):
+- **"central"** (Node, `mcp/servidor.mjs`): os dados da Central em uso hoje (`dados/`). É o deste fluxo (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...).
+- **"applyer"** (Go, `cmd/central-mcp`): os dados do app novo (a pasta Applyer). Use só quando o trabalho for no app novo. Ele só lê a pasta: nunca cria, migra nem renomeia, e o app tem de ter sido aberto uma vez. Lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma aprovação e pausa o envio. Não registra envio, porque quem envia é o app (docs/propostas/mcp-cli.md). Retomar e aprovar, só a pessoa, pela tela.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.
 
 <!-- rtk-instructions v2 -->
@@ -95,69 +97,11 @@ Rules:
 
 ## Reescrita: app de PC (Go + React/TS)
 
-A Central (versão em Node) está sendo reescrita como o **Applyer**, um app de PC com Wails v3. O plano tem as fases P0 a P8, acompanhadas no Gas Town (épico `jc-a2y`; a troca de marca é o épico `jc-etv`).
-Até a P8, o código Node continua sendo a versão em uso, a Central, e a API dele é a referência do contrato.
+O app novo (Applyer, Wails v3) e as regras do time ficam no **`AGENTS.md`**: mapa do código, comandos de build e teste, revisão por risco e o que é "pronto". A meta da vez fica no topo do `docs/status.md`.
 
-**Nomes internos:** o produto se chama Applyer. A pasta de dados já se chama `Applyer`, e a variável é `APPLYER_PASTA` (`jc-etv.7`). Os outros nomes internos ainda usam "central": `central.exe`, `cmd/central-dev`, `cmd/central-cli`, `central.db` (fica), o serviço do cofre e o MCP "central". Eles só mudam com o plano de migração do `jc-etv.6` (`docs/propostas/applyer-nomes-internos.md`). Nas telas e nos textos para a pessoa, use Applyer.
-
-**Onde fica cada parte:**
-- `go.mod` na raiz;
-- `internal/` com os pacotes Go (config, armazem SQLite com migrações em `migracoes/`, api);
-- `app/` é o projeto Wails: `main.go`, `build/` e `frontend/`, este último em React + TS + Vite;
-- `api/openapi.yaml` é o contrato da API local.
-
-**Comandos:**
-- `go test ./...` roda os testes do Go. O pacote `app` precisa de `app/frontend/dist`, que é gerado pelo build.
-- `cd app && wails3 build` gera `app/bin/central.exe`. Ele também gera os bindings e as telas.
-- `cd app && wails3 dev` abre o modo de desenvolvimento.
-
-**Domínio em Go:** `internal/dominio` é o porte de `nucleo/`. Ele é conferido contra respostas gravadas do Node em `internal/dominio/testdata/golden.json`.
-Ao mudar uma regra de `nucleo/`:
-- regrave com `node ferramentas/gerar-golden-dominio.mjs`;
-- ajuste o Go até `go test ./internal/dominio/` passar.
-
-O teste `testes/golden.test.mjs` falha se o golden estiver desatualizado.
-
-**API em Go:** `internal/api` é o porte de `servidor/api.mjs`.
-- **Referência:** é conferida contra uma sessão de 94 chamadas gravada da API Node em `internal/api/testdata/golden-api.json`. Para regravar, use `node ferramentas/gerar-golden-api.mjs`.
-- **Armazenamento:** os dados ficam no SQLite (`internal/armazem`). Cada coleção é uma lista de objetos JSON na tabela `itens`.
-- **Importar os dados da Central antiga:**
-  - `go run ./cmd/central-cli importar-legado --dir dados --dry-run` mostra o que seria importado;
-  - sem `--dry-run`, grava. Ele recusa CPF/RG e não sobrescreve sem `--substituir`.
-- **Comparar com a Central Node rodando, com dados reais:**
-  - aponte `APPLYER_PASTA` para uma pasta de teste e importe com `importar-legado`;
-  - rode `CENTRAL_NODE=http://localhost:4321 go test -tags comparacao -run CompararComNode ./internal/api/`.
-
-**Telas novas (P3):** ficam em `app/frontend/src` e são as mesmas telas e classes de CSS da Central (Node), com o nome Applyer.
-- `telas/*.tsx` são as telas;
-- `App.tsx` é a casca (rotas por hash, atualização a cada 5 s com proteção de edição, diálogo, avisos);
-- `dominio/*.ts` é o mesmo código de `nucleo/`.
-
-Preparar o ambiente do front (uma vez por clone, e sempre que os bindings mudarem). Cada comando parte da raiz do repositório:
-- `go` e `wails3` precisam estar no PATH. No Windows ficam em `C:\Program Files\Go\bin` e `%USERPROFILE%\go\bin`; se faltar o `wails3`, instale com `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`.
-- `cd app && wails3 generate bindings -clean=true -ts -i` gera `app/frontend/bindings`. Sem essa pasta, o Vitest e o build do Vite param com `Event bindings module not found` (plugin `wails-typed-events`). A pasta fica fora do git, e o CI gera a dela.
-- `cd app/frontend && npm ci` instala as dependências.
-- `cd app/frontend && npx playwright install chromium` baixa o navegador dos testes de ponta a ponta. Eles rodam sem janela (headless); não use o modo com janela no PC de quem está usando.
-
-Testes das telas (também a partir da raiz):
-- `cd app/frontend && npm test` roda o Vitest. As funções de domínio em TS são conferidas contra o golden do Node.
-- `npm run build && npm run e2e` roda o Playwright: a jornada de usuário novo no PC e no celular, contra `cmd/central-dev` com uma pasta vazia.
-
-Para ver no navegador: `npm run build` e depois `APPLYER_PASTA=<pasta de teste> go run ./cmd/central-dev`, na raiz. Abre em http://localhost:4500.
-Os testes da Central (Node) rodam com `npm test` na raiz, só `testes/`.
-
-**IA no app (P4):** `internal/ia` é o porte de `nucleo/ia`, com as funções, a guarda (11 regras), os prompts e os provedores.
-- **Referência:** é conferida contra `internal/ia/testdata/golden-ia.json`, que traz 80 prompts, 953 casos de guarda e os pedidos HTTP. Os contratos ficam em `internal/ia/funcoes.json`. Os dois arquivos são gravados por `node ferramentas/gerar-golden-ia.mjs`.
-- **Provedores por chave:** `anthropic`, `openai` (também OpenRouter e compatíveis, pela URL) e `google`. A chave fica no cofre do sistema (`internal/segredos`), nunca no banco.
-- **Provedores por assinatura:** `claude-cli`, `codex-cli` e `gemini-cli` rodam a CLI oficial com o login da pessoa.
-  - Rodam sem ferramentas, numa pasta temporária, sem chave de API no ambiente.
-  - Só o Claude foi testado de verdade (2.1.292). Codex e Gemini estão marcados como "não testado".
-- **Na interface:** a tela "Conectar IA" fica em `#/ia`. As rotas ficam em `/api/v1/ia/...`. Na Triagem há o botão "Opinião da IA", e na Hoje a "Mensagem" usa um rascunho da IA quando há uma conectada.
-- **Avaliação:** `go run ./cmd/central-cli avaliar --provedor claude-cli --limite 3 --saida r.json` roda os casos. Pontue com `node ferramentas/cli.mjs avaliar --respostas r.json --modelo <nome>`, usando `CENTRAL_DADOS` numa pasta de teste.
-
-**Pasta de dados:** `os.UserConfigDir()/Applyer`. A variável `APPLYER_PASTA` troca essa pasta, para testes ou para simular um usuário novo.
-- Ao abrir, a pasta antiga `Central de Candidaturas` é renomeada para `Applyer`, inteira. Se ela estiver em uso (o app antigo, a CLI ou o MCP com o banco aberto), o app usa a antiga nesta vez e tenta de novo na próxima. Se as duas existem, usa `Applyer` e não junta nada.
-- `CENTRAL_PASTA` ainda é aceita por duas versões; o log diz "(obsoleta)". `APPLYER_PASTA` e `CENTRAL_PASTA` diferentes: o app não abre.
+- O Node (`nucleo/`, `servidor/`) está congelado e só é lido. Regra nova nasce só no Go; os golden atuais (`internal/*/testdata/golden*.json`) são retrato fixo.
+- Nomes internos ainda com "central" (`central.exe`, `cmd/central-*`, `central.db`, MCP "central") só mudam pelo `docs/propostas/applyer-nomes-internos.md`. Nas telas e textos, use Applyer.
+- Avaliação de IA: `go run ./cmd/central-cli avaliar --provedor claude-cli --limite 3 --saida r.json`; pontue com `node ferramentas/cli.mjs avaliar --respostas r.json --modelo <nome>` numa pasta de teste.
 
 ## Ferramentas de desenvolvimento
 

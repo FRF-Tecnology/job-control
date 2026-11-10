@@ -507,6 +507,22 @@ dialog form { display: grid; gap: 16px; }
 .envio-janelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
 .envio-janelas > div { display: grid; gap: 8px; align-content: start; justify-items: start; }
 .envio-janelas h3 { margin: 0; font-size: .95rem; }
+/* formulário externo na Fila (jc-a2y.7.2.4): perguntas lidas da página, sempre como texto */
+.form-ext { display: grid; gap: 12px; margin: 8px 0; }
+.form-ext p { margin: 0; }
+.form-ext .formulario-ler { display: grid; gap: 8px; justify-items: start; }
+.form-ext .formulario-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.form-ext .formulario-topo h3 { margin: 0; font-size: .95rem; }
+.form-ext .formulario-pendentes { color: var(--ambar); font-weight: 600; }
+.formulario-perguntas { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.formulario-perguntas li { display: grid; gap: 4px; overflow-wrap: anywhere; }
+.formulario-perguntas li.pendente::marker { color: var(--ambar); font-weight: 700; }
+.formulario-perguntas .pergunta { font-weight: 600; }
+.formulario-perguntas .resposta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.formulario-perguntas input, .formulario-perguntas select { min-height: 44px; max-width: 480px; width: 100%; }
+.form-ext .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* quem pausou (jc-a2y.7.4.1): o assistente pausou o envio; a pessoa retoma pela tela */
+.pausado-por { margin: 4px 0 0; color: var(--ambar); font-weight: 600; }
 /* ao vivo (jc-a2y.6.9.1): só para ver; a imagem não recebe clique */
 .ao-vivo { display: grid; gap: 8px; }
 .ao-vivo-topo { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }

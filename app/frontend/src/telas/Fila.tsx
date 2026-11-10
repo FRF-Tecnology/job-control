@@ -3,11 +3,12 @@
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ErroApi, useApp, type Pergunta } from '../app/contexto';
-import { impressaoCandidatura } from '../app/impressao';
+import { impressaoCandidatura, type EstruturaFormulario } from '../app/impressao';
+import { FormularioCand, formularioSemAprovar, type CandFormulario } from './Formulario';
 import { pacoteInicial, perguntasSensiveisDoPerfil, type Conteudo as ConteudoPacote } from '../app/pacote';
 import { Convite } from '../componentes';
 import { mercadoDe } from '../dominio/modelo';
-import { encode } from '../util';
+import { doAssistente, encode, nomeAssistente, type Quem } from '../util';
 import { PacoteForm } from './PacoteForm';
 import { ListaDoDia } from './ListaDoDia';
 import { entrarNavegador, PainelEnvio, type EstadoEnvio } from './PainelEnvio';
@@ -29,6 +30,9 @@ export type Candidatura = {
   versao: number; criadaEm: string; atualizadaEm: string;
   // jc-a2y.6.11: depois de uma falha técnica antes de preencher, a aprovada volta e só sai depois deste instante.
   proximaTentativaEm?: string | null;
+  revogadaPor?: Quem; // jc-a2y.7.4: quem desfez a última aprovação (a pessoa pela tela, ou o assistente)
+  // jc-a2y.7.2: formulário externo (Google Forms, Typeform).
+  estrutura?: EstruturaFormulario | null; pendentes?: string[]; preenchimentoIgnorado?: boolean;
 };
 
 // O que pede a pessoa vem primeiro.
@@ -41,10 +45,10 @@ const ALERTA: EstadoCand[] = ['bloqueada', 'incerta', 'falhou'];
 const MOTIVOS: Record<string, string> = {
   cpf: 'Número fiscal', rg: 'Documento de identidade', senha: 'Senha', 'dado-bancario': 'Dado bancário', captcha: 'Captcha', 'aviso-conta': 'Aviso da conta', login: 'Login', conta: 'Criar conta',
   'teste-pessoal': 'Teste pessoal', documento: 'Documento', 'dado-sensivel': 'Dado sensível', termos: 'Termos',
-  'pergunta-nova': 'Pergunta nova', 'site-externo': 'Site externo', outro: 'Outro',
+  'pergunta-nova': 'Pergunta nova', 'site-externo': 'Site externo', 'varias-etapas': 'Várias etapas', outro: 'Outro',
 };
-const PLATAFORMAS: Record<string, string> = { linkedin: 'LinkedIn', gupy: 'Gupy', inhire: 'InHire', outra: 'Outra plataforma' };
-const NA_PLATAFORMA: Record<string, string> = { linkedin: 'no LinkedIn', gupy: 'na Gupy', inhire: 'na InHire', outra: 'no site da vaga' };
+const PLATAFORMAS: Record<string, string> = { linkedin: 'LinkedIn', gupy: 'Gupy', inhire: 'InHire', formulario: 'Formulário', outra: 'Outra plataforma' };
+const NA_PLATAFORMA: Record<string, string> = { linkedin: 'no LinkedIn', gupy: 'na Gupy', inhire: 'na InHire', formulario: 'nos formulários', outra: 'no site da vaga' };
 const ORIGENS: Record<string, string> = { respostasPadrao: 'Respostas padrão', pessoa: 'Você', ia: 'IA' };
 
 const hora = (iso: string, fuso?: string) => {
@@ -67,7 +71,9 @@ const dinheiro = (p: NonNullable<Conteudo['pretensao']>) => {
 // Texto do que cada estado pede (o motivo e a pendência do bloqueio são textos fixos do servidor).
 function situacao(c: Candidatura) {
   switch (c.estado) {
-    case 'preparada': return 'Revise o pacote. Ele só vai para a vaga depois que você aprovar.';
+    case 'preparada': return doAssistente(c.revogadaPor)
+      ? `A aprovação foi desfeita pelo ${nomeAssistente(c.revogadaPor?.canal)}. Revise o pacote e aprove de novo, se quiser.`
+      : 'Revise o pacote. Ele só vai para a vaga depois que você aprovar.';
     case 'aprovada': {
       const t = c.proximaTentativaEm ? Date.parse(c.proximaTentativaEm) : NaN;
       if (t > Date.now()) return `Deu um problema técnico antes de preencher: nada foi enviado e não contou no limite. Tenta de novo às ${hora(c.proximaTentativaEm!)}.`;
@@ -95,7 +101,9 @@ export function TelaFila() {
   const [falha, setFalha] = useState<string | null>(null);
   // Impressão calculada nesta tela para cada candidatura, a partir do mesmo objeto mostrado ("" se o cálculo falhar).
   // É ela, e nunca a do servidor, que vai no aprovar, e só quando as duas batem.
-  const [calculadas, setCalculadas] = useState<Record<string, string>>({});
+  // Cada uma guarda a impressão do servidor contra a qual foi calculada ("de"): enquanto a lista nova chega e a conta
+  // ainda é da versão anterior, ela não vale (a tela mostra "Conferindo…", nunca um "Não confere" de passagem).
+  const [contas, setContas] = useState<Record<string, { de: string; valor: string }>>({});
   const [preparando, setPreparando] = useState<string | null>(null); // id da vaga com o formulário aberto
   const [editando, setEditando] = useState<string | null>(null); // id da candidatura em edição
   const [ocupado, setOcupado] = useState(false);
@@ -134,12 +142,17 @@ export function TelaFila() {
   useEffect(() => {
     if (!lista) return;
     let vivo = true;
-    setCalculadas({});
-    Promise.all(lista.map(async c => [c.id, await impressaoCandidatura(c)] as const))
-      .then(r => { if (vivo) setCalculadas(Object.fromEntries(r)); })
-      .catch(() => { if (vivo) setCalculadas(Object.fromEntries(lista.map(c => [c.id, '']))); });
+    Promise.all(lista.map(async c => [c.id, { de: c.impressao, valor: await impressaoCandidatura(c) }] as const))
+      .then(r => { if (vivo) setContas(Object.fromEntries(r)); })
+      .catch(() => { if (vivo) setContas(Object.fromEntries(lista.map(c => [c.id, { de: c.impressao, valor: '' }]))); });
     return () => { vivo = false; };
   }, [lista]);
+
+  // Só as contas feitas para a versão que está na tela; a de uma versão anterior fica de fora (ainda conferindo).
+  const calculadas: Record<string, string> = Object.fromEntries((lista ?? []).flatMap(c => {
+    const conta = contas[c.id];
+    return conta && conta.de === c.impressao ? [[c.id, conta.valor]] : [];
+  }));
 
   // 409 em texto claro: duplicata (traz "existente") ou pacote que mudou enquanto a pessoa editava (versão velha).
   const explicar = (e: unknown) => {
@@ -152,6 +165,8 @@ export function TelaFila() {
       return app.aviso(`Limite de hoje ${NA_PLATAFORMA[d.plataforma] ?? 'na plataforma'} atingido (${d.usadas} de ${d.limite}). ${d.renovaEm ? `${quandoRenova(d.renovaEm, app.hoje)}.` : ''}`.trim(), true);
     }
     if (erro instanceof ErroApi && erro.status === 409) {
+      // Formulário com pergunta obrigatória sem resposta (jc-a2y.7.2): frase nossa, não a do servidor.
+      if (/faltam respostas/i.test(erro.dados?.erro ?? '')) { ler(); return app.aviso('Faltam respostas: leia o formulário e responda as perguntas pendentes antes de aprovar.', true); }
       if (erro.dados?.existente) return app.aviso('Esta vaga já tem uma candidatura ativa ou já foi enviada. Veja na fila.', true);
       if (erro.dados?.impressaoAtual) {
         ler();
@@ -186,6 +201,30 @@ export function TelaFila() {
     await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/conteudo`, 'PUT', { conteudo, versao: c.versao }),
       c.estado === 'aprovada' ? 'Pacote atualizado. Revise e aprove de novo.' : 'Pacote atualizado.');
   };
+
+  // Ler o formulário (só a tela; o executor abre a página sem janela e só lê). O 200 também traz a leitura que parou
+  // (bloqueada, com o motivo). 409, 429, 404 e 403 em frase fixa; conta no teto de 40 páginas, não no limite do dia.
+  const lerFormulario = async (c: Candidatura) => {
+    setOcupado(true);
+    try {
+      const r: Candidatura = await app.api(`/api/v1/candidaturas/${encode(c.id)}/ler-formulario`, 'POST', {});
+      const n = r.estrutura?.perguntas.length ?? 0, p = r.pendentes?.length ?? 0;
+      app.aviso(r.estado === 'bloqueada'
+        ? `A leitura parou: ${MOTIVOS[r.bloqueio?.motivo ?? 'outro'] ?? 'Outro'}. Veja no cartão o que fazer.`
+        : `Formulário lido: ${n === 1 ? '1 pergunta' : `${n} perguntas`}${p ? `, ${p === 1 ? '1 pendente' : `${p} pendentes`} para responder` : ', nenhuma pendente'}.`, r.estado === 'bloqueada');
+      await app.recarregar(); await ler();
+    } catch (e) {
+      const s = e instanceof ErroApi ? e.status : 0;
+      if (s === 409) { ler(); app.aviso('Não deu para ler agora: a página não respondeu, a candidatura não está para revisar, ou há um envio ou uma janela de login aberta. Tente de novo daqui a pouco.', true); }
+      else if (s === 429) { const d = (e as ErroApi).dados ?? {}; app.aviso(`O app já abriu ${d.usadas ?? d.limite ?? 40} páginas de formulário hoje, o teto do dia. ${d.renovaEm ? `${quandoRenova(d.renovaEm, app.hoje)}.` : ''}`.trim(), true); }
+      else if (s === 404) app.aviso('Este app não traz a leitura de formulários.', true);
+      else if (s === 403) app.aviso('Só você pode ler o formulário, por esta tela.', true);
+      else app.aviso('Não deu para ler o formulário. Tente de novo.', true);
+    } finally { setOcupado(false); }
+  };
+  // Responder pendentes: o pacote inteiro com as respostas novas (origem pessoa, com perguntaId), na versão lida.
+  const responderFormulario = (c: Candidatura, conteudo: CandFormulario['conteudo']) =>
+    gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/conteudo`, 'PUT', { conteudo, versao: c.versao }), 'Respostas salvas.');
 
   const empresaDe = (c: Candidatura) => app.estado.vagas?.find((v: any) => v.id === c.vagaId)?.empresa ?? 'a vaga';
   // Aprovar: só com a impressão calculada aqui e igual à do servidor; nunca manda a do servidor no lugar.
@@ -256,7 +295,7 @@ export function TelaFila() {
       <ListaDoDia candidaturas={lista} calculadas={calculadas} limites={limites} nome={c => nomeCand(c.id)} plataforma={p => PLATAFORMAS[p] ?? p}
         onFeito={() => { app.recarregar(); ler(); }} />
       <section className="limites" aria-label="Limite de hoje" role="region">
-        {(['linkedin', 'gupy', 'inhire'] as const).map(p => limites[p] && (
+        {(['linkedin', 'gupy', 'inhire', 'formulario'] as const).map(p => limites[p] && (
           <LimiteCartao key={p} plataforma={p} nome={PLATAFORMAS[p]} na={NA_PLATAFORMA[p]} limite={limites[p]}
             aprovadas={lista.filter(c => c.plataforma === p && c.estado === 'aprovada').length}
             renova={quandoRenova(limites[p].renovaEm, app.hoje)} onSalvo={l => setLimites(x => ({ ...x, [p]: l }))} />
@@ -309,6 +348,9 @@ export function TelaFila() {
                     <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} perfil={perfil} rotulo="Salvar pacote" ocupado={ocupado}
                       onSalvar={k => salvarEdicao(c, k)} onCancelar={() => { devolverFoco.current = botaoEditar(c.id); setEditando(null); }} />
                   ) : (<>
+                  {c.plataforma === 'formulario' && (
+                    <FormularioCand c={c as unknown as CandFormulario} ocupado={ocupado} onLer={() => lerFormulario(c)} onResponder={k => responderFormulario(c, k)} />
+                  )}
                   {(c.estado === 'preparada' || c.estado === 'aprovada') && (
                     <div className="acoes"><button className="botao-fantasma p" type="button" data-acao="editar" onClick={() => { setPreparando(null); setEditando(c.id); }}>Editar pacote</button></div>
                   )}
@@ -334,7 +376,9 @@ export function TelaFila() {
                   </details>
                   {/* Os códigos ficam recolhidos; o selo, que é o que a pessoa precisa saber, fica sempre à vista, junto
                       dos botões. Quando não confere, os detalhes abrem sozinhos para mostrar o valor. */}
-                  <details className="tecnicos" open={conferida === 'diferente'}>
+                  {/* Abre sozinho só quando não confere; fora disso, quem abre e fecha é a pessoa (sem "open" controlado,
+                      uma leitura nova da fila não fecha o que ela abriu). */}
+                  <details className="tecnicos" open={conferida === 'diferente' || undefined}>
                     <summary>Detalhes técnicos</summary>
                     <dl>
                       <dt>Impressão do pacote</dt><dd><code className="impressao">{c.impressao}</code></dd>
@@ -348,7 +392,7 @@ export function TelaFila() {
                   {['preparada', 'aprovada', 'bloqueada', 'falhou', 'incerta'].includes(c.estado) && (
                     <div className="acoes acoes-cand">
                       {c.estado === 'preparada' && (
-                        <button className="botao" type="button" disabled={ocupado || conferida !== 'ok'} onClick={() => aprovar(c)}>Aprovar este pacote</button>
+                        <button className="botao" type="button" disabled={ocupado || conferida !== 'ok' || (c.plataforma === 'formulario' && formularioSemAprovar(c as unknown as CandFormulario))} onClick={() => aprovar(c)}>Aprovar este pacote</button>
                       )}
                       {c.estado === 'aprovada' && (
                         <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => acao(c, 'revogar', 'Aprovação retirada. O pacote voltou para revisão.')}>Tirar aprovação</button>

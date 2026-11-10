@@ -186,3 +186,30 @@ func LerDACL(caminho string) (protegida bool, entradas []EntradaDACL, err error)
 	}
 	return protegida, entradas, nil
 }
+
+// ConferirProtecao só lê (jc-a2y.7.4, A2.2): o dono é o usuário atual, SISTEMA ou Administradores, e a DACL está como
+// o ProtegerPasta deixa (protegida e só para eles). Nunca muda nada: proteger é do app, ao abrir.
+func ConferirProtecao(pasta string) error {
+	sids, err := donos()
+	if err != nil {
+		return fmt.Errorf("conferir a pasta: %w", err)
+	}
+	dono, err := lerDonoDe(pasta)
+	if err != nil {
+		return fmt.Errorf("conferir a pasta: %w", err)
+	}
+	if !donoAceito(dono, sids) {
+		return ErrPastaDeOutroUsuario
+	}
+	protegida, entradas, err := lerDACLDe(pasta)
+	if err != nil {
+		return fmt.Errorf("conferir a pasta: %w", err)
+	}
+	if !protegida || !soEstes(entradas, sids) {
+		return ErrPastaDesprotegida
+	}
+	return nil
+}
+
+// lerDACLDe: só o teste troca.
+var lerDACLDe = LerDACL

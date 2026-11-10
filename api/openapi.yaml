@@ -17,6 +17,33 @@ info:
     até o app fechar.
 servers:
   - url: /api/v1
+# jc-a2y.7.4 (docs/propostas/mcp-cli.md, internal/api/assistente.go): o que o assistente (MCP e CLI, regra M4) pode chamar. Lista de
+# permissão: método e rota fora dela dão 403 pelo canal do assistente, antes de ler ou gravar. Nenhuma operação
+# x-so-tela entra aqui, e as regras do domínio (regra 8) continuam valendo por cima. POST /vagas/{id}/mover
+# com etapa enviada também dá 403 pelo canal do assistente: só o executor e a pessoa (concluir-manual) registram
+# envio (decisão do PO no #135).
+x-assistente:
+  - GET /resumo
+  - GET /vagas
+  - GET /vagas/{id}
+  - GET /duplicatas
+  - POST /vagas/importar
+  - POST /vagas/{id}/mover
+  - PATCH /vagas/{id}
+  - POST /vagas/{id}/eventos
+  - GET /followups
+  - POST /vagas/{id}/followup
+  - PUT /rodadas/{n}
+  - GET /perfil
+  - GET /pedidos
+  - POST /pedidos/{id}/concluir
+  - GET /candidaturas
+  - GET /candidaturas/{id}
+  - GET /candidaturas/limites
+  - POST /candidaturas/{id}/revogar
+  - GET /envio
+  - POST /envio/pausar
+  - POST /envio/plataformas/{plataforma}/pausar
 paths:
   /saude: { get: { summary: O app está de pé } }
   /estado: { get: { summary: 'Estado inteiro (vagas, eventos, plataformas, rodadas, perfil, pedidos, emails) + hoje, versao, curriculos, primeirosPassos' } }
@@ -410,7 +437,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [linkedin, gupy, inhire]
+                required: [linkedin, gupy, inhire, formulario]
                 properties:
                   linkedin: { $ref: '#/components/schemas/LimiteDiario' }
                   gupy: { $ref: '#/components/schemas/LimiteDiario' }
@@ -750,7 +777,7 @@ components:
             tipo: { type: string, enum: [CLT, PJ, contractor] }
         respostas:
           type: array
-          description: 'jc-a2y.7.2 (proposta): em formulario, cada item ganha perguntaId (o id da pergunta em estrutura), e a resposta casa com a pergunta pelo texto exato normalizado; sem par, fica em pendentes. Sem IA no primeiro recorte'
+          description: 'jc-a2y.7.2: em formulario, cada item ganha perguntaId (o id da pergunta em estrutura), e a resposta casa com a pergunta pelo texto exato normalizado; sem par, fica em pendentes. Sem IA no primeiro recorte'
           items:
             type: object
             additionalProperties: false
@@ -759,6 +786,7 @@ components:
               pergunta: { type: string }
               resposta: { type: string }
               origem: { type: string, enum: [respostasPadrao, pessoa, ia] }
+              perguntaId: { type: string, pattern: '^[A-Za-z0-9._-]{1,80}$', description: 'Só em formulario: o id da pergunta em estrutura.perguntas (jc-a2y.7.2)' }
         mensagem: { type: [string, 'null'] }
     Candidatura:
       type: object
@@ -808,7 +836,7 @@ components:
         clicouEnviarEm: { type: [string, 'null'], description: 'jc-a2y.6.11: marca gravada ANTES do clique final. Com ela, sem confirmação, incerta (M3)' }
         estrutura:
           type: [object, 'null']
-          description: 'jc-a2y.7.2 (proposta): só em formulario, lida por POST /candidaturas/{id}/ler-formulario. Entra na impressão ({vagaId, plataforma, url, conteudo, estrutura}); no envio, o executor relê e compara o hash, e estrutura diferente dá bloqueada/pergunta-nova. Texto da página: dado não confiável, a tela mostra como texto. Nunca guarda a URL nem o link "Editar sua resposta" da página final'
+          description: 'jc-a2y.7.2: só em formulario, lida por POST /candidaturas/{id}/ler-formulario. Entra na impressão ({vagaId, plataforma, url, conteudo, estrutura}); no envio, o executor relê e compara o hash, e estrutura diferente dá bloqueada/pergunta-nova. Texto da página: dado não confiável, a tela mostra como texto. Nunca guarda a URL nem o link "Editar sua resposta" da página final'
           additionalProperties: false
           required: [hash, urlFinal, perguntas]
           properties:
@@ -827,8 +855,9 @@ components:
                   tipo: { type: string, enum: [texto-curto, texto-longo, escolha-unica, multipla-escolha, lista, data, numero, email, telefone, escala, outro] }
                   obrigatoria: { type: boolean }
                   opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
-        pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2 (proposta): ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
-        preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (proposta, decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
+        pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2: ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
+        preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
+        revogadaPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4: quem revogou a última aprovação (a pessoa pela tela ou o assistente pelo MCP ou pela CLI). null sem revogação' }
         leituras: { type: array, items: { type: string }, description: 'jc-a2y.7.2: instantes das leituras do formulário (POST /candidaturas/{id}/ler-formulario). Cada uma abre uma página no navegador do envio e conta no teto de 40 páginas abertas por plataforma no dia, não no limite do dia' }
     AoVivo:
       type: object
@@ -859,6 +888,7 @@ components:
       properties:
         ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
         pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
+        pausadoPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4: quem pausou o envio geral (a tela mostra "pausado pelo assistente (mcp)"). null ao abrir o app (que sempre começa pausado) e depois de retomar' }
         plataformas:
           type: array
           description: 'jc-a2y.6.11: estado do envio por plataforma, gravado no banco (as três, em ordem: gupy, inhire, linkedin). O executor só pega candidatura de plataforma ativa; o pausado geral vale acima disto. precisa-entrar volta sozinha só quando a pessoa fecha a janela "Entrar nas plataformas" com o envio geral liberado. Estado ilegível no banco: pausada'
@@ -874,6 +904,7 @@ components:
               voltasHoje: { type: integer, minimum: 0, description: 'Voltas automáticas para aprovada hoje nesta plataforma (revisão do CyberSec no #99)' }
               paginasHoje: { type: integer, minimum: 0, description: 'Páginas abertas hoje: tentativas que contam no limite + voltas' }
               tetoPaginas: { type: integer, description: 'Teto diário de páginas por plataforma (40). Ao chegar nele, a plataforma espera o dia seguinte' }
+              pausadaPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4: quem pausou esta plataforma, só em pausada sem motivo (pausa pela pessoa ou pelo assistente)' }
         janela: { type: string, enum: [oculta, visivel], description: 'Como o navegador abre nas próximas candidaturas. oculta (sem janela, sem foco, mouse nem teclado) a cada abertura do app; visivel só por POST /envio/janela da tela. oculta também no build padrão' }
         login: { type: boolean, description: 'Há uma janela de login aberta pela pessoa (POST /navegador/entrar); enquanto true, o envio espera' }
         enviandoAgora:
