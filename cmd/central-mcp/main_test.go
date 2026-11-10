@@ -39,6 +39,10 @@ func TestMainSemCofreNemIA(t *testing.T) {
 		if strings.Contains(string(b), "segredos.") || strings.Contains(string(b), "Cofre:") {
 			t.Errorf("%s fala do cofre", a)
 		}
+		// O banco do assistente nunca é criado nem migrado (achado do CyberSec no #139): só o AbrirExistente.
+		if strings.Contains(string(b), "armazem.Abrir(") {
+			t.Errorf("%s usa o armazem.Abrir, que cria e migra o banco", a)
+		}
 	}
 	if vistos == 0 {
 		t.Fatal("nenhum arquivo do main")

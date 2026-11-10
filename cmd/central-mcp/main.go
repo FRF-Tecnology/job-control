@@ -32,7 +32,7 @@ func abrir(ctx context.Context) (*api.API, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	arm, err := armazem.Abrir(ctx, config.CaminhoBanco(pasta))
+	arm, err := armazem.AbrirExistente(ctx, config.CaminhoBanco(pasta)) // nunca cria nem migra
 	if err != nil {
 		return nil, nil, err
 	}
