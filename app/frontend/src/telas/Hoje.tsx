@@ -4,8 +4,10 @@ import { useApp, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
-import { Icone } from '../componentes';
-import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode } from '../util';
+import { Icone, LinkExterno, Robo } from '../componentes';
+import { SeusPedidos, type Pedido } from './Pedidos';
+import { AvisoPasta } from './AvisoPasta';
+import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode, nomeAssistente } from '../util';
 
 const FOCOS = [['internacional', 'Internacional'], ['nacional', 'Nacional'], ['ambos', 'Os dois']];
 const TIPOS_EVENTO: Record<string, string> = { descoberta: 'Encontrada', aplicar: 'Aprovada para aplicar', enviada: 'Enviada', bloqueada: 'Travou', 'em-processo': 'Em processo', oferta: 'Oferta', encerrada: 'Encerrada', pulada: 'Pulada', 'follow-up': 'Follow-up', nota: 'Nota', retorno: 'Retorno', teste: 'Teste', entrevista: 'Entrevista', email: 'Email' };
@@ -16,6 +18,8 @@ const FUNIL = [
 
 // Pedidos que a própria tela resolve na hora; o resto vira pedido para o assistente (/pedidos).
 const ATALHOS: [RegExp, string][] = [
+  // As aprovadas se preparam e se aprovam na Fila; o envio é pelo app, não um pedido ao assistente (jc-a2y.56).
+  [/\bfila\b|\bprepar/, '#/fila'],
   [/\btri(ar|agem)\b|decidir|vagas novas/, '#/triagem'],
   [/respond|retorno|entrevista|processo|oferta/, '#/quadro'],
   [/n[uú]meros|taxa|funil|semana|m[eé]tric/, '#/numeros'],
@@ -32,12 +36,13 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
     if (!t) return entrada.current?.focus();
     const atalho = ATALHOS.find(([re]) => re.test(normalizar(t)));
     if (atalho && !/\b(busca|aplica|envia|manda|escreve)/.test(normalizar(t))) { location.hash = atalho[1]; return; }
-    const ok = await app.agir(() => app.api('/api/v1/pedidos', 'POST', { texto: t }), 'Anotado. No Claude Code, digite /pedidos para ele fazer.');
+    const ok = await app.agir(() => app.api('/api/v1/pedidos', 'POST', { texto: t }), 'Anotado em Seus pedidos, logo abaixo.');
     if (ok) setTexto('');
   }
   return (
     <>
       <form className="caixa-pedido" role="search" onSubmit={ev => { ev.preventDefault(); enviar(texto); }}>
+        <span className="caixa-ic" aria-hidden="true"><Icone d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" /></span>
         <input id="pedido" ref={entrada} type="text" autoComplete="off" placeholder={sugestoes[0] ?? 'Peça qualquer coisa'} aria-label="O que vamos fazer hoje?" value={texto} onChange={e => setTexto(e.target.value)} />
         <button type="submit" aria-label="Enviar pedido"><Icone d="M12 19V5M5 12l7-7 7 7" /></button>
       </form>
@@ -51,8 +56,10 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
 function sugestoesPara(foco: string, nAplicar: number, nDescoberta: number) {
   const buscar = ({ internacional: 'Buscar vagas USD LATAM', nacional: 'Buscar vagas CLT/PJ remotas', ambos: 'Buscar vagas novas' } as Record<string, string>)[foco];
   const qual = ({ internacional: ' internacionais', nacional: ' nacionais', ambos: '' } as Record<string, string>)[foco];
+  const qualUma = ({ internacional: ' internacional', nacional: ' nacional', ambos: '' } as Record<string, string>)[foco];
+  const preparar = nAplicar === 1 ? `Preparar a vaga${qualUma} aprovada na Fila` : `Preparar as ${nAplicar} vagas${qual} aprovadas na Fila`;
   return [
-    nAplicar ? `Aplicar nas ${nAplicar}${qual} aprovadas` : buscar,
+    nAplicar ? preparar : buscar,
     nAplicar ? buscar : null,
     nDescoberta ? `Triar ${plural(nDescoberta, 'vaga nova', 'vagas novas')}` : null,
     'Quem me respondeu?',
@@ -82,7 +89,7 @@ function AcoesBloqueada({ v }: { v: any }) {
   const app = useApp();
   return (
     <>
-      {v.link && <a className="botao p" href={v.link} target="_blank" rel="noopener">Abrir vaga</a>}
+      <LinkExterno url={v.link} className="botao p">Abrir vaga</LinkExterno>
       <button className="botao-fantasma p" type="button" onClick={() => app.mover(v.id, 'enviada', {}, `${v.empresa}: marcada como enviada`)}>Enviei</button>
       <button className="botao-fantasma p" type="button" onClick={async () => {
         const m = await app.perguntar({ titulo: 'Desistir desta vaga?', opcoes: ['Documento', 'Outro'], campo: 'Motivo', confirmar: 'Pular vaga' });
@@ -162,25 +169,34 @@ export function TelaHoje() {
   const porId = new Map(vagas.map((v: any) => [v.id, v]));
   const passos: any[] = app.estado.primeirosPassos ?? [];
   const faltam = passos.filter(p => !p.feito).length;
-  const pedidos = (app.estado.pedidos ?? []).filter((p: any) => p.status === 'aberto' || p.concluidoEm === hoje).reverse();
+  // Ficam à vista os que pedem algo (aberto, proposta, recusado de hoje) e os feitos hoje.
+  const pedidos: Pedido[] = (app.estado.pedidos ?? []).filter((p: any) => p.status === 'aberto' || p.status === 'proposta'
+    || String(p.concluidoEm ?? p.proposta?.criadaEm ?? '').startsWith(hoje)).reverse();
   const semVaga = (app.estado.emails ?? []).filter((e: any) => e.status === 'sem-vaga');
   const opcoesEmail = vagas.filter((v: any) => foiEnviada(v) || ['aplicar', 'bloqueada', 'em-processo', 'oferta'].includes(v.etapa)).sort((a: any, b: any) => a.empresa.localeCompare(b.empresa));
   const nome = String(perfil?.nome ?? '').trim().split(/\s+/)[0];
   const maiorFunil = Math.max(1, ...FUNIL.map(([e]) => conta(e)));
-  const [semIA, setSemIA] = useState(false);
-  useEffect(() => { app.api('/api/v1/ia/config').then(r => setSemIA(!r.configurada)).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [iaConectada, setIAConectada] = useState<boolean | null>(null); // null: ainda não sabe
+  useEffect(() => { app.api('/api/v1/ia/config').then(r => setIAConectada(!!r.configurada)).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const semIA = iaConectada === false;
   const api = (v: any, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/vagas/${encode(v.id)}/followup`, 'POST', corpo), msg);
 
   return (
     <div>
       <section className="ola" aria-labelledby="ola-titulo">
         <div className="ola-topo">
-          <span className="data">{dataLonga(hoje).replace(/^./, c => c.toUpperCase())}</span>
           <div className="seletor" role="group" aria-label="Foco da busca">
             {FOCOS.map(([id, rotulo]) => <button key={id} type="button" aria-pressed={String(foco === id) as 'true' | 'false'} onClick={() => app.mudarFoco(id)}>{rotulo}</button>)}
           </div>
+          <span className="chip nota-cadeado"><Icone><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></Icone>Nada sai sem você aprovar</span>
         </div>
-        <h1 id="ola-titulo">{nome ? `Olá, ${nome}.` : 'Olá.'}</h1>
+        <div className="ola-linha">
+          <Robo />
+          <div>
+            <span className="data">{dataLonga(hoje).replace(/^./, c => c.toUpperCase())}</span>
+            <h1 id="ola-titulo">{nome ? `Olá, ${nome}.` : 'Olá.'}</h1>
+          </div>
+        </div>
         <p className="pergunta">O que vamos fazer hoje?</p>
         <CaixaPedido sugestoes={sugestoesPara(foco, nAplicar, nDescoberta)} />
       </section>
@@ -191,6 +207,8 @@ export function TelaHoje() {
         <div className="cartao-num"><span className="n">{Math.max(0, limite - linkedinHoje)}</span><span className="r">restantes no LinkedIn hoje</span></div>
         <div className="cartao-num"><span className="n">{naSemana}</span><span className="r">enviadas na semana</span></div>
       </div>
+
+      <AvisoPasta />
 
       {semIA && (
         <section className="bloco">
@@ -216,27 +234,14 @@ export function TelaHoje() {
         </section>
       )}
 
-      {pedidos.length > 0 && (
-        <section className="bloco">
-          <header><h2>Seus pedidos</h2><span className="num">{pedidos.filter((p: any) => p.status === 'aberto').length}</span></header>
-          <ul className="lista-cartao">
-            {pedidos.map((p: any) => (
-              <li key={p.id} className={`pedido${p.status === 'feito' ? ' feito' : ''}`}>
-                <strong>{p.texto}</strong>
-                <span className="estado">{p.status === 'feito' ? 'Feito' : 'Esperando o Claude'}</span>
-                {p.resposta ? <p>{p.resposta}</p> : p.status === 'aberto' && <p>No Claude Code, digite /pedidos.</p>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {pedidos.length > 0 && <SeusPedidos pedidos={pedidos} iaConectada={iaConectada === true} />}
 
       <div className="grade-hoje">
         <div>
           <section className="bloco">
             <header><h2>Precisa de você</h2><span className="num">{bloqueadas.length}</span></header>
             {grupos.length ? (
-              <ul className="lista-cartao">
+              <ul className="lista-cartao tom-laranja">
                 {grupos.map(g => {
                   const empresas = [...new Set(g.vagas.map(v => v.empresa))];
                   return (
@@ -288,7 +293,7 @@ export function TelaHoje() {
                 {emProcesso.map((v: any) => (
                   <li key={v.id} className="linha">
                     <LinkVaga v={v} />
-                    <div className="acoes">{v.link && <a className="botao-fantasma p" href={v.link} target="_blank" rel="noopener">Abrir</a>}</div>
+                    <div className="acoes"><LinkExterno url={v.link} className="botao-fantasma p">Abrir</LinkExterno></div>
                     <div className="sub">{[NOMES_SUB[v.subEtapa] ?? nomeEtapa(v.etapa), v.pendencia, v.notas].filter(Boolean).join(' · ')}</div>
                   </li>
                 ))}
@@ -331,7 +336,7 @@ export function TelaHoje() {
                   const v: any = porId.get(ev.vagaId);
                   return (
                     <li key={ev.id} className={`e-${ev.tipo}`}>
-                      <time dateTime={ev.data}>{`${dataCurta(ev.data)}${ev.autor === 'claude' ? ' · Claude' : ''}`}</time>
+                      <time dateTime={ev.data}>{`${dataCurta(ev.data)}${ev.autor === 'claude' ? ` · ${ev.canal ? nomeAssistente(ev.canal) : 'Claude'}` : ''}`}</time>
                       <span><b>{TIPOS_EVENTO[ev.tipo] ?? ev.tipo}</b>{' '}{v ? `${v.empresa} — ${v.titulo}` : ev.vagaId}</span>
                     </li>
                   );
@@ -344,7 +349,7 @@ export function TelaHoje() {
 
       <p className="tranquilo">
         <Icone><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" /><path d="M9 12l2 2 4-4" /></Icone>
-        Senhas, CPF e logins ficam sempre com você. A Central nunca guarda documentos e nada é enviado em seu nome sem você aprovar.
+        Senhas, CPF e logins ficam sempre com você. O Applyer nunca guarda documentos e nada é enviado em seu nome sem você aprovar.
       </p>
     </div>
   );

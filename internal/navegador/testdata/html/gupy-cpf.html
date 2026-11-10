@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Página fictícia que imita uma candidatura que pede CPF. Empresa e vaga inventadas. -->
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Candidatura - Empresa Teste</title></head>
+<body>
+  <h1>Candidatura para Dev Go</h1>
+  <form method="post" action="/jobs/9000001/apply" enctype="multipart/form-data">
+    <label for="nome">Nome completo</label><input id="nome" name="nome" required>
+    <label for="doc">CPF</label><input id="doc" name="documento" required>
+    <label for="cv">Currículo (PDF)</label><input id="cv" name="cv" type="file" required>
+    <button type="submit">Enviar candidatura</button>
+  </form>
+</body>
+</html>

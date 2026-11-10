@@ -214,6 +214,9 @@ const CASOS = [
   { regra: 'revisao-coerente', nome: 'ok com problemas', funcao: 'revisarAntesDeEnviar', entrada: { formulario: [{ pergunta: 'Anos com React', valor: '3' }], perfil, curriculo }, modelo: { ok: true, problemas: [{ pergunta: 'Anos com React', valorAtual: '3', sugerido: '0', motivo: 'Não está no currículo' }] }, espera: { ok: false } },
   { regra: 'vaga-conhecida', nome: 'vagaId inventado', funcao: 'classificarEmail', entrada: { email: { de: 'rh@acme.com', assunto: 'Convite', texto: 'Vamos conversar?' }, vagas: [vaga] }, modelo: { tipo: 'entrevista', vagaId: 'inventada-99', resumo: 'Convite' }, espera: { vagaId: null } },
   { regra: 'mensagem-rascunho', nome: 'mensagem sai como rascunho', funcao: 'escreverMensagem', entrada: msg, modelo: { assunto: 'Follow-up', texto: 'Olá, gostaria de saber do processo.' }, espera: { rascunho: true } },
+  // jc-a2y.7.1: pedido interpretado pela IA (o corpus inteiro fica em pedidos-injecao.test.mjs).
+  { regra: 'pedido-catalogo', nome: 'pedido com vagaId fora da lista', funcao: 'interpretarPedido', entrada: { pedido: 'marca a li-9 como enviada', vagas: [{ id: 'li-1', empresa: 'Acme', titulo: 'Dev', etapa: 'aplicar' }] }, modelo: { acao: 'registrar-etapa', parametros: { vagaId: 'li-9', etapa: 'enviada' } }, bloqueia: true },
+  { regra: 'pedido-catalogo', nome: 'pedido com resposta em HTML', funcao: 'interpretarPedido', entrada: { pedido: 'oi', vagas: [] }, modelo: { acao: 'responder', parametros: { texto: '<b>oi</b>' } }, bloqueia: true },
 ];
 
 test('toda regra da guarda tem caso de teste', () => {
@@ -352,5 +355,23 @@ test('google: motivo de bloqueio passa por lista fechada; qualquer outro valor v
       assert.equal(e.message, 'google: bloqueado (motivo não informado)');
       return e.tipo === 'provedor' && e.reintentavel === false;
     });
+  }
+});
+
+// jc-a2y.60: o contrato que o validador não aplicaria por inteiro falha ao carregar, igual ao Go (lerEsquema).
+// Os casos ficam num arquivo só, lido também por internal/ia/esquema_malformado_test.go.
+import { readFileSync } from 'node:fs';
+import { conferirEsquema } from '../nucleo/ia/erro.mjs';
+
+test('conferirEsquema recusa o que o validador ignoraria e aceita o subconjunto tratado', () => {
+  const casos = JSON.parse(readFileSync(new URL('../internal/ia/testdata/esquemas-recusados.json', import.meta.url), 'utf8'));
+  assert.ok(casos.recusados.length > 0 && casos.aceitos.length > 0);
+  for (const c of casos.recusados) {
+    assert.throws(() => conferirEsquema(c.esquema), e => e.message.includes(c.contem), c.nome);
+  }
+  for (const a of casos.aceitos) assert.doesNotThrow(() => conferirEsquema(a), JSON.stringify(a));
+  // Os contratos de verdade passam (funcoes.mjs confere ao carregar).
+  for (const [nome, f] of Object.entries(FUNCOES)) {
+    assert.doesNotThrow(() => { conferirEsquema(f.entrada); conferirEsquema(f.saida); }, nome);
   }
 });

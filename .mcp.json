@@ -3,6 +3,10 @@
     "central": {
       "command": "node",
       "args": ["mcp/servidor.mjs"]
+    },
+    "applyer": {
+      "command": "go",
+      "args": ["run", "./cmd/central-mcp"]
     }
   }
 }

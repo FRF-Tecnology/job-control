@@ -195,6 +195,8 @@ func executar(t *testing.T, c casoGolden, sufixo string) (any, error) {
 		return com("resultado")(LigarEmail(estado(0), a(1), a(2), ctx(3)))
 	case "descartarEmail":
 		return com("resultado")(DescartarEmail(estado(0), a(1)))
+	case "filaAplicar":
+		return FilaAplicar(estado(0)), nil
 	case "gerarHistoricoMd":
 		return GerarHistoricoMd(estado(0), s(1)), nil
 	}

@@ -1,6 +1,7 @@
 // Casca da interface: estado, rotas, atualização automática, avisos e diálogos (porte de web/app.mjs).
-import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Contexto, chamarApi, ErroApi, type App as AppApi, type Estado, type Pergunta } from './app/contexto';
+import { prepararProntas } from './app/preparoAutomatico';
 import { resumo } from './dominio/funil';
 import { Icone } from './componentes';
 import { encode } from './util';
@@ -8,6 +9,8 @@ import { Dialogo, type PedidoDialogo } from './app/Dialogo';
 import { Detalhe } from './telas/Detalhe';
 import { TelaHoje } from './telas/Hoje';
 import { TelaTriagem } from './telas/Triagem';
+import { TelaFila } from './telas/Fila';
+import { EVENTO_ENVIO, type EstadoEnvio } from './telas/PainelEnvio';
 import { TelaQuadro } from './telas/Quadro';
 import { TelaVagas } from './telas/Vagas';
 import { TelaNumeros } from './telas/Numeros';
@@ -15,29 +18,45 @@ import { TelaPlataformas } from './telas/Plataformas';
 import { TelaRodadas } from './telas/Rodadas';
 import { TelaPerfil } from './telas/Perfil';
 import { TelaConectarIA } from './telas/ConectarIA';
+import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
+import { foiEnviada } from './dominio/modelo';
 
-// aba: aparece na barra de baixo do celular (as outras ficam em Mais).
+// Ícone de cada seção (menu lateral no PC e abas no celular).
 const ICONES: Record<string, string> = {
-  hoje: 'M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z',
-  triagem: 'M5 6h14v12H5zM9 6V4h6v2M9 12l2 2 4-4',
+  hoje: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  triagem: 'M10 3h7a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 7v11a3 3 0 0 0 3 3h9',
+  fila: 'M10 6h10M10 12h10M10 18h10M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17',
+  quadro: 'M4.5 4h2A1.5 1.5 0 0 1 8 5.5v13A1.5 1.5 0 0 1 6.5 20h-2A1.5 1.5 0 0 1 3 18.5v-13A1.5 1.5 0 0 1 4.5 4zM11.5 4h2A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5v-7A1.5 1.5 0 0 1 11.5 4zM18.5 4h1A1.5 1.5 0 0 1 21 5.5v10a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 18.5 4z',
   vagas: 'M3 8h18v12H3zM9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3',
+  numeros: 'M5 20v-9M12 20V4M19 20v-6M3 20h18',
+  plataformas: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
+  rodadas: 'M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4',
+  perfil: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0',
+  ia: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
   mais: 'M5 12h.01M12 12h.01M19 12h.01',
+};
+// Nome da IA em uso, para o resumo do menu lateral (provedores do GET /ia/config; fora da lista, fica genérico).
+const NOMES_IA: Record<string, string> = {
+  'claude-cli': 'Claude Code conectado', 'codex-cli': 'Codex conectado', 'gemini-cli': 'Gemini CLI conectado',
+  anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)',
 };
 type R = ReturnType<typeof resumo>;
 const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
   { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
   { rota: 'triagem', nome: 'Triagem', Tela: TelaTriagem, contador: r => r.descoberta, aba: true },
+  { rota: 'fila', nome: 'Fila', Tela: TelaFila },
   { rota: 'quadro', nome: 'Quadro', Tela: TelaQuadro },
   { rota: 'vagas', nome: 'Vagas', Tela: TelaVagas, aba: true },
   { rota: 'numeros', nome: 'Números', Tela: TelaNumeros },
   { rota: 'plataformas', nome: 'Plataformas', Tela: TelaPlataformas },
   { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
-  { rota: 'perfil', nome: 'Perfil e regras', Tela: TelaPerfil },
+  { rota: 'perfil', nome: 'Perfil', Tela: TelaPerfil }, // no menu, "Perfil"; o título da tela segue "Perfil e regras"
   { rota: 'ia', nome: 'Conectar IA', Tela: TelaConectarIA },
 ];
 
 function lerHash() {
-  const [, rota = 'hoje', vaga] = location.hash.split('/');
+  // "?..." no fim (ex.: #/fila?preparar=<vagaId>, vindo de um pedido) é da tela, não muda a rota.
+  const [, rota = 'hoje', vaga] = location.hash.split('?')[0].split('/');
   const tela = TELAS.find(t => t.rota === rota) ?? TELAS[0];
   let id: string | null = null;
   try { id = vaga ? decodeURIComponent(vaga) : null; } catch { id = null; }
@@ -72,10 +91,14 @@ export default function App() {
   const { tela, vaga } = useHash();
   const [estado, setEstado] = useState<Estado | null>(null);
   const [conexao, setConexao] = useState<{ texto: string; estado: 'ok' | 'off' | '' }>({ texto: '', estado: '' });
+  const [envio, setEnvio] = useState<Partial<EstadoEnvio> | null>(null); // GET /envio: a marca no cabeçalho (jc-a2y.51) e o navegador flutuante
+  const envioAtivo = !!envio && envio.ligado === true && envio.pausado === false; // ligado e não pausado
+  const [ia, setIA] = useState<{ configurada: boolean; provedor?: string } | null>(null); // null: ainda não sabe
   const [falha, setFalha] = useState<Falha>(null);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [dialogo, setDialogo] = useState<PedidoDialogo | null>(null);
   const versao = useRef<string | null>(null);
+  const fechando = useRef(false); // 503 depois de apagar os dados (jc-a2y.49)
   const temEstado = useRef(false);
   // Há texto digitado e ainda não salvo (perfil, nota nova, notas da vaga…)? Enquanto houver, nada é redesenhado.
   const sujo = useRef(false);
@@ -89,22 +112,28 @@ export default function App() {
   const perguntar = useCallback((p: Pergunta) => new Promise<string | null>(resolver => setDialogo({ tipo: 'pergunta', pergunta: p, resolver })), []);
 
   const carregar = useCallback(async (forcar = false) => {
+    // Depois de "Apagar meus dados", o servidor responde 503 a tudo até o app sair: não adianta tentar de novo.
+    if (fechando.current) return;
     let novo: Estado;
     try {
       if (!forcar && temEstado.current) {
         const { versao: v } = await chamarApi('/api/v1/versao');
-        if (v === versao.current) { setConexao({ texto: 'Conectado', estado: 'ok' }); return; }
+        if (v === versao.current) { setConexao({ texto: 'Dados locais', estado: 'ok' }); return; }
       }
       if (sujo.current && !forcar) { setConexao({ texto: 'Há mudanças novas — salve o que está editando para ver', estado: '' }); return; }
       novo = await chamarApi('/api/v1/estado');
     } catch (e) {
-      if (e instanceof ErroApi) {
+      if (e instanceof ErroApi && e.status === 503) {
+        fechando.current = true;
+        setConexao({ texto: 'Fechando', estado: 'off' });
+        setFalha({ titulo: 'Dados apagados. O app está fechando.', texto: 'Na próxima vez que você abrir, ele começa como novo.' });
+      } else if (e instanceof ErroApi) {
         // A API respondeu, mas com erro (ex.: dados corrompidos).
         setConexao({ texto: 'Erro nos dados', estado: 'off' });
-        setFalha({ titulo: 'A Central encontrou um problema nos dados', texto: e.message });
+        setFalha({ titulo: 'O Applyer encontrou um problema nos dados', texto: e.message });
       } else {
         setConexao({ texto: 'Desconectado', estado: 'off' });
-        if (!temEstado.current) setFalha({ titulo: 'A Central não está respondendo', texto: 'Feche e abra o app de novo. Se continuar, os dados estão salvos na pasta do app.' });
+        if (!temEstado.current) setFalha({ titulo: 'O Applyer não está respondendo', texto: 'Feche e abra o app de novo. Se continuar, os dados estão salvos na pasta do app.' });
       }
       return;
     }
@@ -113,7 +142,58 @@ export default function App() {
     sujo.current = false;
     setFalha(null);
     setEstado(novo);
-    setConexao({ texto: 'Conectado', estado: 'ok' });
+    setConexao({ texto: 'Dados locais', estado: 'ok' });
+  }, []);
+
+  // Pacote preparado sozinho (jc-a2y.6.12): quando uma vaga chega a Aplicar (pela Triagem, pelo Quadro ou no modo
+  // direto), o app cria a candidatura "preparada" com o pacote do perfil. Nada é aprovado nem enviado: a pessoa revisa
+  // e aprova na Fila. Uma rodada por vez; cada vaga é tentada uma vez por abertura do app.
+  const preparando = useRef(false);
+  const tentadas = useRef(new Set<string>());
+  useEffect(() => {
+    if (!estado || fechando.current || preparando.current) return;
+    const modoDireto = (estado.perfil as any)?.modo === 'direto';
+    const talvez = (estado.vagas ?? []).some((v: any) => !tentadas.current.has(v.id)
+      && (v.etapa === 'aplicar' || (modoDireto && v.etapa === 'descoberta' && v.aderencia === 'A')));
+    if (!talvez) return;
+    preparando.current = true;
+    (async () => {
+      try {
+        const candidaturas = await chamarApi('/api/v1/candidaturas');
+        const r = await prepararProntas(chamarApi, { vagas: estado.vagas ?? [], perfil: estado.perfil, curriculos: (estado as any).curriculos ?? [] }, candidaturas, tentadas.current);
+        if (r.preparadas) aviso(r.preparadas === 1 ? 'Uma candidatura foi preparada sozinha: revise o pacote e aprove na Fila.' : `${r.preparadas} candidaturas foram preparadas sozinhas: revise os pacotes e aprove na Fila.`);
+      } catch { /* sem a lista, tenta na próxima leitura */ } finally { preparando.current = false; }
+    })();
+  }, [estado, aviso]);
+  // Envio ligado e não pausado aparece no cabeçalho em todas as telas, não só na Fila (nota do CyberSec no #60).
+  // Pausar e retomar não mudam a /versao, então a casca lê /envio a cada 5 s e ouve o painel da Fila na hora.
+  useEffect(() => {
+    const ler = async () => {
+      if (fechando.current || document.visibilityState !== 'visible') return;
+      // Leitura falhou: mantém o último valor conhecido, para a marca não sumir por um erro passageiro (CyberSec, #60).
+      try { setEnvio(await chamarApi('/api/v1/envio')); } catch { /* mantém */ }
+    };
+    const aoMudar = (ev: Event) => setEnvio((ev as CustomEvent<EstadoEnvio>).detail ?? null);
+    window.addEventListener(EVENTO_ENVIO, aoMudar);
+    const t = setInterval(ler, 5000);
+    ler();
+    return () => { window.removeEventListener(EVENTO_ENVIO, aoMudar); clearInterval(t); };
+  }, []);
+
+  // A IA em uso, para o resumo do menu lateral: lida ao abrir e ao trocar de seção (a pessoa pode ter conectado outra).
+  useEffect(() => {
+    let vivo = true;
+    chamarApi('/api/v1/ia/config').then(r => { if (vivo) setIA({ configurada: !!r?.configurada, provedor: typeof r?.provedor === 'string' ? r.provedor : undefined }); }).catch(() => { /* sem resposta: o resumo não aparece */ });
+    return () => { vivo = false; };
+  }, [tela.rota]);
+
+  // A luz do fundo segue o ponteiro, devagar. Com "reduzir movimento", fica parada.
+  const luz = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const mover = (ev: PointerEvent) => { if (luz.current) luz.current.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`; };
+    window.addEventListener('pointermove', mover, { passive: true });
+    return () => window.removeEventListener('pointermove', mover);
   }, []);
 
   // Atualização automática: a cada 5 s, ao voltar para a janela e ao trocar de seção.
@@ -139,7 +219,7 @@ export default function App() {
 
   const app: AppApi | null = useMemo(() => {
     if (!estado) return null;
-    const api = (caminho: string, metodo = 'GET', corpo?: unknown) => chamarApi(caminho, metodo, corpo);
+    const api = (caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) => chamarApi(caminho, metodo, corpo, cabecalhos);
     const agir = async (fn: () => Promise<unknown>, mensagem?: string) => {
       try {
         await fn();
@@ -177,7 +257,7 @@ export default function App() {
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
-    document.title = `${tela.nome} · Central de Candidaturas`;
+    document.title = `${tela.nome} · Applyer`;
     main.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [tela.rota]);
@@ -197,18 +277,41 @@ export default function App() {
     return n ? <span className={`contador${t.alerta ? ' alerta' : ''}`}>{n}</span> : null;
   };
 
+  // Resumo do dia no menu lateral: os mesmos números da tela Hoje (envios de hoje e o limite do LinkedIn).
+  const enviadasHoje = estado ? estado.vagas.filter((v: any) => foiEnviada(v) && v.envio?.data === estado.hoje) : [];
+  const limiteLinkedin = Number(estado?.perfil?.limiteLinkedinDia) || 40;
+  const linkedinHoje = enviadasHoje.filter((v: any) => v.plataforma === 'linkedin').length;
+
   const Tela = tela.Tela;
   return (
     <>
+      <div className="fundo" aria-hidden="true">
+        <i className="bolha b1" /><i className="bolha b2" /><i className="bolha b3" /><i className="bolha b4" /><i className="bolha b5" />
+        <i className="luz" ref={luz} />
+      </div>
       <a className="pular-link" href="#conteudo" onClick={e => { e.preventDefault(); main.current?.focus(); }}>Ir para o conteúdo</a>
       <header className="topo-app">
         <div className="topo-dentro">
-          <a className="marca" href="#/hoje" aria-label="Central de Candidaturas — início">
-            <img src="/icone.svg" alt="" width={28} height={28} />
-            <span>Central</span>
+          <a className="marca" href="#/hoje" aria-label="Applyer — início">
+            <span className="logo-ic"><Icone><path d="M21 3L3 10.5l7 2.5 2.5 7z" /><path d="M21 3L10 13" /></Icone></span>
+            <span>Applyer</span>
           </a>
           <Menu atual={tela.rota} contador={contador} />
+          {estado && (
+            <div className="lateral-extra so-alto">
+              <b>Hoje</b>
+              <div className="medidor" aria-hidden="true"><span style={{ width: `${Math.round(Math.min(linkedinHoje / limiteLinkedin, 1) * 100)}%` }} /></div>
+              <span>{`${enviadasHoje.length} ${enviadasHoje.length === 1 ? 'candidatura enviada' : 'candidaturas enviadas'} · LinkedIn: ${linkedinHoje} de ${limiteLinkedin}`}</span>
+            </div>
+          )}
+          {ia && (
+            <a className="lateral-extra" href="#/ia">
+              <span className="status-ia"><span className={`ponto${ia.configurada ? ' ok' : ''}`} aria-hidden="true" /><b>{ia.configurada ? (NOMES_IA[ia.provedor ?? ''] ?? 'IA conectada') : 'Nenhuma IA conectada'}</b></span>
+              <span>{ia.configurada ? 'Sua IA, sua assinatura. Seus dados ficam neste computador.' : 'Conecte a sua IA para ela opinar na triagem e escrever rascunhos.'}</span>
+            </a>
+          )}
           <div className="topo-pe">
+            {envioAtivo && <a className="marca-envio" href="#/fila" title="O app está enviando as candidaturas aprovadas. Abra a Fila para pausar.">Envio ligado</a>}
             <span className={`status-conexao ${conexao.estado}`} role="status">{conexao.texto}</span>
             <button className="botao-icone" type="button" aria-label="Alternar tema claro/escuro" onClick={alternarTema}>
               <Icone d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />
@@ -242,6 +345,7 @@ export default function App() {
         {detalheAberto && app && <Contexto.Provider value={app}><Detalhe key={vaga!} id={vaga!} fechar={fecharDetalhe} /></Contexto.Provider>}
       </aside>
       <div className="veu" hidden={!detalheAberto} onClick={fecharDetalhe} />
+      {estado && !falha && <NavegadorFlutuante api={chamarApi} envio={envio} vagas={estado.vagas ?? []} aviso={aviso} />}
       <Dialogo pedido={dialogo} fechar={() => setDialogo(null)} />
       <div className="avisos" aria-live="polite">
         {avisos.map(a => <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}
@@ -257,7 +361,8 @@ function alternarTema() {
   try { localStorage.setItem('tema', raiz.dataset.tema); } catch { /* sem armazenamento: o tema vale só agora */ }
 }
 
-// Menu do topo. Janela estreita: o menu rola para o lado; as pontas cortadas esmaecem e a seção atual fica à vista.
+// Menu das seções: lateral em telas largas, no topo nas estreitas. No topo, o menu rola para o lado; as pontas
+// cortadas esmaecem e a seção atual fica à vista.
 function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)[number]) => ReactNode }) {
   const nav = useRef<HTMLElement>(null);
   const rolado = useRef(false);
@@ -272,15 +377,21 @@ function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)
   }, []);
   useEffect(() => { rolado.current = false; marcar(); }, [atual, marcar]);
   useEffect(() => {
+    // A largura da faixa muda também quando algo no topo aparece (ex.: a marca "Envio ligado"), não só na janela.
+    const n = nav.current;
+    const obs = n && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(marcar) : null;
+    if (n && obs) obs.observe(n);
     window.addEventListener('resize', marcar);
-    return () => window.removeEventListener('resize', marcar);
+    return () => { obs?.disconnect(); window.removeEventListener('resize', marcar); };
   }, [marcar]);
   return (
     <nav aria-label="Seções" ref={nav} onScroll={marcar}>
+      {/* No menu lateral, a marca da seção atual desliza até ela (só enfeite: quem diz a seção atual é o aria-current). */}
+      <span className="indicador" aria-hidden="true" style={{ '--i': Math.max(TELAS.findIndex(t => t.rota === atual), 0) } as CSSProperties} />
       <ul className="menu">
         {TELAS.map(t => (
           <li key={t.rota}>
-            <a href={`#/${t.rota}`} aria-current={t.rota === atual ? 'page' : undefined}><span>{t.nome}</span>{contador(t)}</a>
+            <a href={`#/${t.rota}`} aria-current={t.rota === atual ? 'page' : undefined}><Icone d={ICONES[t.rota]} /><span>{t.nome}</span>{contador(t)}</a>
           </li>
         ))}
       </ul>

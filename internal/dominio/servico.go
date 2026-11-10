@@ -19,6 +19,8 @@ type Estado struct {
 	Perfil      Objeto   `json:"perfil"`
 	Pedidos     []Objeto `json:"pedidos"`
 	Emails      []Objeto `json:"emails"`
+	// Candidaturas é a fila da P5. omitempty: conta sem candidaturas sai igual ao estado do Node (golden).
+	Candidaturas []Objeto `json:"candidaturas,omitempty"`
 }
 
 // EstadoVazio é o estado de uma conta nova.
@@ -39,7 +41,7 @@ func clonarLista(l []Objeto) []Objeto {
 
 // Clonar copia o estado inteiro (nada é compartilhado com o original).
 func (e Estado) Clonar() Estado {
-	return Estado{clonarLista(e.Vagas), clonarLista(e.Eventos), clonarLista(e.Plataformas), clonarLista(e.Rodadas), clonarObj(e.Perfil), clonarLista(e.Pedidos), clonarLista(e.Emails)}
+	return Estado{clonarLista(e.Vagas), clonarLista(e.Eventos), clonarLista(e.Plataformas), clonarLista(e.Rodadas), clonarObj(e.Perfil), clonarLista(e.Pedidos), clonarLista(e.Emails), clonarLista(e.Candidaturas)}
 }
 
 // Ctx é o contexto de cada operação: quem fez, quando e de qual conta.
@@ -50,6 +52,8 @@ type Ctx struct {
 	DiasFollowUp int    // 0 = 7
 	Texto        string // texto opcional (follow-up)
 	Aleatorio    func() string
+	// Canal do assistente (jc-a2y.7.4): mcp ou cli, fixado pelo binário; vazio na tela. Nunca vem do pedido.
+	Canal string
 }
 
 func (c Ctx) conta() string {
@@ -103,6 +107,19 @@ func validacao(erros ...string) error { return &ErroValidacao{erros} }
 
 var erroDocumento = "parece conter CPF/RG — documentos não são guardados na central"
 
+// jc-a2y.28: a etapa "aplicar" é a aprovação da pessoa na Triagem, e o /aplicar envia a partir dela.
+// O assistente (autor diferente de "eu": MCP e CLI) não grava essa aprovação e só adiciona vagas em descoberta.
+const (
+	ErroAplicarSoPessoa       = "só a pessoa aprova uma vaga para aplicar (pela Triagem)"
+	ErroAdicionarSoDescoberta = "o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa"
+)
+
+// EhPessoa diz se quem pediu é a pessoa (a tela). Autor vazio conta como a pessoa, como no Node. Com um canal de
+// assistente (MCP ou CLI, jc-a2y.7.4), nunca é a pessoa, qualquer que seja o Autor.
+func (c Ctx) EhPessoa() bool {
+	return (c.Autor == "" || c.Autor == "eu") && !CanalDoAssistente(c.Canal)
+}
+
 // Campos que a tela pode editar livremente.
 var editaveis = []string{"titulo", "empresa", "link", "plataforma", "nivel", "contrato", "modelo", "stack", "ingles", "idioma", "aderencia", "motivoClaude", "notas", "subEtapa", "local", "mercado"}
 
@@ -124,10 +141,14 @@ func acharIndice(e Estado, id any) (int, error) {
 
 func novoEvento(e Estado, vagaID any, tipo, txt any, ctx Ctx, agora string) Objeto {
 	n := len(e.Eventos) + 1
-	return Objeto{
+	ev := Objeto{
 		"id": fmt.Sprintf("ev-%s-%06d-%s", agora, n, ctx.sufixo()), "contaId": ctx.conta(), "vagaId": vagaID,
 		"tipo": tipo, "data": agora, "autor": ctx.Autor, "texto": ou(txt, ""),
 	}
+	if CanalDoAssistente(ctx.Canal) { // jc-a2y.7.4: de onde veio a mudança (a tela mostra)
+		ev["canal"] = ctx.Canal
+	}
+	return ev
 }
 
 // AdicionarVaga grava uma vaga nova e o evento de descoberta (ou de envio, se já veio enviada).
@@ -145,6 +166,9 @@ func AdicionarVaga(e Estado, dados any, ctx Ctx, forcar bool) (Estado, Objeto, e
 		}
 	}
 	vaga["contaId"] = ctx.conta()
+	if !ctx.EhPessoa() && !igual(vaga["etapa"], "descoberta") {
+		return e, nil, validacao(ErroAdicionarSoDescoberta)
+	}
 	if err := exigirValida(vaga); err != nil {
 		return e, nil, err
 	}
@@ -173,6 +197,9 @@ func MoverVaga(e Estado, id any, etapa any, extras Objeto, ctx Ctx) (Estado, Obj
 	if !contem(Etapas, etapa) {
 		return e, nil, validacao("etapa desconhecida: " + jsString(etapa))
 	}
+	if igual(etapa, "aplicar") && !ctx.EhPessoa() {
+		return e, nil, validacao(ErroAplicarSoPessoa)
+	}
 	if extras == nil {
 		extras = Objeto{}
 	}
@@ -182,6 +209,11 @@ func MoverVaga(e Estado, id any, etapa any, extras Objeto, ctx Ctx) (Estado, Obj
 		return e, nil, err
 	}
 	antes := novo.Vagas[i]
+	if CanalDoAssistente(ctx.Canal) {
+		if err := conferirMoverDoAssistente(antes, etapa, extras); err != nil {
+			return e, nil, err
+		}
+	}
 	v := copiaRasa(antes)
 	v["etapa"], v["atualizadoEm"] = etapa, ctx.Agora
 	for _, k := range []string{"motivo", "pendencia", "subEtapa"} {
@@ -250,6 +282,11 @@ func AtualizarVaga(e Estado, id any, patch Objeto, ctx Ctx) (Estado, Objeto, err
 	v["atualizadoEm"] = ctx.Agora
 	if err := exigirValida(v); err != nil {
 		return e, nil, err
+	}
+	if CanalDoAssistente(ctx.Canal) {
+		if err := conferirEdicaoDoAssistente(e, novo.Vagas[i], v); err != nil {
+			return e, nil, err
+		}
 	}
 	novo.Vagas[i] = v
 	return novo, v, nil
@@ -505,4 +542,26 @@ func DescartarEmail(e Estado, idMensagem any) (Estado, Objeto, error) {
 func EhNaoEncontrado(err error) bool {
 	var n *ErroNaoEncontrado
 	return errors.As(err, &n)
+}
+
+// FilaAplicar é a fila do /aplicar (jc-a2y.28): vagas em aplicar cuja aprovação mais recente (evento "aplicar") é da
+// pessoa e, no modo direto, o grupo A em descoberta. Vaga posta em aplicar pelo assistente (dado antigo) nunca entra.
+func FilaAplicar(e Estado) []Objeto {
+	aprovadaPelaPessoa := func(id any) bool {
+		var ultimo Objeto
+		for _, ev := range e.Eventos {
+			if igual(ev["vagaId"], id) && igual(ev["tipo"], "aplicar") {
+				ultimo = ev
+			}
+		}
+		return ultimo != nil && igual(ultimo["autor"], "eu")
+	}
+	direto := igual(obj(e.Perfil)["modo"], "direto")
+	fila := []Objeto{}
+	for _, v := range e.Vagas {
+		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")) {
+			fila = append(fila, v)
+		}
+	}
+	return fila
 }

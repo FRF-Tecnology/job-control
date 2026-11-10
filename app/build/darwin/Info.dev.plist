@@ -4,15 +4,15 @@
         <key>CFBundlePackageType</key>
             <string>APPL</string>
         <key>CFBundleName</key>
-            <string>Central de Candidaturas</string>
+            <string>Applyer</string>
         <key>CFBundleExecutable</key>
-            <string>central.exe</string>
+            <string>central</string>
         <key>CFBundleIdentifier</key>
             <string>com.frftecnology.central</string>
         <key>CFBundleVersion</key>
             <string>0.1.0</string>
         <key>CFBundleGetInfoString</key>
-            <string>This is a comment</string>
+            <string>Applyer</string>
         <key>CFBundleShortVersionString</key>
             <string>0.1.0</string>
         <key>CFBundleIconFile</key>

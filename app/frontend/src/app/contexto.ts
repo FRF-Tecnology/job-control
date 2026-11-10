@@ -7,6 +7,7 @@ export type Estado = any;
 export interface Pergunta {
   titulo: string;
   texto?: string;
+  itens?: string[]; // lista mostrada como está, para a pessoa conferir (ex.: vagas a aprovar de uma vez)
   opcoes?: string[];
   campo?: string;
   valor?: string;
@@ -21,7 +22,8 @@ export interface App {
   rota: string;
   vaga: string | null;
   mudarFoco(foco: string): Promise<void>;
-  api(caminho: string, metodo?: string, corpo?: unknown): Promise<any>;
+  // cabecalhos: só os da confirmação de uma proposta de pedido (X-Pedido, X-Impressao; jc-a2y.7.1).
+  api(caminho: string, metodo?: string, corpo?: unknown, cabecalhos?: Record<string, string>): Promise<any>;
   agir(fn: () => Promise<unknown>, mensagem?: string): Promise<boolean>;
   mover(id: string, etapa: string, extras?: Record<string, unknown>, mensagem?: string): Promise<boolean>;
   abrirVaga(id: string): void;
@@ -47,8 +49,8 @@ export class ErroApi extends Error {
 }
 
 // Chamada à API local. Erro de validação vira mensagem com a lista de erros.
-export async function chamarApi(caminho: string, metodo = 'GET', corpo?: unknown) {
-  const r = await fetch(caminho, { method: metodo, headers: { 'content-type': 'application/json' }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
+export async function chamarApi(caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) {
+  const r = await fetch(caminho, { method: metodo, headers: { ...cabecalhos, 'content-type': 'application/json' }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
   const dados = r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text();
   if (!r.ok) throw new ErroApi(dados?.erros?.join('; ') || dados?.erro || `erro ${r.status}`, r.status, dados);
   return dados;

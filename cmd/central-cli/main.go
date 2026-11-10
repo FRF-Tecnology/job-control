@@ -1,9 +1,10 @@
-// central-cli: linha de comando do app novo. Por enquanto só importa os dados da Central antiga;
-// os outros comandos (os mesmos de ferramentas/cli.mjs) chegam na fase P6.
+// central-cli: linha de comando do app novo. Os comandos da pessoa (importar-legado, avaliar) e as ferramentas do
+// assistente (a mesma tabela do MCP, pelo canal cli, jc-a2y.7.4).
 package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/assistente"
 	"github.com/FRF-Tecnology/job-control/internal/config"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/legado"
@@ -29,7 +31,16 @@ const ajuda = `Uso: central-cli <comando> [opções]
       Roda o conjunto de avaliacao/ na IA escolhida e grava as respostas brutas; a pontuação
       é a do avaliador Node: node ferramentas/cli.mjs avaliar --respostas <arquivo> --modelo <nome>
 
-A pasta de dados do app é a de sempre (ou CENTRAL_PASTA).`
+  ferramentas
+      Lista as ferramentas do assistente (as mesmas do MCP local).
+
+  <ferramenta> [--json '{...}' | --json -]
+      Roda uma ferramenta do assistente com os argumentos em JSON (- lê da entrada padrão). Só a
+      pessoa aprova, envia e retoma, pela tela: a CLI segue a regra do assistente (o que só a pessoa
+      faz dá recusa). Ela não protege contra um shell aberto: para o assistente, use o MCP.
+
+A pasta de dados do app é a de sempre (ou APPLYER_PASTA). As ferramentas nunca criam a pasta nem
+o banco: abra o Applyer uma vez antes.`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -42,12 +53,21 @@ func main() {
 		err = importarLegado(os.Args[2:])
 	case "avaliar":
 		err = avaliar(os.Args[2:])
+	case "ferramentas":
+		listarFerramentas(os.Stdout)
 	default:
-		fmt.Println(ajuda)
-		return
+		f, ok := assistente.Achar(os.Args[1])
+		if !ok {
+			fmt.Println(ajuda)
+			return
+		}
+		err = rodarFerramenta(f, os.Args[2:], os.Stdin, os.Stdout)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "erro:", err)
+		fmt.Fprintln(os.Stderr, "erro:", config.OcultarCaminhos(err.Error())) // sem o caminho da pasta nem o nome do usuário
+		if errors.Is(err, errRecusado) {
+			os.Exit(2)
+		}
 		os.Exit(1)
 	}
 }
@@ -70,7 +90,7 @@ func importarLegado(args []string) error {
 		colecoes = append(colecoes, c)
 	}
 	sort.Strings(colecoes)
-	fmt.Println("Lido de", *dir)
+	fmt.Println("Lido de", config.OcultarCaminhos(*dir))
 	for _, c := range colecoes {
 		fmt.Printf("  %-12s %d\n", c, rel.Contagem[c])
 	}
@@ -105,9 +125,12 @@ func importarLegado(args []string) error {
 	}
 	temDados := len(atual.Vagas)+len(atual.Eventos)+len(atual.Pedidos)+len(atual.Emails)+len(atual.Rodadas) > 0 || len(atual.Perfil) > 0
 	if temDados && !*substituir {
-		return fmt.Errorf("o app novo já tem dados em %s; use --substituir para trocar (um backup é feito antes)", pasta)
+		return fmt.Errorf("o app novo já tem dados (%s); use --substituir para trocar (um backup é feito antes)", config.OrigemPasta())
 	}
 	if temDados {
+		if err := confirmarSubstituir(); err != nil {
+			return err
+		}
 		if _, err := arm.BackupDiario(ctx, dominio.HojeISO(time.Now())+"-antes-da-importacao"); err != nil {
 			return err
 		}
@@ -119,6 +142,6 @@ func importarLegado(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Importado para %s (%d currículo(s) copiado(s)).\n", pasta, copiados)
+	fmt.Printf("Importado (%s; %d currículo(s) copiado(s)).\n", config.OrigemPasta(), copiados)
 	return nil
 }

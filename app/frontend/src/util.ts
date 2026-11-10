@@ -5,6 +5,13 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES_LONGOS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
+// Quem fez (jc-a2y.7.4.1): a pessoa pela tela, ou o assistente pelo MCP ou pela linha de comando. Canal fora da lista
+// fechada vira só "assistente"; nada do pedido aparece. Ex.: "assistente (MCP)".
+export type Quem = { autor?: string; canal?: string } | null | undefined;
+const CANAIS: Record<string, string> = { mcp: 'MCP', cli: 'linha de comando' };
+export const doAssistente = (q: Quem) => q?.autor === 'claude';
+export const nomeAssistente = (canal?: string) => (canal && Object.prototype.hasOwnProperty.call(CANAIS, canal) ? `assistente (${CANAIS[canal]})` : 'assistente');
+
 export const paraData = (iso: string) => { const [a, m, d] = iso.split('-').map(Number); return new Date(a, m - 1, d); };
 export const dataCurta = (iso?: string | null) => (iso ? `${Number(iso.slice(8))} ${MESES[Number(iso.slice(5, 7)) - 1]}` : '');
 export const dataLonga = (iso: string) => { const d = paraData(iso); return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES_LONGOS[d.getMonth()]}`; };
@@ -35,3 +42,17 @@ export function plural(n: number, um: string, varios: string) {
 }
 
 export const encode = encodeURIComponent;
+
+// Único jeito de um endereço de fora (vaga, plataforma, instalação) virar href: só http(s).
+// javascript:, data:, file: e o resto ficam sem link (jc-a2y.29).
+export function safeHref(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
+  const t = url.trim();
+  if (!/^https?:\/\//i.test(t)) return undefined;
+  try {
+    const u = new URL(t);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
+}

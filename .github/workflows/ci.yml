@@ -51,6 +51,23 @@ jobs:
         run: npm test
       - run: go vet ./...
       - run: go test ./...
+      # Os testes que só rodam no CI (navegador de verdade, foco, mouse e a janela de login) aparecem pelo nome no
+      # log, e o passo falha se algum foi pulado ou não passou (jc-a2y.6.7).
+      - name: Testes só do CI (navegador sem janela, foco e login)
+        shell: bash
+        run: |
+          go test -count=1 -v -run '^(TestEnvioNaoPegaFocoNemMouse|TestLoginAbreJanelaESegura|TestEnvioVisivelNavegaNaVaga)$' ./internal/navegador/ | tee navegador-ci.log
+          for t in TestEnvioNaoPegaFocoNemMouse TestLoginAbreJanelaESegura TestEnvioVisivelNavegaNaVaga; do
+            grep -q -- "--- PASS: $t " navegador-ci.log || { echo "::error::$t não passou no CI (pulado ou ausente)"; exit 1; }
+          done
+      # Cofre do sistema de verdade (Gerenciador de Credenciais), com serviço de teste (jc-a2y.63).
+      - name: Cofre do Windows (serviço de teste)
+        shell: bash
+        run: |
+          go test -count=1 -v -run '^(TestCofreDoSistema|TestApagarSoApagaAsChavesDestaPasta)$' ./internal/segredos/ ./internal/api/ | tee cofre-ci.log
+          for t in TestCofreDoSistema TestApagarSoApagaAsChavesDestaPasta; do
+            grep -q -- "--- PASS: $t " cofre-ci.log || { echo "::error::$t não passou no Windows (pulado ou ausente)"; exit 1; }
+          done
       - name: Compilar o app
         run: go build -o central.exe ./app
       - name: Jornada de usuário novo (Playwright, PC e celular)
@@ -58,6 +75,121 @@ jobs:
         run: |
           npx playwright install chromium
           npm run e2e
+
+  # App no macOS (Apple Silicon): testes e um .app de TESTE como artefato do run (jc-a2y.64).
+  # Sem assinatura da Apple, notarização ou release: isso é da P8 e exige conta Apple Developer.
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - name: Instalar wails3
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+      - name: Gerar bindings e telas
+        working-directory: app
+        run: |
+          wails3 generate bindings -clean=true -ts -i
+          cd frontend
+          npm ci
+          npm run build
+      - name: Testes das telas (Vitest)
+        working-directory: app/frontend
+        run: npm test
+      - run: go vet ./...
+      - name: go vet do build com envio (envio_dev)
+        run: go vet -tags envio_dev ./...
+      - run: go test ./...
+      # Navegador de verdade (Chrome ou Edge do runner): os testes aparecem pelo nome e o passo falha se algum
+      # foi pulado ou não passou.
+      - name: Navegador de verdade no macOS
+        shell: bash
+        run: |
+          ls -d "/Applications/Google Chrome.app" "/Applications/Microsoft Edge.app" 2>/dev/null || true
+          testes="TestNavegadorAbreSemJanela TestModoDaJanelaSoPorPedido TestLoginAbreJanelaESegura TestEnvioVisivelNavegaNaVaga TestEnvioComNavegadorDeVerdade TestIntegradoTelaAPIExecutor"
+          go test -count=1 -v -run "^($(echo $testes | tr ' ' '|'))\$" ./internal/navegador/ | tee navegador-macos.log
+          for t in $testes; do
+            grep -q -- "--- PASS: $t " navegador-macos.log || { echo "::error::$t não passou no macOS (pulado ou ausente)"; exit 1; }
+          done
+      # Cofre do macOS (Keychain), com serviço de teste: só o pacote internal/segredos (jc-a2y.63).
+      - name: Cofre do macOS (serviço de teste)
+        shell: bash # -eo pipefail: falha de qualquer teste do pacote não some no tee
+        run: |
+          go test -count=1 -v ./internal/segredos/ | tee cofre-ci.log
+          grep -q -- "--- PASS: TestCofreDoSistema " cofre-ci.log || { echo "::error::TestCofreDoSistema não passou no macOS"; exit 1; }
+      # O Taskfile gera bin/central.app (nome interno) com o binário "central", o nome que o Info.plist pede
+      # (jc-etv.10), e a assinatura ad-hoc local (sem identidade da Apple). O zip sai com ditto, que guarda o bit de
+      # execução, e sobe sem novo zip (archive: false).
+      - name: Empacotar o .app de teste
+        shell: bash
+        working-directory: app
+        run: |
+          wails3 package
+          mkdir -p ../pacote
+          ditto bin/central.app ../pacote/Applyer.app
+          app=../pacote/Applyer.app
+          exe="$app/Contents/MacOS/central"
+          test -x "$exe"
+          lipo -archs "$exe" | grep -qw arm64
+          codesign --verify --deep --strict "$app"
+          # O app de teste é o build padrão: nem o gatilho de envio (envio_dev) nem o navegador (chromedp) entram.
+          go version -m "$exe" > build-info.txt
+          if grep -E 'envio_dev|github\.com/chromedp/' build-info.txt; then
+            echo "::error::o binário do .app tem envio_dev ou chromedp; o artefato de teste é só o build padrão"; exit 1
+          fi
+          cd ../pacote && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64.zip
+          ls -l Applyer-macos-arm64.zip
+          # Com archive: false, o digest do artefato é o sha256 deste arquivo; fica no resumo do run para conferir.
+          echo "Applyer-macos-arm64.zip sha256: \`$(shasum -a 256 Applyer-macos-arm64.zip | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
+      # Só sobe em push no repo oficial (reescrita-go ou main): PR, inclusive de fork, testa o pacote mas não publica
+      # um .app que alguém poderia baixar e abrir.
+      - if: github.event_name == 'push' && github.repository == 'FRF-Tecnology/job-control'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: pacote/Applyer-macos-arm64.zip
+          archive: false
+          retention-days: 7
+          if-no-files-found: error
+      # 2º pacote (jc-a2y.6.16): o mesmo app com o envio de candidaturas ligado (-tags envio_dev, que traz o chromedp),
+      # para a máquina de teste Mac. Sai depois do padrão, que já está zipado e conferido: o package só refaz o
+      # bin/central e o bundle. O padrão continua sem envio_dev nem chromedp (checagem acima).
+      - name: Empacotar o .app com envio (envio_dev)
+        shell: bash
+        working-directory: app
+        run: |
+          wails3 package EXTRA_TAGS=envio_dev
+          mkdir -p ../pacote-envio
+          ditto bin/central.app ../pacote-envio/Applyer.app
+          app=../pacote-envio/Applyer.app
+          exe="$app/Contents/MacOS/central"
+          test -x "$exe"
+          lipo -archs "$exe" | grep -qw arm64
+          codesign --verify --deep --strict "$app"
+          # Tem de ser o build com envio: sem envio_dev ou sem chromedp, este zip seria igual ao padrão.
+          go version -m "$exe" > build-info-envio.txt
+          grep -qE 'build[[:space:]]+-tags=.*envio_dev' build-info-envio.txt || { echo "::error::o binário do .app com envio não tem envio_dev"; exit 1; }
+          grep -q 'github\.com/chromedp/chromedp' build-info-envio.txt || { echo "::error::o binário do .app com envio não tem chromedp"; exit 1; }
+          cmp -s "$exe" ../pacote/Applyer.app/Contents/MacOS/central && { echo "::error::o binário com envio é igual ao padrão"; exit 1; }
+          cd ../pacote-envio && ditto -c -k --keepParent Applyer.app Applyer-macos-arm64-envio.zip
+          ls -l Applyer-macos-arm64-envio.zip
+          echo "Applyer-macos-arm64-envio.zip sha256: \`$(shasum -a 256 Applyer-macos-arm64-envio.zip | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
+      - if: github.event_name == 'push' && github.repository == 'FRF-Tecnology/job-control'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: pacote-envio/Applyer-macos-arm64-envio.zip
+          archive: false
+          retention-days: 7
+          if-no-files-found: error
 
   # Repositório público: nenhum segredo pode entrar.
   segredos:
@@ -69,8 +201,19 @@ jobs:
           fetch-depth: 0
       - name: gitleaks
         run: |
-          # Checksum do gitleaks_8.28.0_checksums.txt oficial: o binário só roda se bater.
-          curl -sSfLo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
-          echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tar.gz" | sha256sum -c -
-          tar xzf gitleaks.tar.gz gitleaks
+          # 1º caminho: binário do GitHub Releases. Só roda se bater com o sha256 do
+          # gitleaks_8.28.0_checksums.txt oficial; checksum errado derruba o job.
+          # Reserva, só se o download falhar (o Releases já ficou horas em 504): a mesma
+          # v8.28.0 compilada pelo proxy do Go, conferida pelo sum.golang.org, sem "direct".
+          url=https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          if curl -sSfL --retry 3 --retry-delay 5 --retry-all-errors --connect-timeout 20 -o gitleaks.tar.gz "$url"; then
+            echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tar.gz" | sha256sum -c -
+            tar xzf gitleaks.tar.gz gitleaks
+          else
+            echo "::warning::GitHub Releases indisponível; instalando gitleaks v8.28.0 pelo proxy do Go"
+            # Go do próprio runner (PATH ou tool cache); GOTOOLCHAIN=auto baixa do proxy se for velho.
+            command -v go >/dev/null || PATH="$(ls -d /opt/hostedtoolcache/go/*/x64/bin | sort -V | tail -1):$PATH"
+            GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org GOFLAGS= GOBIN="$PWD" \
+              go install github.com/zricethezav/gitleaks/v8@v8.28.0
+          fi
           ./gitleaks git --redact --verbose .

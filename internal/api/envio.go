@@ -1,0 +1,192 @@
+package api
+
+import (
+	"context"
+	"log"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
+)
+
+// Estado do envio, pausar e retomar (jc-a2y.51; contrato 0.4.12). O executor só existe no build envio_dev
+// (Opcoes.EnvioLigado); "pausado" fica na meta do banco, com falha fechada (armazem.EnvioPausado). Os desfechos
+// saem da fila, sem conteúdo (M7): só id, estado, motivo e horário.
+
+// maxDesfechos: quantos desfechos o GET /envio devolve, do mais novo para o mais antigo.
+const maxDesfechos = 20
+
+func (a *API) rotasEnvio(ctx context.Context, m, p string, q map[string]string, c Objeto, autor string) (Resposta, bool, error) {
+	switch {
+	case m == "GET" && p == "/envio":
+		r, err := a.estadoEnvio(ctx, q)
+		return r, true, err
+	case m == "POST" && p == "/envio/pausar":
+		if err := soCampos(c); err != nil {
+			return Resposta{}, true, err
+		}
+		r, err := a.mudarPausa(ctx, true, a.quem(autor))
+		if err == nil {
+			a.limparAoVivo()                         // pausado: sem quadro (jc-a2y.6.9)
+			log.Printf("envio: pausado (%s)", autor) // só o fato e o autor
+		}
+		return r, true, err
+	case m == "POST" && p == "/envio/retomar":
+		if err := soCampos(c); err != nil {
+			return Resposta{}, true, err
+		}
+		if autor != "eu" {
+			return Resposta{}, true, &dominio.ErroSoPessoa{Msg: "só a pessoa retoma o envio"}
+		}
+		r, err := a.mudarPausa(ctx, false, nil)
+		if err == nil {
+			log.Printf("envio: retomado (%s)", autor)
+		}
+		return r, true, err
+	case m == "POST" && p == "/envio/janela":
+		r, err := a.mudarJanela(ctx, c, autor)
+		return r, true, err
+	case m == "POST" && strings.HasPrefix(p, "/envio/plataformas/"):
+		partes := strings.Split(strings.TrimPrefix(p, "/envio/plataformas/"), "/")
+		if len(partes) != 2 || (partes[1] != "pausar" && partes[1] != "retomar") {
+			return Resposta{}, false, nil
+		}
+		r, err := a.mudarPlataforma(ctx, partes[0], partes[1] == "retomar", c, autor)
+		return r, true, err
+	}
+	return Resposta{}, false, nil
+}
+
+// mudarPlataforma (jc-a2y.6.11): pausar só esta plataforma (qualquer autor, só reduz o risco) ou retomar (só a
+// pessoa, pela tela). Gravado no banco, numa transação.
+func (a *API) mudarPlataforma(ctx context.Context, plataforma string, retomar bool, c Objeto, autor string) (Resposta, error) {
+	if err := soCampos(c); err != nil {
+		return Resposta{}, err
+	}
+	if !a.envioLigado {
+		return Resposta{}, falha(404, msgSemEnvio)
+	}
+	if retomar && autor != "eu" {
+		return Resposta{}, &dominio.ErroSoPessoa{Msg: "só a pessoa retoma a plataforma"}
+	}
+	agora := a.relogio()
+	_, err := a.arm.MudarPlataformas(ctx, func(p dominio.Plataformas, _ bool) (dominio.Plataformas, error) {
+		if retomar {
+			return p.RetomarPlataforma(plataforma, agora)
+		}
+		return p.PausarPlataformaPor(plataforma, agora, a.quem(autor))
+	})
+	if err != nil {
+		return Resposta{}, err
+	}
+	if retomar {
+		log.Printf("envio: plataforma %s retomada (%s)", plataforma, autor) // só códigos e o autor
+	} else {
+		log.Printf("envio: plataforma %s pausada (%s)", plataforma, autor)
+	}
+	return a.estadoEnvio(ctx, nil)
+}
+
+// mudarPausa: pausar grava quem pausou (do servidor, nunca do corpo); retomar apaga.
+func (a *API) mudarPausa(ctx context.Context, pausado bool, quem *dominio.Quem) (Resposta, error) {
+	var err error
+	if pausado {
+		err = a.arm.GravarEnvioPausadoPor(ctx, quem)
+	} else {
+		err = a.arm.GravarEnvioPausado(ctx, false)
+	}
+	if err != nil {
+		return Resposta{}, err
+	}
+	return a.estadoEnvio(ctx, nil)
+}
+
+// quem: quem está chamando, pelo autor e pelo canal desta API (jc-a2y.7.4). Nunca vem do corpo.
+func (a *API) quem(autor string) *dominio.Quem {
+	return dominio.QuemDe(dominio.Ctx{Autor: autor, Canal: a.canal})
+}
+
+// desfechoDe devolve o desfecho de uma candidatura que o executor concluiu, ou ok=false. Enviada à mão
+// (concluir-manual) não é desfecho do executor.
+func desfechoDe(o Objeto) (Objeto, time.Time, bool) {
+	estado := dominio.Texto(o["estado"])
+	resultado, bloqueio := dominio.ObjetoDe(o["resultado"]), dominio.ObjetoDe(o["bloqueio"])
+	var em string
+	var motivo any
+	switch estado {
+	case dominio.CandBloqueada:
+		em, motivo = dominio.Texto(bloqueio["em"]), dominio.Texto(bloqueio["motivo"])
+	case dominio.CandEnviada, dominio.CandFalhou, dominio.CandIncerta:
+		if dominio.Igual(resultado["tipo"], "manual") {
+			return nil, time.Time{}, false
+		}
+		em = dominio.Texto(resultado["em"])
+	default:
+		return nil, time.Time{}, false
+	}
+	quando, err := time.Parse(time.RFC3339, em)
+	if err != nil {
+		return nil, time.Time{}, false
+	}
+	return Objeto{"id": o["id"], "estado": estado, "motivo": motivo, "em": em}, quando, true
+}
+
+func (a *API) estadoEnvio(ctx context.Context, q map[string]string) (Resposta, error) {
+	var desde time.Time
+	if d, tem := q["desde"]; tem {
+		t, err := time.Parse(time.RFC3339, d)
+		if err != nil {
+			return Resposta{}, erroCampo("desde: data e hora no formato ISO 8601 (ex.: 2026-11-09T10:00:00-03:00)")
+		}
+		desde = t
+	}
+	e, err := a.arm.Carregar(ctx)
+	if err != nil {
+		return Resposta{}, err
+	}
+	var enviando any
+	type item struct {
+		o      Objeto
+		quando time.Time
+	}
+	var itens []item
+	for _, o := range e.Candidaturas {
+		if dominio.Igual(o["estado"], dominio.CandEnviando) && enviando == nil {
+			desdeEnvio := dominio.Texto(o["atualizadaEm"])
+			if t := dominio.ListaDe(o["tentativas"]); len(t) > 0 {
+				desdeEnvio = dominio.Texto(t[len(t)-1])
+			}
+			enviando = Objeto{"id": o["id"], "desde": desdeEnvio}
+		}
+		if d, quando, ok := desfechoDe(o); ok && (desde.IsZero() || quando.After(desde)) {
+			itens = append(itens, item{d, quando})
+		}
+	}
+	sort.SliceStable(itens, func(i, j int) bool { return itens[i].quando.After(itens[j].quando) })
+	desfechos := []Objeto{}
+	for i := 0; i < len(itens) && i < maxDesfechos; i++ {
+		desfechos = append(desfechos, itens[i].o)
+	}
+	janela, login := "oculta", false
+	if a.envioLigado {
+		var visivel bool
+		if visivel, login = a.janela(); visivel {
+			janela = "visivel"
+		}
+	}
+	agora := a.relogio()
+	plataformas := a.arm.Plataformas(ctx).Lista(agora)
+	for _, p := range plataformas { // jc-a2y.6.11: as voltas e as páginas do dia, contra o teto
+		nome := dominio.Texto(p["plataforma"])
+		p["voltasHoje"] = dominio.VoltasNoDia(e, nome, agora)
+		p["paginasHoje"] = dominio.AberturasNoDia(e, nome, agora)
+		p["tetoPaginas"] = dominio.LimiteMaximo
+	}
+	pausado := a.arm.EnvioPausado(ctx)
+	var pausadoPor any // jc-a2y.7.4: quem pausou; null ao abrir o app e depois de retomar
+	if q := a.arm.EnvioPausadoPor(ctx); pausado && q != nil {
+		pausadoPor = Objeto{"autor": q.Autor, "canal": q.Canal}
+	}
+	return ok(Objeto{"ligado": a.envioLigado, "pausado": pausado, "pausadoPor": pausadoPor, "plataformas": plataformas, "janela": janela, "login": login, "enviandoAgora": enviando, "desfechos": desfechos})
+}

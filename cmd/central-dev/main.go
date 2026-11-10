@@ -2,10 +2,16 @@
 // e testes de ponta a ponta. Escuta apenas em 127.0.0.1 e recusa outro Host (proteção contra DNS rebinding).
 //
 //	CENTRAL_PASTA=<pasta de teste> go run ./cmd/central-dev        (PORT muda a porta; padrão 4500)
+//
+// O central-dev NUNCA roda o executor real (revisão do CyberSec no #61): ele escuta numa porta TCP, e o Handler
+// trata como a pessoa todo pedido sem Sec-Fetch-Site, então qualquer processo local poderia aprovar e retomar. Com
+// -tags envio_dev, só o painel do envio aparece ligado (para testar a tela), sempre começando pausado; nada é
+// enviado. O envio de verdade só existe no app compilado com a tag (a janela do Wails, sem porta).
 package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -21,21 +27,28 @@ import (
 func main() {
 	pasta, err := config.PastaDados()
 	if err != nil {
-		log.Fatal(err)
+		falhar("pasta de dados", err)
 	}
 	arm, err := armazem.Abrir(context.Background(), config.CaminhoBanco(pasta))
 	if err != nil {
-		log.Fatal(err)
+		falhar("banco", err)
 	}
 	defer arm.Fechar()
 	if _, err := arm.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
-		log.Fatalf("primeira vez: %v", err)
+		falhar("primeira vez", err)
 	}
 	telas := os.Getenv("CENTRAL_TELAS")
 	if telas == "" {
 		telas = "app/frontend/dist"
 	}
-	apiLocal := api.Nova(arm, api.Opcoes{}).Handler()
+	// Painel do envio sem executor: no build envio_dev, aparece ligado e abre pausado (como o app); no padrão, desligado.
+	if painelDoEnvio {
+		if err := arm.GravarEnvioPausado(context.Background(), true); err != nil {
+			falhar("envio", err)
+		}
+	}
+	// Depois de "apagar meus dados", o processo sai (o banco já foi fechado e apagado).
+	apiLocal := api.Nova(arm, api.Opcoes{AoApagar: func() { os.Exit(0) }, EnvioLigado: painelDoEnvio}).Handler()
 	arquivos := http.FileServer(http.Dir(telas))
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)
@@ -57,6 +70,16 @@ func main() {
 	if porta == "" {
 		porta = "4500"
 	}
-	log.Printf("Central (desenvolvimento) em http://localhost:%s — dados em %s", porta, pasta)
-	log.Fatal(http.ListenAndServe("127.0.0.1:"+porta, h))
+	log.Print(mensagemDePartida(porta))
+	log.Fatal(novoServidor("127.0.0.1:"+porta, h).ListenAndServe()) // com tempos limite (jc-a2y.14)
+}
+
+// mensagemDePartida diz onde a Central abriu e de onde veio a pasta, sem o caminho (que traz o nome do usuário).
+func mensagemDePartida(porta string) string {
+	return fmt.Sprintf("Central (desenvolvimento) em http://localhost:%s — %s", porta, config.OrigemPasta())
+}
+
+// falhar encerra com o erro de partida sem o caminho da pasta de dados nem o da pasta do usuário.
+func falhar(etapa string, err error) {
+	log.Fatalf("%s: %s", etapa, config.OcultarCaminhos(err.Error()))
 }

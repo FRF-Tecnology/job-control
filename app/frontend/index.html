@@ -2,12 +2,13 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <!-- CSP (jc-a2y.29): só script, estilo, fonte e imagem do próprio app; nada inline, eval, plugin ou <base>.
+         O servidor de desenvolvimento do Vite tira esta linha (vite.config.ts), porque injeta script inline. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'" />
     <link rel="icon" type="image/svg+xml" href="/icone.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Central de Candidaturas</title>
-    <script>
-      try { const t = localStorage.getItem('tema'); if (t) document.documentElement.dataset.tema = t; } catch {}
-    </script>
+    <title>Applyer</title>
+    <script src="/tema.js"></script>
   </head>
   <body>
     <div id="root"></div>

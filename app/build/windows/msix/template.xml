@@ -10,15 +10,15 @@
     <Installer
         Path="central.exe"
         Arguments=""
-        InstallLocation="C:\Program Files\FRF Tecnology\Central de Candidaturas">
+        InstallLocation="C:\Program Files\FRF Tecnology\Applyer">
     </Installer>
     <PackageInformation
         PackageName="Central de Candidaturas"
-        PackageDisplayName="Central de Candidaturas"
+        PackageDisplayName="Applyer"
         PublisherName="CN=FRF Tecnology"
         PublisherDisplayName="FRF Tecnology"
         Version="0.1.0.0"
-        PackageDescription="Central de Candidaturas">
+        PackageDescription="Busca, triagem e acompanhamento de candidaturas">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
@@ -26,8 +26,8 @@
         <Applications>
             <Application
                 Id="com.frftecnology.central"
-                Description="Central de Candidaturas"
-                DisplayName="Central de Candidaturas"
+                Description="Busca, triagem e acompanhamento de candidaturas"
+                DisplayName="Applyer"
                 ExecutableName="central.exe"
                 EntryPoint="Windows.FullTrustApplication">
                 
@@ -41,9 +41,9 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>Central de Candidaturas</DisplayName>
+            <DisplayName>Applyer</DisplayName>
             <PublisherDisplayName>FRF Tecnology</PublisherDisplayName>
-            <Description>Central de Candidaturas</Description>
+            <Description>Busca, triagem e acompanhamento de candidaturas</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>

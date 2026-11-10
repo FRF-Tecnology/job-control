@@ -1,0 +1,45 @@
+{
+ "descricao": "gupy-rg",
+ "plataforma": "gupy",
+ "url": "https://empresa-teste.gupy.io/jobs/9000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "rg"
+ },
+ "etapas": [
+  {
+   "url": "https://empresa-teste.gupy.io/jobs/9000001/apply",
+   "texto": "Dados pessoais",
+   "campos": [
+    {
+     "id": "nome",
+     "tipo": "text",
+     "rotulo": "Nome completo",
+     "obrigatorio": true
+    },
+    {
+     "id": "email",
+     "tipo": "email",
+     "rotulo": "E-mail",
+     "obrigatorio": true
+    },
+    {
+     "id": "tel",
+     "tipo": "tel",
+     "rotulo": "Telefone celular",
+     "obrigatorio": true
+    },
+    {
+     "id": "ident",
+     "tipo": "text",
+     "rotulo": "Número de identidade (RG)",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

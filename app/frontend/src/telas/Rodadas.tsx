@@ -1,4 +1,4 @@
-// Rodadas: cada vez que o Claude busca e aplica (porte de web/telas/rodadas.mjs).
+// Rodadas: cada vez que o Claude busca vagas (porte de web/telas/rodadas.mjs). O envio agora é pelo app (jc-a2y.56).
 import { useApp } from '../app/contexto';
 import { Convite } from '../componentes';
 import { dataCurta } from '../util';
@@ -21,7 +21,7 @@ export function TelaRodadas() {
 
   return (
     <div>
-      <header className="cabecalho"><div><h1>Rodadas</h1><p>Cada vez que o Claude busca e aplica, é uma rodada. Peça uma nova com /rodada.</p></div>
+      <header className="cabecalho"><div><h1>Rodadas</h1><p>Cada vez que o Claude busca vagas, é uma rodada. Peça uma nova com /rodada.</p></div>
         <a className="botao-fantasma" href="/api/v1/historico.md" target="_blank">Ver histórico em texto</a></header>
       {lista.length ? (
         <div className="tabela-rolagem">

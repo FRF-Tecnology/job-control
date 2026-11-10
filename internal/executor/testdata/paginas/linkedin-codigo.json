@@ -1,0 +1,28 @@
+{
+ "descricao": "linkedin-codigo",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "aprovada",
+  "motivo": "login"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Enviamos um código para o seu e-mail. Digite o código de verificação",
+   "campos": [
+    {
+     "id": "pin",
+     "tipo": "text",
+     "rotulo": "Código",
+     "autocomplete": "one-time-code",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

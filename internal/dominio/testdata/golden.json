@@ -5950,7 +5950,7 @@
      }
     },
     {
-     "autor": "claude",
+     "autor": "eu",
      "agora": "2026-10-29",
      "diasFollowUp": 7
     }
@@ -5979,7 +5979,7 @@
        "vagaId": "li-1",
        "tipo": "enviada",
        "data": "2026-10-26",
-       "autor": "claude",
+       "autor": "eu",
        "texto": ""
       }
      ],
@@ -6000,6 +6000,215 @@
      "envio": {
       "data": "2026-10-26"
      },
+     "contaId": "local"
+    }
+   }
+  },
+  {
+   "nome": "assistente não adiciona em aplicar",
+   "funcao": "adicionarVaga",
+   "args": [
+    {
+     "vagas": [],
+     "eventos": [],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    {
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "plataforma": "linkedin",
+     "etapa": "aplicar"
+    },
+    {
+     "autor": "claude",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "erro": {
+    "tipo": "ErroValidacao",
+    "mensagem": "o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa",
+    "erros": [
+     "o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa"
+    ]
+   }
+  },
+  {
+   "nome": "assistente não adiciona em enviada",
+   "funcao": "adicionarVaga",
+   "args": [
+    {
+     "vagas": [],
+     "eventos": [],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    {
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "plataforma": "linkedin",
+     "etapa": "enviada",
+     "envio": {
+      "data": "2026-10-26"
+     }
+    },
+    {
+     "autor": "claude",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "erro": {
+    "tipo": "ErroValidacao",
+    "mensagem": "o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa",
+    "erros": [
+     "o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa"
+    ]
+   }
+  },
+  {
+   "nome": "assistente adiciona em descoberta explícita",
+   "funcao": "adicionarVaga",
+   "args": [
+    {
+     "vagas": [],
+     "eventos": [],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    {
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "plataforma": "linkedin",
+     "etapa": "descoberta"
+    },
+    {
+     "autor": "claude",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "resultado": {
+    "estado": {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    "vaga": {
+     "plataforma": "linkedin",
+     "etapa": "descoberta",
+     "descobertaEm": "2026-10-29",
+     "atualizadoEm": "2026-10-29",
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "contaId": "local"
+    }
+   }
+  },
+  {
+   "nome": "pessoa adiciona direto em aplicar",
+   "funcao": "adicionarVaga",
+   "args": [
+    {
+     "vagas": [],
+     "eventos": [],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    {
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "plataforma": "linkedin",
+     "etapa": "aplicar"
+    },
+    {
+     "autor": "eu",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "resultado": {
+    "estado": {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "aplicar",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "aplicar",
+       "data": "2026-10-29",
+       "autor": "eu",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    "vaga": {
+     "plataforma": "linkedin",
+     "etapa": "aplicar",
+     "descobertaEm": "2026-10-29",
+     "atualizadoEm": "2026-10-29",
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
      "contaId": "local"
     }
    }
@@ -6371,7 +6580,7 @@
     "aplicar",
     {},
     {
-     "autor": "claude",
+     "autor": "eu",
      "agora": "2026-10-29",
      "diasFollowUp": 7
     }
@@ -6381,6 +6590,429 @@
     "mensagem": "vaga não encontrada: nao-existe",
     "erros": null
    }
+  },
+  {
+   "nome": "assistente não aprova (aplicar)",
+   "funcao": "moverVaga",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    "li-1",
+    "aplicar",
+    {},
+    {
+     "autor": "claude",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "erro": {
+    "tipo": "ErroValidacao",
+    "mensagem": "só a pessoa aprova uma vaga para aplicar (pela Triagem)",
+    "erros": [
+     "só a pessoa aprova uma vaga para aplicar (pela Triagem)"
+    ]
+   }
+  },
+  {
+   "nome": "assistente não aprova nem vaga inexistente",
+   "funcao": "moverVaga",
+   "args": [
+    {
+     "vagas": [],
+     "eventos": [],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    "nao-existe",
+    "aplicar",
+    {},
+    {
+     "autor": "claude",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "erro": {
+    "tipo": "ErroValidacao",
+    "mensagem": "só a pessoa aprova uma vaga para aplicar (pela Triagem)",
+    "erros": [
+     "só a pessoa aprova uma vaga para aplicar (pela Triagem)"
+    ]
+   }
+  },
+  {
+   "nome": "pessoa aprova (aplicar)",
+   "funcao": "moverVaga",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    "li-1",
+    "aplicar",
+    {},
+    {
+     "autor": "eu",
+     "agora": "2026-10-29",
+     "diasFollowUp": 7
+    }
+   ],
+   "resultado": {
+    "estado": {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "aplicar",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local",
+       "pendencia": null,
+       "motivo": null,
+       "subEtapa": null
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-10-29-000002-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "aplicar",
+       "data": "2026-10-29",
+       "autor": "eu",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    },
+    "vaga": {
+     "plataforma": "linkedin",
+     "etapa": "aplicar",
+     "descobertaEm": "2026-10-29",
+     "atualizadoEm": "2026-10-29",
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "contaId": "local",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null
+    }
+   }
+  },
+  {
+   "nome": "fila do aplicar: aprovada pela pessoa",
+   "funcao": "filaAplicar",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "aplicar",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local",
+       "pendencia": null,
+       "motivo": null,
+       "subEtapa": null
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-10-29-000002-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "aplicar",
+       "data": "2026-10-29",
+       "autor": "eu",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    }
+   ],
+   "resultado": [
+    {
+     "plataforma": "linkedin",
+     "etapa": "aplicar",
+     "descobertaEm": "2026-10-29",
+     "atualizadoEm": "2026-10-29",
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "contaId": "local",
+     "pendencia": null,
+     "motivo": null,
+     "subEtapa": null
+    }
+   ]
+  },
+  {
+   "nome": "fila do aplicar: vazia sem aprovação",
+   "funcao": "filaAplicar",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    }
+   ],
+   "resultado": []
+  },
+  {
+   "nome": "fila do aplicar: evento de aplicar do assistente não conta",
+   "funcao": "filaAplicar",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "aplicar",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local",
+       "pendencia": null,
+       "motivo": null,
+       "subEtapa": null
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      },
+      {
+       "id": "ev-2026-10-29-000002-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "aplicar",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {},
+     "pedidos": [],
+     "emails": []
+    }
+   ],
+   "resultado": []
+  },
+  {
+   "nome": "fila do aplicar: modo direto inclui grupo A em descoberta",
+   "funcao": "filaAplicar",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local",
+       "aderencia": "A"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {
+      "modo": "direto"
+     },
+     "pedidos": [],
+     "emails": []
+    }
+   ],
+   "resultado": [
+    {
+     "plataforma": "linkedin",
+     "etapa": "descoberta",
+     "descobertaEm": "2026-10-29",
+     "atualizadoEm": "2026-10-29",
+     "id": "li-1",
+     "empresa": "Compass UOL",
+     "titulo": "Desenvolvedor Quarkus",
+     "contaId": "local",
+     "aderencia": "A"
+    }
+   ]
+  },
+  {
+   "nome": "fila do aplicar: modo revisar não inclui descoberta",
+   "funcao": "filaAplicar",
+   "args": [
+    {
+     "vagas": [
+      {
+       "plataforma": "linkedin",
+       "etapa": "descoberta",
+       "descobertaEm": "2026-10-29",
+       "atualizadoEm": "2026-10-29",
+       "id": "li-1",
+       "empresa": "Compass UOL",
+       "titulo": "Desenvolvedor Quarkus",
+       "contaId": "local",
+       "aderencia": "A"
+      }
+     ],
+     "eventos": [
+      {
+       "id": "ev-2026-10-29-000001-4fzz",
+       "contaId": "local",
+       "vagaId": "li-1",
+       "tipo": "descoberta",
+       "data": "2026-10-29",
+       "autor": "claude",
+       "texto": ""
+      }
+     ],
+     "plataformas": [],
+     "rodadas": [],
+     "perfil": {
+      "modo": "revisar"
+     },
+     "pedidos": [],
+     "emails": []
+    }
+   ],
+   "resultado": []
   },
   {
    "nome": "mover etapa desconhecida",
@@ -7136,62 +7768,12 @@
      "diasFollowUp": 7
     }
    ],
-   "resultado": {
-    "estado": {
-     "vagas": [
-      {
-       "plataforma": "linkedin",
-       "etapa": "aplicar",
-       "descobertaEm": "2026-10-29",
-       "atualizadoEm": "2026-10-29",
-       "id": "li-1",
-       "empresa": "Compass UOL",
-       "titulo": "Desenvolvedor Quarkus",
-       "contaId": "local",
-       "motivo": null,
-       "pendencia": null,
-       "subEtapa": null
-      }
-     ],
-     "eventos": [
-      {
-       "id": "ev-2026-10-29-000001-4fzz",
-       "contaId": "local",
-       "vagaId": "li-1",
-       "tipo": "descoberta",
-       "data": "2026-10-29",
-       "autor": "claude",
-       "texto": ""
-      },
-      {
-       "id": "ev-2026-10-29-000002-4fzz",
-       "contaId": "local",
-       "vagaId": "li-1",
-       "tipo": "aplicar",
-       "data": "2026-10-29",
-       "autor": "claude",
-       "texto": ""
-      }
-     ],
-     "plataformas": [],
-     "rodadas": [],
-     "perfil": {},
-     "pedidos": [],
-     "emails": []
-    },
-    "vaga": {
-     "plataforma": "linkedin",
-     "etapa": "aplicar",
-     "descobertaEm": "2026-10-29",
-     "atualizadoEm": "2026-10-29",
-     "id": "li-1",
-     "empresa": "Compass UOL",
-     "titulo": "Desenvolvedor Quarkus",
-     "contaId": "local",
-     "motivo": null,
-     "pendencia": null,
-     "subEtapa": null
-    }
+   "erro": {
+    "tipo": "ErroValidacao",
+    "mensagem": "só a pessoa aprova uma vaga para aplicar (pela Triagem)",
+    "erros": [
+     "só a pessoa aprova uma vaga para aplicar (pela Triagem)"
+    ]
    }
   },
   {
@@ -7241,9 +7823,9 @@
    ],
    "erro": {
     "tipo": "ErroValidacao",
-    "mensagem": "parece conter CPF/RG — documentos não são guardados na central",
+    "mensagem": "só a pessoa aprova uma vaga para aplicar (pela Triagem)",
     "erros": [
-     "parece conter CPF/RG — documentos não são guardados na central"
+     "só a pessoa aprova uma vaga para aplicar (pela Triagem)"
     ]
    }
   },

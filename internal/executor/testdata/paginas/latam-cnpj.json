@@ -1,0 +1,27 @@
+{
+ "descricao": "latam-cnpj",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "cpf"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Dados da empresa (PJ)",
+   "campos": [
+    {
+     "id": "cnpj",
+     "tipo": "text",
+     "rotulo": "CNPJ",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  }
+ ]
+}

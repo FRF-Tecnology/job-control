@@ -14,9 +14,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
+	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
@@ -37,6 +39,13 @@ type Pedido struct {
 	Caminho string // /api/v1/... com ?consulta
 	Corpo   any
 	Autor   string // "eu" (tela) ou "claude" (CLI, extensão, MCP)
+	// DaJanela: o Handler viu Sec-Fetch-Site same-origin e o Host da janela do app (jc-a2y.6.9). A CLI e o MCP
+	// nunca marcam. Só o "Ao vivo" usa.
+	DaJanela bool
+	// Confirmação da proposta de um pedido (jc-a2y.7.1): os cabeçalhos X-Pedido e X-Impressao, só eles.
+	XPedido, XImpressao string
+	// doAssistente: o pedido já passou pela lista do ChamarAssistente (jc-a2y.7.4). Só este pacote marca.
+	doAssistente bool
 }
 
 // Resposta é o que a API devolve. Tipo vazio = JSON.
@@ -57,6 +66,32 @@ type API struct {
 	cofre            segredos.Cofre
 	provedoresExtras map[string]ia.Provedor // só nos testes: provedor de IA falso
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
+	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
+	cacheCLIs        cacheDeteccao
+
+	// trava: cada pedido segura a leitura; "apagar meus dados" segura a escrita (espera os pedidos em curso e
+	// barra os novos). Depois de apagar, apagando fica true e todo pedido recebe 503 até o app fechar.
+	trava sync.RWMutex
+	// interpretando: uma interpretação de pedido por vez (jc-a2y.7.1); a segunda recebe 409.
+	interpretando sync.Mutex
+	apagando      bool
+	// noMeioDoPedido só existe para o teste segurar um pedido em curso (com a trava de leitura).
+	noMeioDoPedido func(caminho string)
+
+	pararEnvio      func()                       // apagar meus dados: para o executor, espera o ciclo e fecha o navegador
+	suspenderEnvio  func() func()                // sair das plataformas: nenhum ciclo novo até soltar
+	fecharNavegador func()                       // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
+	aoApagar        func()                       // depois de apagar os dados: fecha o app
+	envioLigado     bool                         // este build traz o executor (envio.Ligado)
+	mostrarEnvio    func(visivel bool)           // "Ver o envio": janela a partir da próxima candidatura
+	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
+	janela          func() (visivel, login bool) // estado da janela do envio
+	aoVivo          *aovivo.AoVivo               // "Ao vivo" (jc-a2y.6.9): nil fora do app com envio (404)
+	avisoPasta      string                       // aviso da pasta de dados nesta abertura (jc-etv.14)
+	// lerFormulario (jc-a2y.7.2): o leitor do executor; nil fora do app com envio (404).
+	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// canal (jc-a2y.7.4): mcp ou cli numa API do assistente; vazio na do app. Fixado na criação (Opcoes.Canal).
+	canal string
 }
 
 // Opcoes configura a API.
@@ -68,7 +103,35 @@ type Opcoes struct {
 	Cofre        segredos.Cofre                       // padrão: cofre do sistema operacional
 	ProvedoresIA map[string]ia.Provedor               // só nos testes
 	DetectarCLIs func(context.Context) []ia.EstadoCLI // padrão: procura claude, codex e gemini no PATH
+
+	// Ganchos do app (padrão: não fazem nada). PararEnvio e FecharNavegador vêm de envio.Ligar; AoApagar fecha o app.
+	PararEnvio      func()
+	SuspenderEnvio  func() (soltar func())
+	FecharNavegador func()
+	AoApagar        func()
+	// EnvioLigado: este build traz o executor (envio.Ligado, só o envio_dev). A API não importa o envio.
+	EnvioLigado bool
+	// Janela do navegador do envio (jc-a2y.6.7), de envio.Ligar: MostrarEnvio, Entrar e Janela.
+	MostrarEnvio func(visivel bool)
+	Entrar       func(endereco string) error
+	Janela       func() (visivel, login bool)
+	// AoVivo (jc-a2y.6.9): o último quadro do navegador do envio, em memória. Só o app com o envio passa; sem ele,
+	// /envio/ao-vivo dá 404 (build padrão e central-dev).
+	AoVivo *aovivo.AoVivo
+	// LerFormulario (jc-a2y.7.2): lê a estrutura do formulário no navegador do envio, sem interagir. Só o app com o
+	// envio passa; sem ele, POST /candidaturas/{id}/ler-formulario dá 404.
+	LerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// AvisoPasta: o aviso da pasta de dados nesta abertura (config.Abertura.Aviso, jc-etv.7): pasta-antiga-ficou,
+	// migracao-adiada ou vazio. GET /dados/pasta mostra à tela, sem caminho.
+	AvisoPasta string
+	// Canal (jc-a2y.7.4, regra M4): mcp ou cli, só nos binários do assistente (o MCP e a CLI). Com ele, a API só
+	// atende pelo ChamarAssistente (a lista x-assistente), o autor é sempre claude e o Handler da tela recusa tudo.
+	// Fora de mcp e cli, a API do assistente recusa tudo (falha fechada).
+	Canal string
 }
+
+// ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
+const ErroModoSoPessoa = "só a pessoa liga o modo direto (aplicar o grupo A sem Triagem)"
 
 // Nova cria a API sobre um armazém.
 func Nova(arm *armazem.Armazem, o Opcoes) *API {
@@ -78,13 +141,47 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	if o.ContaID == "" {
 		o.ContaID = "local"
 	}
-	if o.Cofre == nil {
-		o.Cofre = segredos.Sistema{}
+	if o.Canal != "" {
+		// A API do assistente nunca usa o cofre (A2.4 do CyberSec, jc-a2y.7.4): nem o do sistema, nem um que o
+		// binário passe. As rotas /ia/* também estão fora da lista.
+		o.Cofre = cofreDoAssistente{}
+	} else if o.Cofre == nil {
+		// Cada pasta de dados tem as chaves dela no cofre (jc-a2y.65): apagar uma pasta não apaga as de outra.
+		o.Cofre = segredos.Sistema{Servico: segredos.ServicoDaPasta(arm.Pasta())}
+	}
+	// Erro do cofre sempre com texto fixo, venha de onde vier: nada do que foi gravado sai numa resposta (jc-a2y.63).
+	o.Cofre = segredos.Seguro{Cofre: o.Cofre}
+	if o.Canal != "" {
+		// A API do assistente nunca chama uma IA nem roda uma CLI (A2.4 (d) do CyberSec, jc-a2y.7.4).
+		o.ProvedoresIA = map[string]ia.Provedor{}
+		o.DetectarCLIs = func(context.Context) []ia.EstadoCLI { return nil }
 	}
 	if o.DetectarCLIs == nil {
 		o.DetectarCLIs = ia.DetectarCLIs
 	}
-	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs}
+	nada := func() {}
+	for _, f := range []*func(){&o.PararEnvio, &o.FecharNavegador, &o.AoApagar} {
+		if *f == nil {
+			*f = nada
+		}
+	}
+	if o.SuspenderEnvio == nil {
+		o.SuspenderEnvio = func() func() { return nada }
+	}
+	if o.MostrarEnvio == nil {
+		o.MostrarEnvio = func(bool) {}
+	}
+	if o.Entrar == nil {
+		o.Entrar = func(string) error {
+			return &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador", Motivo: "sem-navegador"}
+		}
+	}
+	if o.Janela == nil {
+		o.Janela = func() (bool, bool) { return false, false }
+	}
+	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
+		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -111,7 +208,11 @@ func respostaDeErro(err error) (Resposta, bool) {
 		return Resposta{Status: 400, Corpo: Objeto{"erro": ev.Error(), "erros": ev.Erros}}, true
 	case errors.As(err, &ed):
 		return Resposta{Status: 409, Corpo: Objeto{"erro": ed.Error(), "existente": ed.Existente}}, true
-	case reNaoEncontrado.MatchString(err.Error()):
+	}
+	if r, ok := respostaDaFila(err); ok {
+		return r, true
+	}
+	if reNaoEncontrado.MatchString(err.Error()) {
 		return Resposta{Status: 404, Corpo: Objeto{"erro": err.Error()}}, true
 	}
 	return Resposta{}, false
@@ -119,7 +220,25 @@ func respostaDeErro(err error) (Resposta, bool) {
 
 // Chamar atende um pedido. Erro só sobe quando é inesperado (o HTTP responde 500).
 func (a *API) Chamar(ctx context.Context, p Pedido) (Resposta, error) {
-	r, err := a.rotear(ctx, p)
+	if a.canal != "" && !p.doAssistente { // API do assistente: tudo passa pela lista (jc-a2y.7.4)
+		return a.ChamarAssistente(ctx, p)
+	}
+	if ehPedidoDeApagar(p) {
+		return respostaOuErro(a.apagarComTrava(ctx, p))
+	}
+	a.trava.RLock()
+	defer a.trava.RUnlock()
+	if a.apagando {
+		return respostaFechando(), nil
+	}
+	if a.noMeioDoPedido != nil {
+		a.noMeioDoPedido(p.Caminho)
+	}
+	return respostaOuErro(a.rotear(ctx, p))
+}
+
+// respostaOuErro transforma os erros conhecidos em status; o resto sobe (o HTTP responde 500).
+func respostaOuErro(r Resposta, err error) (Resposta, error) {
 	if err != nil {
 		if resp, ok := respostaDeErro(err); ok {
 			return resp, nil
@@ -149,7 +268,7 @@ func (a *API) ctx(e dominio.Estado, autor string) dominio.Ctx {
 	if dias != dias || dias == 0 { // NaN ou 0 → padrão
 		dias = 7
 	}
-	return dominio.Ctx{Autor: autor, ContaID: a.contaID, Agora: a.hoje(), DiasFollowUp: int(dias), Aleatorio: a.aleatorio}
+	return dominio.Ctx{Autor: autor, ContaID: a.contaID, Agora: a.hoje(), DiasFollowUp: int(dias), Aleatorio: a.aleatorio, Canal: a.canal}
 }
 
 // gravar roda uma operação numa transação (com o backup do dia antes, quando o banco é um arquivo).
@@ -375,6 +494,38 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 	}
 	c := dominio.ObjetoDe(corpo)
 
+	// Confirmação da proposta de um pedido (jc-a2y.7.1): só POST /vagas e /vagas/{id}/mover, só da tela. Vem antes de
+	// qualquer outra rota: X-Pedido em outro caminho é recusado.
+	if ped.XPedido != "" || ped.XImpressao != "" {
+		return a.confirmarPedido(ctx, m, p, corpo, ped.XPedido, ped.XImpressao, autor)
+	}
+	if strings.HasPrefix(p, "/pedidos/") {
+		if r, feito, err := a.rotasPedidosNoApp(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+	if p == "/envio/ao-vivo" {
+		return a.rotaAoVivo(ctx, m, c, autor, ped.DaJanela)
+	}
+
+	if strings.HasPrefix(p, "/envio") {
+		if r, feito, err := a.rotasEnvio(ctx, m, p, q, c, autor); feito {
+			return r, err
+		}
+	}
+
+	if p == "/dados/apagar" || p == "/dados/pasta" || p == "/navegador/sair" || p == "/navegador/entrar" {
+		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+
+	if strings.HasPrefix(p, "/candidaturas") {
+		if r, feito, err := a.rotasCandidaturas(ctx, m, p, q, c, autor); feito {
+			return r, err
+		}
+	}
+
 	if strings.HasPrefix(p, "/ia") {
 		if r, feito, err := a.rotasIA(ctx, m, p, c); feito {
 			return r, err
@@ -429,13 +580,17 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{Status: 200, Corpo: r}, err
 
 	case p == "/perfil" && (m == "PUT" || m == "PATCH"):
+		e, err := a.arm.Carregar(ctx)
+		if err != nil {
+			return Resposta{}, err
+		}
 		novo := c
 		if m == "PATCH" {
-			e, err := a.arm.Carregar(ctx)
-			if err != nil {
-				return Resposta{}, err
-			}
 			novo = MesclarPerfil(e.Perfil, c)
+		}
+		// jc-a2y.28: o modo direto aplica o grupo A sem Triagem; só a pessoa liga. O assistente pode só voltar para revisar.
+		if autor != "eu" && dominio.Igual(novo["modo"], "direto") && !dominio.Igual(e.Perfil["modo"], "direto") {
+			return Resposta{}, &dominio.ErroValidacao{Erros: []string{ErroModoSoPessoa}}
 		}
 		if err := exigirPerfilOk(novo); err != nil {
 			return Resposta{}, err

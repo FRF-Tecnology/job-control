@@ -1,0 +1,27 @@
+{
+ "descricao": "latam-codigo-es",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "aprovada",
+  "motivo": "login"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Te enviamos un código. Ingresa el código de verificación",
+   "campos": [
+    {
+     "id": "c",
+     "tipo": "text",
+     "rotulo": "Código",
+     "obrigatorio": true
+    }
+   ],
+   "quadros": [],
+   "botoes": [
+    "Siguiente"
+   ]
+  }
+ ]
+}

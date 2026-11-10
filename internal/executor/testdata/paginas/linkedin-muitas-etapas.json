@@ -1,0 +1,119 @@
+{
+ "descricao": "linkedin-muitas-etapas",
+ "plataforma": "linkedin",
+ "url": "https://www.linkedin.com/jobs/view/9000000001",
+ "esperado": {
+  "estado": "bloqueada",
+  "motivo": "outro"
+ },
+ "etapas": [
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 1",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 2",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 3",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 4",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 5",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 6",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 7",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 8",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 9",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 10",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 11",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  },
+  {
+   "url": "https://www.linkedin.com/jobs/view/9000000001/apply",
+   "texto": "Etapa 12",
+   "campos": [],
+   "quadros": [],
+   "botoes": [
+    "Avançar"
+   ]
+  }
+ ]
+}

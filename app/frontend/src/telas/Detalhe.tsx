@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/contexto';
 import { ETAPAS } from '../dominio/modelo';
-import { EtapaChip } from '../componentes';
-import { dataCurta, encode, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
+import { EtapaChip, LinkExterno } from '../componentes';
+import { dataCurta, encode, nomeAssistente, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
 import { extrasPara } from './Quadro';
 
 const OPCOES_PENDENCIA = ['Digitar CPF e enviar', 'Fazer login no portal', 'Gravar vídeo', 'Fazer teste online'];
@@ -71,7 +71,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
       </div>
       {v.motivoClaude && <div className="ficha" style={{ padding: '12px 14px', boxShadow: 'none', background: 'var(--superficie-2)' }}><div><b>Observação do Claude: </b>{v.motivoClaude}</div></div>}
       <div className="acoes">
-        {v.link && <a className="botao" href={v.link} target="_blank" rel="noopener">Abrir vaga</a>}
+        <LinkExterno url={v.link} className="botao">Abrir vaga</LinkExterno>
         <label className="campo" style={{ minWidth: '200px' }}><span>Mover para</span>
           <select value="" onChange={ev => { const e = ev.target.value; if (e) moverPara(e); }}>
             <option value="">{nomeEtapa(v.etapa)}</option>
@@ -104,7 +104,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
             {eventos.map((e: any) => (
               <li key={e.id} className={`e-${e.tipo}`}>
                 <div><b>{nomeEtapa(e.tipo)}</b>{e.texto ? ` — ${e.texto}` : ''}</div>
-                <div className="q">{`${dataCurta(e.data)} · ${e.autor === 'claude' ? 'Claude' : 'você'}`}</div>
+                <div className="q">{`${dataCurta(e.data)} · ${e.autor === 'claude' ? (e.canal ? nomeAssistente(e.canal) : 'Claude') : 'você'}`}</div>
               </li>
             ))}
           </ol>
