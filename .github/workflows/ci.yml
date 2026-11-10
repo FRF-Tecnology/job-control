@@ -4,13 +4,80 @@ on:
   push:
     branches: [main, reescrita-go]
   pull_request:
+  # Fila de merge nativa do GitHub (ruleset da reescrita-go): o CI roda no commit que o merge vai gerar (jc-a2y.16.1).
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
 
+# Commit novo no PR cancela a rodada velha do mesmo PR. Fila e push nunca cancelam: cada um é um commit que vai
+# para o branch ou que gera o artefato.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Decide o que rodar em cada evento (jc-a2y.16.1). Os modos:
+  #   pr      commit de PR: node, segredos e, se mexeu em código, app. O macOS espera a fila.
+  #   fila      commit da fila de merge: tudo (node, app, segredos e macos), se mexeu em código.
+  #   artefato  push na reescrita-go depois do merge: só o pacote macOS e o artefato, sem repetir os testes que a
+  #             fila acabou de rodar nesse mesmo conteúdo.
+  #   completo  qualquer outro push (main): tudo, como antes.
+  # O filtro de documentação é feito aqui, e não em `paths:` do gatilho, porque um workflow que o `paths:` pula
+  # deixa o check obrigatório pendente para sempre, enquanto um job que o `if` pula conta como verde.
+  # Falha segura: se este job der erro, `modo` e `codigo` ficam vazios e os outros jobs rodam como se fosse código.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      modo: ${{ steps.dif.outputs.modo }}
+      codigo: ${{ steps.dif.outputs.codigo }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: dif
+        env:
+          EVENTO: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          FILA_BASE: ${{ github.event.merge_group.base_sha }}
+          FILA_HEAD: ${{ github.event.merge_group.head_sha }}
+          PUSH_ANTES: ${{ github.event.before }}
+          PUSH_DEPOIS: ${{ github.sha }}
+        run: |
+          modo=completo
+          faixa=""
+          case "$EVENTO" in
+            pull_request) modo=pr;   faixa="$PR_BASE...$PR_HEAD" ;;
+            merge_group)  modo=fila; faixa="$FILA_BASE...$FILA_HEAD" ;;
+            push) if [ "$REF" = "refs/heads/reescrita-go" ]; then modo=artefato; faixa="$PUSH_ANTES..$PUSH_DEPOIS"; fi ;;
+          esac
+          # Só é "documentação" o que está em docs/ ou é um .md/LICENSE na raiz. Qualquer outra coisa (inclusive .md
+          # em subpasta, que pode ser prompt ou fixture) é código. Diff vazio ou com erro também é código.
+          codigo=true
+          if [ -n "$faixa" ] && arquivos=$(git diff --name-only "$faixa" 2>/dev/null) && [ -n "$arquivos" ]; then
+            codigo=false
+            while IFS= read -r f; do
+              case "$f" in
+                docs/*|LICENSE|LICENSE.*) ;;
+                */*) codigo=true; break ;;
+                *.md) ;;
+                *) codigo=true; break ;;
+              esac
+            done <<< "$arquivos"
+          fi
+          echo "modo=$modo" >> "$GITHUB_OUTPUT"
+          echo "codigo=$codigo" >> "$GITHUB_OUTPUT"
+          echo "Modo: \`$modo\`. Mexeu em código: \`$codigo\`." >> "$GITHUB_STEP_SUMMARY"
+
   # Central atual (Node). Continua valendo até a reescrita terminar (fase P8).
   node:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.modo != 'artefato' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -23,6 +90,8 @@ jobs:
 
   # App novo (Wails: Go + React/TS). No Windows o build não precisa de cgo nem de bibliotecas extras.
   app:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.modo != 'artefato' && needs.changes.outputs.codigo != 'false' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -78,7 +147,11 @@ jobs:
 
   # App no macOS (Apple Silicon): testes e um .app de TESTE como artefato do run (jc-a2y.64).
   # Sem assinatura da Apple, notarização ou release: isso é da P8 e exige conta Apple Developer.
+  # Não roda a cada commit de PR (modo pr): roda na fila de merge, com testes e conferência do pacote, e no push
+  # depois do merge, só com o pacote e o upload (os testes já passaram na fila, no mesmo conteúdo).
   macos:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.modo != 'pr' && needs.changes.outputs.codigo != 'false' }}
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
@@ -103,16 +176,25 @@ jobs:
           cd frontend
           npm ci
           npm run build
+      # Os passos de teste a seguir (até o cofre) não rodam no push depois do merge (modo artefato): a fila acabou de
+      # rodá-los no mesmo conteúdo.
       - name: Testes das telas (Vitest)
+        if: ${{ needs.changes.outputs.modo != 'artefato' }}
         working-directory: app/frontend
         run: npm test
-      - run: go vet ./...
+      - name: go vet
+        if: ${{ needs.changes.outputs.modo != 'artefato' }}
+        run: go vet ./...
       - name: go vet do build com envio (envio_dev)
+        if: ${{ needs.changes.outputs.modo != 'artefato' }}
         run: go vet -tags envio_dev ./...
-      - run: go test ./...
+      - name: go test
+        if: ${{ needs.changes.outputs.modo != 'artefato' }}
+        run: go test ./...
       # Navegador de verdade (Chrome ou Edge do runner): os testes aparecem pelo nome e o passo falha se algum
       # foi pulado ou não passou.
       - name: Navegador de verdade no macOS
+        if: ${{ needs.changes.outputs.modo != 'artefato' }}
         shell: bash
         run: |
           ls -d "/Applications/Google Chrome.app" "/Applications/Microsoft Edge.app" 2>/dev/null || true
@@ -123,6 +205,7 @@ jobs:
           done
       # Cofre do macOS (Keychain), com serviço de teste: só o pacote internal/segredos (jc-a2y.63).
       - name: Cofre do macOS (serviço de teste)
+        if: ${{ needs.changes.outputs.modo != 'artefato' }}
         shell: bash # -eo pipefail: falha de qualquer teste do pacote não some no tee
         run: |
           go test -count=1 -v ./internal/segredos/ | tee cofre-ci.log
@@ -193,6 +276,8 @@ jobs:
 
   # Repositório público: nenhum segredo pode entrar.
   segredos:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.modo != 'artefato' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
