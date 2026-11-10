@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../app/contexto';
 import { ETAPAS } from '../dominio/modelo';
 import { EtapaChip, LinkExterno } from '../componentes';
-import { dataCurta, encode, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
+import { dataCurta, encode, nomeAssistente, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
 import { extrasPara } from './Quadro';
 
 const OPCOES_PENDENCIA = ['Digitar CPF e enviar', 'Fazer login no portal', 'Gravar vídeo', 'Fazer teste online'];
@@ -104,7 +104,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
             {eventos.map((e: any) => (
               <li key={e.id} className={`e-${e.tipo}`}>
                 <div><b>{nomeEtapa(e.tipo)}</b>{e.texto ? ` — ${e.texto}` : ''}</div>
-                <div className="q">{`${dataCurta(e.data)} · ${e.autor === 'claude' ? 'Claude' : 'você'}`}</div>
+                <div className="q">{`${dataCurta(e.data)} · ${e.autor === 'claude' ? (e.canal ? nomeAssistente(e.canal) : 'Claude') : 'você'}`}</div>
               </li>
             ))}
           </ol>
