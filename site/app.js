@@ -370,10 +370,16 @@ function aoClicar(ev) {
   }
   if ((el = alvo('[data-aba]'))) { estado.aba = el.dataset.aba; return desenhar(); }
   if ((el = alvo('[data-ir]'))) {
+    if (el.matches('a[href]')) {
+      if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+      // A âncora nativa continua disponível sem JS. No app, a própria aba recebe o foco.
+      ev.preventDefault();
+      if (location.hash !== el.hash) history.pushState(null, '', el.hash);
+    }
     estado.aba = el.dataset.ir;
     desenhar();
     const aba = $(`[data-aba="${estado.aba}"]`);
-    if (el.closest('.final-destinos')) {
+    if (el.closest('.final')) {
       aba.focus({ preventScroll: true });
       // No celular, a barra de abas tem sua própria rolagem horizontal.
       aba.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
