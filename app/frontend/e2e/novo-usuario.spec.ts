@@ -164,7 +164,12 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   // O selo fica à vista; o código, recolhido em "Detalhes técnicos" (jc-a2y.6.3.5).
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
   await expect(naFila.getByText(criada.impressao)).toBeHidden();
-  await naFila.getByText('Detalhes técnicos').click();
+  // Abrir "Detalhes técnicos" sem alternar: clicar num <details> já aberto o fecharia (jc-t82).
+  const abrirDetalhes = async () => {
+    const det = naFila.locator('details.tecnicos');
+    if (!(await det.evaluate(d => (d as HTMLDetailsElement).open))) await det.locator('summary').click();
+  };
+  await abrirDetalhes();
   await expect(naFila.getByText(criada.impressao)).toBeVisible();
   // Editar: a pessoa acrescenta uma resposta e a mensagem; a impressão muda e continua conferida.
   await naFila.getByRole('button', { name: 'Editar pacote' }).click();
@@ -178,8 +183,11 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   expect(editada.conteudo.mensagem).toBe('Olá, tenho interesse na vaga.');
   expect(editada.conteudo.respostas).toEqual([{ pergunta: 'Anos com React?', resposta: '3', origem: 'pessoa' }]);
   expect(editada.impressao).not.toBe(criada.impressao);
+  // Espera a fila nova chegar ao cartão (a mensagem salva aparece) antes de conferir: logo depois do "Pacote
+  // atualizado", o cartão ainda mostra a versão anterior por um instante (jc-t82, run 42731298312).
+  await expect(naFila.getByText('Olá, tenho interesse na vaga.')).toBeVisible();
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
-  await naFila.getByText('Detalhes técnicos').click();
+  await abrirDetalhes();
   await expect(naFila.getByText(editada.impressao)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Limite de hoje' }).getByText('LinkedIn')).toBeVisible();
 

@@ -98,7 +98,9 @@ export function TelaFila() {
   const [falha, setFalha] = useState<string | null>(null);
   // Impressão calculada nesta tela para cada candidatura, a partir do mesmo objeto mostrado ("" se o cálculo falhar).
   // É ela, e nunca a do servidor, que vai no aprovar, e só quando as duas batem.
-  const [calculadas, setCalculadas] = useState<Record<string, string>>({});
+  // Cada uma guarda a impressão do servidor contra a qual foi calculada ("de"): enquanto a lista nova chega e a conta
+  // ainda é da versão anterior, ela não vale (a tela mostra "Conferindo…", nunca um "Não confere" de passagem).
+  const [contas, setContas] = useState<Record<string, { de: string; valor: string }>>({});
   const [preparando, setPreparando] = useState<string | null>(null); // id da vaga com o formulário aberto
   const [editando, setEditando] = useState<string | null>(null); // id da candidatura em edição
   const [ocupado, setOcupado] = useState(false);
@@ -137,12 +139,17 @@ export function TelaFila() {
   useEffect(() => {
     if (!lista) return;
     let vivo = true;
-    setCalculadas({});
-    Promise.all(lista.map(async c => [c.id, await impressaoCandidatura(c)] as const))
-      .then(r => { if (vivo) setCalculadas(Object.fromEntries(r)); })
-      .catch(() => { if (vivo) setCalculadas(Object.fromEntries(lista.map(c => [c.id, '']))); });
+    Promise.all(lista.map(async c => [c.id, { de: c.impressao, valor: await impressaoCandidatura(c) }] as const))
+      .then(r => { if (vivo) setContas(Object.fromEntries(r)); })
+      .catch(() => { if (vivo) setContas(Object.fromEntries(lista.map(c => [c.id, { de: c.impressao, valor: '' }]))); });
     return () => { vivo = false; };
   }, [lista]);
+
+  // Só as contas feitas para a versão que está na tela; a de uma versão anterior fica de fora (ainda conferindo).
+  const calculadas: Record<string, string> = Object.fromEntries((lista ?? []).flatMap(c => {
+    const conta = contas[c.id];
+    return conta && conta.de === c.impressao ? [[c.id, conta.valor]] : [];
+  }));
 
   // 409 em texto claro: duplicata (traz "existente") ou pacote que mudou enquanto a pessoa editava (versão velha).
   const explicar = (e: unknown) => {
@@ -366,7 +373,9 @@ export function TelaFila() {
                   </details>
                   {/* Os códigos ficam recolhidos; o selo, que é o que a pessoa precisa saber, fica sempre à vista, junto
                       dos botões. Quando não confere, os detalhes abrem sozinhos para mostrar o valor. */}
-                  <details className="tecnicos" open={conferida === 'diferente'}>
+                  {/* Abre sozinho só quando não confere; fora disso, quem abre e fecha é a pessoa (sem "open" controlado,
+                      uma leitura nova da fila não fecha o que ela abriu). */}
+                  <details className="tecnicos" open={conferida === 'diferente' || undefined}>
                     <summary>Detalhes técnicos</summary>
                     <dl>
                       <dt>Impressão do pacote</dt><dd><code className="impressao">{c.impressao}</code></dd>
