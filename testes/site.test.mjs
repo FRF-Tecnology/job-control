@@ -65,6 +65,12 @@ test('site: os cinco sistemas aparecem no menu de baixar e nos cartões', () => 
     assert.equal(todos(html, new RegExp(`data-plat="(${k})"`, 'g')).length, 2, `menu: ${k}`);
     assert.equal(todos(html, new RegExp(`data-baixar="(${k})"`, 'g')).length, 1, `cartão: ${k}`);
     assert.match(js, new RegExp(`k: '${k}'`));
+    const disponivel = k === 'mac' || k === 'win';
+    const status = disponivel ? 'Disponível' : 'Em breve';
+    const opcoes = todos(html, new RegExp(`data-plat="${k}"[^>]*>.*?<small[^>]*>([^<]+)`, 'g'));
+    assert.deepEqual(opcoes, [status, status], `status nos menus: ${k}`);
+    const [acao] = todos(html, new RegExp(`data-baixar="${k}"><span data-so-texto>([^<]+)`, 'g'));
+    assert.match(acao, disponivel ? /^Baixar para / : /^Avisar quando sair$/);
   }
 });
 

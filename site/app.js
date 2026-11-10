@@ -5,14 +5,14 @@
 
 // Endereço do instalador de cada sistema. PREENCHA ANTES DE PUBLICAR: com o campo vazio, o botão só mostra
 // a animação de exemplo e não baixa nada (o site diria "Download iniciado" sem ter o que baixar).
-const LINKS = { mac: '', win: '', ios: '', android: '' };
+const LINKS = { mac: '', win: '' };
 
 const SISTEMAS = [
   { k: 'mac', nome: 'macOS', grupo: 'pc', acao: 'Baixar para macOS', txt: 'O app completo no seu Mac: busca, Lista do dia, envio com navegador embutido e Quadro.', status: 'Disponível', cor: '#D7C4FF', icone: 'marcas/mac.svg' },
   { k: 'win', nome: 'Windows', grupo: 'pc', acao: 'Baixar para Windows', txt: 'O mesmo app no seu PC, com os seus dados guardados numa pasta do computador.', status: 'Disponível', cor: '#9FE3BC', icone: 'marcas/win.svg' },
   { k: 'linux', nome: 'Linux', grupo: 'pc', acao: 'Avisar quando sair', txt: 'Estamos preparando. Ligue o aviso e mandamos o link assim que sair.', status: 'Em breve', cor: '#F5D27E', icone: 'marcas/linux.svg', breve: true },
-  { k: 'ios', nome: 'iPhone', grupo: 'cel', acao: 'Baixar na App Store', txt: 'App Store · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.', status: 'Disponível', cor: '#A6CDFF', icone: 'marcas/mac.svg' },
-  { k: 'android', nome: 'Android', grupo: 'cel', acao: 'Baixar no Google Play', txt: 'Google Play · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.', status: 'Disponível', cor: '#FFC1A6', icone: 'marcas/android.svg' }
+  { k: 'ios', nome: 'iPhone', grupo: 'cel', acao: 'Avisar quando sair', txt: 'Em breve você poderá acompanhar o envio, pausar e aprovar pelo celular.', status: 'Em breve', cor: '#A6CDFF', icone: 'marcas/mac.svg', breve: true },
+  { k: 'android', nome: 'Android', grupo: 'cel', acao: 'Avisar quando sair', txt: 'Em breve você poderá acompanhar o envio, pausar e aprovar pelo celular.', status: 'Em breve', cor: '#FFC1A6', icone: 'marcas/android.svg', breve: true }
 ];
 
 const VAGAS = [
@@ -50,7 +50,7 @@ const PROVEDORES = [
 ];
 // ---------- estado ----------
 const estado = {
-  plat: 'win', menu: null, baixando: '', baixou: '', avisoLinux: false,
+  plat: 'win', menu: null, baixando: '', baixou: '', avisos: {},
   aba: 'hoje', triIdx: 0, fora: {}, prov: 'claude',
   passo: 0, vagaIdx: 0, pipFixo: false, aprovado: false, periodo: 'mensal',
 };
@@ -78,19 +78,18 @@ function alternarTema() {
 const IC_BAIXAR = 'M12 4v11M7 10l5 5 5-5M5 20h14';
 const IC_OK = 'M5 12l5 5 9-10';
 const IC_SINO = 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4';
-const IC_LOJA = 'M7 17L17 7M9 7h8v8';
 const sistema = k => SISTEMAS.find(s => s.k === k) ?? SISTEMAS[1];
-const feito = s => (s.breve && estado.avisoLinux) || estado.baixou === s.k;
+const feito = s => (s.breve && estado.avisos[s.k]) || estado.baixou === s.k;
 function rotulo(s) {
-  if (s.breve) return estado.avisoLinux ? 'Avisaremos você' : s.acao;
-  if (estado.baixando === s.k) return s.grupo === 'cel' ? 'Abrindo a loja…' : `Baixando para ${s.nome}…`;
-  if (estado.baixou === s.k) return s.grupo === 'cel' ? 'Loja aberta' : 'Download iniciado';
+  if (s.breve) return estado.avisos[s.k] ? 'Avisaremos você' : s.acao;
+  if (estado.baixando === s.k) return `Baixando para ${s.nome}…`;
+  if (estado.baixou === s.k) return 'Download iniciado';
   return s.acao;
 }
 let relogioBaixar = 0;
 function baixar(k) {
   const s = sistema(k);
-  if (s.breve) { estado.avisoLinux = !estado.avisoLinux; estado.menu = null; return desenhar(); }
+  if (s.breve) { estado.avisos[s.k] = !estado.avisos[s.k]; estado.menu = null; return desenhar(); }
   clearTimeout(relogioBaixar);
   Object.assign(estado, { plat: k, baixando: k, baixou: '', menu: null });
   desenhar();
@@ -178,7 +177,7 @@ function desenhar() {
     const s = sistema(cartao.dataset.so);
     texto($('[data-so-texto]', cartao), rotulo(s));
     classe($('.so-acao', cartao), 'feito', feito(s));
-    atributo($('[data-so-icone]', cartao), 'd', feito(s) ? IC_OK : s.breve ? IC_SINO : s.grupo === 'cel' ? IC_LOJA : IC_BAIXAR);
+    atributo($('[data-so-icone]', cartao), 'd', feito(s) ? IC_OK : s.breve ? IC_SINO : IC_BAIXAR);
     escondido($('[data-so-barra]', cartao), estado.baixando !== s.k);
   }
 

@@ -22,7 +22,7 @@ npx serve site
 ## Antes de publicar
 
 1. **Links de download.** Em `app.js`, preencha `LINKS` com o endereço do instalador de cada sistema. Com o campo vazio, o botão só mostra a animação de exemplo e não baixa nada.
-2. **Status de cada sistema.** Em `app.js` (`SISTEMAS`) e nos cartões e menus do `index.html`: hoje Linux está "Em breve" e os outros "Disponível".
+2. **Status de cada sistema.** Em `app.js` (`SISTEMAS`) e nos cartões e menus do `index.html`: macOS e Windows aparecem como disponíveis. Linux, iPhone e Android exibem “Avisar quando sair”. O aviso é uma demonstração local à página.
 3. **Textos por preencher**, marcados com colchetes no `index.html`: `[PREÇO]`, `[E-MAIL DE CONTATO]`, `[TERMOS]` e `[PRIVACIDADE]`.
 4. **Comando do terminal** na seção "Sua IA" (`applyer ia conectar …`): é ilustrativo. Troque pelo comando real quando ele existir.
 
