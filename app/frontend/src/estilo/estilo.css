@@ -452,12 +452,15 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 fieldset { border: 0; border-radius: var(--raio); padding: 20px 22px; display: grid; gap: 14px; min-width: 0; }
 legend { font: 700 1rem var(--fonte-display); padding: 0 6px; }
 /* Seus dados neste computador (jc-a2y.49): fora do formulário do perfil, cada ação no seu bloco. */
-.seus-dados { display: grid; gap: 16px; max-width: 860px; margin-top: 48px; }
-.seus-dados h2 { margin: 0; } .seus-dados > p { margin: 0; }
+.seus-dados, .janela-app { display: grid; gap: 16px; max-width: 860px; margin-top: 48px; }
+.seus-dados h2, .janela-app h2 { margin: 0; } .seus-dados > p, .janela-app > p { margin: 0; }
 .zona { border: 1px solid transparent; border-radius: var(--raio); padding: 20px; display: grid; gap: 12px; }
 .zona h3 { margin: 0; font-size: 1rem; } .zona p, .zona ul { margin: 0; } .zona ul { padding-left: 20px; display: grid; gap: 4px; }
 .zona.perigo { border-color: color-mix(in srgb, var(--erro) 55%, transparent); }
-.seus-dados .feito { margin: 0; color: var(--verde); font-weight: 600; }
+.seus-dados .feito, .janela-app .feito { margin: 0; color: var(--verde); font-weight: 600; }
+/* Janela do app (0.15.0): a caixa de marcar com o rótulo ao lado; a linha inteira é o alvo do toque. */
+.janela-app .marcar { display: flex; gap: 10px; align-items: center; min-height: 44px; cursor: pointer; font-weight: 600; }
+.janela-app .marcar input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--destaque); }
 .seus-dados .feito.parcial { color: var(--ambar); } /* faltou algo: atenção, não sucesso */
 .feito-bloco { display: grid; gap: 8px; } .feito-bloco p, .feito-bloco ul { margin: 0; } .feito-bloco ul { padding-left: 20px; }
 

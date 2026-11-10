@@ -92,6 +92,8 @@ type API struct {
 	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 	// canal (jc-a2y.7.4): mcp ou cli numa API do assistente; vazio na do app. Fixado na criação (Opcoes.Canal).
 	canal string
+	// janelaApp: os ganchos da janela do app de PC; nil fora dele (janela_app.go).
+	janelaApp *JanelaApp
 }
 
 // Opcoes configura a API.
@@ -128,6 +130,9 @@ type Opcoes struct {
 	// atende pelo ChamarAssistente (a lista x-assistente), o autor é sempre claude e o Handler da tela recusa tudo.
 	// Fora de mcp e cli, a API do assistente recusa tudo (falha fechada).
 	Canal string
+	// JanelaApp: os ganchos da janela do app de PC (segundo plano e tamanho padrão). Só o app passa; sem eles,
+	// GET /app/janela responde disponivel=false e as rotas que mudam a janela dão 404.
+	JanelaApp *JanelaApp
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -181,7 +186,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -436,6 +441,18 @@ func MesclarPerfil(atual, p Objeto) Objeto {
 	return novo
 }
 
+// ErroRespostaSensivel: o /perfil recusa resposta padrão para pergunta de número fiscal, documento, senha ou banco.
+const ErroRespostaSensivel = "o perfil não guarda resposta para pergunta de CPF, documento, senha ou banco; apague esta resposta"
+
+// cortarLinha devolve no máximo n letras do texto, numa linha só.
+func cortarLinha(s string, n int) string {
+	r := []rune(strings.Join(strings.Fields(s), " "))
+	if len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return string(r)
+}
+
 func exigirPerfilOk(perfil any) error {
 	if erros := dominio.ValidarPerfil(perfil); len(erros) > 0 {
 		return &dominio.ErroValidacao{Erros: erros}
@@ -520,6 +537,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
+	if p == "/app/janela" || p == "/app/janela/padrao" {
+		if r, feito, err := a.rotasJanelaApp(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+
 	if strings.HasPrefix(p, "/candidaturas") {
 		if r, feito, err := a.rotasCandidaturas(ctx, m, p, q, c, autor); feito {
 			return r, err
@@ -594,6 +617,10 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 		if err := exigirPerfilOk(novo); err != nil {
 			return Resposta{}, err
+		}
+		// jc-a2y.7.5: só o que está sendo gravado agora (o corpo). No PATCH de outro campo, o que já está guardado não trava.
+		if pergunta := dominio.RespostaPadraoSensivel(c); pergunta != "" {
+			return Resposta{}, &dominio.ErroValidacao{Erros: []string{ErroRespostaSensivel + ": " + cortarLinha(pergunta, 80)}}
 		}
 		if err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) { e.Perfil = novo; return e, nil }); err != nil {
 			return Resposta{}, err

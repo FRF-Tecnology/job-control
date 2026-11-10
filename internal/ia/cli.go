@@ -89,7 +89,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 		return nil, "", err
 	}
 	defer os.RemoveAll(pasta)
-	cmd := exec.CommandContext(ctx, alvo, args...)
+	cmd := comandoCLI(ctx, alvo, args...)
 	cmd.Dir = pasta
 	cmd.Stdin = strings.NewReader(entrada)
 	var saida, erro limitado
@@ -101,6 +101,13 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 		return nil, "", &ErroIA{Tipo: "provedor", Mensagem: comando + ": passou do tempo limite", Provedor: comando + "-cli", Reintentavel: true}
 	}
 	return saida.Bytes(), strings.TrimSpace(erro.String()), err
+}
+
+// comandoCLI cria o processo de uma CLI. É o único lugar que faz isso: no Windows, a CLI roda sem janela de console.
+func comandoCLI(ctx context.Context, comando string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, comando, args...)
+	semJanela(cmd)
+	return cmd
 }
 
 const msgCmdInseguro = "esta CLI está instalada como .cmd, e o app não passa o pedido pelo cmd.exe; instale a versão nativa (.exe)"
@@ -337,12 +344,12 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 				e.Pronta, e.Aviso, e.Motivo = false, msgCmdInseguro, MotivoFormato
 			}
 			c, cancelar := context.WithTimeout(ctx, 15*time.Second)
-			if out, err := exec.CommandContext(c, info.Comando, "--version").Output(); err == nil {
+			if out, err := comandoCLI(c, info.Comando, "--version").Output(); err == nil {
 				e.Versao = strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
 			}
 			switch info.Comando {
 			case "claude":
-				if out, err := exec.CommandContext(c, "claude", "auth", "status", "--json").Output(); err == nil {
+				if out, err := comandoCLI(c, "claude", "auth", "status", "--json").Output(); err == nil {
 					var s struct {
 						LoggedIn bool `json:"loggedIn"`
 					}
@@ -351,7 +358,7 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 					}
 				}
 			case "codex":
-				ok := exec.CommandContext(c, "codex", "login", "status").Run() == nil
+				ok := comandoCLI(c, "codex", "login", "status").Run() == nil
 				e.Logada = &ok
 			}
 			cancelar()

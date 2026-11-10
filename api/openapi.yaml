@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.14.0
+  version: 0.15.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -63,8 +63,8 @@ paths:
   /followups: { get: { summary: Follow-ups vencidos com a mensagem sugerida } }
   /perfil:
     get: { summary: Perfil }
-    put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28)' }
-    patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28)' }
+    put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). respostasPadrao com resposta (fora sim/não) para pergunta de número fiscal, documento de identidade, senha ou banco dá 400, para qualquer autor (jc-a2y.7.5)' }
+    patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). A recusa de respostasPadrao sensível (jc-a2y.7.5) vale para o que vem no corpo' }
   /plataformas: { get: { summary: Plataformas } }
   /plataformas/{id}: { put: { summary: Cria ou atualiza }, patch: { summary: Cria ou atualiza } }
   /rodadas: { get: { summary: Rodadas } }
@@ -482,6 +482,47 @@ paths:
                 properties:
                   aviso: { type: [string, 'null'], enum: [pasta-antiga-ficou, migracao-adiada, null] }
                   migradaEm: { type: [string, 'null'] }
+  # Janela do app de PC (0.15.0). O app abre num tamanho padrão (1280 x 800, ou o que couber na tela) e lembra o
+  # tamanho que a pessoa deixar; isso não passa pela API. Pela API passam as duas escolhas da pessoa no Perfil.
+  # Fora do app de PC (central-dev, MCP, CLI) não há janela: o GET responde disponivel false e as outras dão 404.
+  /app/janela:
+    get:
+      summary: 'As escolhas da pessoa para a janela do app: {disponivel, segundoPlano}. disponivel: este processo é o app de PC e tem janela para ajustar (false no central-dev). segundoPlano: fechar a janela mantém o app aberto, com o ícone do Applyer perto do relógio (Windows) ou na barra de menus (Mac); padrão false. Só leitura: qualquer autor'
+      responses:
+        '200': { description: Estado da janela, content: { application/json: { schema: { $ref: '#/components/schemas/JanelaApp' } } } }
+    put:
+      x-so-tela: true
+      summary: 'Liga ou desliga "continuar aberto em segundo plano". Ligado: fechar a janela só a esconde, o app continua aberto e ganha um ícone (um clique abre a janela; o menu tem Abrir o Applyer e Sair); abrir o app de novo traz a mesma janela. Desligado (padrão): o ícone some e fechar a janela fecha o app. Vale na hora e fica gravado neste computador. Não muda o envio: o que o app faz em segundo plano é o que já fazia com a janela aberta'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [segundoPlano]
+              properties:
+                segundoPlano: { type: boolean }
+      responses:
+        '200': { description: Escolha gravada e aplicada, content: { application/json: { schema: { $ref: '#/components/schemas/JanelaApp' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este processo não é o app de PC (não há janela): {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'O sistema não deixou criar o ícone do Applyer: {erro, motivo: sem-bandeja}. Nada muda: o app continua fechando junto com a janela', content: { application/json: { schema: { $ref: '#/components/schemas/ErroJanelaApp' } } } }
+  /app/janela/padrao:
+    post:
+      x-so-tela: true
+      summary: 'Volta a janela ao tamanho padrão (1280 x 800, ou o que couber na tela), sai do maximizado e centraliza. O app passa a lembrar esse tamanho'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Janela no tamanho padrão, content: { application/json: { schema: { $ref: '#/components/schemas/JanelaApp' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este processo não é o app de PC (não há janela): {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.
@@ -1044,6 +1085,20 @@ components:
         erro: { type: string, description: 'Texto pronto para a tela' }
         motivo: { type: string, enum: [enviando, login-aberto, sem-navegador] }
         estado: { type: string, enum: [enviando], description: 'Só com motivo enviando' }
+    JanelaApp:
+      type: object
+      additionalProperties: false
+      required: [disponivel, segundoPlano]
+      properties:
+        disponivel: { type: boolean, description: 'Este processo é o app de PC e tem janela para ajustar' }
+        segundoPlano: { type: boolean, description: 'Fechar a janela mantém o app aberto' }
+    ErroJanelaApp:
+      type: object
+      additionalProperties: false
+      required: [erro, motivo]
+      properties:
+        erro: { type: string, description: 'Texto pronto para a tela' }
+        motivo: { type: string, enum: [sem-bandeja] }
     ErroConflitoCandidatura:
       type: object
       required: [erro]
