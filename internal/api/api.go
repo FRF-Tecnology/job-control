@@ -92,6 +92,8 @@ type API struct {
 	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 	// canal (jc-a2y.7.4): mcp ou cli numa API do assistente; vazio na do app. Fixado na criação (Opcoes.Canal).
 	canal string
+	// janelaApp: os ganchos da janela do app de PC; nil fora dele (janela_app.go).
+	janelaApp *JanelaApp
 }
 
 // Opcoes configura a API.
@@ -128,6 +130,9 @@ type Opcoes struct {
 	// atende pelo ChamarAssistente (a lista x-assistente), o autor é sempre claude e o Handler da tela recusa tudo.
 	// Fora de mcp e cli, a API do assistente recusa tudo (falha fechada).
 	Canal string
+	// JanelaApp: os ganchos da janela do app de PC (segundo plano e tamanho padrão). Só o app passa; sem eles,
+	// GET /app/janela responde disponivel=false e as rotas que mudam a janela dão 404.
+	JanelaApp *JanelaApp
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -181,7 +186,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -516,6 +521,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 
 	if p == "/dados/apagar" || p == "/dados/pasta" || p == "/navegador/sair" || p == "/navegador/entrar" {
 		if r, feito, err := a.rotasDados(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+
+	if p == "/app/janela" || p == "/app/janela/padrao" {
+		if r, feito, err := a.rotasJanelaApp(ctx, m, p, c, autor); feito {
 			return r, err
 		}
 	}
