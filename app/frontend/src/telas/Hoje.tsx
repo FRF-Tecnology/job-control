@@ -27,7 +27,13 @@ const ATALHOS: [RegExp, string][] = [
   [/plataforma|fonte/, '#/plataformas'],
 ];
 
-function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
+// Sugestão que não é um pedido pronto: põe o começo do pedido na caixa e espera a pessoa colar o link.
+export const SUGESTAO_ADICIONAR = 'Adicionar uma vaga pelo link';
+const COMECO_ADICIONAR = 'Adiciona a vaga ';
+
+// Com IA conectada, enviar o pedido já é pedir para a IA: o pedido criado vai direto para a leitura (aoCriar), sem um
+// segundo clique em "Seus pedidos". Sem IA, ele fica anotado para o assistente (/pedidos).
+export function CaixaPedido({ sugestoes, iaConectada, aoCriar }: { sugestoes: string[]; iaConectada: boolean; aoCriar: (id: string) => void }) {
   const app = useApp();
   const [texto, setTexto] = useState('');
   const entrada = useRef<HTMLInputElement>(null);
@@ -36,9 +42,15 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
     if (!t) return entrada.current?.focus();
     const atalho = ATALHOS.find(([re]) => re.test(normalizar(t)));
     if (atalho && !/\b(busca|aplica|envia|manda|escreve)/.test(normalizar(t))) { location.hash = atalho[1]; return; }
-    const ok = await app.agir(() => app.api('/api/v1/pedidos', 'POST', { texto: t }), 'Anotado em Seus pedidos, logo abaixo.');
-    if (ok) setTexto('');
+    let criado: { id?: unknown } | null = null;
+    const ok = await app.agir(async () => { criado = await app.api('/api/v1/pedidos', 'POST', { texto: t }); },
+      iaConectada ? undefined : 'Anotado em Seus pedidos, logo abaixo.');
+    if (!ok) return;
+    setTexto('');
+    const id = (criado as { id?: unknown } | null)?.id;
+    if (iaConectada && typeof id === 'string' && id) aoCriar(id);
   }
+  function comecar(t: string) { setTexto(t); entrada.current?.focus(); }
   return (
     <>
       <form className="caixa-pedido" role="search" onSubmit={ev => { ev.preventDefault(); enviar(texto); }}>
@@ -47,14 +59,16 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
         <button type="submit" aria-label="Enviar pedido"><Icone d="M12 19V5M5 12l7-7 7 7" /></button>
       </form>
       <div className="sugestoes" aria-label="Sugestões">
-        {sugestoes.map(s => <button key={s} type="button" onClick={() => enviar(s)}>{s}</button>)}
+        {sugestoes.map(s => <button key={s} type="button" onClick={() => (s === SUGESTAO_ADICIONAR ? comecar(COMECO_ADICIONAR) : enviar(s))}>{s}</button>)}
       </div>
     </>
   );
 }
 
-function sugestoesPara(foco: string, nAplicar: number, nDescoberta: number) {
-  const buscar = ({ internacional: 'Buscar vagas USD LATAM', nacional: 'Buscar vagas CLT/PJ remotas', ambos: 'Buscar vagas novas' } as Record<string, string>)[foco];
+// Buscar vagas não está no app: quem busca é o assistente do Claude Code (/pedidos). Com a IA conectada no app, o
+// pedido iria para ela e voltaria "O app não faz isso."; no lugar, a sugestão é o que o app faz: adicionar pelo link.
+export function sugestoesPara(foco: string, nAplicar: number, nDescoberta: number, iaNoApp = false) {
+  const buscar = iaNoApp ? SUGESTAO_ADICIONAR : ({ internacional: 'Buscar vagas USD LATAM', nacional: 'Buscar vagas CLT/PJ remotas', ambos: 'Buscar vagas novas' } as Record<string, string>)[foco];
   const qual = ({ internacional: ' internacionais', nacional: ' nacionais', ambos: '' } as Record<string, string>)[foco];
   const qualUma = ({ internacional: ' internacional', nacional: ' nacional', ambos: '' } as Record<string, string>)[foco];
   const preparar = nAplicar === 1 ? `Preparar a vaga${qualUma} aprovada na Fila` : `Preparar as ${nAplicar} vagas${qual} aprovadas na Fila`;
@@ -179,6 +193,7 @@ export function TelaHoje() {
   const [iaConectada, setIAConectada] = useState<boolean | null>(null); // null: ainda não sabe
   useEffect(() => { app.api('/api/v1/ia/config').then(r => setIAConectada(!!r.configurada)).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const semIA = iaConectada === false;
+  const [pedirJa, setPedirJa] = useState<string | null>(null); // pedido recém-criado na caixa, que vai direto para a IA
   const api = (v: any, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/vagas/${encode(v.id)}/followup`, 'POST', corpo), msg);
 
   return (
@@ -198,7 +213,7 @@ export function TelaHoje() {
           </div>
         </div>
         <p className="pergunta">O que vamos fazer hoje?</p>
-        <CaixaPedido sugestoes={sugestoesPara(foco, nAplicar, nDescoberta)} />
+        <CaixaPedido sugestoes={sugestoesPara(foco, nAplicar, nDescoberta, iaConectada === true)} iaConectada={iaConectada === true} aoCriar={setPedirJa} />
       </section>
 
       <div className="cartoes-num">
@@ -234,7 +249,7 @@ export function TelaHoje() {
         </section>
       )}
 
-      {pedidos.length > 0 && <SeusPedidos pedidos={pedidos} iaConectada={iaConectada === true} />}
+      {pedidos.length > 0 && <SeusPedidos pedidos={pedidos} iaConectada={iaConectada === true} pedirJa={pedirJa} aoPedirJa={() => setPedirJa(null)} />}
 
       <div className="grade-hoje">
         <div>
