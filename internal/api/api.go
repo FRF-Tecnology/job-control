@@ -44,6 +44,8 @@ type Pedido struct {
 	DaJanela bool
 	// Confirmação da proposta de um pedido (jc-a2y.7.1): os cabeçalhos X-Pedido e X-Impressao, só eles.
 	XPedido, XImpressao string
+	// doAssistente: o pedido já passou pela lista do ChamarAssistente (jc-a2y.7.4). Só este pacote marca.
+	doAssistente bool
 }
 
 // Resposta é o que a API devolve. Tipo vazio = JSON.
@@ -88,6 +90,8 @@ type API struct {
 	avisoPasta      string                       // aviso da pasta de dados nesta abertura (jc-etv.14)
 	// lerFormulario (jc-a2y.7.2): o leitor do executor; nil fora do app com envio (404).
 	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// canal (jc-a2y.7.4): mcp ou cli numa API do assistente; vazio na do app. Fixado na criação (Opcoes.Canal).
+	canal string
 }
 
 // Opcoes configura a API.
@@ -120,6 +124,10 @@ type Opcoes struct {
 	// AvisoPasta: o aviso da pasta de dados nesta abertura (config.Abertura.Aviso, jc-etv.7): pasta-antiga-ficou,
 	// migracao-adiada ou vazio. GET /dados/pasta mostra à tela, sem caminho.
 	AvisoPasta string
+	// Canal (jc-a2y.7.4, regra M4): mcp ou cli, só nos binários do assistente (o MCP e a CLI). Com ele, a API só
+	// atende pelo ChamarAssistente (a lista x-assistente), o autor é sempre claude e o Handler da tela recusa tudo.
+	// Fora de mcp e cli, a API do assistente recusa tudo (falha fechada).
+	Canal string
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -164,7 +172,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -203,6 +211,9 @@ func respostaDeErro(err error) (Resposta, bool) {
 
 // Chamar atende um pedido. Erro só sobe quando é inesperado (o HTTP responde 500).
 func (a *API) Chamar(ctx context.Context, p Pedido) (Resposta, error) {
+	if a.canal != "" && !p.doAssistente { // API do assistente: tudo passa pela lista (jc-a2y.7.4)
+		return a.ChamarAssistente(ctx, p)
+	}
 	if ehPedidoDeApagar(p) {
 		return respostaOuErro(a.apagarComTrava(ctx, p))
 	}
@@ -248,7 +259,7 @@ func (a *API) ctx(e dominio.Estado, autor string) dominio.Ctx {
 	if dias != dias || dias == 0 { // NaN ou 0 → padrão
 		dias = 7
 	}
-	return dominio.Ctx{Autor: autor, ContaID: a.contaID, Agora: a.hoje(), DiasFollowUp: int(dias), Aleatorio: a.aleatorio}
+	return dominio.Ctx{Autor: autor, ContaID: a.contaID, Agora: a.hoje(), DiasFollowUp: int(dias), Aleatorio: a.aleatorio, Canal: a.canal}
 }
 
 // gravar roda uma operação numa transação (com o backup do dia antes, quando o banco é um arquivo).
