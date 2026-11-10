@@ -52,6 +52,8 @@ type Ctx struct {
 	DiasFollowUp int    // 0 = 7
 	Texto        string // texto opcional (follow-up)
 	Aleatorio    func() string
+	// Canal do assistente (jc-a2y.7.4): mcp ou cli, fixado pelo binário; vazio na tela. Nunca vem do pedido.
+	Canal string
 }
 
 func (c Ctx) conta() string {
@@ -112,8 +114,11 @@ const (
 	ErroAdicionarSoDescoberta = "o assistente só adiciona vagas em descoberta; a etapa quem decide é a pessoa"
 )
 
-// EhPessoa diz se quem pediu é a pessoa (a tela). Autor vazio conta como a pessoa, como no Node.
-func (c Ctx) EhPessoa() bool { return c.Autor == "" || c.Autor == "eu" }
+// EhPessoa diz se quem pediu é a pessoa (a tela). Autor vazio conta como a pessoa, como no Node. Com um canal de
+// assistente (MCP ou CLI, jc-a2y.7.4), nunca é a pessoa, qualquer que seja o Autor.
+func (c Ctx) EhPessoa() bool {
+	return (c.Autor == "" || c.Autor == "eu") && !CanalDoAssistente(c.Canal)
+}
 
 // Campos que a tela pode editar livremente.
 var editaveis = []string{"titulo", "empresa", "link", "plataforma", "nivel", "contrato", "modelo", "stack", "ingles", "idioma", "aderencia", "motivoClaude", "notas", "subEtapa", "local", "mercado"}
@@ -136,10 +141,14 @@ func acharIndice(e Estado, id any) (int, error) {
 
 func novoEvento(e Estado, vagaID any, tipo, txt any, ctx Ctx, agora string) Objeto {
 	n := len(e.Eventos) + 1
-	return Objeto{
+	ev := Objeto{
 		"id": fmt.Sprintf("ev-%s-%06d-%s", agora, n, ctx.sufixo()), "contaId": ctx.conta(), "vagaId": vagaID,
 		"tipo": tipo, "data": agora, "autor": ctx.Autor, "texto": ou(txt, ""),
 	}
+	if CanalDoAssistente(ctx.Canal) { // jc-a2y.7.4: de onde veio a mudança (a tela mostra)
+		ev["canal"] = ctx.Canal
+	}
+	return ev
 }
 
 // AdicionarVaga grava uma vaga nova e o evento de descoberta (ou de envio, se já veio enviada).
@@ -200,6 +209,11 @@ func MoverVaga(e Estado, id any, etapa any, extras Objeto, ctx Ctx) (Estado, Obj
 		return e, nil, err
 	}
 	antes := novo.Vagas[i]
+	if CanalDoAssistente(ctx.Canal) {
+		if err := conferirMoverDoAssistente(antes, etapa, extras); err != nil {
+			return e, nil, err
+		}
+	}
 	v := copiaRasa(antes)
 	v["etapa"], v["atualizadoEm"] = etapa, ctx.Agora
 	for _, k := range []string{"motivo", "pendencia", "subEtapa"} {
@@ -268,6 +282,11 @@ func AtualizarVaga(e Estado, id any, patch Objeto, ctx Ctx) (Estado, Objeto, err
 	v["atualizadoEm"] = ctx.Agora
 	if err := exigirValida(v); err != nil {
 		return e, nil, err
+	}
+	if CanalDoAssistente(ctx.Canal) {
+		if err := conferirEdicaoDoAssistente(e, novo.Vagas[i], v); err != nil {
+			return e, nil, err
+		}
 	}
 	novo.Vagas[i] = v
 	return novo, v, nil

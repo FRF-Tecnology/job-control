@@ -95,6 +95,8 @@ type Candidatura struct {
 	ClicouEnviarEm string `json:"clicouEnviarEm,omitempty"`
 	// Formulário (jc-a2y.7.2): o link trazia pré-preenchimento, que foi tirado (só o fato; os valores nunca ficam).
 	PreenchimentoIgnorado bool `json:"preenchimentoIgnorado,omitempty"`
+	// RevogadaPor (jc-a2y.7.4): quem revogou a última aprovação, preenchido pelo servidor (QuemDe), nunca pelo corpo.
+	RevogadaPor *Quem `json:"revogadaPor,omitempty"`
 	// Estrutura lida do formulário (entra na impressão) e as obrigatórias ainda sem resposta (aprovar dá conflito).
 	Estrutura    *EstruturaFormulario `json:"estrutura,omitempty"`
 	Pendentes    []string             `json:"pendentes,omitempty"`
@@ -613,6 +615,7 @@ func RevogarCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado, 
 	}
 	c.Estado, c.Aprovacao = CandPreparada, nil
 	c.ProximaTentativaEm = ""
+	c.RevogadaPor = QuemDe(ctx)
 	novo, o := salvarCandidatura(e, i, c, agora)
 	return novo, o, nil
 }
