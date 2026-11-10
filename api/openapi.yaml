@@ -857,6 +857,7 @@ components:
                   opcoes: { type: array, maxItems: 100, items: { type: string, maxLength: 200 } }
         pendentes: { type: array, items: { type: string }, description: 'jc-a2y.7.2: ids das perguntas obrigatórias sem resposta (sem par exato no perfil nem nas respostasPadrao). Com pendência, aprovar dá 409 (faltam respostas); a pessoa responde por PUT /candidaturas/{id}/conteudo (origem pessoa, com perguntaId)' }
         preenchimentoIgnorado: { type: boolean, description: 'jc-a2y.7.2 (decisão do PO): o link trazia respostas pré-preenchidas (entry.* ou campos ocultos), e o app as tirou da URL. A tela mostra no resumo do pacote a frase fixa "O link trazia respostas pré-preenchidas; o app ignorou." Os valores nunca são guardados nem mostrados' }
+        revogadaPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4 (proposta): quem revogou a última aprovação (a pessoa pela tela ou o assistente pelo MCP ou pela CLI). null sem revogação' }
         leituras: { type: array, items: { type: string }, description: 'jc-a2y.7.2: instantes das leituras do formulário (POST /candidaturas/{id}/ler-formulario). Cada uma abre uma página no navegador do envio e conta no teto de 40 páginas abertas por plataforma no dia, não no limite do dia' }
     AoVivo:
       type: object
@@ -887,6 +888,7 @@ components:
       properties:
         ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
         pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
+        pausadoPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4 (proposta): quem pausou o envio geral (a tela mostra "pausado pelo assistente (mcp)"). null ao abrir o app (que sempre começa pausado) e depois de retomar' }
         plataformas:
           type: array
           description: 'jc-a2y.6.11: estado do envio por plataforma, gravado no banco (as três, em ordem: gupy, inhire, linkedin). O executor só pega candidatura de plataforma ativa; o pausado geral vale acima disto. precisa-entrar volta sozinha só quando a pessoa fecha a janela "Entrar nas plataformas" com o envio geral liberado. Estado ilegível no banco: pausada'
@@ -902,6 +904,7 @@ components:
               voltasHoje: { type: integer, minimum: 0, description: 'Voltas automáticas para aprovada hoje nesta plataforma (revisão do CyberSec no #99)' }
               paginasHoje: { type: integer, minimum: 0, description: 'Páginas abertas hoje: tentativas que contam no limite + voltas' }
               tetoPaginas: { type: integer, description: 'Teto diário de páginas por plataforma (40). Ao chegar nele, a plataforma espera o dia seguinte' }
+              pausadaPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4 (proposta): quem pausou esta plataforma, só em pausada sem motivo (pausa pela pessoa ou pelo assistente)' }
         janela: { type: string, enum: [oculta, visivel], description: 'Como o navegador abre nas próximas candidaturas. oculta (sem janela, sem foco, mouse nem teclado) a cada abertura do app; visivel só por POST /envio/janela da tela. oculta também no build padrão' }
         login: { type: boolean, description: 'Há uma janela de login aberta pela pessoa (POST /navegador/entrar); enquanto true, o envio espera' }
         enviandoAgora:

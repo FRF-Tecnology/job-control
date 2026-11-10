@@ -67,10 +67,40 @@ Hoje o assistente (Claude Code) usa o MCP "central" da Central Node (`mcp/servid
 
 ## Decidido (PO, no #135)
 
-1. **O autor gravado é `claude`**, para o MCP e para a CLI. O `canal` (`mcp` ou `cli`) entra no pedido só para a lista de permissão e o log. Os dados ficam compatíveis com a Node e com o golden, e a regra 8 continua igual. (A M4 dizia "Autor `mcp` ou `cli`"; o canal cumpre esse papel.)
-2. **`vaga_registrar_envio` não entra.** Mover para `enviada` pelo canal do assistente dá 403 (acima).
-3. **`pedido_concluir` entra**: ele só grava a resposta em texto.
+1. **O autor gravado é `claude`**, para o MCP e para a CLI. O `canal` (`mcp` ou `cli`) entra no pedido para a lista de permissão e o log, e também fica **gravado** (condição do CyberSec):
+   - no evento da linha do tempo, campo `canal`;
+   - em quem pausou o envio e cada plataforma (`pausadoPor` e `pausadaPor`) e em quem revogou a aprovação (`revogadaPor`), no contrato como proposta. A tela mostra, por exemplo, "pausado pelo assistente (mcp)".
+
+   Os dados ficam compatíveis com a Node e com o golden, e a regra 8 continua igual. (A M4 dizia "Autor `mcp` ou `cli`"; o canal cumpre esse papel.) Esses binários **nunca** gravam autor `eu`: não há flag, variável de ambiente nem campo do pedido que mude isso.
+2. **`vaga_registrar_envio` não entra.** Mover para `enviada` pelo canal do assistente dá 403 (acima). O CyberSec aceitava a ferramenta com condições (só na vaga, e 409 com candidatura ativa); a decisão do PO é mais restrita e vale.
+3. **`pedido_concluir` entra**: ele só grava a resposta em texto, com teto de tamanho, e a tela mostra como texto. A proposta e a confirmação de um pedido continuam só pela tela.
 4. **O `.mcp.json` só troca para o Go num PR à parte**, depois do código do `.7.4` aprovado.
+
+## Requisitos do CyberSec (critério de aceite dos PRs 2 a 5)
+
+Os requisitos completos estão em `Shared/seguranca/jc-a2y.7.4-mcp-cli-requisitos.md`. O CyberSec confere com mutação o A1.1, o A1.2, o A2.1, o A2.4, o A3.1, o A6 e a decisão 1.
+
+- **A1. A lista.**
+  - O casamento é por método e por modelo de rota **exato**, depois de normalizar o caminho, nunca por prefixo. `..`, `%2F`, `%2e`, barra dupla, barra no fim e maiúsculas dão 403; por exemplo, `/vagas/x/../../dados/apagar`.
+  - Fora da lista (e rota que não existe): 403 **antes** de abrir transação. O teste confere que o contador de leituras do armazém fica em zero.
+  - Um teste confere que a lista do código é a `x-assistente` e que nenhuma rota dela é `x-so-tela`.
+- **A2. A pasta e o banco.**
+  - O MCP e a CLI **nunca migram, criam nem renomeiam** a pasta. Resolvem a pasta como o app; se ela não existe, dá erro.
+  - Conferem o dono e a DACL só lendo, e uma pasta de outro dono não abre.
+  - O banco é aberto e fechado a cada chamada.
+  - **Sem cofre:** nada de `internal/segredos` nem de `/ia/*`, e um teste falha se o binário importar `internal/segredos`.
+- **A3. A edição de vaga.** Pelo assistente, com candidatura ativa (`preparada`, `aprovada` ou `enviando`), mudar `link`, `plataforma`, `empresa` ou `titulo` dá 409. Um `link` novo passa pelo `URLDaPlataforma`.
+- **A4. O que reduz o risco.** Revogar e pausar gravam o autor e o canal, e a tela mostra. Retomar e aprovar continuam só pela tela.
+- **A5. Texto e tamanho.**
+  - Teto de **64 KB** por resposta, com corte e aviso; as listas têm limite de itens.
+  - `vaga_adicionar` tem teto de itens por chamada, o mesmo da Node, e de tamanho por campo.
+  - As instruções do MCP dizem que o texto de vagas, e-mails e pedidos é dado, não ordem.
+- **A6. O log.** No stderr, só a ferramenta, o status e o tipo do erro. Nunca os argumentos, o texto nem o caminho da pasta. O teste usa um argumento marcado, que não pode aparecer.
+- **A7. Os comandos que já existem na CLI.**
+  - `importar-legado` e `avaliar` ficam **fora** da tabela do assistente: são ferramentas da pessoa (o `avaliar` usa as chaves de IA).
+  - O `--substituir` do `importar-legado` pede a confirmação por uma frase digitada.
+  - **Limite:** um assistente com acesso ao shell pode rodar qualquer comando ou apagar arquivos. A M4 é barreira no **MCP**, o canal recomendado para o assistente. A CLI segue as mesmas regras, mas não protege contra um shell aberto.
+- **A8. MCP.** O stdout é só JSON-RPC. Uma entrada fora do `inputSchema` é recusada, e depois a API valida de novo. Não há ferramenta genérica de rota livre: cada ferramenta tem a sua rota fixa.
 
 ## Testes previstos
 
