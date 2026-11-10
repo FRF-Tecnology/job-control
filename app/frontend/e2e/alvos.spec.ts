@@ -29,6 +29,8 @@ test('celular: controles com alvo de toque de 44 px', async ({ page }, info) => 
       await expect(page.getByRole('heading', { name: 'Usar minha assinatura' })).toBeVisible();
       for (const nome of ['Claude Code', 'Codex CLI', 'Gemini CLI']) await expect(page.getByText(nome).first()).toBeVisible();
     }
+    // O seletor de foco entra com uma animação de escala (popar): mede só depois que ela acaba.
+    await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
     pequenos.push(...await page.evaluate(r => {
       const sel = 'button, a[href], select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, [role=button]';
       return [...document.querySelectorAll<HTMLElement>(sel)].flatMap(el => {
