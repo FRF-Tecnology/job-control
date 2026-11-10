@@ -4,7 +4,7 @@ A pasta `site/` é a raiz do site estático. Publique o conteúdo completo num s
 
 ## O que está disponível
 
-A demonstração usa vagas fictícias. A fila reflete as vagas selecionadas e só avança quando a pessoa interage. Os preços, as opções de plataforma, as respostas às perguntas e o e-mail de suporte ficam no HTML. O tema inicial é claro. A página restaura o tema escuro quando a pessoa o escolhe. O seletor de plataforma, o tema e os painéis de demonstração usam JavaScript local.
+A demonstração usa vagas fictícias. A fila reflete as vagas selecionadas e só avança quando a pessoa interage. Os preços, as opções de plataforma, as respostas às perguntas e o e-mail de suporte ficam no HTML. O tema inicial é escuro. A página restaura o tema claro quando a pessoa o escolhe. O seletor de plataforma, o tema e os painéis de demonstração usam JavaScript local.
 
 | Cobrança | Total do período | Desconto sobre o mensal |
 | --- | --- | --- |

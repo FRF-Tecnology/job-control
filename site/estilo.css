@@ -27,17 +27,30 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
 .ic-p{width:16px;height:16px}
 
 /* topo */
-.topo{position:sticky;top:10px;z-index:20;--vidro:rgba(247,249,255,.96);--vidro2:rgba(235,240,255,.94);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 8px 8px 18px;border-radius:999px}
+.topo{position:sticky;top:10px;z-index:20;--vidro:rgba(247,249,255,.96);--vidro2:rgba(235,240,255,.94);align-self:center;width:fit-content;max-width:100%;display:flex;align-items:center;gap:clamp(16px,2vw,28px);padding:5px 9px 5px 20px;border-radius:999px}
 .escuro .topo{--vidro:rgba(31,35,76,.97);--vidro2:rgba(26,29,67,.96)}
-.links-secoes{display:flex;align-items:center;gap:2px}
+.links-secoes{display:flex;align-items:center;gap:2px;padding:2px;border-radius:999px;background:var(--peca);box-shadow:inset 0 0 0 1px var(--linha)}
 .marca{display:inline-flex;align-items:center;width:fit-content;min-height:44px}
 .marca img{display:block;width:140px;height:auto}
 .marca .marca-inversa,.escuro .marca .marca-clara{display:none}
 .escuro .marca .marca-inversa{display:block}
-.links{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.links a.lk{text-decoration:none;color:var(--texto2);font-size:15px;font-weight:550;padding:10px 14px;border-radius:999px;transition:background .3s,color .3s}
-.links a.lk:hover{background:rgba(255,255,255,.55);color:var(--texto)}
-.escuro .links a.lk:hover{background:rgba(255,255,255,.08)}
+.links{display:flex;align-items:center;gap:8px}
+.links a.lk,.nav-explorar summary{display:inline-flex;align-items:center;min-height:40px;text-decoration:none;color:var(--texto2);font-size:15px;font-weight:550;padding:8px 12px;border-radius:999px;transition:background .2s,color .2s}
+.links a.lk:hover,.nav-explorar summary:hover,.nav-explorar[open] summary{background:var(--peca);color:var(--texto)}
+.nav-explorar{position:relative}
+.nav-explorar summary{cursor:pointer;gap:4px;list-style:none;white-space:nowrap}
+.nav-explorar summary::-webkit-details-marker{display:none}
+.nav-explorar summary svg{width:13px;height:13px;transition:transform .2s}
+.nav-explorar[open] summary svg{transform:rotate(180deg)}
+.nav-painel{position:absolute;z-index:1;top:calc(100% + 10px);left:50%;transform:translateX(-50%);width:290px;padding:7px;display:grid;gap:2px;border:1px solid var(--linha);border-radius:20px;background:#f5f6ff;box-shadow:0 12px 32px var(--sombra)}
+.escuro .nav-painel{background:#202444}
+.nav-explorar:not([open]) .nav-painel{display:none}
+.nav-painel a{display:flex;align-items:center;gap:11px;border-radius:13px;padding:8px;text-decoration:none;color:var(--texto)}
+.nav-painel a:hover,.nav-painel a:focus-visible{background:var(--peca)}
+.nav-painel img{width:38px;height:38px;flex:none}
+.nav-painel b,.nav-painel small{display:block;line-height:1.35}
+.nav-painel b{font-size:.94rem}.nav-painel small{font-size:.78rem;color:var(--texto2)}
+.topo + main{margin-top:clamp(-44px,-3vw,-18px)}
 
 /* botões próprios */
 .tecla{--fundo-t:linear-gradient(180deg,#535FDC,#3437B5);--borda-t:#23258A;position:relative;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:54px;padding:0 10px 0 24px;border-radius:18px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;white-space:nowrap;background:var(--fundo-t);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 0 rgba(0,0,40,.18),0 5px 0 var(--borda-t),0 16px 26px -12px rgba(52,55,181,.8);transform:translateY(0);transition:transform .12s ease,box-shadow .12s ease}
@@ -365,7 +378,14 @@ tr:last-child td{border-bottom:0}
 .anel b span.anel-n{font-size:inherit;font-weight:inherit;color:inherit;margin:0}
 .painel-cab .estado span{font-size:inherit;color:inherit}
 .pip-status [data-liga]{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.tema-btn{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:transparent;color:var(--texto2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .3s,color .3s}
+.tema-btn{width:56px;height:44px;flex:none;border:0;border-radius:15px;background:transparent;color:var(--texto2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.tema-paisagem{width:50px;height:28px;flex:none;overflow:visible}
+.tema-ceu{fill:#92d4ec}.tema-mar{fill:#3696ac}.tema-praia{fill:#e9bb80}
+.tema-sol,.tema-lua,.tema-ceu,.tema-mar,.tema-praia{transition:transform .45s ease,opacity .35s ease,fill .45s ease}
+.tema-lua{opacity:0;transform:translateY(7px)}
+.escuro .tema-ceu{fill:#39396e}.escuro .tema-mar{fill:#62649c}.escuro .tema-praia{fill:#9294c5}
+.escuro .tema-sol{opacity:0;transform:translateY(7px)}
+.escuro .tema-lua{opacity:1;transform:none}
 .tema-btn:hover{background:rgba(255,255,255,.55);color:var(--texto)}
 .escuro .tema-btn:hover{background:rgba(255,255,255,.08)}
 
@@ -412,13 +432,16 @@ tr:last-child td{border-bottom:0}
 }
 @media (max-width:810px){
   .conteudo{padding:12px clamp(12px,3.6vw,24px) 28px;gap:70px}
-  .topo{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 6px;padding:8px 10px 4px;border-radius:25px;top:6px}
+  .topo{display:grid;width:min(100%,480px);grid-template-columns:minmax(0,1fr) auto auto;gap:3px 6px;padding:6px 8px;border-radius:23px;top:6px}
+  .topo + main{margin-top:-20px}
   .topo .marca{grid-area:1/1;width:max-content;padding-left:4px}
   .topo .links{display:contents}
   .links .tecla{grid-area:1/2}
   .links .tema-btn{grid-area:1/3}
-  .links-secoes{grid-area:2/1/3/-1;justify-content:space-between;min-width:0;overflow-x:auto}
-  .links-secoes a.lk{padding:6px clamp(5px,1.5vw,12px);font-size:.875rem;white-space:nowrap;min-height:36px}
+  .links-secoes{position:relative;grid-area:2/1/3/-1;justify-content:space-around;min-width:0}
+  .links-secoes a.lk,.nav-explorar summary{padding:6px clamp(5px,1.5vw,12px);font-size:.875rem;white-space:nowrap;min-height:36px}
+  .nav-explorar{position:static}
+  .nav-painel{width:min(100%,310px);top:calc(100% + 7px)}
   html{scroll-padding-top:110px}
   .heroi{gap:16px}
   .previa{margin-top:-16px}
@@ -473,7 +496,8 @@ tr:last-child td{border-bottom:0}
   .heroi .btn-play{gap:8px;padding-right:12px;font-size:.9375rem}
   .topo .kbd{display:none}
   .topo .tecla-p{padding:0 12px}
-  .topo .marca img{width:114px}
+  .topo .marca img{width:clamp(96px,calc(100vw - 220px),114px)}
+  .heroi .h1{font-size:clamp(2rem,9.5vw,2.4rem)}
 }
 @media (max-height:550px){.topo{position:relative;top:0}html{scroll-padding-top:12px}}
 @media (prefers-reduced-motion:reduce){
@@ -487,3 +511,70 @@ tr:last-child td{border-bottom:0}
   .chave-mini span{border:1px solid ButtonText}
   .chave-mini span::after{background:ButtonText}
 }
+
+/* Seis momentos na mesma costa. O céu muda sem mover o objeto que identifica a etapa. */
+#como .rotina-moldes{position:absolute;overflow:hidden;pointer-events:none}
+#como .dia{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(14px,1.8vw,22px)}
+#como .hora{
+  --ceu:#a1dce8;--astro:#fff1b7;--nuvem:#e7fdff;--longe:#94c7d5;--ilha:#71a7b8;
+  --mar:#59b6c1;--espuma:#d9f6e2;--praia:#edcc9b;--estrelas:0;--fase:0;
+  padding:12px 12px 24px;gap:10px;border-radius:26px;
+}
+#como .hora-busca{
+  --ceu:#293665;--astro:#fff3bf;--nuvem:#45577d;--longe:#505c90;--ilha:#394d75;
+  --mar:#3a638b;--espuma:#9fc9d8;--praia:#5d7293;--estrelas:1;--fase:1;
+}
+#como .hora-preparo{
+  --ceu:#f2c4b4;--astro:#fff1ca;--nuvem:#fff0d9;--longe:#bcabbf;--ilha:#918caa;
+  --mar:#92b9c5;--espuma:#ffead5;--praia:#dbae98;--estrelas:.25;
+}
+#como .hora-triagem{
+  --ceu:#a7daed;--astro:#ffe09b;--longe:#a2becd;--ilha:#7ea8b0;
+  --mar:#72bed0;--espuma:#edf9e3;--praia:#f3d0a1;
+}
+#como .hora-aprovar{--ceu:#a4e1dc;--longe:#8abaaf;--ilha:#68aa9e;--mar:#57b7b9}
+#como .hora-envio{--ceu:#a1d5f1;--longe:#92bad7;--ilha:#6e9ab8;--mar:#62adca}
+#como .hora-quadro{
+  --ceu:#b6aaca;--astro:#ffe8b6;--nuvem:#eee1e0;--longe:#a299be;--ilha:#847fa5;
+  --mar:#8c9ebd;--espuma:#eddfdd;--praia:#c6a9b4;--estrelas:.4;
+}
+#como .hora-cena{
+  position:relative;isolation:isolate;overflow:hidden;border-radius:17px;aspect-ratio:320 / 148;
+  background:var(--ceu);box-shadow:0 1px 0 var(--aro);
+}
+#como .hora-cena svg{display:block;width:100%;height:100%}
+#como .rotina-noite{
+  display:none;--ceu:#192341;--astro:#f8e6ba;--nuvem:#35435e;--longe:#3b4569;--ilha:#303b59;
+  --mar:#304966;--espuma:#8193aa;--praia:#46526d;--estrelas:1;--fase:1;
+}
+#como .hora-topo{padding:0 8px;margin:6px 0 1px}
+#como .hora h3,#como .hora p{margin:0 8px}
+#como .hora h3{font-size:clamp(1.15rem,1.6vw,1.36rem);line-height:1.22;text-wrap:balance}
+#como .hora .relogio{font-variant-numeric:tabular-nums;font-size:.8rem}
+#como .deslize{margin:4px 8px 0;width:calc(100% - 16px)}
+#como .deslize-txt{padding-inline:54px 8px;line-height:1.25}
+#como .deslize.on .deslize-txt{padding-inline:8px 54px}
+#como .hora-aprovar:has(.deslize.on){--selo:#88dfb1}
+#como .rotina-selo{transform-origin:184px 108px;transition:transform .35s ease}
+#como .hora-aprovar:has(.deslize.on) .rotina-selo{transform:rotate(8deg) scale(1.12)}
+@media (prefers-reduced-motion:no-preference){
+  #como .prepara-luz .rotina-noite{display:inline}
+  #como .em-vista .rotina-noite{animation:rotina-amanhecer 1.15s cubic-bezier(.45,0,.22,1) both}
+  #como .em-vista .hora-cena::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(90deg,transparent 91%,#ffffff30 98%,#ffffff70);
+    animation:rotina-lente 1.15s cubic-bezier(.45,0,.22,1) both;
+  }
+  #como .rotina-objeto{transition:transform .35s ease}
+  #como .hora:focus-within .rotina-objeto{transform:translateY(-3px)}
+}
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+  #como .hora:hover .rotina-objeto{transform:translateY(-3px)}
+}
+@keyframes rotina-amanhecer{from{clip-path:inset(0)}to{clip-path:inset(0 0 0 100%)}}
+@keyframes rotina-lente{
+  from{opacity:0;transform:translateX(-100%)}15%,82%{opacity:.85}
+  to{opacity:0;transform:translateX(0)}
+}
+@media (max-width:1000px){#como .dia{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:630px){#como .dia{grid-template-columns:1fr}#como .hora{padding-bottom:20px}}

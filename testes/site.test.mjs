@@ -31,7 +31,7 @@ test('site: o script não tem erro de sintaxe', () => {
   assert.doesNotThrow(() => new vm.Script(ler('tema.js'), { filename: 'tema.js' }));
 });
 
-test('site: a primeira pintura é clara, exceto quando a pessoa já escolheu o tema escuro', () => {
+test('site: a primeira pintura é escura, exceto quando a pessoa já escolheu o tema claro', () => {
   for (const temaSalvo of [null, 'inválido', 'claro', 'escuro']) {
     const meta = {};
     let classeEscura;
@@ -42,8 +42,8 @@ test('site: a primeira pintura é clara, exceto quando a pessoa já escolheu o t
     };
     const window = { matchMedia: () => ({ matches: true, addEventListener() {} }), addEventListener() {} };
     vm.runInNewContext(ler('tema.js'), { window, document, localStorage: { getItem: () => temaSalvo } });
-    assert.equal(classeEscura, temaSalvo === 'escuro');
-    assert.equal(meta.content, temaSalvo === 'escuro' ? '#0C0E2C' : '#EEF2FB');
+    assert.equal(classeEscura, temaSalvo !== 'claro');
+    assert.equal(meta.content, temaSalvo !== 'claro' ? '#0C0E2C' : '#EEF2FB');
   }
 });
 
@@ -90,7 +90,7 @@ test('site: os cinco sistemas aparecem no menu de baixar e nos cartões', () => 
     assert.equal(todos(html, new RegExp(`data-baixar="(${k})"`, 'g')).length, 1, `cartão: ${k}`);
     assert.match(js, new RegExp(`k: '${k}'`));
     const disponivel = k === 'mac' || k === 'win';
-    const status = disponivel ? 'Em lançamento' : 'Em breve';
+    const status = disponivel ? 'Disponível' : 'Em breve';
     const opcoes = todos(html, new RegExp(`data-plat="${k}"[^>]*>.*?<small[^>]*>([^<]+)`, 'g'));
     assert.deepEqual(opcoes, [status, status], `status nos menus: ${k}`);
     const [acao] = todos(html, new RegExp(`data-baixar="${k}"><span data-so-texto>([^<]+)`, 'g'));

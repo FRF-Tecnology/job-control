@@ -32,8 +32,8 @@ const PROVEDORES = [
     metodos: [{ t: 'Chave da OpenAI', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
   { id: 'gemini', nome: 'Gemini', empresa: 'Google', curto: 'API do Gemini', estado: 'No app', detalhe: 'Conecte os modelos Gemini com uma chave de API do Google.',
     metodos: [{ t: 'Chave do Google', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
-  { id: 'grok', nome: 'Grok', empresa: 'xAI', curto: 'Integração prevista', estado: 'Previsto', detalhe: 'A integração com Grok está prevista para uma versão futura.',
-    metodos: [] },
+  { id: 'grok', nome: 'Grok', empresa: 'xAI', curto: 'API da xAI', estado: 'No app', detalhe: 'Use sua chave da xAI e um modelo Grok habilitado na sua conta pela conexão de API compatível com OpenAI.',
+    metodos: [{ t: 'Chave da xAI', s: 'Configure o endereço da API da xAI no app.', k: 'chave' }] },
   { id: 'openrouter', nome: 'OpenRouter', empresa: 'OpenRouter', curto: 'API compatível', estado: 'No app', detalhe: 'No app, configure o endereço de API compatível, a chave do OpenRouter e o modelo.',
     metodos: [{ t: 'Chave do OpenRouter', s: 'O uso é cobrado pelo provedor.', k: 'chave' }] },
   { id: 'local', nome: 'No seu computador', empresa: 'Modelos locais', curto: 'Modelos locais previstos', estado: 'Previsto', detalhe: 'O suporte a modelos que rodam no seu computador está previsto.',
@@ -262,6 +262,19 @@ function aoClicar(ev) {
 function iniciar() {
   estado.plat = sistemaDaPessoa();
   document.addEventListener('click', aoClicar);
+  const explorar = $('.nav-explorar');
+  document.addEventListener('click', evento => {
+    if (!explorar.contains(evento.target) || evento.target.closest('a')) explorar.open = false;
+  });
+  explorar.addEventListener('focusout', evento => {
+    if (!explorar.contains(evento.relatedTarget)) explorar.open = false;
+  });
+  explorar.addEventListener('keydown', evento => {
+    if (evento.key === 'Escape' && explorar.open) {
+      explorar.open = false;
+      $('summary', explorar).focus();
+    }
+  });
   document.addEventListener('focusin', ev => {
     if (estado.menu && !estado.menu.contains(ev.target)) fecharMenu();
   });
@@ -278,3 +291,18 @@ function iniciar() {
   document.documentElement.classList.add('js');
 }
 iniciar();
+
+// Ilumina as cenas da rotina uma única vez, quando cada cartão entra na tela.
+if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const cenas = new IntersectionObserver(entradas => {
+    for (const entrada of entradas) {
+      if (!entrada.isIntersecting) continue;
+      entrada.target.classList.add('em-vista');
+      cenas.unobserve(entrada.target);
+    }
+  }, { threshold: 0.2 });
+  for (const cartao of document.querySelectorAll('#como .hora')) {
+    cartao.classList.add('prepara-luz');
+    cenas.observe(cartao);
+  }
+}

@@ -1,8 +1,8 @@
-// Aplica o tema claro na primeira visita e restaura escolhas explícitas antes da pintura.
+// Aplica o tema escuro na primeira visita e restaura escolhas explícitas antes da pintura.
 (() => {
-  let escuro = false;
+  let escuro = true;
   try {
-    escuro = localStorage.getItem('tema') === 'escuro';
+    escuro = localStorage.getItem('tema') !== 'claro';
   } catch { /* Sem armazenamento, a escolha vale enquanto esta página estiver aberta. */ }
 
   function aplicar() {
@@ -16,7 +16,7 @@
   document.addEventListener('DOMContentLoaded', aplicar, { once: true });
   window.addEventListener('storage', evento => {
     if (evento.key !== 'tema' && evento.key !== null) return;
-    escuro = evento.newValue === 'escuro';
+    escuro = evento.newValue !== 'claro';
     aplicar();
   });
   document.addEventListener('click', evento => {
