@@ -3,11 +3,11 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, type App } from '../app/contexto';
-import { CaixaPedido } from './Hoje';
+import { CaixaPedido, SUGESTAO_ADICIONAR, sugestoesPara } from './Hoje';
 
 afterEach(() => { cleanup(); location.hash = ''; });
 
-function montar({ ia = true, falha = false } = {}) {
+function montar({ ia = true, falha = false, sugestoes = ['Buscar vagas USD LATAM', 'Quem me respondeu?'] } = {}) {
   const chamadas: { caminho: string; metodo?: string; corpo?: unknown }[] = [];
   const avisos: string[] = [];
   const aoCriar = vi.fn();
@@ -21,7 +21,7 @@ function montar({ ia = true, falha = false } = {}) {
       try { await fn(); if (mensagem) avisos.push(mensagem); return true; } catch (e) { avisos.push((e as Error).message); return false; }
     },
   } as unknown as App;
-  render(<Contexto.Provider value={app}><CaixaPedido sugestoes={['Buscar vagas USD LATAM', 'Quem me respondeu?']} iaConectada={ia} aoCriar={aoCriar} /></Contexto.Provider>);
+  render(<Contexto.Provider value={app}><CaixaPedido sugestoes={sugestoes} iaConectada={ia} aoCriar={aoCriar} /></Contexto.Provider>);
   return { chamadas, avisos, aoCriar };
 }
 const caixa = () => screen.getByRole('textbox', { name: 'O que vamos fazer hoje?' }) as HTMLInputElement;
@@ -69,5 +69,30 @@ describe('Caixa de pedido', () => {
     expect(location.hash).toBe('#/quadro');
     expect(chamadas).toEqual([]);
     expect(aoCriar).not.toHaveBeenCalled();
+  });
+
+  it('"Adicionar uma vaga pelo link" só começa o pedido na caixa: nada é criado até a pessoa colar o link', async () => {
+    const { chamadas, aoCriar } = montar({ sugestoes: [SUGESTAO_ADICIONAR] });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: SUGESTAO_ADICIONAR })); });
+    expect(caixa().value).toBe('Adiciona a vaga ');
+    expect(document.activeElement).toBe(caixa());
+    expect(chamadas).toEqual([]);
+    expect(aoCriar).not.toHaveBeenCalled();
+  });
+});
+
+// Buscar vagas é do assistente do Claude Code; a IA do app recusaria ("O app não faz isso.").
+describe('sugestões da caixa', () => {
+  it('sem IA no app, sugere buscar (o pedido fica anotado para o assistente)', () => {
+    expect(sugestoesPara('internacional', 0, 0)).toEqual(['Buscar vagas USD LATAM', 'Quem me respondeu?']);
+    expect(sugestoesPara('nacional', 0, 0, false)[0]).toBe('Buscar vagas CLT/PJ remotas');
+  });
+
+  it('com IA no app, nenhuma sugestão pede busca: no lugar vem adicionar pelo link', () => {
+    for (const foco of ['internacional', 'nacional', 'ambos']) for (const n of [0, 1, 3]) {
+      const s = sugestoesPara(foco, n, 2, true);
+      expect(s.some(x => /buscar/i.test(x))).toBe(false);
+      expect(s).toContain(SUGESTAO_ADICIONAR);
+    }
   });
 });
