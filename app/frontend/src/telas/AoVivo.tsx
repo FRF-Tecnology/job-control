@@ -4,12 +4,12 @@
 // Não há clique, tecla nem nada que controle o envio. Sem leitura por 10 s o app desliga sozinho; se a leitura voltar
 // com ligado false e o painel aberto, a tela liga de novo.
 import { useEffect, useRef, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, type App } from '../app/contexto';
 
-type Quadro = { imagem: string; em: string; largura: number; altura: number };
-type EstadoAoVivo = { ligado: boolean; etapa: string; candidatura: string | null; quadro: Quadro | null };
+export type Quadro = { imagem: string; em: string; largura: number; altura: number };
+export type EstadoAoVivo = { ligado: boolean; etapa: string; candidatura: string | null; quadro: Quadro | null };
 
-const ETAPA: Record<string, string> = {
+export const ETAPA: Record<string, string> = {
   desligado: 'Ao vivo desligado.',
   'sem-envio': 'Nada sendo enviado agora.',
   abrindo: 'Abrindo a página da vaga…',
@@ -25,48 +25,67 @@ const ETAPA: Record<string, string> = {
 };
 // Só a imagem que o contrato permite (e no tamanho máximo dele) vai para o src.
 const IMAGEM_OK = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
-const imagemValida = (q: Quadro | null): q is Quadro => !!q && typeof q.imagem === 'string' && q.imagem.length <= 400_000 && IMAGEM_OK.test(q.imagem);
+export const imagemValida = (q: Quadro | null): q is Quadro => !!q && typeof q.imagem === 'string' && q.imagem.length <= 400_000 && IMAGEM_OK.test(q.imagem);
 const ROTA = '/api/v1/envio/ao-vivo';
 
-export function AoVivo({ nome }: { nome: (id: string) => string }) {
-  const app = useApp();
-  const [aberto, setAberto] = useState(false);
+// O painel da Fila avisa quando abre e fecha: o navegador flutuante (NavegadorFlutuante.tsx) some enquanto o painel
+// mostra a mesma imagem, para não haver dois lugares ligando e desligando o ao vivo ao mesmo tempo.
+export const EVENTO_PAINEL_AO_VIVO = 'applyer:ao-vivo-painel';
+
+// A leitura do ao vivo, usada pelo painel da Fila e pelo navegador flutuante. Com `aberto`, liga e lê a cada segundo;
+// ao fechar (ou desmontar), desliga e esquece o estado. `fechar` é chamado quando não adianta insistir (404 e 403).
+export function useAoVivo(api: App['api'], aberto: boolean, fechar: () => void) {
   const [estado, setEstado] = useState<EstadoAoVivo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const abertoRef = useRef(false);
   abertoRef.current = aberto;
-
-  // Erros em frase fixa; 404 e 403 fecham o painel (não adianta insistir).
-  const falhar = (e: unknown) => {
-    if (e instanceof ErroApi && e.status === 404) { setErro('Este app não traz o envio: não há o que ver.'); setAberto(false); return; }
-    if (e instanceof ErroApi && e.status === 403) { setErro('O ao vivo só abre na janela do app.'); setAberto(false); return; }
-    setErro('Não deu para ler o ao vivo agora. Tentando de novo…');
-  };
+  const fecharRef = useRef(fechar);
+  fecharRef.current = fechar;
 
   useEffect(() => {
     if (!aberto) return;
     let vivo = true;
     let religando = false;
-    const ligar = async () => { setEstado(await app.api(ROTA, 'POST', { ligado: true })); setErro(null); };
+    // Erros em frase fixa; 404 e 403 fecham (não adianta insistir).
+    const falhar = (e: unknown) => {
+      if (e instanceof ErroApi && e.status === 404) { setErro('Este app não traz o envio: não há o que ver.'); fecharRef.current(); return; }
+      if (e instanceof ErroApi && e.status === 403) { setErro('O ao vivo só abre na janela do app.'); fecharRef.current(); return; }
+      setErro('Não deu para ler o ao vivo agora. Tentando de novo…');
+    };
+    const ligar = async () => { const e: EstadoAoVivo = await api(ROTA, 'POST', { ligado: true }); if (vivo) { setEstado(e); setErro(null); } };
     const ler = async () => {
       if (document.visibilityState !== 'visible') return; // escondida: não lê (o app desliga sozinho em 10 s)
       try {
-        const e: EstadoAoVivo = await app.api(ROTA);
+        const e: EstadoAoVivo = await api(ROTA);
         if (!vivo) return;
         setEstado(e); setErro(null);
         if (!e.ligado && abertoRef.current && !religando) { religando = true; try { await ligar(); } finally { religando = false; } }
       } catch (e) { if (vivo) falhar(e); }
     };
+    setErro(null); setEstado(null);
     ligar().catch(e => { if (vivo) falhar(e); });
     const t = window.setInterval(ler, 1000);
     return () => {
       vivo = false; window.clearInterval(t);
-      app.api(ROTA, 'POST', { ligado: false }).catch(() => { /* sem leitura, o app desliga sozinho em 10 s */ });
+      setEstado(null); // o quadro não fica guardado na tela depois de fechar
+      api(ROTA, 'POST', { ligado: false }).catch(() => { /* sem leitura, o app desliga sozinho em 10 s */ });
     };
   }, [aberto]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const abrir = () => { setErro(null); setEstado(null); setAberto(true); };
-  const fechar = () => { setAberto(false); setEstado(null); };
+  return { estado, erro, limparErro: () => setErro(null) };
+}
+
+export function AoVivo({ nome }: { nome: (id: string) => string }) {
+  const app = useApp();
+  const [aberto, setAberto] = useState(false);
+  const { estado, erro, limparErro } = useAoVivo(app.api, aberto, () => setAberto(false));
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(EVENTO_PAINEL_AO_VIVO, { detail: aberto }));
+    return () => { if (aberto) window.dispatchEvent(new CustomEvent(EVENTO_PAINEL_AO_VIVO, { detail: false })); };
+  }, [aberto]);
+
+  const abrir = () => { limparErro(); setAberto(true); };
+  const fechar = () => setAberto(false);
   const etapa = estado ? (ETAPA[estado.etapa] ?? ETAPA['sem-envio']) : 'Ligando…';
   const q = estado && imagemValida(estado.quadro) ? estado.quadro : null;
 

@@ -68,3 +68,17 @@ O pedido do Vini: deixar evidente, dentro do app, que a candidatura está sendo 
 - O painel "Ao vivo" na Fila: liga ao abrir, lê a cada segundo e desliga ao fechar.
 - A frase de cada etapa. Sem envio: "Nada sendo enviado agora".
 - Na CSP de `index.html`: `img-src 'self' data:`.
+
+## Navegador flutuante (o ao vivo em todas as telas)
+
+Pedido do Vini, pelo protótipo de design: ver o envio sem precisar ficar na Fila. `app/frontend/src/telas/NavegadorFlutuante.tsx` mostra o mesmo ao vivo num widget que acompanha a pessoa em todas as telas do PC. **Nada muda no back, no contrato nem nas rotas.**
+
+- **Onde fica:** encaixado na borda direita, como uma aba. Dá para soltar e arrastar pela tela; perto da borda direita, encaixa de novo. O lugar fica salvo no `localStorage` (`navegador-envio`).
+- **Quando liga:** só com o mouse parado em cima (250 ms), com o foco do teclado ou com o botão de manter aberto. Aí chama `POST /envio/ao-vivo {ligado: true}` e lê a cada segundo, pelo mesmo código do painel da Fila (`useAoVivo`). Fechado, não chama nada.
+- **Quando desliga:** ao tirar o mouse (450 ms), ao perder o foco, ao arrastar ou ao sumir. Chama `{ligado: false}` e tira o quadro da tela. Vale o requisito 5: screencast só com o painel aberto.
+- **O que mostra:** a etapa em frase fixa (a mesma lista fechada), o quadro num `<img>` só se for `data:image/jpeg` em base64 (a mesma checagem do painel) e o nome da candidatura como texto.
+- **O que faz:** só "Pausar envio" (`POST /envio/pausar`, que qualquer autor pode) e um link para a Fila. Retomar continua só na Fila, com a confirmação.
+- **Quando some:** se o app não tem envio (`GET /envio` com `ligado: false`), se o painel "Ao vivo" da Fila está aberto (um só lugar liga e desliga por vez) e no celular. Com 404 ou 403 no ao vivo, mostra a frase fixa e não tenta de novo a cada passada do mouse.
+- **Testes:** `navegador-flutuante.test.tsx`.
+
+**Para o CyberSec conferir:** o ao vivo passa a ser ligado também por passar o mouse, não só por um clique em "Ver ao vivo". O log ganha uma linha "ao vivo: ligado (eu)" a cada abertura.
