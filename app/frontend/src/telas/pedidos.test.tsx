@@ -11,7 +11,7 @@ afterEach(cleanup);
 const IMP = 'sha256:v1:' + 'ab'.repeat(32);
 const VAGAS = [{ id: 'ext-exemplo-1', empresa: 'Empresa Exemplo', titulo: 'Pessoa Dev', etapa: 'aplicar' }];
 
-function montar(pedidos: Pedido[], { ia = true, erro = null as null | Error, pendurar = false } = {}) {
+function montar(pedidos: Pedido[], { ia = true, erro = null as null | Error, pendurar = false, pedirJa = null as null | string } = {}) {
   const chamadas: { caminho: string; metodo?: string; corpo?: unknown; cabecalhos?: Record<string, string> }[] = [];
   const avisos: { texto: string; erro?: boolean }[] = [];
   const abertas: string[] = [];
@@ -26,8 +26,10 @@ function montar(pedidos: Pedido[], { ia = true, erro = null as null | Error, pen
       return erro ? Promise.reject(erro) : Promise.resolve({});
     }),
   } as unknown as App;
-  render(<Contexto.Provider value={app}><SeusPedidos pedidos={pedidos} iaConectada={ia} /></Contexto.Provider>);
-  return { chamadas, avisos, abertas, recarregar };
+  const aoPedirJa = vi.fn();
+  const arvore = (lista: Pedido[], ja: string | null) => <Contexto.Provider value={app}><SeusPedidos pedidos={lista} iaConectada={ia} pedirJa={ja} aoPedirJa={aoPedirJa} /></Contexto.Provider>;
+  const { rerender } = render(arvore(pedidos, pedirJa));
+  return { chamadas, avisos, abertas, recarregar, aoPedirJa, remontar: (lista: Pedido[], ja: string | null) => act(async () => { rerender(arvore(lista, ja)); }) };
 }
 const clicar = async (el: HTMLElement) => { await act(async () => { fireEvent.click(el); }); };
 const item = (texto: string) => screen.getByText(texto).closest('li') as HTMLElement;
@@ -156,5 +158,55 @@ describe('Seus pedidos', () => {
     expect(within(li).getByText('Isso só você faz, na tela da Fila.')).toBeTruthy();
     expect(within(li).getByText('A IA não fez')).toBeTruthy();
     expect(within(li).queryAllByRole('button')).toEqual([]);
+  });
+
+  // Pedido enviado pela caixa (Enter ou sugestão): vai para a IA sem o clique em "Pedir para a IA".
+  describe('pedido recém-enviado (pedirJa)', () => {
+    const INTERPRETAR = { caminho: '/api/v1/pedidos/ped-1/interpretar', metodo: 'POST', corpo: {}, cabecalhos: undefined };
+
+    it('com IA: interpreta sozinho, uma vez só, e avisa a tela que já pediu', async () => {
+      const { chamadas, aoPedirJa, remontar } = montar([aberto()], { pedirJa: 'ped-1' });
+      await act(async () => {});
+      expect(chamadas).toEqual([INTERPRETAR]);
+      expect(aoPedirJa).toHaveBeenCalledTimes(1);
+      await remontar([aberto()], 'ped-1'); // a tela relê o estado com o mesmo id: não pede de novo
+      expect(chamadas).toEqual([INTERPRETAR]);
+    });
+
+    it('enquanto lê, mostra "A IA está lendo o pedido…" no lugar do botão', async () => {
+      montar([aberto()], { pedirJa: 'ped-1', pendurar: true });
+      await act(async () => {});
+      expect(within(item('Adicionar a vaga https://vagas.exemplo.com/1')).getByRole('status').textContent).toBe('A IA está lendo o pedido…');
+      expect(screen.queryByRole('button', { name: /Pedir para a IA/ })).toBeNull();
+    });
+
+    it('sem IA: não chama nada e o pedido fica aberto', async () => {
+      const { chamadas, aoPedirJa } = montar([aberto()], { ia: false, pedirJa: 'ped-1' });
+      await act(async () => {});
+      expect(chamadas).toEqual([]);
+      expect(aoPedirJa).not.toHaveBeenCalled();
+    });
+
+    it('espera o pedido chegar no estado antes de pedir', async () => {
+      const { chamadas, remontar } = montar([aberto('ped-3', 'Outro pedido')], { pedirJa: 'ped-1' });
+      await act(async () => {});
+      expect(chamadas).toEqual([]);
+      await remontar([aberto(), aberto('ped-3', 'Outro pedido')], 'ped-1');
+      expect(chamadas).toEqual([INTERPRETAR]);
+    });
+
+    it('uma leitura por vez: com a IA lendo outro pedido, o novo espera', async () => {
+      const { chamadas, remontar } = montar([aberto('ped-3', 'Outro pedido')], { pendurar: true });
+      await clicar(screen.getByRole('button', { name: 'Pedir para a IA: Outro pedido' }));
+      await remontar([aberto(), aberto('ped-3', 'Outro pedido')], 'ped-1');
+      expect(chamadas.map(c => c.caminho)).toEqual(['/api/v1/pedidos/ped-3/interpretar']);
+    });
+
+    it('pedido que já não está aberto: não pede, só limpa', async () => {
+      const { chamadas, aoPedirJa } = montar([adicionar()], { pedirJa: 'ped-2' });
+      await act(async () => {});
+      expect(chamadas).toEqual([]);
+      expect(aoPedirJa).toHaveBeenCalledTimes(1);
+    });
   });
 });

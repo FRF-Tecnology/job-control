@@ -2,7 +2,7 @@
 // PROPÕE uma ação de um catálogo fechado; nada grava sem a pessoa apertar "Confirmar" aqui, que chama a rota de sempre
 // com o corpo EXATO da proposta e os cabeçalhos X-Pedido e X-Impressao. Tudo o que vem do pedido ou da IA aparece só
 // como texto (sem HTML e sem link automático), e os erros viram frases fixas.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 import { encode, nomeEtapa, NOMES_SUB } from '../util';
 
@@ -44,9 +44,23 @@ const ERRO_CONFIRMAR: Record<number, string> = {
   409: 'A proposta mudou. Peça para a IA de novo.',
 };
 
-export function SeusPedidos({ pedidos, iaConectada }: { pedidos: Pedido[]; iaConectada: boolean }) {
+// pedirJa: id do pedido que a pessoa acabou de enviar pela caixa. Ele vai para a IA sem outro clique, uma vez só e
+// quando ninguém mais está ocupado (uma leitura por vez). A proposta que voltar continua esperando o Confirmar.
+export function SeusPedidos({ pedidos, iaConectada, pedirJa = null, aoPedirJa }: { pedidos: Pedido[]; iaConectada: boolean; pedirJa?: string | null; aoPedirJa?: () => void }) {
   const app = useApp();
   const [ocupado, setOcupado] = useState<{ id: string; o: 'pedir' | 'confirmar' | 'descartar' } | null>(null);
+  const secao = useRef<HTMLElement>(null);
+  const jaPedido = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pedirJa || !iaConectada || ocupado || jaPedido.current === pedirJa) return;
+    const p = pedidos.find(x => x.id === pedirJa);
+    if (!p) return; // o pedido ainda não chegou no estado
+    jaPedido.current = pedirJa;
+    aoPedirJa?.();
+    if (p.status !== 'aberto') return;
+    [...(secao.current?.querySelectorAll<HTMLElement>('li.pedido') ?? [])].find(li => li.dataset.pedido === p.id)?.scrollIntoView?.({ block: 'nearest' });
+    pedir(p);
+  }, [pedirJa, pedidos, iaConectada, ocupado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function rodar(p: Pedido, o: 'pedir' | 'confirmar' | 'descartar', fn: () => Promise<unknown>, ok: string | null, erros: Record<number, string>) {
     setOcupado({ id: p.id, o });
@@ -73,7 +87,7 @@ export function SeusPedidos({ pedidos, iaConectada }: { pedidos: Pedido[]; iaCon
 
   const ninguemOcupado = !ocupado;
   return (
-    <section className="bloco pedidos" aria-labelledby="pedidos-titulo">
+    <section ref={secao} className="bloco pedidos" aria-labelledby="pedidos-titulo">
       <header><h2 id="pedidos-titulo">Seus pedidos</h2><span className="num">{pedidos.filter(p => p.status !== 'feito').length}</span></header>
       {!iaConectada && pedidos.some(p => p.status === 'aberto') && (
         <p className="pequeno mudo">Conecte uma IA para o app fazer os pedidos aqui. Sem IA, digite /pedidos no Claude Code.</p>
@@ -87,7 +101,7 @@ export function SeusPedidos({ pedidos, iaConectada }: { pedidos: Pedido[]; iaCon
           // Vaga criada ou movida pelo pedido confirmado; só se ela ainda existe.
           const vagaFeita = p.resultado?.vagaId && (app.estado.vagas ?? []).some((v: any) => v.id === p.resultado!.vagaId) ? p.resultado.vagaId : null;
           return (
-            <li key={p.id} className={`pedido s-${p.status}`} aria-busy={este ? true : undefined}>
+            <li key={p.id} data-pedido={p.id} className={`pedido s-${p.status}`} aria-busy={este ? true : undefined}>
               <strong>{p.texto}</strong>
               <span className="estado">{ESTADO[p.status] ?? p.status}</span>
 
