@@ -4,7 +4,7 @@ import { useApp, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
-import { Icone, LinkExterno } from '../componentes';
+import { Icone, LinkExterno, Robo } from '../componentes';
 import { SeusPedidos, type Pedido } from './Pedidos';
 import { AvisoPasta } from './AvisoPasta';
 import { dataLonga, haQuanto, dataCurta, nomeEtapa, NOMES_SUB, plural, encode, nomeAssistente } from '../util';
@@ -42,6 +42,7 @@ function CaixaPedido({ sugestoes }: { sugestoes: string[] }) {
   return (
     <>
       <form className="caixa-pedido" role="search" onSubmit={ev => { ev.preventDefault(); enviar(texto); }}>
+        <span className="caixa-ic" aria-hidden="true"><Icone d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" /></span>
         <input id="pedido" ref={entrada} type="text" autoComplete="off" placeholder={sugestoes[0] ?? 'Peça qualquer coisa'} aria-label="O que vamos fazer hoje?" value={texto} onChange={e => setTexto(e.target.value)} />
         <button type="submit" aria-label="Enviar pedido"><Icone d="M12 19V5M5 12l7-7 7 7" /></button>
       </form>
@@ -184,12 +185,18 @@ export function TelaHoje() {
     <div>
       <section className="ola" aria-labelledby="ola-titulo">
         <div className="ola-topo">
-          <span className="data">{dataLonga(hoje).replace(/^./, c => c.toUpperCase())}</span>
           <div className="seletor" role="group" aria-label="Foco da busca">
             {FOCOS.map(([id, rotulo]) => <button key={id} type="button" aria-pressed={String(foco === id) as 'true' | 'false'} onClick={() => app.mudarFoco(id)}>{rotulo}</button>)}
           </div>
+          <span className="chip nota-cadeado"><Icone><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></Icone>Nada sai sem você aprovar</span>
         </div>
-        <h1 id="ola-titulo">{nome ? `Olá, ${nome}.` : 'Olá.'}</h1>
+        <div className="ola-linha">
+          <Robo />
+          <div>
+            <span className="data">{dataLonga(hoje).replace(/^./, c => c.toUpperCase())}</span>
+            <h1 id="ola-titulo">{nome ? `Olá, ${nome}.` : 'Olá.'}</h1>
+          </div>
+        </div>
         <p className="pergunta">O que vamos fazer hoje?</p>
         <CaixaPedido sugestoes={sugestoesPara(foco, nAplicar, nDescoberta)} />
       </section>
@@ -234,7 +241,7 @@ export function TelaHoje() {
           <section className="bloco">
             <header><h2>Precisa de você</h2><span className="num">{bloqueadas.length}</span></header>
             {grupos.length ? (
-              <ul className="lista-cartao">
+              <ul className="lista-cartao tom-laranja">
                 {grupos.map(g => {
                   const empresas = [...new Set(g.vagas.map(v => v.empresa))];
                   return (
