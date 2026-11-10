@@ -1,5 +1,6 @@
 /* Applyer — landing page. Mesmo visual do app: vidro, bolhas de cor e botões com cara própria. */
 html{scroll-behavior:smooth;scroll-padding-top:92px;color-scheme:light}
+html.js{scroll-behavior:auto}
 html.escuro{color-scheme:dark}
 body{margin:0;background:#EEF2FB}
 html.escuro body{background:#0C0E2C}

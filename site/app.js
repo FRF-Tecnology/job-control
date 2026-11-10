@@ -349,14 +349,88 @@ function abrirComMouse(grupo, gatilho, aberto, abrir, fechar) {
   });
 }
 
+let quadroDeRolagem = 0;
+
+function interromperRolagem() {
+  if (!quadroDeRolagem) return;
+  cancelAnimationFrame(quadroDeRolagem);
+  quadroDeRolagem = 0;
+}
+
+// Só os deslocamentos iniciados por um clique passam por aqui. Roda e toque continuam nativos.
+function navegarAte(destino, foco, { apenasSeOculto = false, aoChegar } = {}) {
+  interromperRolagem();
+  function chegar() {
+    aoChegar?.();
+    if (!foco.matches('button, summary, [tabindex]')) foco.tabIndex = -1;
+    foco.focus({ preventScroll: true });
+  }
+
+  const raiz = document.documentElement;
+  const margem = parseFloat(getComputedStyle(raiz).scrollPaddingTop) || 0;
+  const caixa = destino.getBoundingClientRect();
+  const altura = raiz.clientHeight;
+  const inicio = window.scrollY;
+  let deslocamento = caixa.top - margem;
+  if (apenasSeOculto && deslocamento >= 0) {
+    deslocamento = Math.max(0, caixa.bottom - altura + 12);
+  }
+  // A barra de abas do celular tem seu próprio eixo horizontal.
+  const barra = foco.closest('.app-lado');
+  const esquerda = barra?.scrollLeft || 0;
+  let lateral = 0;
+  if (barra) {
+    const item = foco.getBoundingClientRect();
+    deslocamento = Math.max(deslocamento, item.bottom - altura + 12);
+    const faixa = barra.getBoundingClientRect();
+    if (barra.scrollWidth > barra.clientWidth && (item.left < faixa.left || item.right > faixa.right)) {
+      const centro = esquerda + item.left - faixa.left + (item.width - faixa.width) / 2;
+      lateral = Math.max(0, Math.min(centro, barra.scrollWidth - barra.clientWidth)) - esquerda;
+    }
+  }
+
+  const fim = Math.max(0, Math.min(inicio + deslocamento, raiz.scrollHeight - altura));
+  const distancia = Math.max(Math.abs(fim - inicio), Math.abs(lateral));
+  if (distancia < 1) return chegar();
+  const telas = distancia / Math.max(1, altura);
+  const duracao = Math.min(1420, 320 + 320 * Math.sqrt(telas));
+  const tempo = matchMedia('(prefers-reduced-motion: reduce)').matches ? duracao * .7 : duracao;
+  let partida;
+  function avancar(agora) {
+    partida ??= agora;
+    const t = Math.min(1, Math.max(0, (agora - partida) / tempo));
+    const progresso = t * t * (3 - 2 * t);
+    // A geometria já foi medida. Cada pintura só atualiza as posições de rolagem.
+    if (fim !== inicio) window.scrollTo({ top: inicio + (fim - inicio) * progresso, behavior: 'instant' });
+    if (lateral) barra.scrollTo({ left: esquerda + lateral * progresso, behavior: 'instant' });
+    if (t < 1) quadroDeRolagem = requestAnimationFrame(avancar);
+    else {
+      quadroDeRolagem = 0;
+      chegar();
+    }
+  }
+  quadroDeRolagem = requestAnimationFrame(avancar);
+}
+
 function aoClicar(ev) {
   const alvo = sel => ev.target.closest(sel);
   let el;
+  const link = alvo('a[href^="#"]');
+  if (ev.defaultPrevented || ev.button !== 0) return;
+  if (link && (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || link.target === '_blank')) return;
   if (estado.menu && !estado.menu.contains(ev.target)) fecharMenu();
-  if ((el = alvo('a[href^="#faq-r"]'))) {
-    const pergunta = document.getElementById(el.hash.slice(1));
-    if (pergunta) pergunta.open = true;
-    return;
+  if (link) {
+    const destino = document.getElementById(link.hash.slice(1));
+    if (!destino) return;
+    ev.preventDefault();
+    if (location.hash !== link.hash) history.pushState(null, '', link.hash);
+    if (!link.hasAttribute('data-ir')) {
+      if (destino.matches('details')) {
+        return navegarAte(destino, $('summary', destino), { aoChegar: () => { destino.open = true; } });
+      }
+      const foco = destino.matches('main') ? destino : $('summary, h1, h2', destino) || destino;
+      return navegarAte(destino, foco);
+    }
   }
   if ((el = alvo('[data-bs-seta]'))) {
     const bs = el.closest('[data-bs]');
@@ -370,29 +444,20 @@ function aoClicar(ev) {
   }
   if ((el = alvo('[data-aba]'))) { estado.aba = el.dataset.aba; return desenhar(); }
   if ((el = alvo('[data-ir]'))) {
-    if (el.matches('a[href]')) {
-      if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
-      // A âncora nativa continua disponível sem JS. No app, a própria aba recebe o foco.
-      ev.preventDefault();
-      if (location.hash !== el.hash) history.pushState(null, '', el.hash);
-    }
-    estado.aba = el.dataset.ir;
-    desenhar();
-    const aba = $(`[data-aba="${estado.aba}"]`);
-    if (el.closest('.final')) {
-      aba.focus({ preventScroll: true });
-      // No celular, a barra de abas tem sua própria rolagem horizontal.
-      aba.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
-      return;
-    }
-    return aba.focus();
+    const aba = $(`[data-aba="${el.dataset.ir}"]`);
+    const selecionar = () => { estado.aba = el.dataset.ir; desenhar(); };
+    // Trocar a tela aqui alteraria a altura de toda a página acima do mapa.
+    if (el.closest('.final')) return navegarAte($('.app-janela'), aba, { aoChegar: selecionar });
+    selecionar();
+    return navegarAte(aba, aba, { apenasSeOculto: true });
   }
   if (alvo('[data-aprovar]')) {
     const lote = VAGAS.map((_, i) => i).filter(i => !estado.fora[i]);
     if (!lote.length) return;
     Object.assign(estado, { aba: 'aovivo', passo: 0, lote, vagaIdx: lote[0] });
     desenhar();
-    return $('[data-avancar]').focus();
+    const avancar = $('[data-avancar]');
+    return navegarAte(avancar, avancar, { apenasSeOculto: true });
   }
   if (alvo('[data-avancar]')) {
     estado.passo = (estado.passo + 1) % PASSOS.length;
@@ -450,6 +515,12 @@ function acompanharRolagem() {
 function iniciar() {
   iniciarDeslize();
   estado.plat = sistemaDaPessoa();
+  for (const evento of ['pointerdown', 'touchstart', 'wheel', 'keydown']) {
+    window.addEventListener(evento, interromperRolagem, { capture: true, passive: true });
+  }
+  for (const evento of ['popstate', 'hashchange', 'pagehide', 'blur']) {
+    window.addEventListener(evento, interromperRolagem);
+  }
   window.addEventListener('scroll', posicionarMenuFinal, { passive:true });
   window.addEventListener('resize', posicionarMenuFinal);
   document.addEventListener('click', aoClicar);
