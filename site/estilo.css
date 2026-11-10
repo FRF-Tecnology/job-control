@@ -30,8 +30,10 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
 .topo{position:sticky;top:10px;z-index:20;--vidro:rgba(247,249,255,.96);--vidro2:rgba(235,240,255,.94);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 8px 8px 18px;border-radius:999px}
 .escuro .topo{--vidro:rgba(31,35,76,.97);--vidro2:rgba(26,29,67,.96)}
 .links-secoes{display:flex;align-items:center;gap:2px}
-.marca{display:flex;align-items:center;gap:10px;font-family:"Sora","Inter",system-ui,sans-serif;font-weight:700;font-size:22px;letter-spacing:-.035em;text-decoration:none;color:var(--texto)}
-.marca:hover{color:var(--texto)}
+.marca{display:inline-flex;align-items:center;width:fit-content;min-height:44px}
+.marca img{display:block;width:140px;height:auto}
+.marca .marca-inversa,.escuro .marca .marca-clara{display:none}
+.escuro .marca .marca-inversa{display:block}
 .links{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .links a.lk{text-decoration:none;color:var(--texto2);font-size:15px;font-weight:550;padding:10px 14px;border-radius:999px;transition:background .3s,color .3s}
 .links a.lk:hover{background:rgba(255,255,255,.55);color:var(--texto)}
@@ -471,8 +473,7 @@ tr:last-child td{border-bottom:0}
   .heroi .btn-play{gap:8px;padding-right:12px;font-size:.9375rem}
   .topo .kbd{display:none}
   .topo .tecla-p{padding:0 12px}
-  .topo .marca{gap:6px;font-size:1.2rem}
-  .topo .marca svg{width:30px;height:30px}
+  .topo .marca img{width:114px}
 }
 @media (max-height:550px){.topo{position:relative;top:0}html{scroll-padding-top:12px}}
 @media (prefers-reduced-motion:reduce){
