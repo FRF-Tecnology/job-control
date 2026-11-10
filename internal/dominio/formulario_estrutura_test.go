@@ -237,3 +237,39 @@ func TestEstruturaComPerguntaSensivel(t *testing.T) {
 		t.Fatalf("respostas = %v", rs)
 	}
 }
+
+// jc-a2y.7.2.2: o aceite de termos que aparece só na opção bloqueia já na leitura, com o mesmo motivo do envio.
+// Outra palavra sensível numa opção não é pedido de dado e a estrutura é guardada. Dados fictícios.
+func TestEstruturaComAceiteSoNaOpcao(t *testing.T) {
+	e, c, agora := formularioPreparado(t)
+	com := func(tipo string, opcoes ...string) []PerguntaFormulario {
+		return []PerguntaFormulario{
+			{ID: "ok", Texto: "Nome completo", Tipo: "texto-curto", Obrigatoria: true},
+			{ID: "c", Texto: "Confirmação", Tipo: tipo, Opcoes: opcoes},
+		}
+	}
+	for nome, perguntas := range map[string][]PerguntaFormulario{
+		"caixa de aceite":        com("multipla-escolha", "Li e aceito os termos de uso"),
+		"aceite entre opções":    com("escolha-unica", "Não quero receber novidades", "Concordo com a política de privacidade"),
+		"aceite em inglês":       com("multipla-escolha", "I agree to the Terms of Service"),
+		"aceite na última opção": com("lista", "Sim", "Talvez", "Aceito os termos"),
+	} {
+		novo, _, err := GravarEstruturaFormulario(e, c.ID, perguntas, urlTypeform, agora)
+		var eb *ErroBloqueioLeitura
+		if !errors.As(err, &eb) || eb.Motivo != "termos" {
+			t.Errorf("%s: erro %v; queria bloqueio termos", nome, err)
+			continue
+		}
+		if emJSONTeste(novo) != emJSONTeste(e) {
+			t.Errorf("%s: gravou a estrutura", nome)
+		}
+	}
+	for nome, perguntas := range map[string][]PerguntaFormulario{
+		"opções comuns":             com("escolha-unica", "LinkedIn", "Amigo"),
+		"palavra sensível na opção": com("lista", "Documento", "Senha", "Conta bancária"),
+	} {
+		if _, _, err := GravarEstruturaFormulario(e, c.ID, perguntas, urlTypeform, agora); err != nil {
+			t.Errorf("%s: recusou: %v", nome, err)
+		}
+	}
+}

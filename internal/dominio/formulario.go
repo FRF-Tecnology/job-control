@@ -71,9 +71,17 @@ func GravarEstruturaFormulario(e Estado, id string, perguntas []PerguntaFormular
 	}
 	// Pergunta sensível (CPF, RG, senha, banco, documento, dado sensível, termos): o formulário fica com a pessoa.
 	// Nunca é preenchida, nem por respostasPadrao (achado do CyberSec no #120): a estrutura nem é guardada.
+	// O aceite de termos também aparece só na opção ("Confirmação" com a opção "Li e aceito os termos"): bloqueia igual,
+	// já na leitura, como o envio faz (formulario_envio.go). Nas opções só o aceite conta; outra palavra sensível numa
+	// opção (por exemplo "Documento" numa lista de assuntos) não é pedido de dado.
 	for _, p := range perguntas {
 		if m := MotivoDoRotulo(p.Texto); m != "" {
 			return e, nil, &ErroBloqueioLeitura{Motivo: m}
+		}
+		for _, op := range p.Opcoes {
+			if MotivoDoRotulo(op) == "termos" {
+				return e, nil, &ErroBloqueioLeitura{Motivo: "termos"}
+			}
 		}
 	}
 	final, _, ok := FormularioDoEndereco(urlFinal)
