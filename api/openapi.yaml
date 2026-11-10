@@ -63,8 +63,8 @@ paths:
   /followups: { get: { summary: Follow-ups vencidos com a mensagem sugerida } }
   /perfil:
     get: { summary: Perfil }
-    put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28)' }
-    patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28)' }
+    put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). respostasPadrao com resposta (fora sim/não) para pergunta de número fiscal, documento de identidade, senha ou banco dá 400, para qualquer autor (jc-a2y.7.5)' }
+    patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). A recusa de respostasPadrao sensível (jc-a2y.7.5) vale para o que vem no corpo' }
   /plataformas: { get: { summary: Plataformas } }
   /plataformas/{id}: { put: { summary: Cria ou atualiza }, patch: { summary: Cria ou atualiza } }
   /rodadas: { get: { summary: Rodadas } }

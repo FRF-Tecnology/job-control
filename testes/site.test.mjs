@@ -37,7 +37,7 @@ test('site: todo texto que o script liga tem lugar na página', () => {
   assert.ok(fixas.length >= 10, 'achou as chamadas ligar(...)');
   assert.deepEqual(fixas.filter(k => !naPagina.has(k)), []);
   // As chaves montadas no script: os motivos da triagem e os campos da IA escolhida.
-  for (const k of ['tri.p0', 'tri.p1', 'tri.p2', ...['ini', 'nome', 'curto', 'empresa', 'estado', 'cmd', 'saida1', 'saida2'].map(c => `prov.${c}`)]) {
+  for (const k of ['tri.p0', 'tri.p1', 'tri.p2', ...['nome', 'curto', 'empresa', 'estado', 'detalhe'].map(c => `prov.${c}`)]) {
     assert.ok(naPagina.has(k), `falta data-liga="${k}"`);
   }
 });
@@ -49,12 +49,20 @@ test('site: todo seletor data-* que o script procura existe na página', () => {
 });
 
 test('site: nada do protótipo ficou no HTML', () => {
-  for (const resto of ['{{', '<sc-if', '<sc-for', 'onClick=', '<x-dc', 'support.js']) assert.ok(!html.includes(resto), `sobrou ${resto}`);
+  for (const resto of ['{{', '<sc-if', '<sc-for', 'onClick=', '<x-dc', 'support.js', '[PREÇO]', '[TERMOS]', '[PRIVACIDADE]', '[E-MAIL DE CONTATO]']) assert.ok(!html.includes(resto), `sobrou ${resto}`);
 });
 
-test('site: só carrega arquivos do próprio site e as fontes do Google', () => {
+test('site: os três preços aprovados informam o total e o intervalo mesmo sem JavaScript', () => {
+  const precos = [...html.matchAll(/class="preco">R\$ ([\d,]+)<small>\/([^<]+)<\/small>/g)];
+  assert.deepEqual(precos.map(([, total, periodo]) => [total, periodo]), [
+    ['29,90', 'mês'], ['161,46', 'semestre'], ['287,04', 'ano']
+  ]);
+  assert.match(html, /mailto:suporte@applyer\.dev/);
+});
+
+test('site: só carrega arquivos do próprio site', () => {
   const enderecos = [...todos(html, /(?:src|href)="(https?:\/\/[^"]+)"/g), ...todos(css, /url\((https?:\/\/[^)]+)\)/g)];
-  assert.deepEqual(enderecos.filter(u => !/^https:\/\/fonts\.(googleapis|gstatic)\.com(\/|$)/.test(u)), []);
+  assert.deepEqual(enderecos, []);
   for (const arquivo of todos(html, /(?:src|href)="([^"#:]+\.(?:js|css|svg))"/g)) assert.ok(existsSync(join(pasta, arquivo)), `falta ${arquivo}`);
   assert.match(html, /Content-Security-Policy[^>]+script-src 'self'/);
   assert.ok(!/<script(?![^>]*\ssrc=)/.test(html), 'script inline: a CSP do site não deixa rodar');
@@ -65,5 +73,24 @@ test('site: os cinco sistemas aparecem no menu de baixar e nos cartões', () => 
     assert.equal(todos(html, new RegExp(`data-plat="(${k})"`, 'g')).length, 2, `menu: ${k}`);
     assert.equal(todos(html, new RegExp(`data-baixar="(${k})"`, 'g')).length, 1, `cartão: ${k}`);
     assert.match(js, new RegExp(`k: '${k}'`));
+    const disponivel = k === 'mac' || k === 'win';
+    const status = disponivel ? 'Em lançamento' : 'Em breve';
+    const opcoes = todos(html, new RegExp(`data-plat="${k}"[^>]*>.*?<small[^>]*>([^<]+)`, 'g'));
+    assert.deepEqual(opcoes, [status, status], `status nos menus: ${k}`);
+    const [acao] = todos(html, new RegExp(`data-baixar="${k}"><span data-so-texto>([^<]+)`, 'g'));
+    assert.match(acao, disponivel ? /^Baixar para / : /^Avisar quando sair$/);
+    assert.match(html, new RegExp(`<button[^>]* disabled data-baixar="${k}"`));
+  }
+});
+
+test('site: opções de plataforma e de IA usam o logo correspondente e preservam o rótulo acessível', () => {
+  const opcoes = [...html.matchAll(/<button [^>]*data-(plat|prov)="([^"]+)"[^>]*>(.*?)<\/button>/g)];
+  assert.equal(opcoes.length, 16); // dois menus com cinco plataformas e seis provedores
+  for (const [, tipo, id, conteudo] of opcoes) {
+    const marca = id === 'ios' ? 'mac' : id;
+    const imagem = conteudo.match(/<img\b[^>]*>/)?.[0] ?? '';
+    assert.ok(imagem.includes(`src="marcas/${marca}.svg"`), `${tipo}: ${id}`);
+    assert.match(imagem, /\salt=""/);
+    assert.ok(conteudo.replace(/<[^>]+>/g, '').trim(), `falta rótulo para ${id}`);
   }
 });

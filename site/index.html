@@ -3,74 +3,76 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Applyer — sua próxima vaga, sem passar o dia aplicando</title>
-<meta name="description" content="O Applyer acha vagas da sua área, no Brasil ou lá fora, prepara cada candidatura com o seu currículo e envia quando você aprovar. Roda no seu computador, com a IA que você já paga.">
-<!-- Só script e estilo do próprio site; as fontes vêm do Google Fonts. Estilo inline: atrasos de animação e cores dos cartões. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Applyer — organize vagas e revise suas candidaturas</title>
+<meta name="description" content="Organize vagas, revise candidaturas com a sua IA e acompanhe cada etapa no computador. Experimente a demonstração do Applyer e conheça os planos.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#EEF2FB" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0C0E2C" media="(prefers-color-scheme: dark)">
-<meta property="og:title" content="Applyer — sua próxima vaga, sem passar o dia aplicando">
-<meta property="og:description" content="Acha vagas da sua área, prepara cada candidatura e envia quando você aprovar. Um clique por dia.">
+<meta property="og:title" content="Applyer — organize vagas e revise suas candidaturas">
+<meta property="og:description" content="Organize vagas, revise candidaturas com a sua IA e acompanhe cada etapa no computador. Experimente a demonstração do Applyer e conheça os planos.">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Applyer">
 <link rel="icon" type="image/svg+xml" href="icone.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilo.css">
 <script src="tema.js"></script>
 </head>
 <body>
+<a class="pular-conteudo" href="#conteudo-principal">Pular para o conteúdo</a>
 <div class="lp" id="lp">
-<div class="fundo" aria-hidden="true"><div class="bolha b1"></div><div class="bolha b2"></div><div class="bolha b3"></div><div class="bolha b4"></div></div>
+<div class="fundo" aria-hidden="true"></div>
 <svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5865F2" /><stop offset="1" stop-color="#2FBF8A" /></linearGradient><linearGradient id="lgCasco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" /><stop offset="1" stop-color="#D5DBF2" /></linearGradient><linearGradient id="lgVisor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3C40A8" /><stop offset="1" stop-color="#14163F" /></linearGradient><linearGradient id="lgOrelha" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B6F06A" /><stop offset="1" stop-color="#2FB86A" /></linearGradient><linearGradient id="lgFogo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A8F4FF" /><stop offset="1" stop-color="#3FD8F5" stop-opacity="0" /></linearGradient></defs></svg>
 
 <div class="conteudo">
-<button class="veu-menu" type="button" data-veu-menu aria-label="Fechar a lista de plataformas" hidden></button>
 <header class="vidro topo">
 <a class="marca" href="#inicio"><svg viewBox="0 0 120 120" width="36" height="36" aria-hidden="true"><rect width="120" height="120" rx="27" fill="url(#lgA)" /><g transform="rotate(12 60 60)"><path d="M60 20 L95 94 L60 77 Z" fill="#FFFFFF" fill-opacity="0.7" /><path d="M60 20 L25 94 L60 77 Z" fill="#FFFFFF" /></g></svg>Applyer</a>
-<nav class="links" aria-label="Seções"><a class="lk" href="#app">O app</a><a class="lk" href="#como">Como funciona</a><a class="lk" href="#ia">Sua IA</a><a class="lk" href="#preco">Preço</a><a class="tecla tecla-p" href="#baixar">Baixar<span class="kbd"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg></span></a><button class="tema-btn" type="button" data-tema aria-label="Alternar tema claro/escuro"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" /></svg></button></nav>
+<nav class="links" aria-label="Seções"><span class="links-secoes"><a class="lk" href="#app">O app</a><a class="lk" href="#como">Como funciona</a><a class="lk" href="#ia">Sua IA</a><a class="lk" href="#preco">Preço</a></span><a class="tecla tecla-p" href="#baixar">Plataformas<span class="kbd"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3" /></svg></span></a><button class="tema-btn somente-js" type="button" data-tema aria-label="Tema escuro" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3a8 8 0 0 0 11 12A9 9 0 1 1 9 3zm8 0v4m-2-2h4" /></svg></button></nav>
 </header>
+<main id="conteudo-principal" tabindex="-1">
 
 <section class="heroi" id="inicio">
-<a class="novo surge" href="#app"><b>NOVO</b>Navegador embutido: assista cada candidatura<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
-<div class="plataformas surge" style="animation-delay: 60ms"><span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M2 20h20" /></svg>Mac e Windows</span><i></i><span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="3" /><path d="M11 18h2" /></svg>Controle pelo iPhone e Android</span><i></i><span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>Tudo no seu computador</span></div>
-<h1 class="h1 surge" style="animation-delay: 120ms">Sua próxima vaga, <span class="grad">sem passar o dia aplicando.</span></h1>
-<p class="lead surge" style="animation-delay: 180ms">O Applyer acha vagas da sua área, no Brasil ou lá fora, prepara cada candidatura com o seu currículo e envia quando você aprovar. Um clique por dia, usando a IA que você já paga.</p>
-<div id="espera" class="cta surge" style="animation-delay: 240ms; scroll-margin-top: 120px">
-<div class="bs" data-bs>
-<button class="tecla bs-main" type="button" data-bs-principal><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path data-bs-icone d="M3 4h18v12H3zM8 21h8M12 16v5" /></svg><span data-bs-texto>Baixar para Windows</span></button>
-<button class="tecla bs-seta" type="button" data-bs-seta aria-haspopup="true" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="M6 9l6 6 6-6" /></svg></button>
-<div class="vidro bs-menu" data-bs-menu role="group" aria-label="Plataformas" hidden>
-<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20" /></svg>macOS<small>Disponível</small></button>
-<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zM8 21h8M12 16v5" /></svg>Windows<small>Disponível</small></button>
-<button class="bs-item" type="button" data-plat="linux" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5" /></svg>Linux<small class="breve">Em breve</small></button>
+<div class="plataformas surge">
+<span>Em breve para <img src="marcas/mac.svg" alt=""> macOS e <img src="marcas/win.svg" alt=""> Windows</span><i></i>
+<span><img class="arte-local" src="marcas/local.svg" alt="">Histórico no computador</span></div>
+<h1 class="h1 surge">Escolha suas vagas. <span class="grad">Revise tudo antes de enviar.</span></h1>
+<p class="lead surge">Reúna vagas da sua área, prepare respostas a partir do currículo e acompanhe cada candidatura em um só lugar, no seu computador.</p>
+<div id="espera" class="cta surge" style="scroll-margin-top: 120px">
+<a class="btn-play" href="#app"><span class="play-anel"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3" stroke="white" stroke-width="1.5" fill="none"/><path fill="white" d="m10 8 6 4-6 4z"/></svg></span>Experimentar a demonstração</a>
+<div class="bs somente-js" data-bs>
+<button class="tecla bs-main" type="button" data-bs-principal disabled><img class="marca-so" data-bs-icone src="marcas/win.svg" alt=""><span data-bs-texto>Baixar para Windows</span></button>
+<button class="tecla bs-seta" type="button" data-bs-seta aria-controls="plataformas-1" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="m5 9 7 6 7-6" /></svg></button>
+<div class="vidro bs-menu" data-bs-menu id="plataformas-1" role="group" aria-label="Plataformas" hidden>
+<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">macOS<small>Em lançamento</small></button>
+<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><img class="marca-so" src="marcas/win.svg" alt="">Windows<small>Em lançamento</small></button>
+<button class="bs-item" type="button" data-plat="linux" aria-pressed="false"><img class="marca-so" src="marcas/linux.svg" alt="">Linux<small class="breve">Em breve</small></button>
 <span class="bs-grupo">Apps para celular</span>
-<button class="bs-item" type="button" data-plat="ios" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10.5 5h3" /></svg>iPhone<small>Disponível</small></button>
-<button class="bs-item" type="button" data-plat="android" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM5 17h14M12 6v.01" /></svg>Android<small>Disponível</small></button>
+<button class="bs-item" type="button" data-plat="ios" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">iPhone<small class="breve">Em breve</small></button>
+<button class="bs-item" type="button" data-plat="android" aria-pressed="false"><img class="marca-so" src="marcas/android.svg" alt="">Android<small class="breve">Em breve</small></button>
 </div>
 </div>
-<a class="btn-play" href="#app"><span class="play-anel"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="fill: #FFFFFF; stroke: none"><path d="M8 5l11 7-11 7z" /></svg></span>Ver o app rodando</a>
 </div>
-<div class="com-ia surge" style="animation-delay: 300ms">
-<span>Grátis para baixar · funciona com</span>
-<span class="ia-nome"><span class="logo-slot" aria-hidden="true">C</span>Claude</span>
-<span class="ia-nome"><span class="logo-slot" aria-hidden="true">O</span>ChatGPT</span>
-<span class="ia-nome"><span class="logo-slot" aria-hidden="true">G</span>Gemini</span>
-<span class="ia-nome"><span class="logo-slot" aria-hidden="true">X</span>Grok</span>
+<div class="com-ia surge">
+<span>Explore as conexões de IA</span>
+<span class="ia-nome"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span>Claude</span>
+<span class="ia-nome"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span>ChatGPT</span>
+<span class="ia-nome"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span>Gemini</span>
+<span class="ia-nome"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span>Grok (previsto)</span>
 </div>
 </section>
 
 <section class="previa" id="app" aria-label="Prévia interativa do app Applyer">
+<div class="secao-cab"><span class="eyebrow">Demonstração interativa</span><h2 class="h2">Experimente a Lista do dia.</h2><p class="lead">Explore o app com vagas fictícias. Você pode selecionar candidaturas e simular o envio aqui na página.</p></div>
+<noscript><p>Ative o JavaScript para interagir com a prévia.</p></noscript>
 <div class="vidro app-janela">
-<div class="app-barra"><span class="semaforo" aria-hidden="true"><i></i><i></i><i></i></span><span class="app-titulo">Applyer — <span data-liga="abaNome">Hoje</span></span><span class="chip"><span class="ponto pulsa" style="background: #FF9A4D"></span>enviando</span></div>
+<div class="app-barra"><span class="semaforo" aria-hidden="true"><i></i><i></i><i></i></span><span class="app-titulo">Applyer — <span data-liga="abaNome">Hoje</span></span><span class="chip"><span class="ponto pulsa" style="background: #FF9A4D"></span>Exemplo</span></div>
 <div class="app-corpo">
-<nav class="app-lado" aria-label="Seções do app (prévia)">
+<nav class="app-lado somente-js" aria-label="Seções do app (prévia)">
 <button class="aba on" type="button" data-aba="hoje" aria-pressed="true">Hoje</button>
 <button class="aba" type="button" data-aba="triagem" aria-pressed="false">Triagem<span class="n">3</span></button>
 <button class="aba" type="button" data-aba="lista" aria-pressed="false">Lista do dia<span class="n" data-liga="nSel">4</span></button>
 <button class="aba" type="button" data-aba="aovivo" aria-pressed="false">Ao vivo</button>
 <button class="aba" type="button" data-aba="quadro" aria-pressed="false">Quadro</button>
-<div class="lado-ia"><span class="logo-slot" data-liga="prov.ini">C</span><div><b data-liga="prov.nome">Claude</b><span data-liga="prov.curto">Claude Code conectado</span></div></div>
+<div class="lado-ia"><span class="logo-slot"><img data-prov-icone src="marcas/claude.svg" alt=""></span><div><b data-liga="prov.nome">Claude</b><span data-liga="prov.curto">Claude Code</span></div></div>
 </nav>
 
 <div class="app-tela" data-tela="hoje">
@@ -81,7 +83,7 @@
 <span class="selo" style="align-self: flex-start">Pronta às 8:02</span>
 <b style="font-size: 22px; letter-spacing: -0.02em">Sua Lista do dia está pronta</b>
 <p class="t-sub"><span data-liga="nSel">4</span> candidaturas preparadas enquanto você dormia: currículo, carta e respostas.</p>
-<div><button class="mini-btn" type="button" data-ir="lista">Revisar e aprovar<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></div>
+<div><button class="mini-btn somente-js" type="button" data-ir="lista">Revisar e aprovar<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h15M13 7l6 6-6 5" /></svg></button></div>
 </div>
 <div class="peca" style="display: flex; align-items: center; gap: 14px">
 <div class="anel"><svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="40" fill="none" style="stroke: var(--linha)" stroke-width="9" /><circle cx="48" cy="48" r="40" fill="none" stroke="url(#lgA)" stroke-width="9" stroke-linecap="round" stroke-dasharray="251.33" data-anel style="stroke-dashoffset: 226.2; transition: stroke-dashoffset .8s" transform="rotate(-90 48 48)" /></svg><b><span class="anel-n" data-liga="enviadasHoje">3</span><span>de 30 hoje</span></b></div>
@@ -101,8 +103,8 @@
 <div class="peca" style="display: flex; flex-direction: column; gap: 12px">
 <div class="vaga-topo"><span class="av av-g c3" data-tri-av>AS</span><div><b style="font-size: 18px"><span data-liga="tri.cargo">Analista de Marketing Digital Sênior</span></b><span data-liga="tri.onde">Aster Saúde · Híbrido · São Paulo</span></div><span class="match"><span data-liga="tri.match">94</span>%</span></div>
 <b style="font-size: 22px; color: var(--verde)"><span data-liga="tri.sal">R$ 9–11 mil/mês</span> <span style="font-size: 13px; font-weight: 500; color: var(--texto2)" data-liga="tri.brl">CLT</span></b>
-<ul class="motivos"><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span data-liga="tri.p0">Pede mídia paga e CRM, que estão no seu currículo</span></li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span data-liga="tri.p1">Híbrido, 2 dias no escritório</span></li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span data-liga="tri.p2">Paga acima da sua pretensão</span></li></ul>
-<div style="display: flex; gap: 10px; justify-content: space-between"><button class="mini-btn claro" type="button" data-triagem="pular">Pular</button><button class="mini-btn" type="button" data-triagem="aplicar">Aplicar<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></div>
+<ul class="motivos"><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11" /></svg><span data-liga="tri.p0">Pede mídia paga e CRM, que estão no seu currículo</span></li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11" /></svg><span data-liga="tri.p1">Híbrido, 2 dias no escritório</span></li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11" /></svg><span data-liga="tri.p2">Paga acima da sua pretensão</span></li></ul>
+<div style="display: flex; gap: 10px; justify-content: space-between"><button class="mini-btn claro" type="button" data-triagem="anterior">Anterior</button><button class="mini-btn" type="button" data-triagem="proxima">Próxima<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h15M13 7l6 6-6 5" /></svg></button></div>
 </div>
 </div>
 </div>
@@ -110,32 +112,32 @@
 <div class="app-tela" data-tela="lista" hidden>
 <span class="t-sobre">preparada às 8:02</span>
 <h2 class="t-tit">Lista do dia</h2>
-<div class="peca" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px"><b style="font-size: 18px"><span data-liga="nSel">4</span> de 4 selecionadas</b><button class="mini-btn" type="button" data-aprovar>Aprovar <span data-liga="nSel">4</span> e enviar<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></div>
+<div class="peca" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px"><b style="font-size: 18px"><span data-liga="nSel">4</span> de 4 selecionadas</b><button class="mini-btn" type="button" data-aprovar>Aprovar <span data-liga="nSel">4</span> e enviar<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h15M13 7l6 6-6 5" /></svg></button></div>
 <div class="lst" data-linha="0"><span class="av c0">NV</span><div><b>Analista de Marketing Pleno</b><span>Nuvio Varejo · Gupy</span></div><span class="sal">R$ 7–9 mil</span><button class="chave-mini on" type="button" data-chave="0" aria-pressed="true" aria-label="Tirar Nuvio Varejo"><span></span></button></div>
-<div class="lst" data-linha="1"><span class="av c1">LP</span><div><b>Growth Marketing Manager</b><span>Lumen Pay · Greenhouse</span></div><span class="sal">US$ 4–5k</span><button class="chave-mini on" type="button" data-chave="1" aria-pressed="true" aria-label="Tirar Lumen Pay"><span></span></button></div>
+<div class="lst" data-linha="1"><span class="av c1">LP</span><div><b>Growth Marketing Manager</b><span>Lumen Pay · InHire</span></div><span class="sal">US$ 4–5k</span><button class="chave-mini on" type="button" data-chave="1" aria-pressed="true" aria-label="Tirar Lumen Pay"><span></span></button></div>
 <div class="lst" data-linha="2"><span class="av c2">FL</span><div><b>Coordenador de Marketing</b><span>Ferrous Logística · InHire</span></div><span class="sal">R$ 11 mil</span><button class="chave-mini on" type="button" data-chave="2" aria-pressed="true" aria-label="Tirar Ferrous Logística"><span></span></button></div>
 <div class="lst" data-linha="3"><span class="av c4">HS</span><div><b>Especialista em CRM</b><span>Halcyon Saúde · LinkedIn</span></div><span class="sal">R$ 9,5 mil</span><button class="chave-mini on" type="button" data-chave="3" aria-pressed="true" aria-label="Tirar Halcyon Saúde"><span></span></button></div>
 </div>
 
 <div class="app-tela" data-tela="aovivo" style="padding-bottom: 28px" hidden>
-<span class="t-sobre">Enviando agora · <span data-liga="enviadas">0</span> de 4</span>
+<span class="t-sobre">Envios simulados · <span data-liga="enviadasDe">0/4</span></span>
 <h2 class="t-tit">Ao vivo</h2>
+<button class="mini-btn" type="button" data-avancar>Avançar simulação</button>
 <div class="linha2" style="align-items: flex-start">
 <div class="fila" style="flex: 1 1 220px; min-width: 0">
 <div class="fila-it" data-fila="0"><span class="av c0">NV</span><div><b>Nuvio Varejo</b><span>Gupy</span></div><span class="pill" data-pill>Na fila</span></div>
-<div class="fila-it" data-fila="1"><span class="av c1">LP</span><div><b>Lumen Pay</b><span>Greenhouse</span></div><span class="pill" data-pill>Na fila</span></div>
+<div class="fila-it" data-fila="1"><span class="av c1">LP</span><div><b>Lumen Pay</b><span>InHire</span></div><span class="pill" data-pill>Na fila</span></div>
 <div class="fila-it" data-fila="2"><span class="av c2">FL</span><div><b>Ferrous Logística</b><span>InHire</span></div><span class="pill" data-pill>Na fila</span></div>
 <div class="fila-it" data-fila="3"><span class="av c4">HS</span><div><b>Halcyon Saúde</b><span>LinkedIn</span></div><span class="pill" data-pill>Na fila</span></div>
 </div>
 <div class="nav-grande" style="flex: 2 1 540px; max-width: 540px">
 <div class="pip-tela" data-navegador>
-<div class="pt-barra"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg><span class="pt-url"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg><span data-url></span></span><span class="pt-plat" data-plat-nome></span></div>
+<div class="pt-barra"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 6" /></svg><span class="pt-url"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg><span data-url></span></span><span class="pt-plat" data-plat-nome></span></div>
 <div class="pt-carrega" data-carrega hidden></div>
 <div class="pt-pagina">
 <div class="pt-cab"><span class="av" data-av></span><div><b data-cargo></b><span data-empresa></span></div></div>
 <div class="pt-campos"><div class="ff" data-campo="0"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="1"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="2"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="3"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="4"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="pt-enviar"><span class="ff-enviar" data-enviar>Submit application</span></div></div>
 </div>
-<span class="pt-cursor" data-cursor><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 2l15 7.5-6.5 2-2.5 6.5z" fill="#121633" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
 </div>
 </div>
 </div>
@@ -144,7 +146,7 @@
 <div class="app-tela" data-tela="quadro" hidden>
 <span class="t-sobre">31 enviadas antes · 5 em processo</span>
 <h2 class="t-tit">Quadro</h2>
-<div class="kanban">
+<div class="kanban" role="region" aria-label="Etapas do quadro de candidaturas" tabindex="0">
 <div class="col"><b class="cn">Enviada</b><div class="cart"><b>Ridgeway Labs</b><span>Analista de Mídia</span><em>Enviada em 09/11</em></div><div class="cart"><b>Lattice Mobility</b><span>Especialista em SEO</span><em>Enviada em 06/11</em></div></div>
 <div class="col"><b class="cn">Teste</b><div class="cart"><b>Saffron Commerce</b><span>Analista de Marketing</span><em>Case até sex, 13/11</em></div></div>
 <div class="col"><b class="cn">Entrevista</b><div class="cart"><b>Orbit Health</b><span>Coordenador de Marketing</span><em>Qui, 12/11 · 14h</em></div><div class="cart"><b>Arbor Learning</b><span>Analista de CRM</span><em>Seg, 16/11 · 11h</em></div></div>
@@ -153,78 +155,68 @@
 </div>
 </div>
 
-<aside class="vidro pip" data-pip aria-label="Navegador embutido do Applyer (prévia)">
-<div class="pip-cab"><span class="pip-status"><span class="ponto pulsa" style="background: #FF9A4D"></span><span data-liga="pipStatus">Intervalo humano · Nuvio Varejo</span></span><span class="chip" data-liga="enviadasDe">0/4</span><button class="pip-btn" type="button" data-pip-fixar aria-pressed="false" aria-label="Fixar o navegador aberto"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 6 4 3H6l4-3z" /><path d="M12 13v7" /></svg></button></div>
+<aside class="vidro pip somente-js" data-pip aria-label="Navegador embutido do Applyer (prévia)">
+<div class="pip-cab"><span class="pip-status"><span class="ponto pulsa" style="background: #FF9A4D"></span><span data-liga="pipStatus">Intervalo humano · Nuvio Varejo</span></span><span class="chip" data-liga="enviadasDe">0/4</span><button class="pip-btn" type="button" data-pip-fixar aria-pressed="false" aria-label="Ampliar a prévia do navegador"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 3 8 3-2 2-1 4 2 4-11-4 4-2 2-4z" /><path d="m11 14-3 7" /></svg></button></div>
 <div class="pip-janela">
 <div class="pip-tela" data-navegador>
-<div class="pt-barra"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg><span class="pt-url"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg><span data-url></span></span><span class="pt-plat" data-plat-nome></span></div>
+<div class="pt-barra"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 6" /></svg><span class="pt-url"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg><span data-url></span></span><span class="pt-plat" data-plat-nome></span></div>
 <div class="pt-carrega" data-carrega hidden></div>
 <div class="pt-pagina">
 <div class="pt-cab"><span class="av" data-av></span><div><b data-cargo></b><span data-empresa></span></div></div>
 <div class="pt-campos"><div class="ff" data-campo="0"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="1"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="2"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="3"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="ff" data-campo="4"><span class="ff-rot" data-rot></span><span class="ff-val"><span class="valor" data-val hidden></span></span></div><div class="pt-enviar"><span class="ff-enviar" data-enviar>Submit application</span></div></div>
 </div>
-<span class="pt-cursor" data-cursor><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 2l15 7.5-6.5 2-2.5 6.5z" fill="#121633" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
 </div>
-<span class="pip-dica"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>Passe o mouse para assistir</span>
+<span class="pip-dica"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 13q9-14 20-2-8 13-20 2z" /><circle cx="12" cy="12" r="3" /></svg>Amplie pelo botão acima</span>
 </div>
 </aside>
 </div>
-<div class="legenda"><span class="dedo"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z" /></svg>Prévia interativa: clique nas seções e passe o mouse no navegador</span><span><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Nada sai sem você aprovar</span></div>
+<div class="legenda somente-js"><span class="dedo"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 15 8-7 2-3 7z" /></svg>Explore as abas para revisar a lista e simular o envio</span><span><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 5 5 11-11" /></svg>Nada sai sem você aprovar</span></div>
 </section>
 
-<section class="fita-caixa" aria-label="IAs compatíveis">
-<span class="fita-rot">Conecte a IA que você já usa</span>
+<section class="fita-caixa" aria-label="Integrações de IA disponíveis e previstas">
+<span class="fita-rot">Formas de conectar a sua IA</span>
 <div class="fita">
 <div class="fita-trilho">
-<div class="vidro fita-item"><span class="logo-slot">C</span><div><b>Claude</b><span>Claude Code ou chave</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot">O</span><div><b>ChatGPT</b><span>Codex CLI ou chave</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot">G</span><div><b>Gemini</b><span>Gemini CLI ou chave</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot">X</span><div><b>Grok</b><span>Chave da xAI</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot">R</span><div><b>OpenRouter</b><span>Uma chave, vários modelos</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot">L</span><div><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></div></div>
-<div class="vidro fita-item" aria-hidden="true"><span class="logo-slot">C</span><div><b>Claude</b><span>Claude Code ou chave</span></div></div>
-<div class="vidro fita-item" aria-hidden="true"><span class="logo-slot">O</span><div><b>ChatGPT</b><span>Codex CLI ou chave</span></div></div>
-<div class="vidro fita-item" aria-hidden="true"><span class="logo-slot">G</span><div><b>Gemini</b><span>Gemini CLI ou chave</span></div></div>
-<div class="vidro fita-item" aria-hidden="true"><span class="logo-slot">X</span><div><b>Grok</b><span>Chave da xAI</span></div></div>
-<div class="vidro fita-item" aria-hidden="true"><span class="logo-slot">R</span><div><b>OpenRouter</b><span>Uma chave, vários modelos</span></div></div>
-<div class="vidro fita-item" aria-hidden="true"><span class="logo-slot">L</span><div><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span><div><b>Claude</b><span>Claude Code ou chave</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span><div><b>ChatGPT</b><span>Chave da OpenAI</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span><div><b>Gemini</b><span>Chave do Google</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span><div><b>Grok</b><span>Integração prevista</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/openrouter.svg" alt=""></span><div><b>OpenRouter</b><span>Uma chave, vários modelos</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/local.svg" alt=""></span><div><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></div></div>
 </div>
 </div>
 </section>
 
 <section class="secao" id="como">
-<div class="secao-cab revela"><span class="eyebrow">Como funciona</span><h2 class="h2">Um dia com o Applyer.</h2><p class="lead">Ele trabalha enquanto você dorme. Você só aparece para decidir.</p></div>
-<div class="areas revela" aria-label="Áreas atendidas"><span class="areas-rot">Para qualquer área</span><span class="chip">Tecnologia</span><span class="chip">Marketing</span><span class="chip">Vendas</span><span class="chip">Saúde</span><span class="chip">Administrativo</span><span class="chip">Finanças</span><span class="chip">Educação</span><span class="chip">Design</span><span class="chip">Atendimento</span><span class="chip">Jurídico</span><span class="chip">Engenharia</span><span class="chip">Logística</span></div>
+<div class="secao-cab revela"><span class="eyebrow">Como funciona</span><h2 class="h2">Um dia com o Applyer.</h2><p class="lead">Veja um exemplo de rotina, da escolha das vagas ao acompanhamento das respostas.</p></div>
 <div class="dia">
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">02:00</span><span class="quem app">Applyer</span></div><h3>Busca enquanto você dorme</h3><p>LinkedIn, Gupy, InHire, Indeed e sites de empresas. Só vagas da sua área, do jeito que você filtrou: cidade ou remoto, salário, Brasil ou exterior.</p></article>
+<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">02:00</span><span class="quem app">Applyer</span></div><h3>Encontre vagas da sua área</h3><p>Reúna oportunidades e filtre por área, local e faixa salarial. Na demonstração, há vagas nacionais e internacionais.</p></article>
 <article class="vidro hora revela"><div class="hora-topo"><span class="relogio">07:30</span><span class="quem app">Applyer</span></div><h3>Prepara cada pacote</h3><p>Currículo ajustado para a vaga, carta curta e as respostas do formulário, em português ou inglês, tudo a partir do que está no seu currículo. Nunca inventa.</p></article>
 <article class="vidro hora revela"><div class="hora-topo"><span class="relogio">08:02</span><span class="quem voce">Você</span></div><h3>Triagem em segundos</h3><p>Cartões com salário, modelo de contratação, onde é o trabalho e por que a vaga combina com você. Aplicar ou pular.</p></article>
 <article class="vidro hora revela"><div class="hora-topo"><span class="relogio">09:14</span><span class="quem voce">Você</span></div><h3>Um gesto para aprovar</h3><p>Revise o que quiser e aprove o lote do dia. A aprovação vale só para hoje.</p>
-<button class="deslize" type="button" data-deslize aria-pressed="false"><span class="deslize-txt"><i data-deslize-espera>Deslize para aprovar 11 vagas</i><span data-deslize-feito hidden>Aprovado · 11 indo agora</span></span><span class="knob"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path data-deslize-icone d="M5 12h14M13 6l6 6-6 6" /></svg></span></button>
+<button class="deslize somente-js" type="button" data-deslize aria-pressed="false"><span class="deslize-txt"><i data-deslize-espera>Simular aprovação do lote</i><span data-deslize-feito hidden>Lote aprovado na demonstração</span></span><span class="knob"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path data-deslize-icone d="M3 13h15M13 7l6 6-6 5" /></svg></span></button>
 </article>
 <article class="vidro hora revela"><div class="hora-topo"><span class="relogio">09:15</span><span class="quem app">Applyer</span></div><h3>Envia, e você assiste</h3><p>Uma vaga por vez, em ritmo humano, no navegador embutido. Minimize e ele fica no canto. Login e captcha ficam com você.</p></article>
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">depois</span><span class="quem app">Applyer</span></div><h3>Acompanha seu e-mail</h3><p>Lê as respostas, só leitura, e move cada vaga no Quadro: teste, entrevista, proposta. Recusa e oferta só mudam quando você confirma.</p></article>
+<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">depois</span><span class="quem voce">Você</span></div><h3>Acompanhe as respostas</h3><p>Atualize o Quadro quando receber uma resposta. Assim você vê quais vagas estão em teste, entrevista ou proposta.</p></article>
 </div>
 </section>
 
 <section class="secao" id="ia">
-<div class="secao-cab revela"><span class="eyebrow">Sua IA</span><h2 class="h2">Conecte a sua IA em um clique.</h2><p class="lead">Use a assinatura que você já paga ou a sua própria chave. Troque quando quiser, sem perder nada.</p></div>
+<div class="secao-cab revela"><span class="eyebrow">Sua IA</span><h2 class="h2">Escolha a IA para preparar sua candidatura.</h2><p class="lead">Selecione um provedor para ver as formas de conexão previstas no app. O histórico das vagas fica no computador.</p></div>
 <div class="ia revela">
-<div class="provs" role="group" aria-label="Escolha uma IA">
-<button class="prov on" type="button" data-prov="claude" aria-pressed="true"><span class="logo-slot">C</span><div><b>Claude</b><span>Claude Code ou chave</span></div></button>
-<button class="prov" type="button" data-prov="chatgpt" aria-pressed="false"><span class="logo-slot">O</span><div><b>ChatGPT</b><span>Codex CLI ou chave</span></div></button>
-<button class="prov" type="button" data-prov="gemini" aria-pressed="false"><span class="logo-slot">G</span><div><b>Gemini</b><span>Gemini CLI ou chave</span></div></button>
-<button class="prov" type="button" data-prov="grok" aria-pressed="false"><span class="logo-slot">X</span><div><b>Grok</b><span>Chave da xAI</span></div></button>
-<button class="prov" type="button" data-prov="openrouter" aria-pressed="false"><span class="logo-slot">R</span><div><b>OpenRouter</b><span>Uma chave, vários modelos</span></div></button>
-<button class="prov" type="button" data-prov="local" aria-pressed="false"><span class="logo-slot">L</span><div><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></div></button>
+<div class="provs somente-js" role="group" aria-label="Escolha uma IA">
+<button class="prov on" type="button" data-prov="claude" aria-pressed="true"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span><span class="prov-texto"><b>Claude</b><span>Claude Code ou chave</span></span></button>
+<button class="prov" type="button" data-prov="chatgpt" aria-pressed="false"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span><span class="prov-texto"><b>ChatGPT</b><span>Chave da OpenAI</span></span></button>
+<button class="prov" type="button" data-prov="gemini" aria-pressed="false"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span><span class="prov-texto"><b>Gemini</b><span>Chave do Google</span></span></button>
+<button class="prov" type="button" data-prov="grok" aria-pressed="false"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span><span class="prov-texto"><b>Grok</b><span>Integração prevista</span></span></button>
+<button class="prov" type="button" data-prov="openrouter" aria-pressed="false"><span class="logo-slot"><img src="marcas/openrouter.svg" alt=""></span><span class="prov-texto"><b>OpenRouter</b><span>Uma chave, vários modelos</span></span></button>
+<button class="prov" type="button" data-prov="local" aria-pressed="false"><span class="logo-slot"><img src="marcas/local.svg" alt=""></span><span class="prov-texto"><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></span></button>
 </div>
 <div class="vidro painel" aria-live="polite">
-<div class="painel-cab"><span class="logo-slot" data-liga="prov.ini">C</span><div><b style="font-size: 22px; letter-spacing: -0.02em" data-liga="prov.nome">Claude</b><span data-liga="prov.empresa">Anthropic</span></div><span class="estado ok" data-prov-estado><span class="ponto" style="background: currentColor"></span><span data-liga="prov.estado">Conectado</span></span></div>
-<pre class="term" data-term><span class="c">$ </span><span data-liga="prov.cmd">applyer ia conectar claude</span>
-<span class="g">✓</span> <span data-liga="prov.saida1">Claude Code encontrado neste computador</span>
-<span class="g">✓</span> <span data-liga="prov.saida2">Usando a sua assinatura. Nenhuma chave salva.</span></pre>
+<div class="painel-cab"><span class="logo-slot"><img data-prov-icone src="marcas/claude.svg" alt=""></span><div><b style="font-size: 22px; letter-spacing: -0.02em" data-liga="prov.nome">Claude</b><span data-liga="prov.empresa">Anthropic</span></div><span class="estado ok" data-prov-estado><span class="ponto" style="background: currentColor"></span><span data-liga="prov.estado">No app</span></span></div>
+<p class="t-sub" data-liga="prov.detalhe">Use o Claude Code já conectado no computador ou configure uma chave da Anthropic no app.</p>
 <div class="metodos" data-metodos></div>
-<div class="troca"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h13l-3-3M20 17H7l3 3" /></svg>Trocou de IA? As vagas, o histórico e o seu perfil continuam iguais.</div>
+<div class="troca"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 3 5 4-5 4m4-4H8l-3 3m5 11-5-4 5-4m-4 4h10l3-3" /></svg>Trocou de IA? As vagas, o histórico e o seu perfil continuam iguais.</div>
 </div>
 </div>
 </section>
@@ -232,142 +224,133 @@
 <section class="secao" id="seguranca">
 <div class="secao-cab revela"><span class="eyebrow">Segurança</span><h2 class="h2">Um copiloto, não um robô solto.</h2><p class="lead">Algumas coisas o Applyer nunca faz, nem se você ou a IA pedirem.</p></div>
 <div class="nunca">
-<div class="vidro nunca-item revela"><span class="nunca-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L3 10.5l7 2.5 2.5 7z" /></svg></span>Nunca envia nada sem a sua aprovação</div>
-<div class="vidro nunca-item revela"><span class="nunca-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg></span>Nunca pede CPF, RG, senha ou dados do banco</div>
-<div class="vidro nunca-item revela"><span class="nunca-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /></svg></span>Nunca inventa experiência que você não tem</div>
-<div class="vidro nunca-item revela"><span class="nunca-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg></span>Login, captcha e testes pessoais ficam com você</div>
-<div class="vidro nunca-item revela"><span class="nunca-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span>Limite por dia e ritmo humano no LinkedIn</div>
-<div class="vidro nunca-item revela"><span class="nunca-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></svg></span>Seus dados não saem do seu computador</div>
+<div class="vidro nunca-item revela"><img loading="lazy" decoding="async" width="74" height="68" class="nunca-ic" src="artes/envio-aprovado.svg" alt="">Nunca envia nada sem a sua aprovação</div>
+<div class="vidro nunca-item revela"><img loading="lazy" decoding="async" width="74" height="68" class="nunca-ic" src="artes/credencial-privada.svg" alt="">Nunca pede CPF, RG, senha ou dados do banco</div>
+<div class="vidro nunca-item revela"><img loading="lazy" decoding="async" width="74" height="68" class="nunca-ic" src="artes/curriculo-verificado.svg" alt="">Nunca inventa experiência que você não tem</div>
+<div class="vidro nunca-item revela"><img loading="lazy" decoding="async" width="74" height="68" class="nunca-ic" src="artes/acesso-pessoal.svg" alt="">Login, captcha e testes pessoais ficam com você</div>
+<div class="vidro nunca-item revela"><img loading="lazy" decoding="async" width="74" height="68" class="nunca-ic" src="artes/ritmo.svg" alt="">Limite por dia e ritmo humano no LinkedIn</div>
+<div class="vidro nunca-item revela"><img loading="lazy" decoding="async" width="74" height="68" class="nunca-ic" src="marcas/local.svg" alt="">Currículo e histórico ficam salvos no computador</div>
 </div>
 </section>
 
 <section class="secao">
-<div class="secao-cab revela"><span class="eyebrow">Comparação</span><h2 class="h2">Achar a vaga é metade. O Applyer faz o resto.</h2></div>
-<div class="vidro tabela-caixa revela">
+<div class="secao-cab revela"><span class="eyebrow">Comparação</span><h2 class="h2">Da busca ao acompanhamento da vaga.</h2></div>
+<div class="vidro tabela-caixa revela" tabindex="0" role="region" aria-label="Comparação de formas de organizar a busca de emprego">
 <table>
-<thead><tr><th scope="col">O que você precisa</th><th scope="col" class="c">Sites de vagas</th><th scope="col" class="c">Fazer na mão</th><th scope="col" class="nosso">Applyer</th></tr></thead>
+<thead><tr><th scope="col">Etapa</th><th scope="col">Na busca manual</th><th scope="col" class="nosso">Com o Applyer</th></tr></thead>
 <tbody>
-<tr><td>Achar vagas da sua área, aqui ou lá fora</td><td class="c sim">Sim</td><td class="c nao">Horas por semana</td><td class="nosso sim"><b>Sim, sozinho</b></td></tr>
-<tr><td>Currículo, carta e respostas para cada vaga</td><td class="c nao">Não</td><td class="c nao">Uma por uma</td><td class="nosso sim"><b>Prontos de manhã</b></td></tr>
-<tr><td>Enviar a candidatura</td><td class="c nao">Não</td><td class="c nao">Formulário por formulário</td><td class="nosso sim"><b>Com 1 clique seu</b></td></tr>
-<tr><td>Ver o envio acontecendo</td><td class="c nao">Não</td><td class="c sim">Sim</td><td class="nosso sim"><b>No navegador embutido</b></td></tr>
-<tr><td>Acompanhar retornos</td><td class="c nao">Não</td><td class="c nao">Planilha</td><td class="nosso sim"><b>Pelo seu e-mail</b></td></tr>
-<tr><td>Seus dados com você</td><td class="c nao">Depende</td><td class="c sim">Sim</td><td class="nosso sim"><b>Sim</b></td></tr>
+<tr><th scope="row">Escolher vagas</th><td>Revisar anúncios em abas separadas</td><td class="nosso">Comparar vagas em uma lista</td></tr>
+<tr><th scope="row">Preparar respostas</th><td>Consultar o currículo a cada formulário</td><td class="nosso">Revisar sugestões baseadas no currículo</td></tr>
+<tr><th scope="row">Aprovar o envio</th><td>Conferir cada formulário no site</td><td class="nosso">Selecionar o lote na Lista do dia</td></tr>
+<tr><th scope="row">Acompanhar o processo</th><td>Atualizar suas anotações</td><td class="nosso">Organizar as etapas no Quadro</td></tr>
 </tbody>
 </table>
 </div>
 </section>
 
 <section class="secao" id="preco">
-<div class="secao-cab revela"><span class="eyebrow">Preço</span><h2 class="h2">Comece de graça.</h2><p class="lead">Preços em definição. Baixe o app e comece pelo plano grátis.</p></div>
-<div class="vidro seletor revela" role="group" aria-label="Período de cobrança"><div class="seg-pol" data-seg-pol></div><button class="seg on" type="button" data-periodo="mensal" aria-pressed="true">Mensal</button><button class="seg" type="button" data-periodo="tri" aria-pressed="false">Trimestral</button></div>
+<div class="secao-cab revela"><span class="eyebrow">Assinatura</span><h2 class="h2">Um plano, três formas de pagar.</h2><p class="lead">O valor é do Applyer. O uso de um provedor de IA segue o plano ou a chave que você escolher. As assinaturas abrem no lançamento.</p></div>
 <div class="grade">
-<article class="vidro plano revela"><b style="font-size: 18px">Descoberta</b><span class="preco">Grátis</span><ul><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Busca e triagem de vagas</li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Limite por semana</li></ul><a class="btn-vidro" href="#baixar">Baixar grátis</a></article>
-<article class="vidro plano destaque revela"><b style="font-size: 18px">Pro</b><span class="preco"><span class="marcador">[PREÇO]</span><small data-liga="periodo">/mês</small></span><ul><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Lista do dia e envio com navegador embutido</li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Acompanhamento por e-mail</li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Controle pelo celular</li></ul><a class="tecla" href="#baixar">Baixar o app<span class="kbd"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg></span></a></article>
-<article class="vidro plano revela"><b style="font-size: 18px">Com a sua IA</b><span class="preco"><span class="marcador">[PREÇO]</span><small data-liga="periodo">/mês</small></span><ul><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Tudo do Pro</li><li><svg class="ic ic-p ok-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>Usa a sua assinatura ou a sua chave</li></ul><a class="btn-vidro" href="#baixar">Baixar o app</a></article>
+<article class="vidro plano destaque revela">
+<h3>Mensal</h3><p class="preco">R$ 29,90<small>/mês</small></p>
+<p class="economia">Cobrança mensal.</p>
+</article>
+<article class="vidro plano revela">
+<h3>Semestral</h3><p class="preco">R$ 161,46<small>/semestre</small></p>
+<p class="economia">Equivale a R$ 26,91 por mês. Economia de R$ 17,94 por semestre (10%).</p>
+</article>
+<article class="vidro plano revela">
+<h3>Anual</h3><p class="preco">R$ 287,04<small>/ano</small></p>
+<p class="economia">Equivale a R$ 23,92 por mês. Economia de R$ 71,76 por ano (20%).</p>
+</article>
 </div>
 </section>
 
 <section class="secao" id="baixar">
-<div class="secao-cab revela"><span class="eyebrow">Baixar</span><h2 class="h2">Baixe o Applyer.</h2><p class="lead">Escolha sua plataforma. O app roda no computador com Claude, ChatGPT, Gemini ou Grok, e o celular acompanha, pausa e aprova de longe.</p></div>
+<div class="secao-cab revela"><span class="eyebrow">Baixar</span><h2 class="h2">Escolha sua plataforma.</h2><p class="lead">O lançamento começa no macOS e no Windows. Os instaladores e os avisos de lançamento ainda estão em preparação.</p></div>
 <div class="baixe">
 <article class="so revela" data-so="mac" style="background: #D7C4FF">
-<span class="so-sombra" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20" /></svg></span>
-<span class="so-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20" /></svg></span>
-<span class="so-status">Disponível</span>
+<span class="so-sombra" aria-hidden="true"><img src="marcas/mac.svg" alt=""></span>
+<span class="so-ic" aria-hidden="true"><img src="marcas/mac.svg" alt=""></span>
+<span class="so-status">Em lançamento</span>
 <h3>macOS</h3>
 <p>O app completo no seu Mac: busca, Lista do dia, envio com navegador embutido e Quadro.</p>
-<button class="so-acao" type="button" data-baixar="mac"><span data-so-texto>Baixar para macOS</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg></button>
-<span class="so-barra" data-so-barra aria-hidden="true" hidden><span></span></span>
+<button class="so-acao" type="button" disabled data-baixar="mac"><span data-so-texto>Baixar para macOS</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3" /></svg></button>
 </article>
 <article class="so revela" data-so="win" style="background: #9FE3BC">
-<span class="so-sombra" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zM8 21h8M12 16v5" /></svg></span>
-<span class="so-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zM8 21h8M12 16v5" /></svg></span>
-<span class="so-status">Disponível</span>
+<span class="so-sombra" aria-hidden="true"><img src="marcas/win.svg" alt=""></span>
+<span class="so-ic" aria-hidden="true"><img src="marcas/win.svg" alt=""></span>
+<span class="so-status">Em lançamento</span>
 <h3>Windows</h3>
 <p>O mesmo app no seu PC, com os seus dados guardados numa pasta do computador.</p>
-<button class="so-acao" type="button" data-baixar="win"><span data-so-texto>Baixar para Windows</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg></button>
-<span class="so-barra" data-so-barra aria-hidden="true" hidden><span></span></span>
+<button class="so-acao" type="button" disabled data-baixar="win"><span data-so-texto>Baixar para Windows</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3" /></svg></button>
 </article>
 <article class="so revela" data-so="linux" style="background: #F5D27E">
-<span class="so-sombra" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5" /></svg></span>
-<span class="so-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5" /></svg></span>
+<span class="so-sombra" aria-hidden="true"><img src="marcas/linux.svg" alt=""></span>
+<span class="so-ic" aria-hidden="true"><img src="marcas/linux.svg" alt=""></span>
 <span class="so-status breve">Em breve</span>
 <h3>Linux</h3>
-<p>Estamos preparando. Ligue o aviso e mandamos o link assim que sair.</p>
-<button class="so-acao" type="button" data-baixar="linux"><span data-so-texto>Avisar quando sair</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" /></svg></button>
-<span class="so-barra" data-so-barra aria-hidden="true" hidden><span></span></span>
+<p>Uma versão para Linux está prevista após o lançamento para macOS e Windows.</p>
+<button class="so-acao" type="button" disabled data-baixar="linux"><span data-so-texto>Avisar quando sair</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M6 14v-3a6 6 0 0 1 12 0v3l2 3H4zm4 6q2 2 4 0M12 3v2" /></svg></button>
 </article>
 <article class="so revela larga" data-so="ios" style="background: #A6CDFF">
-<span class="so-sombra" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10.5 5h3" /></svg></span>
-<span class="so-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10.5 5h3" /></svg></span>
-<span class="so-status">Disponível</span>
+<span class="so-sombra" aria-hidden="true"><img src="marcas/mac.svg" alt=""></span>
+<span class="so-ic" aria-hidden="true"><img src="marcas/mac.svg" alt=""></span>
+<span class="so-status breve">Em breve</span>
 <h3>iPhone</h3>
-<p>App Store · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.</p>
-<button class="so-acao" type="button" data-baixar="ios"><span data-so-texto>Baixar na App Store</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M7 17L17 7M9 7h8v8" /></svg></button>
-<span class="so-barra" data-so-barra aria-hidden="true" hidden><span></span></span>
+<p>Em breve você poderá acompanhar o envio, pausar e aprovar pelo celular.</p>
+<button class="so-acao" type="button" disabled data-baixar="ios"><span data-so-texto>Avisar quando sair</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M6 14v-3a6 6 0 0 1 12 0v3l2 3H4zm4 6q2 2 4 0M12 3v2" /></svg></button>
 </article>
 <article class="so revela larga" data-so="android" style="background: #FFC1A6">
-<span class="so-sombra" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM5 17h14M12 6v.01" /></svg></span>
-<span class="so-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM5 17h14M12 6v.01" /></svg></span>
-<span class="so-status">Disponível</span>
+<span class="so-sombra" aria-hidden="true"><img src="marcas/android.svg" alt=""></span>
+<span class="so-ic" aria-hidden="true"><img src="marcas/android.svg" alt=""></span>
+<span class="so-status breve">Em breve</span>
 <h3>Android</h3>
-<p>Google Play · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.</p>
-<button class="so-acao" type="button" data-baixar="android"><span data-so-texto>Baixar no Google Play</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M7 17L17 7M9 7h8v8" /></svg></button>
-<span class="so-barra" data-so-barra aria-hidden="true" hidden><span></span></span>
+<p>Em breve você poderá acompanhar o envio, pausar e aprovar pelo celular.</p>
+<button class="so-acao" type="button" disabled data-baixar="android"><span data-so-texto>Avisar quando sair</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M6 14v-3a6 6 0 0 1 12 0v3l2 3H4zm4 6q2 2 4 0M12 3v2" /></svg></button>
 </article>
 </div>
 </section>
 
-<section class="secao">
-<div class="secao-cab revela"><span class="eyebrow">Perguntas</span><h2 class="h2">O que todo mundo pergunta.</h2></div>
+<section class="secao" id="perguntas">
+<div class="secao-cab revela"><span class="eyebrow">Perguntas</span><h2 class="h2">Dúvidas sobre o Applyer.</h2></div>
 <div class="faq">
-<div class="vidro faq-item revela">
-<button class="faq-p aberto" type="button" data-faq aria-expanded="true" aria-controls="faq-r0">Quais IAs funcionam?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
-<p class="faq-r" id="faq-r0">Claude, ChatGPT e Gemini pela assinatura que você já tem (Claude Code, Codex e Gemini CLI) ou por chave própria. Grok e OpenRouter funcionam com chave. Modelos rodando no seu computador chegam em breve.</p>
-</div>
-<div class="vidro faq-item revela">
-<button class="faq-p" type="button" data-faq aria-expanded="false" aria-controls="faq-r1">O LinkedIn pode bloquear minha conta?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
-<p class="faq-r" id="faq-r1" hidden>O LinkedIn não permite automação. Por isso o Applyer é um copiloto: limite por dia, ritmo humano e a sua aprovação em cada lote. Você também pode pausar só o LinkedIn.</p>
-</div>
-<div class="vidro faq-item revela">
-<button class="faq-p" type="button" data-faq aria-expanded="false" aria-controls="faq-r2">Preciso deixar o computador ligado?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
-<p class="faq-r" id="faq-r2" hidden>Sim, para buscar e enviar. O navegador roda dentro do app, devagar, e você pode minimizar e assistir quando quiser. Ele não mexe no seu mouse nem no seu teclado.</p>
-</div>
-<div class="vidro faq-item revela">
-<button class="faq-p" type="button" data-faq aria-expanded="false" aria-controls="faq-r3">Meus dados vão para algum servidor?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
-<p class="faq-r" id="faq-r3" hidden>Não. Currículo, vagas e histórico ficam numa pasta do seu computador. Só a IA que você escolheu recebe o necessário para cada tarefa.</p>
-</div>
-<div class="vidro faq-item revela">
-<button class="faq-p" type="button" data-faq aria-expanded="false" aria-controls="faq-r4">E se o formulário pedir algo que não está no meu currículo?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
-<p class="faq-r" id="faq-r4" hidden>O Applyer responde “não” ou “sem experiência”. Ele nunca inventa. Se pedir CPF ou senha, a vaga fica bloqueada e você decide.</p>
-</div>
-<div class="vidro faq-item revela">
-<button class="faq-p" type="button" data-faq aria-expanded="false" aria-controls="faq-r5">Funciona para qualquer área?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
-<p class="faq-r" id="faq-r5" hidden>Sim. Tecnologia, marketing, vendas, saúde, administrativo, finanças, educação e muito mais. Você escolhe a área, a cidade ou remoto, e se quer vagas no Brasil, no exterior ou as duas.</p>
-</div>
+<details class="vidro faq-item revela" id="faq-r0" open><summary class="faq-p">Quais IAs funcionam?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
+<p class="faq-r">O app oferece Claude Code ou chave da Anthropic e conexões por chave para outros provedores. Consulte as opções na seção Sua IA. Modelos locais estão previstos.</p></details>
+<details class="vidro faq-item revela" id="faq-r1"><summary class="faq-p">O LinkedIn pode bloquear minha conta?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
+<p class="faq-r">Sim. A plataforma pode restringir sua conta. No Applyer você revisa os envios e pode pausar essa plataforma.</p></details>
+<details class="vidro faq-item revela" id="faq-r2"><summary class="faq-p">Preciso deixar o computador ligado?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
+<p class="faq-r">Sim, para buscar e enviar. O navegador roda dentro do app, devagar, e você pode minimizar e assistir quando quiser. Ele não mexe no seu mouse nem no seu teclado.</p></details>
+<details class="vidro faq-item revela" id="faq-r3"><summary class="faq-p">Meus dados vão para algum servidor?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
+<p class="faq-r">Nesta página, a demonstração usa dados fictícios e o navegador guarda a preferência de tema. No app, o histórico fica no computador. O provedor de IA recebe o conteúdo necessário para a tarefa, e a plataforma da vaga recebe os campos da candidatura quando você aprova o envio.</p></details>
+<details class="vidro faq-item revela" id="faq-r4"><summary class="faq-p">E se o formulário pedir algo que não está no meu currículo?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
+<p class="faq-r">O Applyer responde “não” ou “sem experiência”. Ele nunca inventa. Se pedir CPF ou senha, a vaga fica bloqueada e você decide.</p></details>
+<details class="vidro faq-item revela" id="faq-r5"><summary class="faq-p">Funciona para qualquer área?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
+<p class="faq-r">Sim. Tecnologia, marketing, vendas, saúde, administrativo, finanças, educação e muito mais. Você escolhe a área, a cidade ou remoto, e se quer vagas no Brasil, no exterior ou as duas.</p></details>
 </div>
 </section>
 
 <section class="vidro final revela">
 <svg class="robo" viewBox="0 0 140 160" width="110" height="126" aria-hidden="true"><g class="r-flutua"><path class="r-fogo" d="M52 110 Q70 152 88 110 Z" fill="url(#lgFogo)" /><path d="M22 52 L28 14 Q31 7 37 13 L56 36 Z" fill="url(#lgOrelha)" /><path d="M118 52 L112 14 Q109 7 103 13 L84 36 Z" fill="url(#lgOrelha)" /><rect x="16" y="26" width="108" height="88" rx="40" fill="url(#lgCasco)" /><rect x="23" y="39" width="94" height="60" rx="27" fill="#A9B4FF" /><rect x="27" y="43" width="86" height="52" rx="23" fill="url(#lgVisor)" /><g class="r-olhos"><path d="M48 72 Q54 62 60 72" stroke="#5CF0FF" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M80 72 Q86 62 92 72" stroke="#5CF0FF" stroke-width="5" stroke-linecap="round" fill="none" /></g></g></svg>
-<h2 class="h2">Sua próxima vaga começa com um clique.</h2>
-<p class="lead">Baixe hoje e amanhã cedo a sua Lista do dia já está pronta.</p>
-<div class="bs" data-bs>
-<button class="tecla bs-main" type="button" data-bs-principal><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path data-bs-icone d="M3 4h18v12H3zM8 21h8M12 16v5" /></svg><span data-bs-texto>Baixar para Windows</span></button>
-<button class="tecla bs-seta" type="button" data-bs-seta aria-haspopup="true" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="M6 9l6 6 6-6" /></svg></button>
-<div class="vidro bs-menu cima" data-bs-menu role="group" aria-label="Plataformas" hidden>
-<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20" /></svg>macOS<small>Disponível</small></button>
-<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zM8 21h8M12 16v5" /></svg>Windows<small>Disponível</small></button>
-<button class="bs-item" type="button" data-plat="linux" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM7 9l3 3-3 3M12 15h5" /></svg>Linux<small class="breve">Em breve</small></button>
+<h2 class="h2">Veja quais vagas você aprovaria.</h2>
+<p class="lead">Abra a demonstração e monte uma lista com as vagas que fazem sentido para você.</p>
+<div class="bs somente-js" data-bs>
+<button class="tecla bs-main" type="button" data-bs-principal disabled><img class="marca-so" data-bs-icone src="marcas/win.svg" alt=""><span data-bs-texto>Baixar para Windows</span></button>
+<button class="tecla bs-seta" type="button" data-bs-seta aria-controls="plataformas-2" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="m5 9 7 6 7-6" /></svg></button>
+<div class="vidro bs-menu cima" data-bs-menu id="plataformas-2" role="group" aria-label="Plataformas" hidden>
+<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">macOS<small>Em lançamento</small></button>
+<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><img class="marca-so" src="marcas/win.svg" alt="">Windows<small>Em lançamento</small></button>
+<button class="bs-item" type="button" data-plat="linux" aria-pressed="false"><img class="marca-so" src="marcas/linux.svg" alt="">Linux<small class="breve">Em breve</small></button>
 <span class="bs-grupo">Apps para celular</span>
-<button class="bs-item" type="button" data-plat="ios" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10.5 5h3" /></svg>iPhone<small>Disponível</small></button>
-<button class="bs-item" type="button" data-plat="android" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM5 17h14M12 6v.01" /></svg>Android<small>Disponível</small></button>
+<button class="bs-item" type="button" data-plat="ios" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">iPhone<small class="breve">Em breve</small></button>
+<button class="bs-item" type="button" data-plat="android" aria-pressed="false"><img class="marca-so" src="marcas/android.svg" alt="">Android<small class="breve">Em breve</small></button>
 </div>
 </div>
-<span class="bs-nota">Mac, Windows, iPhone e Android · Linux em breve</span>
+<a class="btn-vidro" href="#app">Explorar a demonstração</a>
+<span class="bs-nota">Instaladores para macOS e Windows em preparação.</span>
 </section>
 
+</main>
 <footer class="rodape">
 <div class="rod-marca">
 <a class="marca" href="#inicio" style="font-size: 18px"><svg viewBox="0 0 120 120" width="28" height="28" aria-hidden="true"><rect width="120" height="120" rx="27" fill="url(#lgA)" /><g transform="rotate(12 60 60)"><path d="M60 20 L95 94 L60 77 Z" fill="#FFFFFF" fill-opacity="0.7" /><path d="M60 20 L25 94 L60 77 Z" fill="#FFFFFF" /></g></svg>Applyer</a>
@@ -375,10 +358,10 @@
 </div>
 <div class="rod-cols">
 <div class="rod-col"><b>Produto</b><a href="#app">O app</a><a href="#como">Como funciona</a><a href="#seguranca">Segurança</a><a href="#preco">Preço</a></div>
-<div class="rod-col"><b>IAs</b><a href="#ia">Claude</a><a href="#ia">ChatGPT</a><a href="#ia">Gemini</a><a href="#ia">Grok</a><a href="#ia">OpenRouter</a></div>
-<div class="rod-col"><b>Applyer</b><a href="#baixar">Baixar para Mac</a><a href="#baixar">Baixar para Windows</a><a href="#baixar">iPhone e Android</a><span class="marcador">[E-MAIL DE CONTATO]</span></div>
+<div class="rod-col"><b>Recursos</b><a href="#ia">Conexões de IA</a><a href="#baixar">Plataformas</a><a href="#perguntas">Perguntas frequentes</a></div>
+<div class="rod-col"><b>Suporte</b><a href="mailto:suporte@applyer.dev">suporte@applyer.dev</a><a href="#faq-r3">Uso de dados</a></div>
 </div>
-<div class="rod-baixo"><span>applyer.dev · Feito no Brasil</span><span><span class="marcador">[TERMOS]</span> · <span class="marcador">[PRIVACIDADE]</span></span></div>
+<div class="rod-baixo"><span>Applyer · Feito no Brasil</span></div>
 </footer>
 </div>
 </div>

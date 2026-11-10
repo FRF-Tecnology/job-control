@@ -441,6 +441,18 @@ func MesclarPerfil(atual, p Objeto) Objeto {
 	return novo
 }
 
+// ErroRespostaSensivel: o /perfil recusa resposta padrão para pergunta de número fiscal, documento, senha ou banco.
+const ErroRespostaSensivel = "o perfil não guarda resposta para pergunta de CPF, documento, senha ou banco; apague esta resposta"
+
+// cortarLinha devolve no máximo n letras do texto, numa linha só.
+func cortarLinha(s string, n int) string {
+	r := []rune(strings.Join(strings.Fields(s), " "))
+	if len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return string(r)
+}
+
 func exigirPerfilOk(perfil any) error {
 	if erros := dominio.ValidarPerfil(perfil); len(erros) > 0 {
 		return &dominio.ErroValidacao{Erros: erros}
@@ -605,6 +617,10 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 		if err := exigirPerfilOk(novo); err != nil {
 			return Resposta{}, err
+		}
+		// jc-a2y.7.5: só o que está sendo gravado agora (o corpo). No PATCH de outro campo, o que já está guardado não trava.
+		if pergunta := dominio.RespostaPadraoSensivel(c); pergunta != "" {
+			return Resposta{}, &dominio.ErroValidacao{Erros: []string{ErroRespostaSensivel + ": " + cortarLinha(pergunta, 80)}}
 		}
 		if err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) { e.Perfil = novo; return e, nil }); err != nil {
 			return Resposta{}, err
