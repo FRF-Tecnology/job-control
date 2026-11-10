@@ -202,59 +202,70 @@ function iniciarDeslize() {
   const trilho = $('[data-deslize]');
   const valor = $('.deslize-valor', trilho);
   const guia = $('.deslize-guia', trilho);
+  const carro = $('.deslize-carro', guia);
   const alca = $('.knob', guia);
-  const status = $('.deslize-txt', trilho);
+  const status = $('.deslize-status', trilho);
   const icone = $('[data-deslize-icone]', trilho);
   const reiniciar = $('[data-deslize-reiniciar]');
-  let arraste = null;
+  const confirmado = 'Lote aprovado na demonstração';
+  let arraste = null, quadro = 0;
 
-  function mostrar(fracao, aprovado) {
-    // O desenho acompanha o dedo continuamente. O controle nativo usa passos de 10%.
-    trilho.style.setProperty('--progresso', fracao);
-    valor.value = Math.floor(fracao * 10) * 10;
-    const noFim = fracao === 1;
-    const mensagem = noFim ? (aprovado ? 'Lote aprovado na demonstração' : 'Solte para aprovar') : 'Segure e arraste até o fim';
-    atributo(valor, 'aria-valuetext', noFim ? mensagem : valor.value + '%');
-    classe(trilho, 'no-fim', noFim);
-    classe(trilho, 'on', aprovado);
-    texto(status, mensagem);
-    atributo(icone, 'd', aprovado ? 'm4 12 5 5 11-11' : 'M3 13h15M13 7l6 6-6 5');
-    escondido(reiniciar, !aprovado);
+  function posicionar(fracao) {
+    carro.style.transform = `translate3d(${fracao * 100}%,0,0)`;
+    const passo = Math.floor(fracao * 10) * 10;
+    if (valor.valueAsNumber !== passo) valor.value = passo;
+    atributo(valor, 'aria-valuetext', fracao === 1 ? confirmado : passo + '%');
   }
 
-  function fracaoNoPonteiro(evento) {
-    const distancia = evento.clientX - arraste.inicio;
-    // A posição do toque pode ser arredondada para o pixel vizinho à borda.
-    if (distancia >= arraste.curso - 0.75) return 1;
-    return Math.max(0, distancia / arraste.curso);
+  function assentar(fracao) {
+    const aprovado = fracao === 1;
+    classe(trilho, 'on', aprovado);
+    posicionar(fracao);
+    texto(status, aprovado ? confirmado : '');
+    atributo(icone, 'd', aprovado ? 'm4 12 5 5 11-11' : 'M3 13h15M13 7l6 6-6 5');
+    escondido(reiniciar, !aprovado);
   }
 
   function encerrar(aprovado) {
     const id = arraste.id;
     arraste = null;
+    cancelAnimationFrame(quadro);
+    quadro = 0;
     if (alca.hasPointerCapture(id)) alca.releasePointerCapture(id);
     classe(trilho, 'arrastando', false);
-    mostrar(aprovado ? 1 : 0, aprovado);
+    assentar(aprovado ? 1 : 0);
   }
 
   alca.addEventListener('pointerdown', evento => {
     if (arraste || !evento.isPrimary || evento.button !== 0 || trilho.classList.contains('on')) return;
-    const curso = guia.getBoundingClientRect().width - alca.getBoundingClientRect().width;
+    const pista = guia.getBoundingClientRect(), botao = alca.getBoundingClientRect();
+    const curso = pista.width - botao.width;
     if (curso <= 0) return;
     evento.preventDefault();
     valor.focus({ preventScroll: true });
-    arraste = { id: evento.pointerId, curso, inicio: evento.clientX - curso * valor.valueAsNumber / 100 };
+    // Se pegar a alça durante a volta, continue do ponto que está sob o dedo.
+    const origem = Math.max(0, Math.min(1, (botao.left - pista.left) / curso));
+    arraste = { id: evento.pointerId, curso, x: evento.clientX, origem, fracao: origem, pista: trilho.getBoundingClientRect() };
     alca.setPointerCapture(evento.pointerId);
     classe(trilho, 'arrastando', true);
+    posicionar(origem);
   });
-  alca.addEventListener('pointermove', evento => {
-    if (arraste?.id === evento.pointerId) mostrar(fracaoNoPonteiro(evento), false);
-  });
-  alca.addEventListener('pointerup', evento => {
+  function acompanhar(evento) {
     if (arraste?.id !== evento.pointerId) return;
-    const area = trilho.getBoundingClientRect();
-    encerrar(fracaoNoPonteiro(evento) === 1 && evento.clientY >= area.top && evento.clientY <= area.bottom);
-  });
+    const { pista, curso, x, origem } = arraste;
+    if (evento.clientY < pista.top || evento.clientY > pista.bottom) return encerrar(false);
+    const delta = evento.clientX - x;
+    arraste.fracao = Math.max(0, Math.min(1, origem + delta / curso));
+    if (arraste.fracao > .5 && delta > 0) return encerrar(true);
+    if (evento.type === 'pointerup') return encerrar(false);
+    // O ponteiro pode mandar várias amostras entre pinturas. Desenhe só a mais recente.
+    if (!quadro) quadro = requestAnimationFrame(() => {
+      quadro = 0;
+      posicionar(arraste.fracao);
+    });
+  }
+  alca.addEventListener('pointermove', acompanhar);
+  alca.addEventListener('pointerup', acompanhar);
   function cancelar(evento) {
     if (arraste?.id === evento.pointerId) encerrar(false);
   }
@@ -269,9 +280,12 @@ function iniciarDeslize() {
       if (evento.key === 'Escape') encerrar(false);
     }
   });
-  valor.addEventListener('input', () => mostrar(valor.valueAsNumber / 100, valor.valueAsNumber === 100));
+  valor.addEventListener('input', () => {
+    const fracao = valor.valueAsNumber / 100;
+    assentar(fracao > .5 ? 1 : fracao);
+  });
   reiniciar.addEventListener('click', () => {
-    mostrar(0, false);
+    assentar(0);
     valor.focus({ preventScroll: true });
   });
 }

@@ -292,14 +292,22 @@ html:not(.js) .somente-js{display:none!important}
 .deslize-valor{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;pointer-events:none}
 .deslize:has(.deslize-valor:focus-visible){outline:3px solid var(--acento);outline-offset:3px}
 .deslize.on{background:rgba(34,160,107,.22)}
-.deslize-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:56px 8px;font-size:14px;font-weight:700;line-height:1.25;text-align:center;color:var(--texto2);pointer-events:none}
-.deslize.no-fim .deslize-txt{padding-inline:8px 56px}
-.deslize.on .deslize-txt{color:var(--verde)}
-.deslize-guia{position:absolute;inset:4px;pointer-events:none}
-.knob{position:absolute;top:0;left:calc((100% - 48px) * var(--progresso,0));width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(180deg,#535FDC,#3437B5);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -6px rgba(52,55,181,.8);pointer-events:auto;touch-action:none;cursor:grab;transition:left .18s ease-out}
-.deslize.arrastando .knob{cursor:grabbing;transition:none}
+.deslize-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:56px 8px;font-size:14px;font-weight:700;line-height:1.25;text-align:center;color:var(--texto2);pointer-events:none;transition:opacity .14s ease-out}
+.deslize.arrastando .deslize-convite,.deslize.on .deslize-convite{opacity:0}
+.deslize-status{padding-inline:8px 56px;color:var(--verde);opacity:0}
+.deslize.on .deslize-status{opacity:1;transition-delay:.12s}
+.deslize-guia{position:absolute;inset:4px;overflow:hidden;border-radius:14px;pointer-events:none}
+.deslize-guia::before{content:"";position:absolute;top:4px;bottom:4px;left:50%;border-left:2px dotted var(--acento);opacity:0;transition:opacity .14s}
+.deslize.arrastando .deslize-guia::before{opacity:.65}
+/* O carro tem a largura exata do curso. Uma única transformação move alça e rastro. */
+.deslize-carro{position:absolute;inset:0 48px 0 0;transform:translate3d(0,0,0);transition:transform .32s cubic-bezier(.22,.75,.24,1)}
+.deslize-carro::before{content:"";position:absolute;inset-block:0;right:calc(100% - 24px);width:calc(100% + 48px);background:var(--acento);opacity:.14}
+.deslize.arrastando .deslize-carro{transition:none}
+.deslize.on .deslize-carro::before{background:var(--verde)}
+.knob{position:absolute;top:0;left:0;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(180deg,#535FDC,#3437B5);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -6px rgba(52,55,181,.8);pointer-events:auto;touch-action:none;cursor:grab}
+.deslize.arrastando .knob{cursor:grabbing}
 .deslize.on .knob{background:linear-gradient(180deg,#27AE74,#137A4E);cursor:default}
-.deslize-rodape{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0 8px;min-height:30px;margin-top:4px;color:var(--texto2);font-size:12px;line-height:1.4}
+.deslize-rodape{display:grid;grid-template-columns:minmax(0,1fr) 5em;align-items:center;gap:8px;min-height:30px;margin-top:4px;color:var(--texto2);font-size:12px;line-height:1.4}
 .deslize-rodape button{min-height:30px;border:0;padding:2px 4px;border-radius:4px;background:transparent;color:var(--acento);font-weight:700;text-decoration:underline;cursor:pointer}
 
 /* conecte sua IA */
@@ -559,6 +567,7 @@ tr:last-child td{border-bottom:0}
   html{scroll-behavior:auto}
   .lp :not(.hora-cena *),.lp :not(.play-anel)::before,.lp *::after{animation:none!important;transition:none!important}
   .play-anel::before{animation-duration:5s}
+  .lp .deslize:not(.arrastando) .deslize-carro{transition:transform .14s ease-out!important}
 }
 @media(forced-colors:active){
   .grad,.escuro .grad{color:CanvasText}
