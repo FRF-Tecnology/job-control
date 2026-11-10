@@ -8,6 +8,7 @@ import { ErroApi, useApp } from '../app/contexto';
 
 type Cand = {
   id: string; plataforma: string; url: string; estado: string; impressao: string; criadaEm: string;
+  estrutura?: object | null; pendentes?: string[]; // formulário (jc-a2y.7.2): só entra lido e sem pendência
   conteudo: { curriculo: { arquivo: string }; contato?: object | null; pretensao?: { valor?: number; moeda?: string; tipo?: string } | null; respostas: { origem?: string }[]; mensagem?: string | null };
 };
 type Limite = { limite: number; usadas: number };
@@ -19,6 +20,7 @@ const MOTIVO: Record<string, string> = {
   estado: 'não estava mais para revisar',
   'nao-encontrada': 'não está mais na fila',
   'vaga-fora': 'a vaga saiu de Aplicar ou já foi enviada',
+  'faltam-respostas': 'o formulário tem pergunta obrigatória sem resposta',
 };
 const MAXIMO_ITENS = 120; // corpo estrito do contrato: de 1 a 120 itens
 
@@ -53,7 +55,8 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
   const [ocupado, setOcupado] = useState(false);
 
   const { cabem, ficam, foraDaConferencia } = useMemo(() => {
-    const preparadas = candidaturas.filter(c => c.estado === 'preparada').sort((a, b) => a.criadaEm.localeCompare(b.criadaEm));
+    const preparadas = candidaturas.filter(c => c.estado === 'preparada'
+      && (c.plataforma !== 'formulario' || (!!c.estrutura && !(c.pendentes?.length)))).sort((a, b) => a.criadaEm.localeCompare(b.criadaEm));
     const conferidas = preparadas.filter(c => calculadas[c.id] && calculadas[c.id] === c.impressao);
     // O que resta hoje em cada plataforma: limite − já enviadas hoje − já aprovadas (que ainda vão sair).
     const resta: Record<string, number> = {};

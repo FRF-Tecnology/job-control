@@ -46,6 +46,26 @@ describe('impressão da candidatura', () => {
     expect(await impressaoCandidatura(pacote)).toBe(IMPRESSAO_DO_GO);
   });
 
+  // Formulário (jc-a2y.7.2.4): a impressão cobre também a estrutura, como impressaoDe em internal/dominio/formulario.go.
+  // Valor gerado pelo impressaoDe do Go com esta mesma candidatura fictícia (opcoes vazias não entram).
+  const FORMULARIO_DO_GO = 'sha256:v1:33be9501e5ffff806d5334abce6f820ba9a5d7b3d124ceebefe7e58eb87bd82b';
+  const formulario = {
+    vagaId: 'ext-form-1', plataforma: 'formulario', url: 'https://docs.google.com/forms/d/e/abc/viewform',
+    conteudo: { curriculo: { arquivo: 'cv.pdf' }, idioma: 'pt', respostas: [{ pergunta: 'Nível de inglês', resposta: 'Avançado', origem: 'respostasPadrao', perguntaId: 'q3' }] },
+    estrutura: { hash: 'sha256:v1:ab0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcd', urlFinal: 'https://docs.google.com/forms/d/e/abc/viewform',
+      perguntas: [{ id: 'q1', texto: 'Qual o seu e-mail?', tipo: 'texto-curto', obrigatoria: true, opcoes: [] as string[] }, { id: 'q3', texto: 'Nível de inglês', tipo: 'escolha-unica', obrigatoria: true, opcoes: ['Básico', 'Avançado'] }] },
+  };
+
+  it('formulário com estrutura lida bate com o servidor (Go)', async () => {
+    expect(await impressaoCandidatura(formulario)).toBe(FORMULARIO_DO_GO);
+  });
+
+  it('a estrutura só conta em formulário, e mudar uma pergunta muda a impressão', async () => {
+    expect(await impressaoCandidatura({ ...pacote, estrutura: formulario.estrutura })).toBe(IMPRESSAO_DO_GO);
+    const outra = { ...formulario.estrutura, perguntas: [{ ...formulario.estrutura.perguntas[0], texto: 'Qual o seu e-mail? ' }, formulario.estrutura.perguntas[1]] };
+    expect(await impressaoCandidatura({ ...formulario, estrutura: outra })).not.toBe(FORMULARIO_DO_GO);
+  });
+
   it('não depende da ordem das chaves e muda com qualquer mudança no pacote', async () => {
     const invertido = { url: pacote.url, conteudo: { ...pacote.conteudo }, plataforma: pacote.plataforma, vagaId: pacote.vagaId };
     expect(await impressaoCandidatura(invertido)).toBe(IMPRESSAO_DO_GO);
