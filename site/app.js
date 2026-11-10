@@ -217,6 +217,11 @@ function aoClicar(ev) {
   const alvo = sel => ev.target.closest(sel);
   let el;
   if (estado.menu && !estado.menu.contains(ev.target)) fecharMenu();
+  if ((el = alvo('a[href^="#faq-r"]'))) {
+    const pergunta = document.getElementById(el.hash.slice(1));
+    if (pergunta) pergunta.open = true;
+    return;
+  }
   if ((el = alvo('[data-bs-seta]'))) {
     const bs = el.closest('[data-bs]');
     estado.menu = estado.menu === bs ? null : bs;
