@@ -10,6 +10,7 @@ Página de apresentação e de download do app. É HTML, CSS e JavaScript puros:
 - `tema.js`: aplica o tema salvo antes de a página aparecer.
 - `icone.svg`: o ícone da aba.
 - `marcas/` contém os ícones usados nos downloads e na seleção de IA, com os créditos das marcas.
+- `artes/` reúne as ilustrações do Applyer para os cartões de segurança e os métodos de conexão da IA.
 
 ## Ver no computador
 

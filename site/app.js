@@ -75,9 +75,9 @@ function alternarTema() {
 }
 
 // ---------- baixar ----------
-const IC_BAIXAR = 'M12 4v11M7 10l5 5 5-5M5 20h14';
-const IC_OK = 'M5 12l5 5 9-10';
-const IC_SINO = 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4';
+const IC_BAIXAR = 'M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3';
+const IC_OK = 'm4 12 5 5 11-11';
+const IC_SINO = 'M6 14v-3a6 6 0 0 1 12 0v3l2 3H4zm4 6q2 2 4 0M12 3v2';
 const sistema = k => SISTEMAS.find(s => s.k === k) ?? SISTEMAS[1];
 const feito = s => (s.breve && estado.avisos[s.k]) || estado.baixou === s.k;
 function rotulo(s) {
@@ -152,8 +152,7 @@ function desenharNavegador(raiz) {
 
 // ---------- desenhar tudo a partir do estado ----------
 const NOMES_ABA = { hoje: 'Hoje', triagem: 'Triagem', lista: 'Lista do dia', aovivo: 'Ao vivo', quadro: 'Quadro' };
-const IC_METODO = { term: 'M4 17l6-6-6-6M12 19h8', chave: 'M15 7a4 4 0 1 1-3.9 4.9L3 20v-3h3v-3h3l2.1-2.1A4 4 0 0 1 15 7z', pc: 'M3 4h18v12H3zM8 20h8M12 16v4' };
-const SVG = 'http://www.w3.org/2000/svg';
+const ARTE_METODO = { term: 'artes/terminal.svg', chave: 'artes/chave.svg', pc: 'marcas/local.svg' };
 
 function desenhar() {
   // baixar: os dois botões divididos, os menus e os cartões
@@ -230,7 +229,7 @@ function desenhar() {
   const deslize = $('[data-deslize]');
   classe(deslize, 'on', estado.aprovado); atributo(deslize, 'aria-pressed', estado.aprovado);
   escondido($('[data-deslize-espera]'), estado.aprovado); escondido($('[data-deslize-feito]'), !estado.aprovado);
-  atributo($('[data-deslize-icone]'), 'd', estado.aprovado ? IC_OK : 'M5 12h14M13 6l6 6-6 6');
+  atributo($('[data-deslize-icone]'), 'd', estado.aprovado ? IC_OK : 'M3 13h15M13 7l6 6-6 5');
 
   // conecte sua IA
   const prov = PROVEDORES.find(x => x.id === estado.prov) ?? PROVEDORES[0];
@@ -243,13 +242,14 @@ function desenhar() {
     metodos.dataset.de = prov.id;
     metodos.replaceChildren(...prov.metodos.map(m => {
       const linha = document.createElement('div'); linha.className = 'metodo';
-      const svg = document.createElementNS(SVG, 'svg');
-      svg.setAttribute('class', 'ic'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true'); svg.style.color = 'var(--acento)';
-      const caminho = document.createElementNS(SVG, 'path'); caminho.setAttribute('d', IC_METODO[m.k]); svg.append(caminho);
+      const icone = document.createElement('img');
+      icone.className = 'metodo-arte';
+      icone.alt = '';
+      icone.src = ARTE_METODO[m.k];
       const caixa = document.createElement('div');
       const titulo = document.createElement('b'); titulo.textContent = m.t;
       const sub = document.createElement('span'); sub.textContent = m.s;
-      caixa.append(titulo, sub); linha.append(svg, caixa);
+      caixa.append(titulo, sub); linha.append(icone, caixa);
       return linha;
     }));
   }
