@@ -8,7 +8,7 @@ import { FormularioCand, formularioSemAprovar, type CandFormulario } from './For
 import { pacoteInicial, perguntasSensiveisDoPerfil, type Conteudo as ConteudoPacote } from '../app/pacote';
 import { Convite } from '../componentes';
 import { mercadoDe } from '../dominio/modelo';
-import { encode } from '../util';
+import { doAssistente, encode, nomeAssistente, type Quem } from '../util';
 import { PacoteForm } from './PacoteForm';
 import { ListaDoDia } from './ListaDoDia';
 import { entrarNavegador, PainelEnvio, type EstadoEnvio } from './PainelEnvio';
@@ -30,6 +30,7 @@ export type Candidatura = {
   versao: number; criadaEm: string; atualizadaEm: string;
   // jc-a2y.6.11: depois de uma falha técnica antes de preencher, a aprovada volta e só sai depois deste instante.
   proximaTentativaEm?: string | null;
+  revogadaPor?: Quem; // jc-a2y.7.4: quem desfez a última aprovação (a pessoa pela tela, ou o assistente)
   // jc-a2y.7.2: formulário externo (Google Forms, Typeform).
   estrutura?: EstruturaFormulario | null; pendentes?: string[]; preenchimentoIgnorado?: boolean;
 };
@@ -70,7 +71,9 @@ const dinheiro = (p: NonNullable<Conteudo['pretensao']>) => {
 // Texto do que cada estado pede (o motivo e a pendência do bloqueio são textos fixos do servidor).
 function situacao(c: Candidatura) {
   switch (c.estado) {
-    case 'preparada': return 'Revise o pacote. Ele só vai para a vaga depois que você aprovar.';
+    case 'preparada': return doAssistente(c.revogadaPor)
+      ? `A aprovação foi desfeita pelo ${nomeAssistente(c.revogadaPor?.canal)}. Revise o pacote e aprove de novo, se quiser.`
+      : 'Revise o pacote. Ele só vai para a vaga depois que você aprovar.';
     case 'aprovada': {
       const t = c.proximaTentativaEm ? Date.parse(c.proximaTentativaEm) : NaN;
       if (t > Date.now()) return `Deu um problema técnico antes de preencher: nada foi enviado e não contou no limite. Tenta de novo às ${hora(c.proximaTentativaEm!)}.`;
