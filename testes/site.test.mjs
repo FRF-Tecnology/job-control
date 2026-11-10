@@ -21,6 +21,18 @@ test('site: toda âncora e todo aria-controls apontam para um id que existe', ()
   assert.deepEqual([...new Set(faltam)], []);
 });
 
+test('site: a aprovação demonstrativa tem controle deslizante acessível desde o HTML', () => {
+  const grupo = html.match(/<div class="deslize" data-deslize>([\s\S]*?)data-deslize-reiniciar/);
+  assert.ok(grupo, 'controle e botão de reinício');
+  const controle = grupo[1].match(/<input\b[^>]*type="range"[^>]*>/)?.[0];
+  assert.ok(controle, 'slider nativo para teclado');
+  for (const atributo of ['min="0"', 'max="100"', 'value="0"', 'aria-label="Simular aprovação do lote"']) {
+    assert.ok(controle.includes(atributo), atributo);
+  }
+  const ajuda = controle.match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(ajuda && grupo[1].includes(`id="${ajuda}"`), 'instruções associadas');
+});
+
 test('site: ids não se repetem', () => {
   const ids = todos(html, /\sid="([^"]+)"/g).filter(id => !id.startsWith('lg')); // gradientes do SVG também têm id único
   assert.equal(new Set(ids).size, ids.length);

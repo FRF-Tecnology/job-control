@@ -26,14 +26,14 @@ const DECK = [
 ];
 
 const PROVEDORES = [
-  { id: 'claude', nome: 'Claude', empresa: 'Anthropic', curto: 'Claude Code', estado: 'No app', detalhe: 'Use o Claude Code já conectado no computador ou configure uma chave da Anthropic no app.',
-    metodos: [{ t: 'Claude Code', s: 'Usa a sessão da CLI no computador.', k: 'term' }, { t: 'Chave da Anthropic', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
+  { id: 'claude', nome: 'Claude', empresa: 'Anthropic', curto: 'Assinatura via Claude Code', estado: 'No app', detalhe: 'Entre no Claude Code com a conta da sua assinatura. O Applyer usa essa sessão no computador. Se preferir, conecte a API.',
+    metodos: [{ t: 'Assinatura do Claude', s: 'Conecte sua conta pelo Claude Code instalado no computador.', k: 'term' }, { t: 'Chave da Anthropic', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
   { id: 'chatgpt', nome: 'ChatGPT', empresa: 'OpenAI', curto: 'API da OpenAI', estado: 'No app', detalhe: 'Use os modelos da OpenAI com sua chave de API. A cobrança da API é separada da assinatura do ChatGPT.',
-    metodos: [{ t: 'Chave da OpenAI', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
+    metodos: [{ t: 'Assinatura via Codex · prevista', s: 'Está prevista a conexão com a conta ChatGPT usada no Codex.', k: 'term' }, { t: 'Chave da OpenAI', s: 'Disponível no app. Configuração no cofre do sistema.', k: 'chave' }] },
   { id: 'gemini', nome: 'Gemini', empresa: 'Google', curto: 'API do Gemini', estado: 'No app', detalhe: 'Conecte os modelos Gemini com uma chave de API do Google.',
-    metodos: [{ t: 'Chave do Google', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
+    metodos: [{ t: 'Assinatura Google AI · prevista', s: 'Está prevista a conexão pela conta Google com plano compatível.', k: 'term' }, { t: 'Chave do Google', s: 'Disponível no app. Configuração no cofre do sistema.', k: 'chave' }] },
   { id: 'grok', nome: 'Grok', empresa: 'xAI', curto: 'API da xAI', estado: 'No app', detalhe: 'Use sua chave da xAI e um modelo Grok habilitado na sua conta pela conexão de API compatível com OpenAI.',
-    metodos: [{ t: 'Chave da xAI', s: 'Configure o endereço da API da xAI no app.', k: 'chave' }] },
+    metodos: [{ t: 'Conta Grok · prevista', s: 'Está prevista a opção de entrar com a sua conta Grok.', k: 'term' }, { t: 'Chave da xAI', s: 'Disponível pela conexão de API compatível no app.', k: 'chave' }] },
   { id: 'openrouter', nome: 'OpenRouter', empresa: 'OpenRouter', curto: 'API compatível', estado: 'No app', detalhe: 'No app, configure o endereço de API compatível, a chave do OpenRouter e o modelo.',
     metodos: [{ t: 'Chave do OpenRouter', s: 'O uso é cobrado pelo provedor.', k: 'chave' }] },
   { id: 'local', nome: 'No seu computador', empresa: 'Modelos locais', curto: 'Modelos locais previstos', estado: 'Previsto', detalhe: 'O suporte a modelos que rodam no seu computador está previsto.',
@@ -43,7 +43,7 @@ const PROVEDORES = [
 const estado = {
   plat: 'win', menu: null,
   aba: 'hoje', triIdx: 0, fora: {}, prov: 'claude',
-  passo: 0, vagaIdx: 0, lote: VAGAS.map((_, i) => i), pipFixo: false, aprovado: false,
+  passo: 0, vagaIdx: 0, lote: VAGAS.map((_, i) => i), pipFixo: false,
 };
 
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
@@ -59,7 +59,6 @@ const ligar = (chave, v) => { for (const el of $$(`[data-liga="${chave}"]`)) tex
 const repetir = el => { if (!el) return; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; };
 
 // ---------- plataforma selecionada ----------
-const IC_OK = 'm4 12 5 5 11-11';
 const sistema = k => SISTEMAS.find(s => s.k === k) ?? SISTEMAS[1];
 function sistemaDaPessoa() {
   const ua = navigator.userAgent || '';
@@ -174,12 +173,6 @@ function desenhar() {
   atributo(fixar, 'aria-pressed', estado.pipFixo);
   atributo(fixar, 'aria-label', estado.pipFixo ? 'Recolher a prévia do navegador' : 'Ampliar a prévia do navegador');
 
-  // deslize para aprovar
-  const deslize = $('[data-deslize]');
-  classe(deslize, 'on', estado.aprovado); atributo(deslize, 'aria-pressed', estado.aprovado);
-  escondido($('[data-deslize-espera]'), estado.aprovado); escondido($('[data-deslize-feito]'), !estado.aprovado);
-  atributo($('[data-deslize-icone]'), 'd', estado.aprovado ? IC_OK : 'M3 13h15M13 7l6 6-6 5');
-
   // conecte sua IA
   const prov = PROVEDORES.find(x => x.id === estado.prov) ?? PROVEDORES[0];
   for (const b of $$('[data-prov]')) { const on = b.dataset.prov === prov.id; classe(b, 'on', on); atributo(b, 'aria-pressed', on); }
@@ -205,12 +198,123 @@ function desenhar() {
 
 }
 
+function iniciarDeslize() {
+  const trilho = $('[data-deslize]');
+  const valor = $('.deslize-valor', trilho);
+  const guia = $('.deslize-guia', trilho);
+  const alca = $('.knob', guia);
+  const status = $('.deslize-txt', trilho);
+  const icone = $('[data-deslize-icone]', trilho);
+  const reiniciar = $('[data-deslize-reiniciar]');
+  let arraste = null;
+
+  function mostrar(fracao, aprovado) {
+    // O desenho acompanha o dedo continuamente. O controle nativo usa passos de 10%.
+    trilho.style.setProperty('--progresso', fracao);
+    valor.value = Math.floor(fracao * 10) * 10;
+    const noFim = fracao === 1;
+    const mensagem = noFim ? (aprovado ? 'Lote aprovado na demonstração' : 'Solte para aprovar') : 'Segure e arraste até o fim';
+    atributo(valor, 'aria-valuetext', noFim ? mensagem : valor.value + '%');
+    classe(trilho, 'no-fim', noFim);
+    classe(trilho, 'on', aprovado);
+    texto(status, mensagem);
+    atributo(icone, 'd', aprovado ? 'm4 12 5 5 11-11' : 'M3 13h15M13 7l6 6-6 5');
+    escondido(reiniciar, !aprovado);
+  }
+
+  function fracaoNoPonteiro(evento) {
+    const distancia = evento.clientX - arraste.inicio;
+    // A posição do toque pode ser arredondada para o pixel vizinho à borda.
+    if (distancia >= arraste.curso - 0.75) return 1;
+    return Math.max(0, distancia / arraste.curso);
+  }
+
+  function encerrar(aprovado) {
+    const id = arraste.id;
+    arraste = null;
+    if (alca.hasPointerCapture(id)) alca.releasePointerCapture(id);
+    classe(trilho, 'arrastando', false);
+    mostrar(aprovado ? 1 : 0, aprovado);
+  }
+
+  alca.addEventListener('pointerdown', evento => {
+    if (arraste || !evento.isPrimary || evento.button !== 0 || trilho.classList.contains('on')) return;
+    const curso = guia.getBoundingClientRect().width - alca.getBoundingClientRect().width;
+    if (curso <= 0) return;
+    evento.preventDefault();
+    valor.focus({ preventScroll: true });
+    arraste = { id: evento.pointerId, curso, inicio: evento.clientX - curso * valor.valueAsNumber / 100 };
+    alca.setPointerCapture(evento.pointerId);
+    classe(trilho, 'arrastando', true);
+  });
+  alca.addEventListener('pointermove', evento => {
+    if (arraste?.id === evento.pointerId) mostrar(fracaoNoPonteiro(evento), false);
+  });
+  alca.addEventListener('pointerup', evento => {
+    if (arraste?.id !== evento.pointerId) return;
+    const area = trilho.getBoundingClientRect();
+    encerrar(fracaoNoPonteiro(evento) === 1 && evento.clientY >= area.top && evento.clientY <= area.bottom);
+  });
+  function cancelar(evento) {
+    if (arraste?.id === evento.pointerId) encerrar(false);
+  }
+  alca.addEventListener('pointercancel', cancelar);
+  alca.addEventListener('lostpointercapture', cancelar);
+  function interromper() { if (arraste) encerrar(false); }
+  window.addEventListener('blur', interromper);
+  window.addEventListener('resize', interromper);
+  valor.addEventListener('keydown', evento => {
+    if (arraste) {
+      evento.preventDefault();
+      if (evento.key === 'Escape') encerrar(false);
+    }
+  });
+  valor.addEventListener('input', () => mostrar(valor.valueAsNumber / 100, valor.valueAsNumber === 100));
+  reiniciar.addEventListener('click', () => {
+    mostrar(0, false);
+    valor.focus({ preventScroll: true });
+  });
+}
+
 function fecharMenu(restaurarFoco = false) {
   const menu = estado.menu;
   if (!menu) return;
   estado.menu = null;
   desenhar();
   if (restaurarFoco) $('[data-bs-seta]', menu).focus();
+}
+
+// O clique nativo continua atendendo ao toque e ao teclado. Com mouse,
+// a primeira entrada já abre a lista e dá tempo de cruzar até o painel.
+function abrirComMouse(grupo, gatilho, aberto, abrir, fechar) {
+  let relogio;
+  let abertoPorHover = false;
+  const cancelarSaida = () => clearTimeout(relogio);
+  gatilho.addEventListener('pointerenter', evento => {
+    if (evento.pointerType !== 'mouse' || !matchMedia('(any-hover: hover)').matches) return;
+    cancelarSaida();
+    if (!aberto()) {
+      abertoPorHover = true;
+      abrir();
+    }
+  });
+  gatilho.addEventListener('click', evento => {
+    if (evento.detail > 0 && abertoPorHover && aberto()) {
+      evento.preventDefault();
+      evento.stopPropagation();
+    }
+    abertoPorHover = false;
+  });
+  grupo.addEventListener('pointerenter', cancelarSaida);
+  grupo.addEventListener('pointerleave', evento => {
+    if (evento.pointerType !== 'mouse') return;
+    cancelarSaida();
+    relogio = setTimeout(() => {
+      if (grupo.querySelector(':focus-visible')) return;
+      if (aberto()) fechar();
+      abertoPorHover = false;
+    }, 220);
+  });
 }
 
 function aoClicar(ev) {
@@ -224,6 +328,7 @@ function aoClicar(ev) {
   }
   if ((el = alvo('[data-bs-seta]'))) {
     const bs = el.closest('[data-bs]');
+    $('.nav-explorar').open = false;
     estado.menu = estado.menu === bs ? null : bs;
     return desenhar();
   }
@@ -255,31 +360,79 @@ function aoClicar(ev) {
   if ((el = alvo('[data-triagem]'))) { estado.triIdx = (estado.triIdx + (el.dataset.triagem === 'anterior' ? DECK.length - 1 : 1)) % DECK.length; desenhar(); return repetir($('[data-vaga-cartao]')); }
   if ((el = alvo('[data-chave]'))) { const i = Number(el.dataset.chave); estado.fora[i] = !estado.fora[i]; return desenhar(); }
   if (alvo('[data-pip-fixar]')) { estado.pipFixo = !estado.pipFixo; return desenhar(); }
-  if (alvo('[data-deslize]')) { estado.aprovado = !estado.aprovado; return desenhar(); }
   if ((el = alvo('[data-prov]'))) { if (estado.prov !== el.dataset.prov) { estado.prov = el.dataset.prov; desenhar(); } return; }
 }
 
+function acompanharRolagem() {
+  const topo = $('.topo');
+  const marca = $('.marca', topo);
+  const nav = $('.links', topo);
+  const explorar = $('.nav-explorar', topo);
+  function medir() {
+    topo.style.setProperty('--largura-marca', (marca.offsetWidth + 20) + 'px');
+    topo.style.setProperty('--marca-x', ((topo.clientWidth - marca.offsetWidth) / 2 - marca.offsetLeft) + 'px');
+    topo.style.setProperty('--marca-y', ((46 - marca.offsetHeight) / 2 - marca.offsetTop) + 'px');
+  }
+  medir();
+  if ('ResizeObserver' in window) new ResizeObserver(medir).observe(topo);
+  else window.addEventListener('resize', medir);
+
+  function recolher(valor) {
+    if (topo.classList.contains('recolhido') === valor) return;
+    if (valor) explorar.open = false;
+    nav.inert = valor;
+    topo.classList.toggle('recolhido', valor);
+  }
+  topo.addEventListener('focusin', () => recolher(false));
+  let referencia = Math.max(0, window.scrollY);
+  let agendado = false;
+  function atualizar() {
+    agendado = false;
+    const y = Math.max(0, window.scrollY);
+    const delta = y - referencia;
+    if (y < 60 || delta < -8) recolher(false);
+    else if (y > 110 && delta > 14 && !topo.querySelector(':focus-visible')) recolher(true);
+    else if (Math.abs(delta) < 15) return;
+    referencia = y;
+  }
+  window.addEventListener('scroll', () => {
+    if (agendado) return;
+    agendado = true;
+    requestAnimationFrame(atualizar);
+  }, { passive:true });
+}
+
 function iniciar() {
+  iniciarDeslize();
   estado.plat = sistemaDaPessoa();
   document.addEventListener('click', aoClicar);
   const explorar = $('.nav-explorar');
+  abrirComMouse(explorar, $('summary', explorar), () => explorar.open,
+    () => { fecharMenu(); explorar.open = true; },
+    () => { explorar.open = false; });
+  for (const bs of $$('[data-bs]')) {
+    abrirComMouse(bs, $('[data-bs-seta]', bs), () => estado.menu === bs,
+      () => { explorar.open = false; estado.menu = bs; desenhar(); },
+      () => fecharMenu());
+  }
   document.addEventListener('click', evento => {
     if (!explorar.contains(evento.target) || evento.target.closest('a')) explorar.open = false;
   });
   explorar.addEventListener('focusout', evento => {
     if (!explorar.contains(evento.relatedTarget)) explorar.open = false;
   });
-  explorar.addEventListener('keydown', evento => {
+  document.addEventListener('keydown', evento => {
     if (evento.key === 'Escape' && explorar.open) {
+      const devolverFoco = explorar.contains(document.activeElement);
       explorar.open = false;
-      $('summary', explorar).focus();
+      if (devolverFoco) $('summary', explorar).focus();
     }
   });
   document.addEventListener('focusin', ev => {
     if (estado.menu && !estado.menu.contains(ev.target)) fecharMenu();
   });
   document.addEventListener('keydown', ev => {
-    if (ev.key === 'Escape' && estado.menu) fecharMenu(true);
+    if (ev.key === 'Escape' && estado.menu) fecharMenu(estado.menu.contains(document.activeElement));
   });
   const abrirPergunta = () => {
     const pergunta = document.getElementById(location.hash.slice(1));
@@ -289,6 +442,7 @@ function iniciar() {
   abrirPergunta();
   desenhar();
   document.documentElement.classList.add('js');
+  acompanharRolagem();
 }
 iniciar();
 

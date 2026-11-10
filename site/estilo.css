@@ -35,6 +35,13 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
   padding:5px calc(9px + var(--folga)) 5px calc(20px + var(--folga));border-radius:999px;
 }
 .escuro .topo{--vidro:rgba(31,35,76,.97);--vidro2:rgba(26,29,67,.96)}
+.topo-fundo{pointer-events:none;position:absolute;top:0;left:50%;width:100%;height:100%;transform:translateX(-50%);border-radius:inherit;z-index:-1;transition:width .32s cubic-bezier(.22,.8,.22,1),height .3s ease,border-radius .3s ease}
+.topo .marca{transition:transform .32s cubic-bezier(.22,.8,.22,1);z-index:1}
+.topo .links> *{transition:opacity .16s ease,visibility .16s}
+.topo.recolhido{pointer-events:none}
+.topo.recolhido .topo-fundo{width:var(--largura-marca);height:46px;border-radius:24px}
+.topo.recolhido .marca{pointer-events:auto;transform:translate(var(--marca-x),var(--marca-y)) scale(.93)}
+.topo.recolhido .links> *{opacity:0;visibility:hidden;pointer-events:none}
 .links-secoes{display:flex;align-items:center;gap:calc(2px + var(--folga));padding:2px;border-radius:999px;background:var(--peca);box-shadow:inset 0 0 0 1px var(--linha)}
 .marca{display:inline-flex;align-items:center;width:fit-content;min-height:44px}
 .marca img{display:block;width:140px;height:auto}
@@ -51,6 +58,8 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
 .nav-painel{position:absolute;z-index:1;top:calc(100% + 10px);left:50%;transform:translateX(-50%);width:290px;padding:7px;display:grid;gap:2px;border:1px solid var(--linha);border-radius:20px;background:#f5f6ff;box-shadow:0 12px 32px var(--sombra)}
 .escuro .nav-painel{background:#202444}
 .nav-explorar:not([open]) .nav-painel{display:none}
+.nav-painel::after,.bs-menu::after{content:"";position:absolute;bottom:100%;left:0;right:0;height:14px}
+.bs-menu.cima::after{bottom:auto;top:100%}
 .nav-painel a{display:flex;align-items:center;gap:11px;border-radius:13px;padding:8px;text-decoration:none;color:var(--texto)}
 .nav-painel a:hover,.nav-painel a:focus-visible{background:var(--peca)}
 .nav-painel img{width:38px;height:38px;flex:none}
@@ -69,7 +78,8 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
 .escuro .btn-play{background:rgba(255,255,255,.08)}
 .btn-play:hover{transform:translateY(-2px);color:var(--texto)}
 .play-anel{position:relative;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(140deg,#5865F2,#2FBF8A)}
-.btn-play:is(:hover,:focus-visible) .play-anel::before{content:"";position:absolute;inset:-5px;border-radius:50%;background:conic-gradient(#5865F2,#2FBF8A,transparent 70%);-webkit-mask:radial-gradient(circle,transparent 21px,#000 22px);mask:radial-gradient(circle,transparent 21px,#000 22px);animation:girar 1s ease-in-out}
+.play-anel::before{content:"";position:absolute;inset:-3px;border-radius:50%;pointer-events:none;background:conic-gradient(from -90deg,#b2fff1,#76e4da 18%,#9d9fff 46%,#9d9fff38 68%,#9298ff55 80%,#b2fff1);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px))}
+@media (prefers-reduced-motion:no-preference){.play-anel::before{animation:girar 2.4s linear infinite}}
 @keyframes girar{to{transform:rotate(360deg)}}
 .btn-vidro{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:16px;font-size:15px;font-weight:650;color:var(--texto);text-decoration:none;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px var(--aro),0 4px 0 rgba(60,70,140,.14);transition:transform .12s ease,box-shadow .12s ease}
 .escuro .btn-vidro{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px var(--aro),0 4px 0 rgba(0,0,0,.35)}
@@ -270,13 +280,19 @@ html:not(.js) .somente-js{display:none!important}
 .quem.voce{color:var(--verde);background:rgba(47,191,138,.16)}
 .hora h3{margin:0;font-size:20px;letter-spacing:-.02em}
 .hora p{margin:0;font-size:15px;line-height:1.55;color:var(--texto2)}
-.deslize{position:relative;width:100%;height:56px;border:0;padding:0;border-radius:18px;cursor:pointer;background:rgba(80,90,140,.14);box-shadow:inset 0 0 0 1px var(--aro),inset 0 2px 6px rgba(20,30,80,.08);overflow:hidden;transition:background .5s}
+.deslize{position:relative;height:56px;border-radius:18px;background:rgba(80,90,140,.14);box-shadow:inset 0 0 0 1px var(--aro),inset 0 2px 6px rgba(20,30,80,.08);transition:background .3s;user-select:none}
+.deslize-valor{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;pointer-events:none}
+.deslize:has(.deslize-valor:focus-visible){outline:3px solid var(--acento);outline-offset:3px}
 .deslize.on{background:rgba(34,160,107,.22)}
-.deslize-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-left:40px;font-size:14px;font-weight:700;color:var(--texto2)}
-.deslize.on .deslize-txt{color:var(--verde);padding-left:0;padding-right:40px}
-.deslize-txt i{font-style:normal}
-.knob{position:absolute;left:4px;top:4px;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(180deg,#535FDC,#3437B5);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -6px rgba(52,55,181,.8);transition:left .7s cubic-bezier(.34,1.3,.64,1),background .4s}
-.deslize.on .knob{left:calc(100% - 52px);background:linear-gradient(180deg,#27AE74,#137A4E)}
+.deslize-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:56px 8px;font-size:14px;font-weight:700;line-height:1.25;text-align:center;color:var(--texto2);pointer-events:none}
+.deslize.no-fim .deslize-txt{padding-inline:8px 56px}
+.deslize.on .deslize-txt{color:var(--verde)}
+.deslize-guia{position:absolute;inset:4px;pointer-events:none}
+.knob{position:absolute;top:0;left:calc((100% - 48px) * var(--progresso,0));width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(180deg,#535FDC,#3437B5);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -6px rgba(52,55,181,.8);pointer-events:auto;touch-action:none;cursor:grab;transition:left .18s ease-out}
+.deslize.arrastando .knob{cursor:grabbing;transition:none}
+.deslize.on .knob{background:linear-gradient(180deg,#27AE74,#137A4E);cursor:default}
+.deslize-rodape{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0 8px;min-height:30px;margin-top:4px;color:var(--texto2);font-size:12px;line-height:1.4}
+.deslize-rodape button{min-height:30px;border:0;padding:2px 4px;border-radius:4px;background:transparent;color:var(--acento);font-weight:700;text-decoration:underline;cursor:pointer}
 
 /* conecte sua IA */
 .ia{display:flex;flex-wrap:wrap;gap:20px;align-items:stretch}
@@ -320,6 +336,17 @@ tr:last-child td{border-bottom:0}
 .plano{padding:28px;display:flex;flex-direction:column;gap:14px}
 .plano.destaque{box-shadow:inset 0 0 0 2px #5260EC,0 30px 60px -30px rgba(52,55,181,.6)}
 .plano p{margin:0;color:var(--texto2);line-height:1.55}
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  #preco .plano{transition:translate .32s cubic-bezier(.2,.7,.2,1)}
+  #preco .plano::after{
+    content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;
+    background:radial-gradient(ellipse at 15% 0%,color-mix(in srgb,var(--acento) 15%,transparent),transparent 74%);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acento) 50%,transparent),0 20px 36px -23px var(--sombra);
+    opacity:0;transition:opacity .32s ease;
+  }
+  #preco .plano:hover{translate:0 -4px}
+  #preco .plano:hover::after{opacity:1}
+}
 .preco{font-family:"Sora",system-ui,sans-serif;font-size:40px;font-weight:800;letter-spacing:-.04em}
 .preco small{font-size:15px;font-weight:600;color:var(--texto2);letter-spacing:0}
 .faq{display:flex;flex-direction:column;gap:12px;max-width:860px}
@@ -372,6 +399,12 @@ tr:last-child td{border-bottom:0}
 .so-ic img{width:76px;height:76px;object-fit:contain}
 .so-sombra{position:absolute;right:-70px;bottom:-84px;z-index:-1;opacity:.1;pointer-events:none;display:flex}
 .so-sombra img{width:250px;height:250px;object-fit:contain}
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  #baixar .so{transition:translate .38s cubic-bezier(.2,.7,.2,1)}
+  #baixar .so-sombra{transition:translate .48s cubic-bezier(.2,.7,.2,1)}
+  #baixar .so:hover{translate:0 -2px}
+  #baixar .so:hover .so-sombra{translate:-5px -3px}
+}
 .so-status{position:absolute;top:28px;right:28px;font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.5);box-shadow:inset 0 0 0 1px rgba(18,22,51,.14)}
 .so-status.breve{background:#121633;color:#fff}
 .so h3{margin:auto 0 8px;font-family:"Sora","Inter",system-ui,sans-serif;font-size:clamp(36px,3.4vw,48px);font-weight:800;letter-spacing:-.05em;line-height:1}
@@ -557,9 +590,7 @@ tr:last-child td{border-bottom:0}
 #como .hora h3,#como .hora p{margin:0 8px}
 #como .hora h3{font-size:clamp(1.15rem,1.6vw,1.36rem);line-height:1.22;text-wrap:balance}
 #como .hora .relogio{font-variant-numeric:tabular-nums;font-size:.8rem}
-#como .deslize{margin:4px 8px 0;width:calc(100% - 16px)}
-#como .deslize-txt{padding-inline:54px 8px;line-height:1.25}
-#como .deslize.on .deslize-txt{padding-inline:8px 54px}
+#como .deslize-demo{margin:4px 8px 0}
 #como .hora-aprovar:has(.deslize.on){--selo:#88dfb1}
 #como .rotina-selo{transform-origin:184px 108px;transition:transform .35s ease}
 #como .hora-aprovar:has(.deslize.on) .rotina-selo{transform:rotate(8deg) scale(1.12)}
@@ -571,11 +602,64 @@ tr:last-child td{border-bottom:0}
     background:linear-gradient(90deg,transparent 91%,#ffffff30 98%,#ffffff70);
     animation:rotina-lente 1.15s cubic-bezier(.45,0,.22,1) both;
   }
-  #como .rotina-objeto{transition:transform .35s ease}
-  #como .hora:focus-within .rotina-objeto{transform:translateY(-3px)}
+  #como .hora{--gesto:0}
+  #como .hora:has(:focus-visible){--gesto:1}
+  #como .hora-busca{
+    --astro-x:calc(-14px * var(--gesto));--astro-y:calc(-5px * var(--gesto));
+    --estrelas-x:calc(8px * var(--gesto));--estrelas-y:calc(3px * var(--gesto));--tempo-ceu:.82s;
+  }
+  #como .rotina-peca{
+    --x:0px;--y:0px;--angulo:0deg;--tempo:.54s;--atraso:0s;
+    transform-box:fill-box;transform-origin:center;
+    transform:translate(calc(var(--x) * var(--gesto)),calc(var(--y) * var(--gesto))) rotate(calc(var(--angulo) * var(--gesto)));
+    transition:transform var(--tempo) cubic-bezier(.23,.78,.26,1) var(--atraso);
+  }
+  #como .telescopio-eixo{--angulo:-10deg;--tempo:.68s;transform-box:view-box;transform-origin:143px 84px}
+  #como .telescopio-lente{--x:20px;--atraso:.08s}
+  #como .telescopio-ocular{--x:-6px}
+  #como .telescopio-brilho{--x:9px;--y:-6px;--angulo:18deg;--tempo:.72s}
+  #como .pacote-folha{--x:-22px;--y:1px;--angulo:-11deg}
+  #como .pacote-curriculo{--x:-1px;--y:-9px;--angulo:3deg}
+  #como .pacote-carta{--x:20px;--y:1px;--angulo:4deg;--atraso:.04s}
+  #como .rotina-aba-carta{
+    transform-box:view-box;transform-origin:0 96px;transform:scaleY(calc(1 - 1.85 * var(--gesto)));
+    transition:transform .34s ease-out;
+  }
+  #como .rotina-bilhete{
+    opacity:var(--gesto);transform:translateY(calc(-11px * var(--gesto)));
+    transition:transform .44s ease-out .09s,opacity .22s;
+  }
+  #como .triagem-esquerda{--x:-24px;--y:1px;--angulo:-9deg}
+  #como .triagem-direita{--x:23px;--y:-1px;--angulo:10deg}
+  #como .triagem-frente{--x:1px;--y:-11px;--angulo:2deg;--atraso:.04s}
+  #como .triagem-escolha{--x:5px;--y:-9px;--angulo:8deg;--atraso:.09s}
+  #como .revisao-prancheta{--x:-6px;--y:-3px;--angulo:5deg}
+  #como .revisao-carimbo{--x:9px;--y:-7px;--angulo:-12deg}
+  #como .revisao-marca{
+    stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--gesto));
+    opacity:var(--gesto);transition:stroke-dashoffset .32s ease-out var(--atraso,0s),opacity .15s;
+  }
+  #como .revisao-marca:nth-child(2){--atraso:.12s}
+  #como .revisao-marca:nth-child(3){--atraso:.23s}
+  #como .envio-ponteiro{--x:-23px;--y:10px;--angulo:-9deg;--tempo:.45s}
+  #como .envio-barra,#como .envio-linhas{transform-box:fill-box;transform-origin:left center}
+  #como .envio-barra{transform:scaleX(calc(.16 + .84 * var(--gesto)));transition:transform .55s ease-in-out .17s}
+  #como .envio-linhas{transform:scaleX(calc(.75 + .25 * var(--gesto)));transition:transform .5s ease-out}
+  #como .quadro-ficha{--x:32px;--y:3px;--tempo:.58s}
+  #como .quadro-mensagem{--x:13px;--y:-12px;--angulo:-9deg;--atraso:.08s}
+  #como .quadro-aviso{transform-box:fill-box;transform-origin:center;transform:scale(calc(1 + .23 * var(--gesto)));transition:transform .4s ease-out .13s}
 }
 @media (hover:hover) and (prefers-reduced-motion:no-preference){
-  #como .hora:hover .rotina-objeto{transform:translateY(-3px)}
+  #como .hora:hover{--gesto:1}
+}
+@media (hover:none) and (prefers-reduced-motion:no-preference){
+  #como .hora:active,#como .hora:has(.hora-cena:focus){--gesto:1}
+}
+#como .hora-cena:focus-visible{outline:3px solid var(--acento);outline-offset:3px}
+#como .rotina-bilhete,#como .revisao-marca{pointer-events:none}
+@media (prefers-reduced-motion:reduce){
+  #como .rotina-bilhete,#como .revisao-marca{opacity:0}
+  #como .envio-barra{transform-box:fill-box;transform-origin:left center;transform:scaleX(.16)}
 }
 @keyframes rotina-amanhecer{from{clip-path:inset(0)}to{clip-path:inset(0 0 0 100%)}}
 @keyframes rotina-lente{
