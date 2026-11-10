@@ -44,7 +44,16 @@ func (n *Navegador) LerFormulario(ctx context.Context, endereco string) (dominio
 	}
 	defer pg.Fechar()
 	p := pg.(*pagina)
-	final, err := p.Abrir(ctx, endereco)
+	if _, err := p.Abrir(ctx, endereco); err != nil {
+		return dominio.LeituraFormulario{}, err
+	}
+	return p.LerEstrutura(ctx)
+}
+
+// LerEstrutura lê a estrutura da página já aberta, sem interagir. Serve à rota ler-formulario (pelo LerFormulario) e
+// ao executor, que relê no envio e compara o hash (executor.PaginaFormulario). O destino é conferido antes.
+func (p *pagina) LerEstrutura(ctx context.Context) (dominio.LeituraFormulario, error) {
+	final, err := p.URLAtual(ctx)
 	if err != nil {
 		return dominio.LeituraFormulario{}, err
 	}
@@ -86,6 +95,9 @@ type retratoFormulario struct {
 	Texto   string   `json:"texto"`
 	Iframes []string `json:"iframes"`
 	Arquivo bool     `json:"arquivo"`
+	// Email: o Google coleta o e-mail de quem responde (campo emailAddress, fora das perguntas). Nunca enviamos a
+	// identidade da conta (baixa do Fallen no #124).
+	Email bool `json:"email"`
 }
 
 // leituraDoRetrato decide, só com o retrato da página: bloqueios primeiro, depois a estrutura.
@@ -99,14 +111,14 @@ func leituraDoRetrato(bruto, canonica string) dominio.LeituraFormulario {
 	}
 	texto := semAcento(strings.ToLower(r.Texto))
 	switch {
-	case textoEmailRegistrado.MatchString(texto), textoLogin.MatchString(texto):
+	case r.Email, textoEmailRegistrado.MatchString(texto), textoLogin.MatchString(texto):
 		return dominio.LeituraFormulario{Bloqueio: "login"} // nunca enviamos a identidade da conta Google
 	case r.Arquivo:
 		return dominio.LeituraFormulario{Bloqueio: "outro"} // upload: a pessoa envia
 	}
 	for _, h := range r.Iframes {
 		if h != "" && !hostsDoProprioGoogle[strings.ToLower(h)] {
-			return dominio.LeituraFormulario{Bloqueio: "site-externo"} // iframe ou embed de outro domínio
+			return dominio.LeituraFormulario{Bloqueio: "site-externo"} // iframe, embed ou object de outro domínio
 		}
 	}
 	if r.Google == nil {
@@ -128,7 +140,8 @@ func semAcento(s string) string {
 }
 
 // scriptFormulario só lê: o FB_PUBLIC_LOAD_DATA_ como JSON (teto de tamanho), o texto visível (teto), os hosts dos
-// iframes e se há campo de arquivo. Nada é clicado, digitado nem executado do que veio da página.
+// iframes, embeds e objects, se há campo de arquivo e se o Google coleta o e-mail (emailAddress). Nada é clicado,
+// digitado nem executado do que veio da página.
 const scriptFormulario = `(() => {
   let google = null;
   try {
@@ -139,9 +152,11 @@ const scriptFormulario = `(() => {
     }
   } catch (e) { google = null; }
   const texto = (document.body ? document.body.innerText : "").slice(0, 20000);
-  const iframes = Array.from(document.querySelectorAll("iframe")).slice(0, 50).map(f => {
-    try { return new URL(f.getAttribute("src") || "", location.href).hostname; } catch (e) { return ""; }
+  const iframes = Array.from(document.querySelectorAll("iframe, embed, object")).slice(0, 50).map(f => {
+    const src = f.tagName === "OBJECT" ? f.getAttribute("data") : f.getAttribute("src");
+    try { return src ? new URL(src, location.href).hostname : ""; } catch (e) { return ""; }
   });
   const arquivo = !!document.querySelector('input[type="file"]');
-  return JSON.stringify({google, texto, iframes, arquivo});
+  const email = !!document.querySelector('input[name="emailAddress"]');
+  return JSON.stringify({google, texto, iframes, arquivo, email});
 })()`

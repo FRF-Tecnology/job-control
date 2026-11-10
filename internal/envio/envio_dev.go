@@ -80,9 +80,12 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 		},
 		Janela: nav.Estado,
 		AoVivo: av,
-		// Ler um formulário (jc-a2y.7.2): espera o ciclo atual, como o login; nenhum envio começa no meio da leitura.
+		// Ler um formulário (jc-a2y.7.2): nenhum envio começa no meio da leitura. Com um ciclo em andamento, recusa na
+		// hora (a rota dá 409), sem esperar sem limite (baixa do Fallen no #124).
 		LerFormulario: func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error) {
-			ciclo.Lock()
+			if !ciclo.TryLock() {
+				return dominio.LeituraFormulario{}, ErrEnviando
+			}
 			defer ciclo.Unlock()
 			return nav.LerFormulario(ctx, endereco)
 		},
