@@ -79,3 +79,34 @@ test('"Abrir a Fila" do pedido leva à Fila, no cartão da vaga, e limpa o ender
   await expect(page.getByTestId('cand-prep')).toBeInViewport();
   await expect(page).toHaveURL(/#\/fila$/);
 });
+
+test('pedido enviado pela caixa vai direto para a IA, sem "Pedir para a IA" (interceptado: não grava)', async ({ page }) => {
+  const TEXTO = 'Adiciona a vaga https://vagas.exemplo.com/2';
+  let criado = false;
+  const lidos: string[] = [];
+  await interceptar(page);
+  await alterarEstado(page, estado => ({ ...estado, pedidos: [...(estado.pedidos ?? []), ...(criado ? [{ id: 'ped-novo', texto: TEXTO, status: 'aberto', criadoEm: estado.hoje }] : [])] }));
+  await page.route('**/api/v1/ia/config', r => r.fulfill({ json: { configurada: true, provedor: 'claude-cli' } }));
+  await page.route('**/api/v1/pedidos', r => {
+    if (r.request().method() !== 'POST') return r.fallback();
+    criado = true;
+    return r.fulfill({ status: 201, json: { id: 'ped-novo', texto: TEXTO, status: 'aberto' } });
+  });
+  let soltar = () => {};
+  await page.route('**/api/v1/pedidos/*/interpretar', async r => {
+    lidos.push(new URL(r.request().url()).pathname);
+    await new Promise<void>(ok => { soltar = ok; }); // a IA "lendo": dá tempo de ver o estado da tela
+    await r.fulfill({ json: {} }).catch(() => {});
+  });
+  await page.goto('/#/hoje');
+  const caixa = page.getByRole('textbox', { name: 'O que vamos fazer hoje?' });
+  await caixa.fill(TEXTO);
+  await caixa.press('Enter');
+  const regiao = page.getByRole('region', { name: 'Seus pedidos' });
+  await expect(regiao.getByRole('status')).toHaveText('A IA está lendo o pedido…');
+  await expect(regiao.getByRole('status')).toBeInViewport();
+  expect(lidos).toEqual(['/api/v1/pedidos/ped-novo/interpretar']);
+  await expect(regiao.getByRole('button', { name: /Pedir para a IA/ })).toHaveCount(0);
+  await expect(caixa).toHaveValue('');
+  soltar();
+});
