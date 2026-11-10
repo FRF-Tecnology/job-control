@@ -106,7 +106,8 @@ test('pedido enviado pela caixa vai direto para a IA, sem "Pedir para a IA" (int
   await expect(regiao.getByRole('status')).toHaveText('A IA está lendo o pedido…');
   await expect(regiao.getByRole('status')).toBeInViewport();
   expect(lidos).toEqual(['/api/v1/pedidos/ped-novo/interpretar']);
-  await expect(regiao.getByRole('button', { name: /Pedir para a IA/ })).toHaveCount(0);
+  // Só o pedido novo: outros pedidos abertos na lista continuam com o próprio botão.
+  await expect(regiao.locator('li[data-pedido="ped-novo"]').getByRole('button')).toHaveCount(0);
   await expect(caixa).toHaveValue('');
   soltar();
 });
