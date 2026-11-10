@@ -291,14 +291,24 @@ func TestFilaSoATela(t *testing.T) {
 func TestFilaLimiteDiario(t *testing.T) {
 	f := novaFila(t)
 	l := f.chamar("GET", "/candidaturas/limites", nil, 200)
-	for _, p := range []string{"linkedin", "gupy", "inhire"} {
-		x := l[p].(Objeto)
+	// As quatro plataformas com limite, e só elas: formulario conta no limite do dia (jc-a2y.7.2).
+	if len(l) != 4 {
+		t.Fatalf("limites = %v", l)
+	}
+	for _, p := range []string{"linkedin", "gupy", "inhire", "formulario"} {
+		x, _ := l[p].(Objeto)
 		if x["limite"] != 30.0 || x["usadas"] != 0.0 || x["renovaEm"] != "2026-11-10T00:00:00-03:00" {
 			t.Fatalf("%s = %v", p, x)
 		}
 	}
 	if g := f.chamar("PUT", "/candidaturas/limites/linkedin", Objeto{"limite": 1}, 200); g["limite"] != 1.0 {
 		t.Fatalf("gravado = %v", g)
+	}
+	if g := f.chamar("PUT", "/candidaturas/limites/formulario", Objeto{"limite": 5}, 200); g["limite"] != 5.0 {
+		t.Fatalf("formulario gravado = %v", g)
+	}
+	if l := f.chamar("GET", "/candidaturas/limites", nil, 200); l["formulario"].(Objeto)["limite"] != 5.0 {
+		t.Fatalf("formulario depois de gravar = %v", l["formulario"])
 	}
 	f.chamar("PUT", "/candidaturas/limites/outra", Objeto{"limite": 1}, 404)
 	f.chamar("PUT", "/candidaturas/limites/indeed", Objeto{"limite": 1}, 404)
