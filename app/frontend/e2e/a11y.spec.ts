@@ -45,6 +45,24 @@ for (const tema of ['light', 'dark'] as const) {
       expect(resumo((await (await axe(page)).include('.seus-dados').analyze()).violations)).toEqual([]);
     });
 
+    // O central-dev não tem janela (disponivel false, a seção não aparece): o estado do app de PC vem interceptado.
+    test('Perfil: Janela do app, com o segundo plano ligado e o aviso de recusa', async ({ page }) => {
+      await page.route('**/api/v1/app/janela', r => r.request().method() === 'GET'
+        ? r.fulfill({ json: { disponivel: true, segundoPlano: true } })
+        : r.fulfill({ status: 409, json: { erro: 'fictício', motivo: 'sem-bandeja' } }));
+      await page.goto('/#/perfil');
+      const regiao = page.getByRole('region', { name: 'Janela do app' });
+      await regiao.getByRole('checkbox', { name: 'Continuar aberto em segundo plano' }).click();
+      await regiao.getByRole('alert').waitFor();
+      expect(resumo((await (await axe(page)).include('.janela-app').analyze()).violations)).toEqual([]);
+    });
+
+    test('Perfil: fora do app de PC a seção Janela do app não aparece', async ({ page }) => {
+      await page.goto('/#/perfil');
+      await page.getByRole('region', { name: 'Seus dados neste computador' }).waitFor();
+      await expect(page.getByRole('region', { name: 'Janela do app' })).toHaveCount(0);
+    });
+
     test('diálogo de aprovar aberto', async ({ page }) => {
       await interceptar(page);
       await page.goto('/#/fila');

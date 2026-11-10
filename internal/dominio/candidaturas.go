@@ -141,7 +141,7 @@ type ErroConflito struct {
 	Estado         string
 	ImpressaoAtual string
 	Existente      string
-	Motivo         string // só no /navegador/entrar: enviando, login-aberto ou sem-navegador (jc-a2y.6.8)
+	Motivo         string // /navegador/entrar: enviando, login-aberto ou sem-navegador (jc-a2y.6.8); /app/janela: sem-bandeja
 }
 
 func (e *ErroConflito) Error() string { return e.Msg }
