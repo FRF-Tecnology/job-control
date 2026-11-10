@@ -15,6 +15,7 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
+	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
 
@@ -148,8 +149,35 @@ func TestCaminhoForaDoFormato(t *testing.T) {
 	if r := chamarAssistente(t, a, "GET", "/vagas/li-1", nil); r.Status != 200 {
 		t.Fatalf("GET /vagas/li-1 = %d", r.Status)
 	}
-	if r := chamarAssistente(t, a, "GET", "/vagas?etapa=aplicar&empresa=Empresa%20Teste", nil); r.Status != 200 {
-		t.Fatalf("GET /vagas com consulta = %d", r.Status)
+	// Consulta: só as chaves que a rota lê (baixa do CyberSec no #136).
+	for caminho, quer := range map[string]int{
+		"/vagas?etapa=aplicar&plataforma=linkedin":       200,
+		"/duplicatas?empresa=Empresa%20Teste&titulo=Dev": 200,
+		"/candidaturas?estado=preparada":                 200,
+		"/pedidos?status=aberto":                         200,
+		"/vagas?etapa=aplicar&empresa=Empresa":           403, // chave que a rota não lê
+		"/vagas?etapa=aplicar&etapa=enviada":             403, // repetida
+		"/vagas/li-1?x=1":                                403, // rota sem consulta
+		"/vagas?etapa=%zz":                               403, // consulta estragada
+	} {
+		if r := chamarAssistente(t, a, "GET", caminho, nil); r.Status != quer {
+			t.Errorf("GET %s = %d; queria %d", caminho, r.Status, quer)
+		}
+	}
+}
+
+// A2.4 (d): a API do assistente nunca chama uma IA nem roda uma CLI, mesmo que o binário passe uma.
+func TestAssistenteSemIA(t *testing.T) {
+	f := novaFila(t)
+	usou := false
+	a := Nova(f.arm, Opcoes{Canal: dominio.CanalMCP, ProvedoresIA: map[string]ia.Provedor{"falso": nil},
+		DetectarCLIs: func(context.Context) []ia.EstadoCLI { usou = true; return nil }})
+	if len(a.provedoresExtras) != 0 {
+		t.Fatalf("provedores = %v", a.provedoresExtras)
+	}
+	a.detectarCLIs(context.Background())
+	if usou {
+		t.Fatal("a API do assistente rodou o detector de CLIs passado")
 	}
 }
 
@@ -408,4 +436,21 @@ func (c cofreQueNaoPodeSerUsado) Gravar(string, string) error {
 func (c cofreQueNaoPodeSerUsado) Apagar(string) error {
 	c.t.Error("a API do assistente usou o cofre passado")
 	return nil
+}
+
+// Dois modelos casam (/candidaturas/limites e /candidaturas/{id}): vale o de menos parâmetros, para a consulta, o
+// corpo e o log usarem o modelo certo.
+func TestModeloComMenosParametros(t *testing.T) {
+	for caminho, quer := range map[string]string{
+		"/candidaturas/limites": "GET /candidaturas/limites",
+		"/candidaturas/cd-1":    "GET /candidaturas/{id}",
+		"/vagas/importar":       "GET /vagas/{id}", // "importar" como id de vaga: lê, e dá 404
+	} {
+		if m, _ := ModeloDoAssistente("GET", caminho); m != quer {
+			t.Errorf("GET %s = %q; queria %q", caminho, m, quer)
+		}
+	}
+	if m, _ := ModeloDoAssistente("POST", "/vagas/importar"); m != "POST /vagas/importar" {
+		t.Fatalf("POST /vagas/importar = %q", m)
+	}
 }

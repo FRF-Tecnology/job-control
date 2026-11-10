@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"golang.org/x/text/unicode/norm"
@@ -49,9 +51,10 @@ const msgForaDoAssistente = "o assistente não pode fazer isso: só a pessoa, pe
 var reSegmento = regexp.MustCompile(`^[A-Za-z0-9_~:@-][A-Za-z0-9._~:@-]{0,199}$`)
 
 // rotaDoAssistente devolve o modelo da lista que casa exatamente com o método e o caminho (sem o prefixo e sem a
-// consulta), ou ok false.
+// consulta), ou ok false. Se dois casam (/candidaturas/limites e /candidaturas/{id}), vale o de menos parâmetros.
 func rotaDoAssistente(metodo, caminho string) (string, bool) {
 	partes := strings.Split(caminho, "/")
+	melhor, params := "", -1
 	for _, r := range rotasDoAssistente {
 		m, modelo, _ := strings.Cut(r, " ")
 		if m != metodo {
@@ -61,19 +64,20 @@ func rotaDoAssistente(metodo, caminho string) (string, bool) {
 		if len(mod) != len(partes) {
 			continue
 		}
-		casou := true
+		casou, n := true, 0
 		for i := range mod {
 			if strings.HasPrefix(mod[i], "{") {
 				casou = casou && reSegmento.MatchString(partes[i])
+				n++
 			} else {
 				casou = casou && mod[i] == partes[i]
 			}
 		}
-		if casou {
-			return r, true
+		if casou && (params < 0 || n < params) {
+			melhor, params = r, n
 		}
 	}
-	return "", false
+	return melhor, params >= 0
 }
 
 // normalizado: para comparar etapa e tipo vindos do assistente (maiúsculas, espaços, formas Unicode compatíveis).
@@ -113,7 +117,7 @@ func (a *API) ChamarAssistente(ctx context.Context, p Pedido) (Resposta, error) 
 		log.Printf("assistente: recusado (API sem canal de assistente)")
 		return recusa, nil
 	}
-	caminho, _, _ := strings.Cut(p.Caminho, "?")
+	caminho, bruta, _ := strings.Cut(p.Caminho, "?")
 	if !strings.HasPrefix(caminho, Prefixo+"/") || strings.ContainsAny(caminho, "%\\") || strings.Contains(caminho, "//") || strings.HasSuffix(caminho, "/") {
 		log.Printf("assistente: %s recusado (caminho fora do formato)", a.canal)
 		return recusa, nil
@@ -121,6 +125,10 @@ func (a *API) ChamarAssistente(ctx context.Context, p Pedido) (Resposta, error) 
 	modelo, ok := rotaDoAssistente(p.Metodo, strings.TrimPrefix(caminho, Prefixo))
 	if !ok {
 		log.Printf("assistente: %s recusado (fora da lista)", a.canal)
+		return recusa, nil
+	}
+	if !consultaAceita(modelo, bruta) {
+		log.Printf("assistente: %s %s recusado (consulta fora da lista)", a.canal, modelo)
 		return recusa, nil
 	}
 	if corpoRecusado(modelo, p.Corpo) {
@@ -145,3 +153,37 @@ var errCofreDoAssistente = errors.New("o assistente não usa o cofre")
 func (cofreDoAssistente) Ler(string) (string, error)  { return "", errCofreDoAssistente }
 func (cofreDoAssistente) Gravar(string, string) error { return errCofreDoAssistente }
 func (cofreDoAssistente) Apagar(string) error         { return errCofreDoAssistente }
+
+// chavesDaConsulta: as chaves de ?consulta que cada rota da lista lê (baixa do CyberSec no #136). Rota fora daqui não
+// aceita consulta nenhuma; chave repetida ou desconhecida dá 403.
+var chavesDaConsulta = map[string][]string{
+	"GET /vagas":        {"etapa", "plataforma"},
+	"GET /duplicatas":   {"empresa", "titulo", "excluir"},
+	"GET /pedidos":      {"status"},
+	"GET /candidaturas": {"estado"},
+	"GET /envio":        {"desde"},
+}
+
+func consultaAceita(modelo, bruta string) bool {
+	if bruta == "" {
+		return true
+	}
+	valores, err := url.ParseQuery(bruta)
+	if err != nil {
+		return false
+	}
+	aceitas := chavesDaConsulta[modelo]
+	for k, v := range valores {
+		if len(v) != 1 || !slices.Contains(aceitas, k) {
+			return false
+		}
+	}
+	return true
+}
+
+// ModeloDoAssistente: o modelo da lista que casa com o método e o caminho (relativo ao Prefixo, com ou sem consulta).
+// A tabela de ferramentas (internal/assistente) confere por ele que cada ferramenta usa só a rota dela.
+func ModeloDoAssistente(metodo, caminho string) (string, bool) {
+	c, _, _ := strings.Cut(caminho, "?")
+	return rotaDoAssistente(metodo, c)
+}

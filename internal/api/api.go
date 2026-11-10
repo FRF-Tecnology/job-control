@@ -151,6 +151,11 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	// Erro do cofre sempre com texto fixo, venha de onde vier: nada do que foi gravado sai numa resposta (jc-a2y.63).
 	o.Cofre = segredos.Seguro{Cofre: o.Cofre}
+	if o.Canal != "" {
+		// A API do assistente nunca chama uma IA nem roda uma CLI (A2.4 (d) do CyberSec, jc-a2y.7.4).
+		o.ProvedoresIA = map[string]ia.Provedor{}
+		o.DetectarCLIs = func(context.Context) []ia.EstadoCLI { return nil }
+	}
 	if o.DetectarCLIs == nil {
 		o.DetectarCLIs = ia.DetectarCLIs
 	}
