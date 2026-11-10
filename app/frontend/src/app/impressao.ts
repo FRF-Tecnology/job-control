@@ -19,10 +19,23 @@ export function jsonCanonico(v: unknown): string {
   throw new Error(`JSON canônico: tipo não suportado (${typeof v})`);
 }
 
-export type PacoteCandidatura = { vagaId: string; plataforma: string; url: string; conteudo: unknown };
+export type PerguntaFormulario = { id: string; texto: string; tipo: string; obrigatoria: boolean; opcoes?: string[] };
+export type EstruturaFormulario = { hash: string; urlFinal: string; perguntas: PerguntaFormulario[] };
+export type PacoteCandidatura = { vagaId: string; plataforma: string; url: string; conteudo: unknown; estrutura?: EstruturaFormulario | null };
 
-export async function impressaoCandidatura({ vagaId, plataforma, url, conteudo }: PacoteCandidatura): Promise<string> {
-  const bytes = new TextEncoder().encode(jsonCanonico({ vagaId, plataforma, url, conteudo }));
+// Formulário com estrutura lida (jc-a2y.7.2): a impressão cobre também a estrutura, como impressaoDe em
+// internal/dominio/formulario.go: só hash, urlFinal e perguntas, e "opcoes" só quando há alguma.
+function estruturaCanonica(e: EstruturaFormulario) {
+  return {
+    hash: e.hash, urlFinal: e.urlFinal,
+    perguntas: e.perguntas.map(p => ({ id: p.id, texto: p.texto, tipo: p.tipo, obrigatoria: p.obrigatoria, ...(p.opcoes?.length ? { opcoes: p.opcoes } : {}) })),
+  };
+}
+
+export async function impressaoCandidatura({ vagaId, plataforma, url, conteudo, estrutura }: PacoteCandidatura): Promise<string> {
+  const base = { vagaId, plataforma, url, conteudo };
+  const objeto = plataforma === 'formulario' && estrutura ? { ...base, estrutura: estruturaCanonica(estrutura) } : base;
+  const bytes = new TextEncoder().encode(jsonCanonico(objeto));
   const resumo = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   return `sha256:v1:${[...resumo].map(b => b.toString(16).padStart(2, '0')).join('')}`;
 }

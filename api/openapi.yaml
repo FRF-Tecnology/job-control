@@ -437,7 +437,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [linkedin, gupy, inhire]
+                required: [linkedin, gupy, inhire, formulario]
                 properties:
                   linkedin: { $ref: '#/components/schemas/LimiteDiario' }
                   gupy: { $ref: '#/components/schemas/LimiteDiario' }

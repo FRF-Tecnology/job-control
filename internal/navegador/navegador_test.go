@@ -177,6 +177,71 @@ type cenario struct {
 	x     *executor.Executor
 	logs  []string
 	n     int
+	erros []string // texto dos erros do navegador (só no teste): o log do executor guarda só o tipo (M7)
+}
+
+// navAnotado guarda o texto dos erros de abrir a aba e a página. O executor só registra o tipo (M7), e sem o texto
+// um erro técnico no CI não tem explicação (jc-a2y.6.15). Os dados são fictícios, e o texto só aparece quando o
+// subteste falha.
+type navAnotado struct {
+	executor.Navegador
+	anotar func(onde string, err error)
+}
+
+func (n navAnotado) NovaPagina(ctx context.Context) (executor.Pagina, error) {
+	p, err := n.Navegador.NovaPagina(ctx)
+	if err != nil {
+		n.anotar("NovaPagina", err)
+		return nil, err
+	}
+	return paginaAnotada{p, n.anotar}, nil
+}
+
+// Ocupado repassa o do navegador de verdade: o EnviarAprovadas consulta com uma conversão de tipo.
+func (n navAnotado) Ocupado() bool {
+	o, ok := n.Navegador.(interface{ Ocupado() bool })
+	return ok && o.Ocupado()
+}
+
+type paginaAnotada struct {
+	executor.Pagina
+	anotar func(onde string, err error)
+}
+
+func (p paginaAnotada) Abrir(ctx context.Context, url string) (string, error) {
+	final, err := p.Pagina.Abrir(ctx, url)
+	if err != nil {
+		p.anotar("Abrir", err)
+	}
+	return final, err
+}
+
+// no faz os ajudantes do cenário falharem no subteste t, e não no teste pai: Fatal no pai, de dentro de um subteste,
+// derruba os dois sem dizer por quê. Se o subteste falhar, mostra os erros do navegador e o log do executor (só
+// tipos e ids) daquele subteste.
+func (s *cenario) no(t *testing.T) {
+	t.Helper()
+	pai, logs, erros := s.t, len(s.logs), len(s.erros)
+	s.t = t
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("erros do navegador: %q", s.erros[erros:])
+			t.Logf("log do executor: %q", s.logs[logs:])
+		}
+		s.t = pai
+	})
+}
+
+// zerarPlataformas deixa todas as plataformas ativas. Cada envio do teste começa do zero: duas falhas seguidas
+// pausam a plataforma (jc-a2y.6.11), e um caso que falhou não pode derrubar os seguintes (jc-a2y.6.15). A regra das
+// falhas seguidas é testada no executor.
+func (s *cenario) zerarPlataformas() {
+	s.t.Helper()
+	if _, err := s.arm.MudarPlataformas(context.Background(), func(dominio.Plataformas, bool) (dominio.Plataformas, error) {
+		return dominio.Plataformas{}, nil
+	}); err != nil {
+		s.t.Fatal(err)
+	}
 }
 
 func novoCenario(t *testing.T, nav executor.Navegador, dados string) *cenario {
@@ -193,8 +258,9 @@ func novoCenario(t *testing.T, nav executor.Navegador, dados string) *cenario {
 	s := &cenario{t: t, arm: arm, cv: filepath.Join(dados, "curriculos"), agora: time.Date(2026, 11, 9, 10, 0, 0, 0, time.Local)}
 	os.MkdirAll(s.cv, 0o700)
 	os.WriteFile(filepath.Join(s.cv, "cv-pt.pdf"), pdf, 0o600)
+	anotado := navAnotado{nav, func(onde string, err error) { s.erros = append(s.erros, onde+": "+err.Error()) }}
 	s.x = executor.Novo(arm, executor.Opcoes{
-		Navegador: nav, PastaCurriculos: s.cv,
+		Navegador: anotado, PastaCurriculos: s.cv,
 		Relogio: func() time.Time { return s.agora },
 		Hoje:    func() string { return s.agora.Format("2006-01-02") },
 		Esperar: func(ctx context.Context, d time.Duration) error { return ctx.Err() },
@@ -245,6 +311,7 @@ func (s *cenario) aprovada(plataforma, link string) string {
 
 func (s *cenario) enviar(id string) executor.Desfecho {
 	s.t.Helper()
+	s.zerarPlataformas()
 	ctx, cancelar := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelar()
 	d, err := s.x.Enviar(ctx, id)
@@ -252,6 +319,40 @@ func (s *cenario) enviar(id string) executor.Desfecho {
 		s.t.Fatalf("Enviar = %v", err)
 	}
 	return d
+}
+
+// aquecer abre o navegador e uma página fictícia antes dos casos, e registra quanto levou. No CI do macOS, o
+// primeiro envio já falhou em 0,08 s com erro técnico, antes de o Chrome poder abrir (jc-a2y.6.15). Os casos são do
+// executor, não da abertura do Chrome: aqui são até 3 tentativas, cada falha com o texto do erro no log do teste, e
+// três falhas derrubam o teste.
+func aquecer(t *testing.T, nav *Navegador, url string) {
+	t.Helper()
+	var falhas []string
+	for i := 1; i <= 3; i++ {
+		inicio := time.Now()
+		ctx, fim := context.WithTimeout(context.Background(), time.Minute)
+		err := func() error {
+			pag, err := nav.NovaPagina(ctx)
+			if err != nil {
+				return fmt.Errorf("NovaPagina: %w", err)
+			}
+			defer pag.Fechar()
+			if _, err := pag.Abrir(ctx, url); err != nil {
+				return fmt.Errorf("Abrir: %w", err)
+			}
+			return nil
+		}()
+		fim()
+		dur := time.Since(inicio).Round(time.Millisecond)
+		if err == nil {
+			t.Logf("aquecimento: navegador aberto na tentativa %d (%s)", i, dur)
+			return
+		}
+		t.Logf("aquecimento: tentativa %d falhou em %s: %v", i, dur, err)
+		falhas = append(falhas, err.Error())
+		nav.Fechar() // a próxima tentativa abre um navegador novo
+	}
+	t.Fatalf("o navegador não abriu em 3 tentativas: %q", falhas)
 }
 
 // Uma sessão do navegador para todos os casos (abrir o Chrome é o que mais demora).
@@ -264,8 +365,10 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 	dados := t.TempDir()
 	nav := navegadorDeTeste(t, srv, dados)
 	s := novoCenario(t, nav, dados)
+	aquecer(t, nav, "https://www.linkedin.com/jobs/view/9000000001")
 
 	t.Run("LinkedIn em duas etapas: envia só o pacote, com o currículo conferido", func(t *testing.T) {
+		s.no(t)
 		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000001"))
 		if d.Estado != dominio.CandEnviada {
 			t.Fatalf("desfecho = %+v", d)
@@ -295,6 +398,7 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 	})
 
 	t.Run("Campos que a página já trouxe preenchidos (jc-a2y.6.5.1)", func(t *testing.T) {
+		s.no(t)
 		for _, v := range variantesPreenchidas {
 			antes := len(srv.envios())
 			d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/"+v.id))
@@ -335,6 +439,7 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 
 	// Antes de interagir: volta para aprovada e o LinkedIn fica em precisa-entrar (jc-a2y.6.11).
 	t.Run("LinkedIn manda para o authwall: volta por login, sem enviar (P0 da .6.5, .6.11)", func(t *testing.T) {
+		s.no(t)
 		antes := len(srv.envios())
 		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000015"))
 		if d.Estado != dominio.CandAprovada || d.Motivo != "login" || len(srv.envios()) != antes {
@@ -353,6 +458,7 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 	})
 
 	t.Run("Gupy pede CPF: bloqueia sem enviar", func(t *testing.T) {
+		s.no(t)
 		antes := len(srv.envios())
 		d := s.enviar(s.aprovada("gupy", "https://empresa-teste.gupy.io/jobs/9000001"))
 		if d.Estado != dominio.CandBloqueada || d.Motivo != "cpf" || len(srv.envios()) != antes {
@@ -361,6 +467,7 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 	})
 
 	t.Run("Vaga redireciona para ATS externo: site-externo sem enviar", func(t *testing.T) {
+		s.no(t)
 		antes := len(srv.envios())
 		d := s.enviar(s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000003"))
 		if d.Estado != dominio.CandBloqueada || d.Motivo != "site-externo" || len(srv.envios()) != antes {
@@ -369,6 +476,7 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 	})
 
 	t.Run("Envio sem confirmação: incerta, um envio só", func(t *testing.T) {
+		s.no(t)
 		antes := len(srv.envios())
 		id := s.aprovada("linkedin", "https://www.linkedin.com/jobs/view/9000000004")
 		if d := s.enviar(id); d.Estado != dominio.CandIncerta || len(srv.envios()) != antes+1 {
