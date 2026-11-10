@@ -521,6 +521,8 @@ dialog form { display: grid; gap: 16px; }
 .formulario-perguntas .resposta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .formulario-perguntas input, .formulario-perguntas select { min-height: 44px; max-width: 480px; width: 100%; }
 .form-ext .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* quem pausou (jc-a2y.7.4.1): o assistente pausou o envio; a pessoa retoma pela tela */
+.pausado-por { margin: 4px 0 0; color: var(--ambar); font-weight: 600; }
 /* ao vivo (jc-a2y.6.9.1): só para ver; a imagem não recebe clique */
 .ao-vivo { display: grid; gap: 8px; }
 .ao-vivo-topo { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }

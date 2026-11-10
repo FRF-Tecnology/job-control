@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 import { AoVivo } from './AoVivo';
+import { doAssistente, nomeAssistente, type Quem } from '../util';
 
 // Envio sem atrapalhar o PC (jc-a2y.6.7, contrato 0.4.13): o navegador do envio roda sem janela. A pessoa pode ver o
 // envio numa janela (POST /envio/janela, vale a partir da próxima candidatura) e entrar nas plataformas
@@ -15,10 +16,11 @@ type Desfecho = { id: string; estado: 'enviada' | 'bloqueada' | 'falhou' | 'ince
 export type EstadoPlataforma = {
   plataforma: 'linkedin' | 'gupy' | 'inhire'; estado: 'ativa' | 'pausada' | 'precisa-entrar' | 'parada-hoje';
   motivo?: 'falhas-seguidas' | 'login' | 'captcha' | 'aviso-conta' | null; ate?: string | null;
+  pausadaPor?: Quem; // jc-a2y.7.4: só em pausada sem motivo (pela pessoa ou pelo assistente)
   voltasHoje?: number; paginasHoje?: number; tetoPaginas?: number;
 };
 export type EstadoEnvio = {
-  ligado: boolean; pausado: boolean; enviandoAgora: { id: string; desde: string } | null; desfechos: Desfecho[];
+  ligado: boolean; pausado: boolean; pausadoPor?: Quem; enviandoAgora: { id: string; desde: string } | null; desfechos: Desfecho[];
   janela?: 'oculta' | 'visivel'; login?: boolean; plataformas?: EstadoPlataforma[];
 };
 
@@ -29,7 +31,9 @@ const ROTULO_ESTADO: Record<EstadoPlataforma['estado'], string> = { ativa: 'Ativ
 function explicarPlataforma(p: EstadoPlataforma, volta: string) {
   switch (p.estado) {
     case 'ativa': return (p.tetoPaginas && (p.paginasHoje ?? 0) >= p.tetoPaginas) ? 'Chegou ao teto de páginas de hoje: espera até amanhã.' : 'Envia as aprovadas desta plataforma.';
-    case 'pausada': return p.motivo === 'falhas-seguidas' ? 'Pausada depois de duas falhas seguidas iguais. Confira o que houve antes de retomar.' : 'Pausada. Nada desta plataforma sai até você retomar.';
+    case 'pausada': return p.motivo === 'falhas-seguidas' ? 'Pausada depois de duas falhas seguidas iguais. Confira o que houve antes de retomar.'
+      : doAssistente(p.pausadaPor) ? `Pausada pelo ${nomeAssistente(p.pausadaPor?.canal)}. Nada desta plataforma sai até você retomar.`
+      : 'Pausada. Nada desta plataforma sai até você retomar.';
     case 'precisa-entrar': return p.plataforma === 'linkedin'
       ? 'A sessão caiu. Entre no LinkedIn; ao fechar a janela de login, ela volta sozinha. Ou retome aqui.'
       : 'A sessão caiu. Entre pelo cartão de uma candidatura desta plataforma (o login é por empresa); ao fechar a janela, ela volta sozinha. Ou retome aqui.';
@@ -213,6 +217,7 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
             ? (agora ? 'A candidatura que está sendo enviada agora termina; nenhuma outra começa até você retomar.' : 'Nada é enviado até você retomar. As aprovadas esperam.')
             : (agora ? 'O app envia as aprovadas, uma por vez. Se pausar, a candidatura que está sendo enviada agora termina.' : 'O app envia as candidaturas aprovadas, uma por vez.')}</p>
           {!envio.pausado && <p className="pequeno mudo">Sempre que o app abrir, o envio volta pausado.</p>}
+          {envio.pausado && doAssistente(envio.pausadoPor) && <p className="pequeno pausado-por">{`Pausado pelo ${nomeAssistente(envio.pausadoPor?.canal)}.`}</p>}
         </div>
         {envio.pausado
           ? <button ref={acao} className="botao" type="button" disabled={ocupado} onClick={retomar}>Retomar envio</button>
