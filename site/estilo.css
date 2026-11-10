@@ -80,10 +80,11 @@ a{color:var(--acento)}a:hover{color:var(--texto)}
 .pilha-logo{display:flex;padding-left:8px}
 .pilha-logo .logo-slot{margin-left:-8px;width:34px;height:34px;border-radius:11px;font-size:14px;box-shadow:0 0 0 3px var(--fundo)}
 
-/* slot de logo (troque pelo arquivo oficial de cada marca) */
+/* Marcas dos provedores. */
 .logo-slot{width:48px;height:48px;border-radius:15px;display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:"Sora","Inter",sans-serif;font-weight:800;font-size:20px;color:var(--texto);background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(60,70,140,.16),0 6px 14px -8px rgba(20,30,80,.35)}
 .escuro .logo-slot{background:#1B1F52;color:#EEF1FF;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
 .logo-slot img{width:70%;height:70%;object-fit:contain}
+.escuro .logo-slot img{filter:invert(1)}
 
 /* prévia do app */
 .previa{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:-48px;scroll-margin-top:96px}
@@ -366,6 +367,8 @@ tr:last-child td{border-bottom:0}
 /* baixar: botão dividido com menu de plataformas */
 .bs{position:relative;z-index:26;display:inline-flex;align-items:stretch}
 .bs .tecla{overflow:hidden}
+.marca-so{width:20px;height:20px;object-fit:contain;flex:none}
+.bs-main .marca-so,.escuro .bs-item .marca-so{filter:brightness(0) invert(1)}
 .bs .bs-main{border-radius:18px 0 0 18px;padding:0 22px 0 18px;gap:10px}
 .bs .bs-seta{border-radius:0 18px 18px 0;padding:0;min-width:54px;margin-left:2px}
 .bs-seta svg{transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
@@ -395,10 +398,10 @@ tr:last-child td{border-bottom:0}
 .so.larga{grid-column:span 3;min-height:340px}
 .so:hover{transform:translateY(-6px)}
 .so-ic{display:flex}
-.so-ic svg{width:76px;height:76px;stroke-width:1.5}
-.so:hover .so-ic svg{animation:balanco .8s cubic-bezier(.34,1.56,.64,1)}
+.so-ic img{width:76px;height:76px;object-fit:contain}
+.so:hover .so-ic img{animation:balanco .8s cubic-bezier(.34,1.56,.64,1)}
 .so-sombra{position:absolute;right:-70px;bottom:-84px;z-index:-1;opacity:.1;pointer-events:none;display:flex}
-.so-sombra svg{width:250px;height:250px;stroke-width:1.1}
+.so-sombra img{width:250px;height:250px;object-fit:contain;filter:brightness(0)}
 .so-status{position:absolute;top:28px;right:28px;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.5);box-shadow:inset 0 0 0 1px rgba(18,22,51,.14)}
 .so-status.breve{background:#121633;color:#fff}
 .so h3{margin:auto 0 8px;font-family:"Sora","Inter",sans-serif;font-size:clamp(36px,3.4vw,48px);font-weight:800;letter-spacing:-.05em;line-height:1}

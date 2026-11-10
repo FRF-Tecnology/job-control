@@ -37,7 +37,7 @@ test('site: todo texto que o script liga tem lugar na página', () => {
   assert.ok(fixas.length >= 10, 'achou as chamadas ligar(...)');
   assert.deepEqual(fixas.filter(k => !naPagina.has(k)), []);
   // As chaves montadas no script: os motivos da triagem e os campos da IA escolhida.
-  for (const k of ['tri.p0', 'tri.p1', 'tri.p2', ...['ini', 'nome', 'curto', 'empresa', 'estado', 'cmd', 'saida1', 'saida2'].map(c => `prov.${c}`)]) {
+  for (const k of ['tri.p0', 'tri.p1', 'tri.p2', ...['nome', 'curto', 'empresa', 'estado', 'cmd', 'saida1', 'saida2'].map(c => `prov.${c}`)]) {
     assert.ok(naPagina.has(k), `falta data-liga="${k}"`);
   }
 });
@@ -65,5 +65,17 @@ test('site: os cinco sistemas aparecem no menu de baixar e nos cartões', () => 
     assert.equal(todos(html, new RegExp(`data-plat="(${k})"`, 'g')).length, 2, `menu: ${k}`);
     assert.equal(todos(html, new RegExp(`data-baixar="(${k})"`, 'g')).length, 1, `cartão: ${k}`);
     assert.match(js, new RegExp(`k: '${k}'`));
+  }
+});
+
+test('site: opções de plataforma e de IA usam o logo correspondente e preservam o rótulo acessível', () => {
+  const opcoes = [...html.matchAll(/<button [^>]*data-(plat|prov)="([^"]+)"[^>]*>(.*?)<\/button>/g)];
+  assert.equal(opcoes.length, 16); // dois menus com cinco plataformas e seis provedores
+  for (const [, tipo, id, conteudo] of opcoes) {
+    const marca = id === 'ios' ? 'mac' : id;
+    const imagem = conteudo.match(/<img\b[^>]*>/)?.[0] ?? '';
+    assert.ok(imagem.includes(`src="marcas/${marca}.svg"`), `${tipo}: ${id}`);
+    assert.match(imagem, /\salt=""/);
+    assert.ok(conteudo.replace(/<[^>]+>/g, '').trim(), `falta rótulo para ${id}`);
   }
 });

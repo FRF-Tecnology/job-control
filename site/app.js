@@ -8,11 +8,11 @@
 const LINKS = { mac: '', win: '', ios: '', android: '' };
 
 const SISTEMAS = [
-  { k: 'mac', nome: 'macOS', grupo: 'pc', acao: 'Baixar para macOS', txt: 'O app completo no seu Mac: busca, Lista do dia, envio com navegador embutido e Quadro.', status: 'Disponível', cor: '#D7C4FF', icone: 'M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20' },
-  { k: 'win', nome: 'Windows', grupo: 'pc', acao: 'Baixar para Windows', txt: 'O mesmo app no seu PC, com os seus dados guardados numa pasta do computador.', status: 'Disponível', cor: '#9FE3BC', icone: 'M3 4h18v12H3zM8 21h8M12 16v5' },
-  { k: 'linux', nome: 'Linux', grupo: 'pc', acao: 'Avisar quando sair', txt: 'Estamos preparando. Ligue o aviso e mandamos o link assim que sair.', status: 'Em breve', cor: '#F5D27E', icone: 'M3 4h18v16H3zM7 9l3 3-3 3M12 15h5', breve: true },
-  { k: 'ios', nome: 'iPhone', grupo: 'cel', acao: 'Baixar na App Store', txt: 'App Store · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.', status: 'Disponível', cor: '#A6CDFF', icone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10.5 5h3' },
-  { k: 'android', nome: 'Android', grupo: 'cel', acao: 'Baixar no Google Play', txt: 'Google Play · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.', status: 'Disponível', cor: '#FFC1A6', icone: 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM5 17h14M12 6v.01' }
+  { k: 'mac', nome: 'macOS', grupo: 'pc', acao: 'Baixar para macOS', txt: 'O app completo no seu Mac: busca, Lista do dia, envio com navegador embutido e Quadro.', status: 'Disponível', cor: '#D7C4FF', icone: 'marcas/mac.svg' },
+  { k: 'win', nome: 'Windows', grupo: 'pc', acao: 'Baixar para Windows', txt: 'O mesmo app no seu PC, com os seus dados guardados numa pasta do computador.', status: 'Disponível', cor: '#9FE3BC', icone: 'marcas/win.svg' },
+  { k: 'linux', nome: 'Linux', grupo: 'pc', acao: 'Avisar quando sair', txt: 'Estamos preparando. Ligue o aviso e mandamos o link assim que sair.', status: 'Em breve', cor: '#F5D27E', icone: 'marcas/linux.svg', breve: true },
+  { k: 'ios', nome: 'iPhone', grupo: 'cel', acao: 'Baixar na App Store', txt: 'App Store · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.', status: 'Disponível', cor: '#A6CDFF', icone: 'marcas/mac.svg' },
+  { k: 'android', nome: 'Android', grupo: 'cel', acao: 'Baixar no Google Play', txt: 'Google Play · conecta ao seu computador. Acompanhe o envio, pause e aprove de longe.', status: 'Disponível', cor: '#FFC1A6', icone: 'marcas/android.svg' }
 ];
 
 const VAGAS = [
@@ -29,22 +29,22 @@ const DECK = [
 ];
 
 const PROVEDORES = [
-  { id: 'claude', ini: 'C', nome: 'Claude', empresa: 'Anthropic', via: 'Claude Code ou chave', curto: 'Claude Code conectado', estado: 'Conectado', estadoK: 'ok',
+  { id: 'claude', nome: 'Claude', empresa: 'Anthropic', via: 'Claude Code ou chave', curto: 'Claude Code conectado', estado: 'Conectado', estadoK: 'ok',
     cmd: 'applyer ia conectar claude', saida1: 'Claude Code encontrado neste computador', saida2: 'Usando a sua assinatura. Nenhuma chave salva.',
     metodos: [{ t: 'Sua assinatura', s: 'Claude Code já logado no computador', k: 'term' }, { t: 'Sua chave', s: 'Chave da Anthropic, guardada no cofre do sistema', k: 'chave' }] },
-  { id: 'chatgpt', ini: 'O', nome: 'ChatGPT', empresa: 'OpenAI', via: 'Codex CLI ou chave', curto: 'Codex conectado', estado: 'Em teste', estadoK: 'teste',
+  { id: 'chatgpt', nome: 'ChatGPT', empresa: 'OpenAI', via: 'Codex CLI ou chave', curto: 'Codex conectado', estado: 'Em teste', estadoK: 'teste',
     cmd: 'applyer ia conectar chatgpt', saida1: 'Codex CLI encontrado neste computador', saida2: 'Usando a sua assinatura do ChatGPT.',
     metodos: [{ t: 'Sua assinatura', s: 'Codex CLI já logado no computador', k: 'term' }, { t: 'Sua chave', s: 'Chave da OpenAI, guardada no cofre do sistema', k: 'chave' }] },
-  { id: 'gemini', ini: 'G', nome: 'Gemini', empresa: 'Google', via: 'Gemini CLI ou chave', curto: 'Gemini CLI conectado', estado: 'Pronto para conectar', estadoK: 'chave',
+  { id: 'gemini', nome: 'Gemini', empresa: 'Google', via: 'Gemini CLI ou chave', curto: 'Gemini CLI conectado', estado: 'Pronto para conectar', estadoK: 'chave',
     cmd: 'applyer ia conectar gemini', saida1: 'Gemini CLI encontrado neste computador', saida2: 'Entre com a sua conta Google para usar.',
     metodos: [{ t: 'Sua assinatura', s: 'Gemini CLI com a sua conta Google', k: 'term' }, { t: 'Sua chave', s: 'Chave do Google AI Studio, no cofre do sistema', k: 'chave' }] },
-  { id: 'grok', ini: 'X', nome: 'Grok', empresa: 'xAI', via: 'Chave da xAI', curto: 'Chave da xAI', estado: 'Com chave', estadoK: 'chave',
+  { id: 'grok', nome: 'Grok', empresa: 'xAI', via: 'Chave da xAI', curto: 'Chave da xAI', estado: 'Com chave', estadoK: 'chave',
     cmd: 'applyer ia conectar grok --chave', saida1: 'Chave da xAI validada', saida2: 'Guardada no cofre do sistema, nunca em arquivo.',
     metodos: [{ t: 'Sua chave', s: 'Chave da xAI, guardada no cofre do sistema', k: 'chave' }] },
-  { id: 'openrouter', ini: 'R', nome: 'OpenRouter', empresa: 'Vários modelos', via: 'Uma chave, vários modelos', curto: 'OpenRouter', estado: 'Com chave', estadoK: 'chave',
+  { id: 'openrouter', nome: 'OpenRouter', empresa: 'Vários modelos', via: 'Uma chave, vários modelos', curto: 'OpenRouter', estado: 'Com chave', estadoK: 'chave',
     cmd: 'applyer ia conectar openrouter --chave', saida1: 'Chave do OpenRouter validada', saida2: 'Escolha o modelo em Perfil e IA.',
     metodos: [{ t: 'Sua chave', s: 'Uma chave para usar vários modelos', k: 'chave' }] },
-  { id: 'local', ini: 'L', nome: 'No seu computador', empresa: 'Modelos locais', via: 'Ollama, LM Studio · em breve', curto: 'Modelo local', estado: 'Em breve', estadoK: 'breve',
+  { id: 'local', nome: 'No seu computador', empresa: 'Modelos locais', via: 'Ollama, LM Studio · em breve', curto: 'Modelo local', estado: 'Em breve', estadoK: 'breve',
     cmd: 'applyer ia conectar local', saida1: 'Procurando modelos rodando neste computador', saida2: 'Em breve: tudo sem sair da sua máquina.',
     metodos: [{ t: 'Sem internet para a IA', s: 'O modelo roda inteiro no seu computador', k: 'pc' }] }
 ];
@@ -162,7 +162,7 @@ function desenhar() {
   for (const bs of $$('[data-bs]')) {
     const principal = $('[data-bs-principal]', bs);
     texto($('[data-bs-texto]', bs), rotulo(atual));
-    atributo($('[data-bs-icone]', bs), 'd', atual.icone);
+    atributo($('[data-bs-icone]', bs), 'src', atual.icone);
     classe(principal, 'baixando', estado.baixando === atual.k);
     classe(principal, 'feito', feito(atual));
     const aberto = estado.menu === bs;
@@ -236,7 +236,8 @@ function desenhar() {
   // conecte sua IA
   const prov = PROVEDORES.find(x => x.id === estado.prov) ?? PROVEDORES[0];
   for (const b of $$('[data-prov]')) { const on = b.dataset.prov === prov.id; classe(b, 'on', on); atributo(b, 'aria-pressed', on); }
-  for (const k of ['ini', 'nome', 'curto', 'empresa', 'estado', 'cmd', 'saida1', 'saida2']) ligar(`prov.${k}`, prov[k]);
+  for (const img of $$('[data-prov-icone]')) atributo(img, 'src', `marcas/${prov.id}.svg`);
+  for (const k of ['nome', 'curto', 'empresa', 'estado', 'cmd', 'saida1', 'saida2']) ligar(`prov.${k}`, prov[k]);
   atributo($('[data-prov-estado]'), 'class', `estado ${prov.estadoK}`);
   const metodos = $('[data-metodos]');
   if (metodos && metodos.dataset.de !== prov.id) {
