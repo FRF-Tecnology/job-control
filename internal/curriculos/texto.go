@@ -39,7 +39,7 @@ func TextoProfissional(ctx context.Context, arquivo []byte) (texto string, err e
 		}
 		for _, linha := range strings.Split(pagina, "\n") {
 			switch dominio.MotivoDoRotulo(linha) {
-			case "cpf", "rg", "senha", "dado-bancario", "dado-sensivel":
+			case "cpf", "rg", "senha", "dado-bancario", "documento", "dado-sensivel":
 				continue
 			}
 			if dominio.ContemDocumento(linha) {

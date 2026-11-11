@@ -64,6 +64,9 @@ func (p *provedorParaCV) Nome() string { return "teste" }
 func (p *provedorParaCV) Chamar(_ context.Context, pedido ia.PedidoProvedor) (ia.RespostaProvedor, error) {
 	p.chamadas++
 	msg := pedido.Prompt.Mensagem
+	if strings.Contains(msg, "AB123456") {
+		p.t.Fatal("número de passaporte no texto enviado ao provedor")
+	}
 	if pedido.Prompt.NomeEsquema != "sugerirPerfilDoCV" || !strings.Contains(msg, "Senior Java Developer") ||
 		strings.Contains(msg, "@") || strings.Contains(msg, "987654") || strings.Contains(msg, "%PDF") {
 		p.t.Fatal("conteúdo inesperado no pedido")
@@ -75,7 +78,7 @@ func TestOnboardingSugereCVComEvidenciaSemSalvar(t *testing.T) {
 	ctx := context.Background()
 	pasta := t.TempDir()
 	a := apiPrimeiroAcesso(t, pasta)
-	arquivo := cvComTexto("Senior Java Developer", "Fluent English", "teste@example.test", "CPF 98765432100")
+	arquivo := cvComTexto("Senior Java Developer", "Fluent English", "teste@example.test", "CPF 98765432100", "Passaporte: AB123456")
 	corpo := Objeto{"curriculoBase64": arquivo}
 	if w := onboardingJSON(t, a, "/onboarding/sugerir", corpo); w.Code != 409 {
 		t.Fatalf("sem IA: %d", w.Code)

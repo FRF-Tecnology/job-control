@@ -15,6 +15,9 @@ import (
 //go:embed funcoes.json
 var funcoesJSON []byte
 
+//go:embed sugerir-perfil-cv.json
+var sugerirPerfilCVJSON []byte
+
 type contrato struct {
 	Entrada json.RawMessage `json:"entrada"`
 	Saida   json.RawMessage `json:"saida"`
@@ -31,6 +34,11 @@ var contratos = func() (c struct {
 	if err := json.Unmarshal(funcoesJSON, &c); err != nil {
 		panic("funcoes.json: " + err.Error())
 	}
+	var perfilCV contrato
+	if err := json.Unmarshal(sugerirPerfilCVJSON, &perfilCV); err != nil {
+		panic("sugerir-perfil-cv.json: " + err.Error())
+	}
+	c.Funcoes["sugerirPerfilDoCV"] = &perfilCV
 	for nome, f := range c.Funcoes {
 		f.entrada, f.saida = lerEsquema(f.Entrada), lerEsquema(f.Saida)
 		var b bytes.Buffer
