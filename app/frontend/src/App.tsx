@@ -1,7 +1,7 @@
 // Casca da interface: estado, rotas, atualização automática, avisos e diálogos (porte de web/app.mjs).
 import { Component, type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Contexto, chamarApi, ErroApi, type App as AppApi, type Estado, type Pergunta } from './app/contexto';
-import { prepararProntas } from './app/preparoAutomatico';
+import { liberouDepoisDaTrava, prepararProntas } from './app/preparoAutomatico';
 import { resumo } from './dominio/funil';
 import { Icone } from './componentes';
 import { encode } from './util';
@@ -150,6 +150,8 @@ export default function App() {
   // e aprova na Fila. Uma rodada por vez; cada vaga é tentada uma vez por abertura do app.
   const preparando = useRef(false);
   const tentadas = useRef(new Set<string>());
+  // travadoEm: a versão do estado em que a trava das ações deu 402; nenhum preparo até a licença voltar.
+  const travadoEm = useRef<string | null>(null);
   useEffect(() => {
     if (!estado || fechando.current || preparando.current) return;
     const modoDireto = (estado.perfil as any)?.modo === 'direto';
@@ -159,8 +161,11 @@ export default function App() {
     preparando.current = true;
     (async () => {
       try {
+        if (!(await liberouDepoisDaTrava(chamarApi, travadoEm.current, versao.current))) return;
+        travadoEm.current = null;
         const candidaturas = await chamarApi('/api/v1/candidaturas');
         const r = await prepararProntas(chamarApi, { vagas: estado.vagas ?? [], perfil: estado.perfil, curriculos: (estado as any).curriculos ?? [] }, candidaturas, tentadas.current);
+        if (r.travado) travadoEm.current = versao.current ?? '';
         if (r.preparadas) aviso(r.preparadas === 1 ? 'Uma candidatura foi preparada sozinha: revise o pacote e aprove na Fila.' : `${r.preparadas} candidaturas foram preparadas sozinhas: revise os pacotes e aprove na Fila.`);
       } catch { /* sem a lista, tenta na próxima leitura */ } finally { preparando.current = false; }
     })();

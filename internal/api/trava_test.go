@@ -51,6 +51,14 @@ func TestTravaPorRota(t *testing.T) {
 		{"POST", "/contas"},           // /conta só com a barra
 		{"POST", "/dados/apagar/x"},   // só o caminho exato
 		{"POST", "/app/janela/outra"}, // só /app/janela e /app/janela/padrao
+		// Ruling A9: pausar sim, retomar não; entrar e pedidos continuam travados.
+		{"POST", "/envio/retomar"},
+		{"POST", "/envio/plataformas/linkedin/retomar"},
+		{"POST", "/envio/plataformas/linkedin/pausar/x"},
+		{"POST", "/navegador/entrar"},
+		{"POST", "/pedidos/x/cancelar"},
+		{"PUT", "/backup"},
+		{"POST", "/dados/pasta"},
 	}
 	for _, b := range bloqueadas {
 		r := chamarTela(t, a, b.m, b.caminho, nil)
@@ -69,6 +77,12 @@ func TestTravaPorRota(t *testing.T) {
 		{"POST", "/assinatura/assinar"},
 		{"POST", "/app/janela"},
 		{"POST", "/app/janela/padrao"},
+		// Ruling A9: escritas de proteção ou de levar os dados embora.
+		{"POST", "/envio/pausar"},
+		{"POST", "/envio/plataformas/linkedin/pausar"},
+		{"POST", "/navegador/sair"},
+		{"POST", "/backup"},
+		{"PUT", "/dados/pasta"},
 	}
 	for _, l := range liberadas {
 		r := chamarTela(t, a, l.m, l.caminho, nil)

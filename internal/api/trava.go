@@ -1,6 +1,7 @@
 package api
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/FRF-Tecnology/job-control/internal/conta"
@@ -17,6 +18,9 @@ var frasesDaTrava = map[string]string{
 	conta.MotivoSemConta:      "Entre na sua conta para buscar e se candidatar.",
 }
 
+// reEnvioPausarPlataforma: POST /envio/plataformas/{plataforma}/pausar (o mesmo formato que envio.go aceita).
+var reEnvioPausarPlataforma = regexp.MustCompile(`^/envio/plataformas/[^/]+/pausar$`)
+
 // liberadoSemLicenca: a lista "Sempre liberado". Ler (GET, HEAD, OPTIONS), a conta, a assinatura, apagar os dados, a
 // janela do app e as chaves de IA (a pessoa precisa delas para sair da trava ou levar os dados embora).
 func liberadoSemLicenca(metodo, caminho string) bool {
@@ -31,6 +35,14 @@ func liberadoSemLicenca(metodo, caminho string) bool {
 	p := strings.TrimPrefix(c, Prefixo)
 	switch p {
 	case "/conta", "/assinatura", "/dados/apagar", "/app/janela", "/app/janela/padrao":
+		return true
+	}
+	// Ruling A9: escritas de proteção ou de levar os dados embora, com método e caminho exatos. Pausar sim, retomar não.
+	switch strings.ToUpper(metodo) + " " + p {
+	case "POST /envio/pausar", "POST /navegador/sair", "POST /backup", "PUT /dados/pasta":
+		return true
+	}
+	if reEnvioPausarPlataforma.MatchString(p) && strings.ToUpper(metodo) == "POST" {
 		return true
 	}
 	return strings.HasPrefix(p, "/conta/") || strings.HasPrefix(p, "/assinatura/") || reIAChave.MatchString(p) // reIAChave: ia.go

@@ -1,7 +1,7 @@
 // Preparar o pacote sozinho (jc-a2y.6.12). Só dados fictícios.
 import { describe, expect, it, vi } from 'vitest';
 import { ErroApi } from './contexto';
-import { prepararProntas, vagasProntas } from './preparoAutomatico';
+import { liberouDepoisDaTrava, prepararProntas, vagasProntas } from './preparoAutomatico';
 
 const PERFIL = { nome: 'Ana Exemplo', email: 'ana@exemplo.com', curriculos: { PT: 'curriculos/curriculo-exemplo.pdf' }, respostasPadrao: [{ pergunta: 'Anos com React?', resposta: '3' }, { pergunta: 'Seu CPF', resposta: 'nunca' }] };
 const PDFS = [{ nome: 'curriculo-exemplo.pdf' }];
@@ -63,5 +63,26 @@ describe('prepararProntas com a trava das ações', () => {
     expect(tentadas.size).toBe(0);
     // A licença voltou (próxima mudança de estado): prepara as duas.
     expect(await prepararProntas(api, dados, [], tentadas)).toEqual({ preparadas: 2, semPdf: 0 });
+  });
+});
+
+describe('liberouDepoisDaTrava', () => {
+  it('sem 402 antes: liberado, sem ler a conta', async () => {
+    const api = vi.fn();
+    expect(await liberouDepoisDaTrava(api, null, 'v1')).toBe(true);
+    expect(api).not.toHaveBeenCalled();
+  });
+  it('depois de um 402: só volta quando a conta deixa agir', async () => {
+    const api = vi.fn()
+      .mockResolvedValueOnce({ entrada: true, motivo: 'teste-acabou' })
+      .mockResolvedValueOnce({ entrada: true, motivo: '' });
+    expect(await liberouDepoisDaTrava(api, 'v1', 'v2')).toBe(false);
+    expect(api).toHaveBeenCalledWith('/api/v1/conta');
+    expect(await liberouDepoisDaTrava(api, 'v1', 'v3')).toBe(true);
+  });
+  it('sem a rota da conta (erro): espera a versão do estado mudar', async () => {
+    const api = vi.fn().mockRejectedValue(new ErroApi('indisponível', 503, {}));
+    expect(await liberouDepoisDaTrava(api, 'v1', 'v1')).toBe(false);
+    expect(await liberouDepoisDaTrava(api, 'v1', 'v2')).toBe(true);
   });
 });

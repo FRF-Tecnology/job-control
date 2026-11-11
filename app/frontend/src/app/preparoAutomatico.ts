@@ -43,3 +43,17 @@ export async function prepararProntas(
   }
   return r;
 }
+
+// Depois de um 402 (travadoNaVersao: a versão do estado em que travou), só volta a preparar quando a conta deixa agir
+// (GET /conta sem motivo). Sem a rota da conta (503 no central-dev sem conta, ou erro), espera a versão mudar.
+export async function liberouDepoisDaTrava(
+  api: (caminho: string) => Promise<any>, travadoNaVersao: string | null, versaoAtual: string | null,
+): Promise<boolean> {
+  if (travadoNaVersao === null) return true;
+  try {
+    const c = await api('/api/v1/conta');
+    return !c?.motivo;
+  } catch {
+    return versaoAtual !== travadoNaVersao;
+  }
+}
