@@ -69,13 +69,19 @@ func Validar(s string) error {
 	return nil
 }
 
-// Resumir gera o resumo Argon2id no formato PHC, com sal aleatório.
+// Resumir gera o resumo Argon2id no formato PHC, com sal aleatório. ErrOcupado se não achar vaga
+// no semáforo dentro da espera.
 func Resumir(s string) (string, error) {
 	sal := make([]byte, tamSal)
 	if _, err := rand.Read(sal); err != nil {
 		return "", fmt.Errorf("gerar sal: %w", err)
 	}
+	soltar, err := ocupar()
+	if err != nil {
+		return "", err
+	}
 	h := argon2.IDKey([]byte(s), sal, passadas, memoriaKiB, fios, tamHash)
+	soltar()
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, memoriaKiB, passadas, fios,
 		base64.RawStdEncoding.EncodeToString(sal),
@@ -96,7 +102,7 @@ const (
 var errResumo = errors.New("resumo de senha inválido")
 
 // Conferir compara a senha com o resumo em tempo constante, usando os
-// parâmetros gravados no próprio resumo (dentro dos tetos acima).
+// parâmetros gravados no próprio resumo (dentro dos tetos acima). ErrOcupado como em Resumir.
 func Conferir(resumo, s string) (bool, error) {
 	p := strings.Split(resumo, "$")
 	if len(p) != 6 || p[0] != "" || p[1] != "argon2id" {
@@ -122,6 +128,11 @@ func Conferir(resumo, s string) (bool, error) {
 	if err != nil || len(esperado) < minHash || len(esperado) > maxHash {
 		return false, errors.New("hash do resumo inválido")
 	}
+	soltar, err := ocupar()
+	if err != nil {
+		return false, err
+	}
 	h := argon2.IDKey([]byte(s), sal, t, m, par, uint32(len(esperado)))
+	soltar()
 	return subtle.ConstantTimeCompare(h, esperado) == 1, nil
 }

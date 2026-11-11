@@ -39,6 +39,7 @@ const (
 	msgEmail       = "Email inválido"
 	msgDispositivo = "Dispositivo inválido"
 	msgInterno     = "Erro interno. Tente de novo"
+	msgOcupado     = "Serviço ocupado. Tente de novo em instantes"
 )
 
 var reDispositivo = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -90,6 +91,16 @@ func erro(w http.ResponseWriter, status int, msg string) {
 func (s *Servidor) interno(w http.ResponseWriter, r *http.Request, onde string, err error) {
 	s.log.Error("falha interna", "rota", r.URL.Path, "onde", onde, "erro", err.Error())
 	erro(w, http.StatusInternalServerError, msgInterno)
+}
+
+// falhaSenha responde a um erro de senhas.Resumir/Conferir: sem vaga para o Argon2, 503; senão, 500.
+func (s *Servidor) falhaSenha(w http.ResponseWriter, r *http.Request, onde string, err error) {
+	if errors.Is(err, senhas.ErrOcupado) {
+		s.log.Warn("resumos de senha ocupados", "rota", r.URL.Path)
+		erro(w, http.StatusServiceUnavailable, msgOcupado)
+		return
+	}
+	s.interno(w, r, onde, err)
 }
 
 func lerPedido(w http.ResponseWriter, r *http.Request, p *pedido) bool {
@@ -225,7 +236,7 @@ func (s *Servidor) criarConta(w http.ResponseWriter, r *http.Request) {
 	// O resumo é feito sempre, antes de saber se a conta existe: mesmo custo nos dois casos.
 	hash, err := senhas.Resumir(p.Senha)
 	if err != nil {
-		s.interno(w, r, "resumir senha", err)
+		s.falhaSenha(w, r, "resumir senha", err)
 		return
 	}
 	u, sit, err := s.contas.Criar(r.Context(), email, hash, s.cfg.TermosVersao)
@@ -280,7 +291,7 @@ func (s *Servidor) confirmar(w http.ResponseWriter, r *http.Request) {
 	}
 	certa, err := senhas.Conferir(u.SenhaHash, p.Senha)
 	if err != nil {
-		s.interno(w, r, "conferir senha", err)
+		s.falhaSenha(w, r, "conferir senha", err)
 		return
 	}
 	if !certa {
@@ -345,7 +356,11 @@ func (s *Servidor) entrar(w http.ResponseWriter, r *http.Request) {
 			erro(w, http.StatusTooManyRequests, msgBloqueado)
 			return
 		}
-		_, _ = senhas.Conferir(s.resumoFalso, p.Senha)
+		// O resumo falso passa pelo mesmo semáforo: ocupado responde 503 igual a quem tem conta.
+		if _, err := senhas.Conferir(s.resumoFalso, p.Senha); errors.Is(err, senhas.ErrOcupado) {
+			s.falhaSenha(w, r, "conferir senha", err)
+			return
+		}
 		erro(w, http.StatusUnauthorized, msgCredenciais)
 		return
 	}
@@ -366,7 +381,7 @@ func (s *Servidor) entrar(w http.ResponseWriter, r *http.Request) {
 	}
 	certa, err := senhas.Conferir(u.SenhaHash, p.Senha)
 	if err != nil {
-		s.interno(w, r, "conferir senha", err)
+		s.falhaSenha(w, r, "conferir senha", err)
 		return
 	}
 	if !certa {
@@ -453,7 +468,7 @@ func (s *Servidor) novaSenha(w http.ResponseWriter, r *http.Request) {
 	}
 	hash, err := senhas.Resumir(p.Senha)
 	if err != nil {
-		s.interno(w, r, "resumir senha", err)
+		s.falhaSenha(w, r, "resumir senha", err)
 		return
 	}
 	// Revoga antes de trocar: se a troca falhar, sobra só a senha antiga sem sessões, nunca a senha

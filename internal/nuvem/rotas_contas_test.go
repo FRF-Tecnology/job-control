@@ -25,6 +25,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/pagamento"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/pgteste"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/senhas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/sessoes"
 )
 
@@ -695,4 +696,17 @@ func TestTentativasConcorrentesRespeitamBloqueio(t *testing.T) {
 	confere(t, a.postDe(t, "198.51.100.200", "/v1/contas/entrar",
 		map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "dispositivo": dispositivo}),
 		http.StatusTooManyRequests, "Muitas tentativas. Tente de novo em 15 minutos")
+}
+
+// Sem vaga para o Argon2 (pedidos demais ao mesmo tempo), as rotas que resumem senha respondem 503,
+// igual para email com e sem conta.
+func TestSenhasOcupadas503(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	defer senhas.TrocarLimite(0, 10*time.Millisecond)()
+	const msg = "Serviço ocupado. Tente de novo em instantes"
+	confere(t, a.entrar(t, "ana@exemplo.com", senhaAna), http.StatusServiceUnavailable, msg)
+	confere(t, a.entrar(t, "ze@exemplo.com", senhaAna), http.StatusServiceUnavailable, msg)
+	confere(t, a.post(t, "/v1/contas", map[string]string{"email": "bia@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual}),
+		http.StatusServiceUnavailable, msg)
 }

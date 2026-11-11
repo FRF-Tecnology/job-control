@@ -113,3 +113,55 @@ func TestConferirResumoHostil(t *testing.T) {
 		})
 	}
 }
+
+// Sem vaga no semáforo, Resumir e Conferir esperam no máximo a espera e devolvem ErrOcupado.
+func TestOcupadoSemVaga(t *testing.T) {
+	r, err := Resumir("cavalo bateria grampo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer TrocarLimite(0, 20*time.Millisecond)()
+	inicio := time.Now()
+	if _, err := Resumir("cavalo bateria grampo"); !errors.Is(err, ErrOcupado) {
+		t.Fatalf("Resumir: %v", err)
+	}
+	if _, err := Conferir(r, "cavalo bateria grampo"); !errors.Is(err, ErrOcupado) {
+		t.Fatalf("Conferir: %v", err)
+	}
+	if d := time.Since(inicio); d > 2*time.Second {
+		t.Fatalf("esperou demais: %v", d)
+	}
+}
+
+// Com uma vaga, pedidos simultâneos esperam a vez (dentro da espera) e nenhum roda junto com outro.
+func TestOcupadoEsperaAVez(t *testing.T) {
+	r, err := Resumir("cavalo bateria grampo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer TrocarLimite(1, 10*time.Second)()
+	erros := make(chan error, 4)
+	for i := 0; i < 4; i++ {
+		go func() {
+			ok, err := Conferir(r, "cavalo bateria grampo")
+			if err == nil && !ok {
+				err = errors.New("senha certa não conferiu")
+			}
+			erros <- err
+		}()
+	}
+	for i := 0; i < 4; i++ {
+		if err := <-erros; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := emUso(); n != 0 {
+		t.Fatalf("vagas não devolvidas: %d", n)
+	}
+}
+
+func TestCapacidadePadrao(t *testing.T) {
+	if c := capacidadePadrao(); c < 2 {
+		t.Fatalf("capacidade %d, mínimo 2", c)
+	}
+}
