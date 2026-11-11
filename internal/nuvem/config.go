@@ -2,12 +2,15 @@
 package nuvem
 
 import (
+	"crypto/ed25519"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 )
 
 // Config reúne as variáveis de ambiente do servidor. Só as obrigatórias de cada fase são exigidas;
-// as das integrações (Stripe, Google, SMTP, notas) passam a ser exigidas pelas tasks que as usam.
+// as das integrações (Stripe, Google, notas) passam a ser exigidas pelas tasks que as usam.
 type Config struct {
 	DatabaseURL         string // DATABASE_URL
 	ChavePrivada        string // APPLYER_CHAVE_PRIVADA (Ed25519 em base64)
@@ -64,6 +67,12 @@ func LerConfig(env func(string) string) (Config, error) {
 		{"DATABASE_URL", cfg.DatabaseURL},
 		{"APPLYER_CHAVE_PRIVADA", cfg.ChavePrivada},
 		{"APPLYER_SEGREDO_CODIGOS", cfg.SegredoCodigos},
+		{"APPLYER_TERMOS_VERSAO", cfg.TermosVersao},
+		{"SMTP_HOST", cfg.SMTPHost},
+		{"SMTP_PORTA", cfg.SMTPPorta},
+		{"SMTP_USUARIO", cfg.SMTPUsuario},
+		{"SMTP_SENHA", cfg.SMTPSenha},
+		{"SMTP_REMETENTE", cfg.SMTPRemetente},
 	} {
 		if o.valor == "" {
 			faltam = append(faltam, o.nome)
@@ -72,5 +81,30 @@ func LerConfig(env func(string) string) (Config, error) {
 	if len(faltam) > 0 {
 		return Config{}, fmt.Errorf("variáveis de ambiente que faltam: %s", strings.Join(faltam, ", "))
 	}
+	if _, err := cfg.Chave(); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+var errChave = errors.New("APPLYER_CHAVE_PRIVADA inválida: esperava Ed25519 em base64 (semente de 32 ou chave de 64 bytes)")
+
+// Chave decodifica APPLYER_CHAVE_PRIVADA. O erro nunca traz o valor.
+func (c Config) Chave() (ed25519.PrivateKey, error) {
+	b, err := base64.StdEncoding.DecodeString(c.ChavePrivada)
+	if err != nil {
+		return nil, errChave
+	}
+	switch len(b) {
+	case ed25519.SeedSize:
+		return ed25519.NewKeyFromSeed(b), nil
+	case ed25519.PrivateKeySize:
+		// A metade pública tem de bater com a semente; senão a chave está corrompida.
+		k := ed25519.NewKeyFromSeed(b[:ed25519.SeedSize])
+		if !k.Equal(ed25519.PrivateKey(b)) {
+			return nil, errChave
+		}
+		return k, nil
+	}
+	return nil, errChave
 }

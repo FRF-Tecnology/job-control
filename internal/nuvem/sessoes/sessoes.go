@@ -156,10 +156,14 @@ func (r *Repo) Renovar(ctx context.Context, renovacao string) (Par, error) {
 	var id, familia, dispositivo string
 	var usada time.Time
 	var substituida, revogada *time.Time
-	if err := tx.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`select id::text, familia::text, dispositivo_hash, usada_em, substituida_em, revogada_em
 		 from sessoes where hash_renovacao = $1 for update`, h).
-		Scan(&id, &familia, &dispositivo, &usada, &substituida, &revogada); err != nil {
+		Scan(&id, &familia, &dispositivo, &usada, &substituida, &revogada)
+	if errors.Is(err, pgx.ErrNoRows) { // a linha sumiu entre as duas leituras (ex.: conta apagada)
+		return Par{}, ErrSessao
+	}
+	if err != nil {
 		return Par{}, err
 	}
 	agora := r.agora()

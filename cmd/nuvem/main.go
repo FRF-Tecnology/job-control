@@ -13,6 +13,7 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/nuvem"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/banco"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 )
 
 func main() {
@@ -36,7 +37,8 @@ func executar() error {
 	}
 	defer pool.Close()
 
-	srv := nuvem.Novo(cfg, nuvem.Dependencias{Banco: pool, Agora: time.Now, Aleatorio: rand.Reader})
+	envio := emails.SMTP{Host: cfg.SMTPHost, Porta: cfg.SMTPPorta, Usuario: cfg.SMTPUsuario, Senha: cfg.SMTPSenha, Remetente: cfg.SMTPRemetente}
+	srv := nuvem.Novo(cfg, nuvem.Dependencias{Banco: pool, Agora: time.Now, Aleatorio: rand.Reader, Emails: envio})
 	sh := &http.Server{
 		Addr:              cfg.Endereco,
 		Handler:           srv.Handler(),

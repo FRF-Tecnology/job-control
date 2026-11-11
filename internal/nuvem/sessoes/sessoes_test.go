@@ -391,3 +391,47 @@ func TestMiddleware(t *testing.T) {
 		t.Fatalf("válido: %d %q", rec.Code, rec.Body.String())
 	}
 }
+
+// A linha some entre a primeira leitura e a releitura com a trava (ex.: conta apagada): ErrSessao, não erro cru.
+func TestRenovarLinhaSumiu(t *testing.T) {
+	a := novo(t)
+	ctx := context.Background()
+	ana := a.usuario(t, "ana@exemplo.com")
+	p, err := a.repo.Abrir(ctx, ana, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := a.db.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `select pg_advisory_xact_lock(hashtext('sessoes|' || $1))`, ana); err != nil {
+		t.Fatal(err)
+	}
+	fim := make(chan error, 1)
+	go func() { _, err := a.repo.Renovar(ctx, p.Renovacao); fim <- err }()
+	// Espera o Renovar parar na trava (depois da primeira leitura).
+	for i := 0; ; i++ {
+		var n int
+		if err := a.db.QueryRow(ctx, `select count(*) from pg_locks where locktype = 'advisory' and not granted`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n > 0 {
+			break
+		}
+		if i > 500 {
+			t.Fatal("Renovar não chegou na trava")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := tx.Exec(ctx, `delete from sessoes where usuario_id = $1::uuid`, ana); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-fim; !errors.Is(err, sessoes.ErrSessao) {
+		t.Fatalf("esperava ErrSessao, veio %v", err)
+	}
+}

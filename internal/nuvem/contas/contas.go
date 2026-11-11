@@ -1,0 +1,153 @@
+// Package contas guarda os usuários da nuvem (tabela usuarios). Os emails chegam aqui já normalizados.
+package contas
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	// MaxFalhas senhas erradas seguidas bloqueiam o login por Bloqueio.
+	MaxFalhas = 10
+	Bloqueio  = 15 * time.Minute
+)
+
+// ErrNaoEncontrado: não há usuário com esse email, id ou conta Google.
+var ErrNaoEncontrado = errors.New("usuário não encontrado")
+
+// Usuario é uma linha de usuarios (só o que as rotas usam).
+type Usuario struct {
+	ID                string
+	Email             string
+	Nome              string
+	SenhaHash         string // vazio: conta só com Google
+	GoogleSub         string
+	EmailConfirmadoEm *time.Time
+	TermosVersao      string
+	TermosAceitosEm   *time.Time
+	FalhasLogin       int
+	BloqueadoAte      *time.Time
+}
+
+// Confirmado diz se o email já foi confirmado.
+func (u Usuario) Confirmado() bool { return u.EmailConfirmadoEm != nil }
+
+// Bloqueado diz se o login está bloqueado por senhas erradas.
+func (u Usuario) Bloqueado(agora time.Time) bool {
+	return u.BloqueadoAte != nil && agora.Before(*u.BloqueadoAte)
+}
+
+// Situacao é o resultado de Criar.
+type Situacao int
+
+const (
+	Nova         Situacao = iota // usuário criado agora
+	Pendente                     // já existia sem confirmar: senha e termos trocados
+	JaConfirmada                 // já existia confirmado: nada mudou
+)
+
+const colunas = `id::text, email, nome, coalesce(senha_hash, ''), coalesce(google_sub, ''), email_confirmado_em,
+	termos_versao, termos_aceitos_em, falhas_login, bloqueado_ate`
+
+// Repo lê e grava usuarios.
+type Repo struct{ db *pgxpool.Pool }
+
+func Novo(db *pgxpool.Pool) *Repo { return &Repo{db: db} }
+
+func ler(row pgx.Row, extra ...any) (Usuario, error) {
+	var u Usuario
+	dest := append([]any{&u.ID, &u.Email, &u.Nome, &u.SenhaHash, &u.GoogleSub, &u.EmailConfirmadoEm,
+		&u.TermosVersao, &u.TermosAceitosEm, &u.FalhasLogin, &u.BloqueadoAte}, extra...)
+	err := row.Scan(dest...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Usuario{}, ErrNaoEncontrado
+	}
+	return u, err
+}
+
+func (r *Repo) PorEmail(ctx context.Context, email string) (Usuario, error) {
+	return ler(r.db.QueryRow(ctx, `select `+colunas+` from usuarios where email = $1`, email))
+}
+
+func (r *Repo) PorID(ctx context.Context, id string) (Usuario, error) {
+	return ler(r.db.QueryRow(ctx, `select `+colunas+` from usuarios where id = $1::uuid`, id))
+}
+
+func (r *Repo) PorGoogle(ctx context.Context, sub string) (Usuario, error) {
+	return ler(r.db.QueryRow(ctx, `select `+colunas+` from usuarios where google_sub = $1`, sub))
+}
+
+// Criar cria o usuário sem confirmar. Se o email já existe sem confirmar, troca a senha pendente e a versão
+// dos termos (numa só instrução, sem corrida); se já existe confirmado, não muda nada.
+func (r *Repo) Criar(ctx context.Context, email, senhaHash, termosVersao string) (Usuario, Situacao, error) {
+	var nova bool
+	u, err := ler(r.db.QueryRow(ctx,
+		`insert into usuarios (email, senha_hash, termos_versao) values ($1, $2, $3)
+		 on conflict (email) do update set senha_hash = excluded.senha_hash, termos_versao = excluded.termos_versao
+		 where usuarios.email_confirmado_em is null
+		 returning `+colunas+`, (xmax = 0)`, email, senhaHash, termosVersao), &nova)
+	if errors.Is(err, ErrNaoEncontrado) { // conflito com conta confirmada: o update não rodou
+		u, err = r.PorEmail(ctx, email)
+		return u, JaConfirmada, err
+	}
+	if err != nil {
+		return Usuario{}, 0, err
+	}
+	if nova {
+		return u, Nova, nil
+	}
+	return u, Pendente, nil
+}
+
+// Confirmar marca o email como confirmado (mantém a data da primeira vez) e grava o aceite dos termos.
+func (r *Repo) Confirmar(ctx context.Context, id string, agora time.Time) error {
+	_, err := r.db.Exec(ctx,
+		`update usuarios set email_confirmado_em = coalesce(email_confirmado_em, $2), termos_aceitos_em = $2
+		 where id = $1::uuid`, id, agora)
+	return err
+}
+
+// AceitarTermos grava a versão dos termos aceita agora.
+func (r *Repo) AceitarTermos(ctx context.Context, id, versao string, agora time.Time) error {
+	_, err := r.db.Exec(ctx,
+		`update usuarios set termos_versao = $2, termos_aceitos_em = $3 where id = $1::uuid`, id, versao, agora)
+	return err
+}
+
+// TrocarSenha grava a senha nova depois de um código de recuperação: o código prova o email, então ele
+// também fica confirmado; zera as falhas e o bloqueio.
+func (r *Repo) TrocarSenha(ctx context.Context, id, senhaHash string, agora time.Time) error {
+	_, err := r.db.Exec(ctx,
+		`update usuarios set senha_hash = $2, falhas_login = 0, bloqueado_ate = null,
+		 email_confirmado_em = coalesce(email_confirmado_em, $3) where id = $1::uuid`, id, senhaHash, agora)
+	return err
+}
+
+// RegistrarFalha conta uma senha errada numa só instrução (tentativas concorrentes não se perdem).
+// Na MaxFalhas-ésima seguida, bloqueia até agora+Bloqueio, zera o contador e devolve true.
+func (r *Repo) RegistrarFalha(ctx context.Context, id string, agora time.Time) (bool, error) {
+	var bloqueou bool
+	err := r.db.QueryRow(ctx,
+		`update usuarios set
+		   falhas_login  = case when falhas_login + 1 >= $3 then 0 else falhas_login + 1 end,
+		   bloqueado_ate = case when falhas_login + 1 >= $3 then $2::timestamptz else bloqueado_ate end
+		 where id = $1::uuid
+		 returning bloqueado_ate is not null and bloqueado_ate = $2::timestamptz`,
+		id, agora.Add(Bloqueio), MaxFalhas).Scan(&bloqueou)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrNaoEncontrado
+	}
+	return bloqueou, err
+}
+
+// ZerarFalhas limpa o contador e o bloqueio (login certo).
+func (r *Repo) ZerarFalhas(ctx context.Context, id string) error {
+	_, err := r.db.Exec(ctx,
+		`update usuarios set falhas_login = 0, bloqueado_ate = null
+		 where id = $1::uuid and (falhas_login <> 0 or bloqueado_ate is not null)`, id)
+	return err
+}
