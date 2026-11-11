@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -103,12 +104,65 @@ func (r *Repo) Criar(ctx context.Context, email, senhaHash, termosVersao string)
 	return u, Pendente, nil
 }
 
-// Confirmar marca o email como confirmado (mantém a data da primeira vez) e grava o aceite dos termos.
-func (r *Repo) Confirmar(ctx context.Context, id string, agora time.Time) error {
-	_, err := r.db.Exec(ctx,
+// Confirmar marca o email como confirmado (mantém a data da primeira vez) e grava o aceite dos termos,
+// só se a senha ainda for a que acabou de ser conferida (senhaHash). Se um recadastro trocou a senha
+// pendente no meio, nada muda e volta ErrNaoEncontrado.
+func (r *Repo) Confirmar(ctx context.Context, id, senhaHash string, agora time.Time) error {
+	tag, err := r.db.Exec(ctx,
 		`update usuarios set email_confirmado_em = coalesce(email_confirmado_em, $2), termos_aceitos_em = $2
-		 where id = $1::uuid`, id, agora)
+		 where id = $1::uuid and senha_hash = $3`, id, agora, senhaHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+// ErrConflito: outra requisição criou ou ligou a mesma conta Google ao mesmo tempo; leia de novo.
+var ErrConflito = errors.New("conta alterada ao mesmo tempo")
+
+func conflito(err error) error {
+	var pg *pgconn.PgError
+	if errors.Is(err, ErrNaoEncontrado) || (errors.As(err, &pg) && pg.Code == "23505") {
+		return ErrConflito
+	}
 	return err
+}
+
+// CriarGoogle cria a conta já confirmada (o Google verificou o email), sem senha, com o aceite dos termos.
+// Se o email ou o sub já existem (corrida), volta ErrConflito.
+func (r *Repo) CriarGoogle(ctx context.Context, email, sub, nome, termosVersao string, agora time.Time) (Usuario, error) {
+	u, err := ler(r.db.QueryRow(ctx,
+		`insert into usuarios (email, nome, google_sub, email_confirmado_em, termos_versao, termos_aceitos_em)
+		 values ($1, $2, $3, $4, $5, $4) on conflict do nothing returning `+colunas,
+		email, nome, sub, agora, termosVersao))
+	if err != nil {
+		return Usuario{}, conflito(err)
+	}
+	return u, nil
+}
+
+// LigarGoogle liga o sub a uma conta que ainda não tem Google. Conta pendente (email nunca confirmado)
+// fica confirmada, com o aceite de termosVersao, e perde a senha pendente: quem cadastrou pode não ser
+// o dono do email, e o Google acabou de provar quem é. Conta confirmada mantém a senha e os termos.
+// Se a conta ganhou um sub no meio (ou o sub já está em outra), volta ErrConflito.
+func (r *Repo) LigarGoogle(ctx context.Context, id, sub, nome, termosVersao string, agora time.Time) (Usuario, error) {
+	// No update, as expressões leem a linha de antes: o "pendente" é o de antes da confirmação.
+	u, err := ler(r.db.QueryRow(ctx,
+		`update usuarios set google_sub = $2,
+		   nome                = case when nome = '' then $3 else nome end,
+		   senha_hash          = case when email_confirmado_em is null then null else senha_hash end,
+		   termos_versao       = case when email_confirmado_em is null then $5 else termos_versao end,
+		   termos_aceitos_em   = case when email_confirmado_em is null then $4 else termos_aceitos_em end,
+		   email_confirmado_em = coalesce(email_confirmado_em, $4)
+		 where id = $1::uuid and google_sub is null
+		 returning `+colunas, id, sub, nome, agora, termosVersao))
+	if err != nil {
+		return Usuario{}, conflito(err)
+	}
+	return u, nil
 }
 
 // AceitarTermos grava a versão dos termos aceita agora.

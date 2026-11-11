@@ -15,6 +15,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/codigos"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/contas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/limites"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/senhas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/sessoes"
@@ -27,12 +28,13 @@ const (
 )
 
 // Dependencias são as peças de fora que o servidor usa; os testes trocam por falsas.
-// As tasks seguintes acrescentam Google, Stripe e notas.
+// As tasks seguintes acrescentam Stripe e notas.
 type Dependencias struct {
 	Banco     *pgxpool.Pool
 	Agora     func() time.Time // nil: time.Now
 	Aleatorio io.Reader        // nil: crypto/rand.Reader
 	Emails    emails.Enviador
+	Google    google.Trocador
 	Log       *slog.Logger // nil: slog.Default()
 }
 
@@ -76,6 +78,9 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		}
 		if dep.Emails == nil {
 			panic("nuvem: Dependencias.Emails é obrigatório com banco")
+		}
+		if dep.Google == nil {
+			panic("nuvem: Dependencias.Google é obrigatório com banco")
 		}
 		s.contas = contas.Novo(dep.Banco)
 		s.codigos = codigos.Novo(dep.Banco, []byte(cfg.SegredoCodigos), dep.Agora, dep.Aleatorio)

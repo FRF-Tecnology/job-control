@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/chromedp/cdproto v0.159.0
 	github.com/chromedp/chromedp v0.21.1
+	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/fergusstrange/embedded-postgres v1.34.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
@@ -13,6 +14,7 @@ require (
 	github.com/zalando/go-keyring v0.2.8
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/crypto v0.58.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.62.0
@@ -23,6 +25,7 @@ require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260213210345-44df1a37e875 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect

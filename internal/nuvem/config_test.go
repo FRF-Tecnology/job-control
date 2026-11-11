@@ -24,6 +24,7 @@ func envCompleto(t *testing.T) map[string]string {
 		"APPLYER_SEGREDO_CODIGOS": "s", "APPLYER_TERMOS_VERSAO": "2026-11",
 		"SMTP_HOST": "smtp.exemplo.com", "SMTP_PORTA": "587", "SMTP_USUARIO": "u",
 		"SMTP_SENHA": "senha-ficticia", "SMTP_REMETENTE": "app@exemplo.com",
+		"GOOGLE_CLIENT_ID": "cliente-ficticio.apps.googleusercontent.com", "GOOGLE_CLIENT_SECRET": "segredo-ficticio",
 	}
 }
 
@@ -37,7 +38,7 @@ func TestLerConfigFaltando(t *testing.T) {
 }
 
 func TestLerConfigExigeTermosESMTP(t *testing.T) {
-	for _, k := range []string{"APPLYER_TERMOS_VERSAO", "SMTP_HOST", "SMTP_PORTA", "SMTP_USUARIO", "SMTP_SENHA", "SMTP_REMETENTE"} {
+	for _, k := range []string{"APPLYER_TERMOS_VERSAO", "SMTP_HOST", "SMTP_PORTA", "SMTP_USUARIO", "SMTP_SENHA", "SMTP_REMETENTE", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"} {
 		env := envCompleto(t)
 		delete(env, k)
 		if _, err := LerConfig(envDe(env)); err == nil || !strings.Contains(err.Error(), k) {

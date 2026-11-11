@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/pgteste"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/sessoes"
 )
@@ -63,6 +64,7 @@ type amb struct {
 	rel *relogio
 	db  *pgxpool.Pool
 	log *bufLog
+	ids map[string]google.Identidade // codes que o Google falso aceita
 }
 
 func novoAmb(t *testing.T) *amb {
@@ -77,9 +79,9 @@ func novoAmb(t *testing.T) *amb {
 		SegredoCodigos: "segredo-ficticio-dos-testes",
 		TermosVersao:   termosAtual,
 	}
-	a := &amb{em: &emails.Falso{}, rel: &relogio{t: time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)}, db: db, log: &bufLog{}}
+	a := &amb{ids: map[string]google.Identidade{}, em: &emails.Falso{}, rel: &relogio{t: time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)}, db: db, log: &bufLog{}}
 	a.s = Novo(cfg, Dependencias{
-		Banco: db, Agora: a.rel.agora, Aleatorio: rand.Reader, Emails: a.em,
+		Banco: db, Agora: a.rel.agora, Aleatorio: rand.Reader, Emails: a.em, Google: google.Falso{Identidades: a.ids},
 		Log: slog.New(slog.NewTextHandler(a.log, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	})
 	return a

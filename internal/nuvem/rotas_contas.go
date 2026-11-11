@@ -52,6 +52,10 @@ type pedido struct {
 	Dispositivo  string `json:"dispositivo"`
 	Renovacao    string `json:"renovacao"`
 	TermosVersao string `json:"termos_versao"`
+	// Login com Google (POST /v1/contas/google).
+	Code        string `json:"code"`
+	Verifier    string `json:"verifier"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 func (s *Servidor) rotasContas() {
@@ -61,6 +65,7 @@ func (s *Servidor) rotasContas() {
 		"POST /v1/contas/entrar":     s.entrar,
 		"POST /v1/contas/recuperar":  s.recuperar,
 		"POST /v1/contas/nova-senha": s.novaSenha,
+		"POST /v1/contas/google":     s.entrarGoogle,
 		"POST /v1/sessao/renovar":    s.renovar,
 		"POST /v1/sessao/sair":       s.sair,
 	} {
@@ -292,7 +297,11 @@ func (s *Servidor) confirmar(w http.ResponseWriter, r *http.Request) {
 	if !s.conferirTermos(w, r, u, p) {
 		return
 	}
-	if err := s.contas.Confirmar(r.Context(), u.ID, s.dep.Agora()); err != nil {
+	// Só confirma se a senha pendente ainda for a conferida acima (um recadastro no meio a troca).
+	if err := s.contas.Confirmar(r.Context(), u.ID, u.SenhaHash, s.dep.Agora()); errors.Is(err, contas.ErrNaoEncontrado) {
+		erro(w, http.StatusUnauthorized, msgCredenciais)
+		return
+	} else if err != nil {
 		s.interno(w, r, "confirmar", err)
 		return
 	}

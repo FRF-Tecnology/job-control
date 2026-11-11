@@ -73,6 +73,8 @@ func LerConfig(env func(string) string) (Config, error) {
 		{"SMTP_USUARIO", cfg.SMTPUsuario},
 		{"SMTP_SENHA", cfg.SMTPSenha},
 		{"SMTP_REMETENTE", cfg.SMTPRemetente},
+		{"GOOGLE_CLIENT_ID", cfg.GoogleClientID},
+		{"GOOGLE_CLIENT_SECRET", cfg.GoogleClientSecret},
 	} {
 		if o.valor == "" {
 			faltam = append(faltam, o.nome)

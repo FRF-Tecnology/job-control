@@ -14,6 +14,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/banco"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
 )
 
 func main() {
@@ -38,7 +39,8 @@ func executar() error {
 	defer pool.Close()
 
 	envio := emails.SMTP{Host: cfg.SMTPHost, Porta: cfg.SMTPPorta, Usuario: cfg.SMTPUsuario, Senha: cfg.SMTPSenha, Remetente: cfg.SMTPRemetente}
-	srv := nuvem.Novo(cfg, nuvem.Dependencias{Banco: pool, Agora: time.Now, Aleatorio: rand.Reader, Emails: envio})
+	srv := nuvem.Novo(cfg, nuvem.Dependencias{Banco: pool, Agora: time.Now, Aleatorio: rand.Reader, Emails: envio,
+		Google: &google.Real{ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret}})
 	sh := &http.Server{
 		Addr:              cfg.Endereco,
 		Handler:           srv.Handler(),
