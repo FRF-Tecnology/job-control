@@ -15,11 +15,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
 	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/conta"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
@@ -94,6 +96,13 @@ type API struct {
 	canal string
 	// janelaApp: os ganchos da janela do app de PC; nil fora dele (janela_app.go).
 	janelaApp *JanelaApp
+	// conta e abrirNavegador: as rotas /conta e /assinatura (conta.go). conta nil: 503 nelas.
+	conta          *conta.Conta
+	abrirNavegador func(url string) error
+	// acompanhando: já há uma renovação de licença depois do Checkout; cadenciaAssinar e prazoAssinar só os testes mudam.
+	acompanhando    atomic.Bool
+	cadenciaAssinar time.Duration
+	prazoAssinar    time.Duration
 }
 
 // Opcoes configura a API.
@@ -133,6 +142,11 @@ type Opcoes struct {
 	// JanelaApp: os ganchos da janela do app de PC (segundo plano e tamanho padrão). Só o app passa; sem eles,
 	// GET /app/janela responde disponivel=false e as rotas que mudam a janela dão 404.
 	JanelaApp *JanelaApp
+	// Conta: a conta, a licença e a trava (internal/conta). Sem ela, /conta e /assinatura dão 503.
+	Conta *conta.Conta
+	// AbrirNavegador abre um endereço no navegador padrão (Checkout, portal, login Google). No app:
+	// application.Get().Browser.OpenURL.
+	AbrirNavegador func(url string) error
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -186,7 +200,8 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp,
+		conta: o.Conta, abrirNavegador: o.AbrirNavegador}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -227,6 +242,9 @@ func respostaDeErro(err error) (Resposta, bool) {
 func (a *API) Chamar(ctx context.Context, p Pedido) (Resposta, error) {
 	if a.canal != "" && !p.doAssistente { // API do assistente: tudo passa pela lista (jc-a2y.7.4)
 		return a.ChamarAssistente(ctx, p)
+	}
+	if ehExcluirEApagar(p) {
+		return respostaOuErro(a.excluirEApagar(ctx, p))
 	}
 	if ehPedidoDeApagar(p) {
 		return respostaOuErro(a.apagarComTrava(ctx, p))
@@ -539,6 +557,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 
 	if p == "/app/janela" || p == "/app/janela/padrao" {
 		if r, feito, err := a.rotasJanelaApp(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+
+	if strings.HasPrefix(p, "/conta") || strings.HasPrefix(p, "/assinatura") {
+		if r, feito, err := a.rotasConta(ctx, m, p, c, autor); feito {
 			return r, err
 		}
 	}

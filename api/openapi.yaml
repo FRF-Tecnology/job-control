@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.15.0
+  version: 0.16.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -703,8 +703,234 @@ paths:
         '403': { description: 'visivel true pedido pelo assistente (CLI, MCP): só a pessoa abre a janela. {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
         '404': { description: 'Este build não traz o envio: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
 
+  # Conta, licença e assinatura (app de PC). Só a tela; o assistente recebe 403 e a API sem conta (build sem nuvem) 503.
+  # Erros da nuvem voltam com o mesmo status e {erro, motivo}; motivo "termos" traz também versao (a tela mostra os
+  # links e "Aceito os novos termos" e reenvia o mesmo pedido com termos = versao). Sem internet: 503 motivo sem-internet.
+  /conta:
+    get:
+      x-so-tela: true
+      summary: 'Situação da conta neste app: se entrou, email, estado da licença (teste, assinante, bloqueado), fim do teste e do período pago, e o motivo de não poder agir. Traz também o login com Google em andamento e o erro do cofre, se houve'
+      responses:
+        '200': { description: Situação, content: { application/json: { schema: { $ref: '#/components/schemas/SituacaoConta' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '503': { description: 'Este build não tem a conta: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /conta/criar:
+    post:
+      x-so-tela: true
+      summary: 'Cria a conta e pede o código de confirmação por email. termos é a versão dos termos que a pessoa aceitou'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [email, senha, termos], properties: { email: { type: string }, senha: { type: string }, termos: { type: string } } }
+      responses:
+        '202': { description: 'Código enviado: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/ErroConta' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /conta/confirmar:
+    post:
+      x-so-tela: true
+      summary: 'Confirma o email com o código e entra. A senha é a mesma do criar: a tela a guarda só na memória entre as duas chamadas'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [email, codigo, senha], properties: { email: { type: string }, codigo: { type: string }, senha: { type: string }, termos: { type: string, description: 'Padrão: a versão atual dos termos' } } }
+      responses:
+        '200': { description: Situação depois de entrar, content: { application/json: { schema: { $ref: '#/components/schemas/SituacaoConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/ErroConta' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /conta/entrar:
+    post:
+      x-so-tela: true
+      summary: 'Entra com email e senha'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [email, senha], properties: { email: { type: string }, senha: { type: string }, termos: { type: string, description: 'Padrão: a versão atual dos termos' } } }
+      responses:
+        '200': { description: Situação depois de entrar, content: { application/json: { schema: { $ref: '#/components/schemas/SituacaoConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '401': { $ref: '#/components/responses/ErroConta' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/ErroConta' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /conta/recuperar:
+    post:
+      x-so-tela: true
+      summary: 'Pede o código de nova senha por email (a resposta é a mesma exista ou não a conta)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [email], properties: { email: { type: string } } }
+      responses:
+        '202': { description: 'Pedido recebido: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /conta/nova-senha:
+    post:
+      x-so-tela: true
+      summary: 'Troca a senha com o código recebido por email e entra'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [email, codigo, senha], properties: { email: { type: string }, codigo: { type: string }, senha: { type: string } } }
+      responses:
+        '200': { description: Situação depois de entrar, content: { application/json: { schema: { $ref: '#/components/schemas/SituacaoConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /conta/google:
+    post:
+      x-so-tela: true
+      summary: 'Começa o login com Google: abre o navegador e espera a volta num ouvinte local. A tela acompanha por GET /conta (google: aguardando, erro:<frase> ou vazio quando entrou)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { termos: { type: string, description: 'Padrão: a versão atual dos termos' } } }
+      responses:
+        '202': { description: 'Navegador aberto: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { description: 'Já há um login com Google em andamento (motivo em-andamento)', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '503': { description: 'Sem Google neste build (google-indisponivel) ou sem navegador (sem-navegador)', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  /conta/google/cancelar:
+    post:
+      x-so-tela: true
+      summary: 'Cancela o login com Google em andamento (sem nenhum, não faz nada)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '204': { description: Cancelado }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+  /conta/sair:
+    post:
+      x-so-tela: true
+      summary: 'Sai da conta neste computador: encerra a sessão na nuvem (se houver internet) e apaga a sessão e a licença locais'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '204': { description: Saiu }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+  /conta/excluir:
+    post:
+      x-so-tela: true
+      summary: 'Exclui a conta na nuvem (o email confirma) e sai neste computador. Com apagarDados, depois apaga os dados locais pelo mesmo caminho de POST /dados/apagar (o app fecha em seguida) e responde como ele; se a nuvem recusar, nada local é apagado'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [email], properties: { email: { type: string }, apagarDados: { type: boolean } } }
+      responses:
+        '200': { description: 'Só com apagarDados true: o que foi apagado e o que faltou; fechar true', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '204': { description: 'Conta excluída (sem apagarDados)' }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '401': { $ref: '#/components/responses/ErroConta' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /assinatura:
+    get:
+      x-so-tela: true
+      summary: 'Situação da conta e notas fiscais (precisa de internet)'
+      responses:
+        '200':
+          description: 'Situação e notas'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [situacao, notas]
+                properties:
+                  situacao: { $ref: '#/components/schemas/SituacaoConta' }
+                  notas:
+                    type: array
+                    items:
+                      type: object
+                      properties: { numero: { type: string }, link_pdf: { type: string }, estado: { type: string }, criada_em: { type: string, format: date-time } }
+        '401': { $ref: '#/components/responses/ErroConta' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /assinatura/assinar:
+    post:
+      x-so-tela: true
+      summary: 'Abre o Checkout no navegador e passa a renovar a licença a cada 5 s por até 10 min (para antes quando vira assinante; só uma vez por vez)'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '202': { description: 'Navegador aberto: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
+        '401': { $ref: '#/components/responses/ErroConta' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+  /assinatura/gerenciar:
+    post:
+      x-so-tela: true
+      summary: 'Abre o portal de gerenciamento da assinatura no navegador'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '202': { description: 'Navegador aberto: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
+        '401': { $ref: '#/components/responses/ErroConta' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '503': { $ref: '#/components/responses/ErroConta' }
+
 components:
   schemas:
+    SituacaoConta:
+      type: object
+      required: [entrada, email, estado, teste_fim, periodo_fim, motivo]
+      properties:
+        entrada: { type: boolean, description: 'Há uma conta entrada neste app' }
+        email: { type: string }
+        estado: { type: string, enum: ['', teste, assinante, bloqueado] }
+        teste_fim: { type: [string, 'null'], format: date-time }
+        periodo_fim: { type: [string, 'null'], format: date-time }
+        motivo: { type: string, enum: ['', teste-acabou, sem-assinatura, sem-internet, sem-conta], description: 'Vazio quando o app pode agir; senão, por que não' }
+        google: { type: string, description: 'Só em GET /conta. Vazio, aguardando ou erro:<frase>' }
+        google_motivo: { type: string, description: 'Só em GET /conta. Motivo do erro do Google (termos, entrar-com-senha)' }
+        google_versao: { type: string, description: 'Só em GET /conta. Versão atual dos termos quando google_motivo é termos' }
+        erro_cofre: { type: string, description: 'Só em GET /conta. Vazio, ou o erro ao guardar a sessão no cofre (a sessão vale só até o app fechar)' }
+    MensagemConta:
+      type: object
+      required: [mensagem]
+      properties: { mensagem: { type: string } }
+    ErroConta:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string, description: 'Frase da nuvem, pronta para a tela' }
+        motivo: { type: string, description: 'confirmar, termos, entrar-com-senha, sem-internet, sem-conta, sem-navegador, ...' }
+        versao: { type: string, description: 'Só com motivo termos: a versão atual dos termos' }
+    Erro402:
+      type: object
+      required: [erro, motivo]
+      description: '402 das ações bloqueadas pela trava (teste acabou, sem assinatura, sem internet): a tela leva à assinatura'
+      properties:
+        erro: { type: string }
+        motivo: { type: string, enum: [teste-acabou, sem-assinatura, sem-internet, sem-conta] }
     Erro:
       type: object
       required: [erro]
@@ -1108,6 +1334,9 @@ components:
         impressaoAtual: { type: string, description: 'Só quando a impressão enviada não é a atual' }
         existente: { type: string, description: 'Só na duplicata: id da candidatura ativa ou da vaga já enviada' }
   responses:
+    ErroConta:
+      description: 'Erro da nuvem repassado (mesmo status): {erro, motivo?, versao?}. 503 motivo sem-internet quando a nuvem não responde'
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErroConta' } } }
     Erro:
       description: '{erro}'
       content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } }

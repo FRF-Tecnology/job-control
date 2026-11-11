@@ -19,7 +19,7 @@ import (
 const CodigoFalso = "123456"
 
 // TermosPadrao é a versão dos termos com que a Falsa começa (igual à constante do app).
-const TermosPadrao = "0-rascunho"
+const TermosPadrao = TermosVersao
 
 var reDispositivo = regexp.MustCompile("^[0-9a-f]{64}$")
 
