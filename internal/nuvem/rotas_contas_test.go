@@ -625,3 +625,31 @@ func TestMascararEmail(t *testing.T) {
 		}
 	}
 }
+
+// Todos os pedidos de código do mesmo email (criar, entrar pendente) dividem o orçamento: acima dele, a
+// resposta é a mesma (R8) e nenhum email sai.
+func TestOrcamentoDeEnvioPorEmail(t *testing.T) {
+	a := novoAmb(t)
+	confere(t, a.post(t, "/v1/contas", map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual}),
+		http.StatusAccepted, "")
+	for i := 2; i <= 6; i++ {
+		a.rel.avancar(61 * time.Second)
+		w := a.postDe(t, fmt.Sprintf("198.51.100.%d", i), "/v1/contas/entrar",
+			map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "dispositivo": dispositivo})
+		confere(t, w, http.StatusForbidden, "Confirme seu email")
+	}
+	if n := len(a.emails("ana@exemplo.com")); n != 5 {
+		t.Fatalf("esperava 5 códigos em 15 min, veio %d", n)
+	}
+	a.rel.avancar(61 * time.Second)
+	w := a.post(t, "/v1/contas", map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual})
+	confere(t, w, http.StatusAccepted, "")
+	if n := len(a.emails("ana@exemplo.com")); n != 5 {
+		t.Fatalf("acima do orçamento não deveria mandar código: %d", n)
+	}
+	a.rel.avancar(15 * time.Minute)
+	confere(t, a.entrar(t, "ana@exemplo.com", senhaAna), http.StatusForbidden, "Confirme seu email")
+	if n := len(a.emails("ana@exemplo.com")); n != 6 {
+		t.Fatalf("depois de 15 min deveria mandar de novo: %d", n)
+	}
+}

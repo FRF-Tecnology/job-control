@@ -31,12 +31,37 @@ const (
 	maxTentativas = 5
 	digitosCodigo = 6
 	limiteCodigo  = 1000000
+
+	// Orçamento por email+tipo, somando todos os pedidos (criar, entrar pendente, recuperar, 409 dos termos).
+	maxEnviosCurto  = 5
+	janelaCurta     = 15 * time.Minute
+	maxEnviosDia    = 20
+	maxFalhasDia    = 20 // códigos errados em 24 h, somando todos os códigos
+	janelaDia       = 24 * time.Hour
+	eventoEnvio     = "envio"
+	eventoFalha     = "falha"
+	sqlContarEvento = `select count(*) filter (where em > $4), count(*) from eventos_codigo
+		 where email = $1 and tipo = $2 and evento = $3 and em > $5`
 )
+
+// contar devolve quantos eventos do email+tipo houve desde curto e desde dia.
+func contar(ctx context.Context, tx pgx.Tx, email string, t Tipo, evento string, curto, dia time.Time) (int, int, error) {
+	var nCurto, nDia int
+	err := tx.QueryRow(ctx, sqlContarEvento, email, string(t), evento, curto, dia).Scan(&nCurto, &nDia)
+	return nCurto, nDia, err
+}
+
+func registrar(ctx context.Context, tx pgx.Tx, email string, t Tipo, evento string, agora time.Time) error {
+	_, err := tx.Exec(ctx, `insert into eventos_codigo (email, tipo, evento, em) values ($1, $2, $3, $4)`,
+		email, string(t), evento, agora)
+	return err
+}
 
 var (
 	ErrEspere         = errors.New("espere antes de pedir outro código")
 	ErrCodigoInvalido = errors.New("código inválido")
 	ErrTentativas     = errors.New("tentativas demais")
+	ErrOrcamento      = errors.New("códigos demais para este email")
 )
 
 // Repo guarda os códigos no Postgres.
@@ -66,7 +91,8 @@ func trava(ctx context.Context, tx pgx.Tx, email string, t Tipo) error {
 }
 
 // Gerar cria um código novo (e invalida os anteriores). ErrEspere se o último
-// do mesmo tipo foi criado há menos de 60 s. O email já deve estar normalizado.
+// do mesmo tipo foi criado há menos de 60 s; ErrOrcamento acima de 5 envios em 15 min
+// ou 20 em 24 h. O email já deve estar normalizado.
 func (r *Repo) Gerar(ctx context.Context, email string, t Tipo) (string, error) {
 	n, err := sortear(r.aleatorio)
 	if err != nil {
@@ -91,6 +117,16 @@ func (r *Repo) Gerar(ctx context.Context, email string, t Tipo) (string, error) 
 		return "", ErrEspere
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+	curto, dia, err := contar(ctx, tx, email, t, eventoEnvio, agora.Add(-janelaCurta), agora.Add(-janelaDia))
+	if err != nil {
+		return "", err
+	}
+	if curto >= maxEnviosCurto || dia >= maxEnviosDia {
+		return "", ErrOrcamento
+	}
+	if err := registrar(ctx, tx, email, t, eventoEnvio, agora); err != nil {
 		return "", err
 	}
 	if _, err := tx.Exec(ctx,
@@ -124,6 +160,7 @@ func sortear(l io.Reader) (int64, error) {
 }
 
 // Conferir valida o código. Cada erro conta uma tentativa; a 6ª (mesmo certa) dá ErrTentativas.
+// Com 20 erros em 24 h no email+tipo (somando todos os códigos), todo código dá ErrTentativas.
 // No acerto marca o código como usado.
 func (r *Repo) Conferir(ctx context.Context, email string, t Tipo, codigo string) error {
 	tx, err := r.db.Begin(ctx)
@@ -151,6 +188,13 @@ func (r *Repo) Conferir(ctx context.Context, email string, t Tipo, codigo string
 	if tentativas >= maxTentativas {
 		return ErrTentativas
 	}
+	_, falhasDia, err := contar(ctx, tx, email, t, eventoFalha, agora, agora.Add(-janelaDia))
+	if err != nil {
+		return err
+	}
+	if falhasDia >= maxFalhasDia {
+		return ErrTentativas
+	}
 	if hmac.Equal([]byte(hash), []byte(r.hash(email, t, codigo))) {
 		if _, err := tx.Exec(ctx, `update codigos set usado_em = $2 where id = $1::uuid`, id, agora); err != nil {
 			return err
@@ -158,6 +202,9 @@ func (r *Repo) Conferir(ctx context.Context, email string, t Tipo, codigo string
 		return tx.Commit(ctx)
 	}
 	if _, err := tx.Exec(ctx, `update codigos set tentativas = tentativas + 1 where id = $1::uuid`, id); err != nil {
+		return err
+	}
+	if err := registrar(ctx, tx, email, t, eventoFalha, agora); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {

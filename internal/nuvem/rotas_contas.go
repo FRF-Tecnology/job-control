@@ -170,12 +170,17 @@ func (s *Servidor) enviar(m emails.Mensagem) {
 	}()
 }
 
-// mandarCodigo gera e envia um código. Pedido antes de 60 s do anterior não gera outro e não é erro:
-// responder diferente revelaria que a conta existe; o código anterior segue valendo.
+// mandarCodigo gera e envia um código. Pedido antes de 60 s do anterior, ou acima do orçamento do email
+// (5 em 15 min, 20 em 24 h), não gera outro e não é erro: responder diferente revelaria que a conta existe;
+// o código anterior segue valendo.
 func (s *Servidor) mandarCodigo(ctx context.Context, email string, t codigos.Tipo) error {
 	cod, err := s.codigos.Gerar(ctx, email, t)
 	if errors.Is(err, codigos.ErrEspere) {
 		s.log.Info("código pedido cedo demais", "para", mascarar(email), "tipo", string(t))
+		return nil
+	}
+	if errors.Is(err, codigos.ErrOrcamento) {
+		s.log.Warn("códigos demais para o email", "para", mascarar(email), "tipo", string(t))
 		return nil
 	}
 	if err != nil {

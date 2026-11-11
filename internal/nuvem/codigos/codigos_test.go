@@ -183,3 +183,72 @@ func TestGerarConcorrenteSoUmPassa(t *testing.T) {
 		t.Fatalf("%d gerações passaram, queria 1", ok)
 	}
 }
+
+// No máximo 5 envios em 15 min e 20 em 24 h por email+tipo; acima disso ErrOrcamento.
+func TestOrcamentoDeEnvio(t *testing.T) {
+	r, rel, _ := novo(t)
+	ctx := context.Background()
+	for i := 1; i <= 5; i++ {
+		if _, err := r.Gerar(ctx, ana, codigos.Confirmar); err != nil {
+			t.Fatalf("envio %d: %v", i, err)
+		}
+		rel.avancar(61 * time.Second)
+	}
+	if _, err := r.Gerar(ctx, ana, codigos.Confirmar); !errors.Is(err, codigos.ErrOrcamento) {
+		t.Fatalf("6º envio em 15 min: %v", err)
+	}
+	if _, err := r.Gerar(ctx, ana, codigos.Recuperar); err != nil {
+		t.Fatalf("outro tipo tem outro orçamento: %v", err)
+	}
+	// Espaçados de 4 min, o limite de 15 min não pega; o de 24 h para no 20º.
+	rel.avancar(15 * time.Minute)
+	for i := 6; i <= 20; i++ {
+		if _, err := r.Gerar(ctx, ana, codigos.Confirmar); err != nil {
+			t.Fatalf("envio %d: %v", i, err)
+		}
+		rel.avancar(4 * time.Minute)
+	}
+	if _, err := r.Gerar(ctx, ana, codigos.Confirmar); !errors.Is(err, codigos.ErrOrcamento) {
+		t.Fatalf("21º envio em 24 h: %v", err)
+	}
+	rel.avancar(24 * time.Hour)
+	if _, err := r.Gerar(ctx, ana, codigos.Confirmar); err != nil {
+		t.Fatalf("depois de 24 h: %v", err)
+	}
+}
+
+// Depois de 20 códigos errados em 24 h (somando todos os códigos), nenhum código do email+tipo vale.
+func TestLimiteDiarioDeTentativasDeCodigo(t *testing.T) {
+	r, rel, _ := novo(t)
+	ctx := context.Background()
+	for k := 0; k < 4; k++ {
+		c, err := r.Gerar(ctx, ana, codigos.Recuperar)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 5; i++ {
+			if err := r.Conferir(ctx, ana, codigos.Recuperar, errado(c)); !errors.Is(err, codigos.ErrCodigoInvalido) {
+				t.Fatalf("código %d, tentativa %d: %v", k+1, i+1, err)
+			}
+		}
+		rel.avancar(4 * time.Minute)
+	}
+	c, err := r.Gerar(ctx, ana, codigos.Recuperar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Conferir(ctx, ana, codigos.Recuperar, c); !errors.Is(err, codigos.ErrTentativas) {
+		t.Fatalf("depois de 20 erros, o código certo deveria ser recusado: %v", err)
+	}
+	if c2, err := r.Gerar(ctx, ana, codigos.Confirmar); err != nil || r.Conferir(ctx, ana, codigos.Confirmar, c2) != nil {
+		t.Fatalf("o outro tipo não deveria ser afetado: %v", err)
+	}
+	rel.avancar(24 * time.Hour)
+	c, err = r.Gerar(ctx, ana, codigos.Recuperar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Conferir(ctx, ana, codigos.Recuperar, c); err != nil {
+		t.Fatalf("depois de 24 h deveria valer: %v", err)
+	}
+}
