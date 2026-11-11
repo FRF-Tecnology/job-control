@@ -65,7 +65,9 @@ func (s *Servidor) assinar(w http.ResponseWriter, r *http.Request, usuarioID str
 	ctx := r.Context()
 	u, err := s.contas.PorID(ctx, usuarioID)
 	if err != nil {
-		s.interno(w, r, "usuario", err)
+		if !semUsuario(w, err) {
+			s.interno(w, r, "usuario", err)
+		}
 		return
 	}
 	if !u.Confirmado() {
@@ -111,7 +113,9 @@ func (s *Servidor) portal(w http.ResponseWriter, r *http.Request, usuarioID stri
 	ctx := r.Context()
 	cliente, err := s.contas.StripeCliente(ctx, usuarioID)
 	if err != nil {
-		s.interno(w, r, "cliente", err)
+		if !semUsuario(w, err) {
+			s.interno(w, r, "cliente", err)
+		}
 		return
 	}
 	if cliente == "" {

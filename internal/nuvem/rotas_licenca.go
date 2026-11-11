@@ -22,7 +22,9 @@ func (s *Servidor) licenca(w http.ResponseWriter, r *http.Request, usuarioID str
 	agora := s.dep.Agora().UTC()
 	u, err := s.contas.PorID(ctx, usuarioID)
 	if err != nil {
-		s.interno(w, r, "usuario", err)
+		if !semUsuario(w, err) {
+			s.interno(w, r, "usuario", err)
+		}
 		return
 	}
 	if u.Confirmado() && u.TesteInicio == nil && !u.Cortesia {

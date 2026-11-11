@@ -104,6 +104,7 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		s.rotasLicenca()
 		s.rotasPagamento()
 		s.rotasNotas()
+		s.rotasExcluir()
 	}
 	return s
 }
