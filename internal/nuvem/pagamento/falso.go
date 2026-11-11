@@ -23,6 +23,7 @@ type Falso struct {
 	canceladas  []string
 	consultas   int
 	faturas     map[string]Fatura
+	sumidas     map[string]bool // Assinatura responde 404
 }
 
 // NovoFalso cria o Falso; os webhooks dos testes são assinados com segredo.
@@ -71,6 +72,9 @@ func (f *Falso) Assinatura(_ context.Context, id string) (EstadoStripe, error) {
 	f.consultas++
 	a, ok := f.assinaturas[id]
 	if !ok {
+		if f.sumidas[id] {
+			return EstadoStripe{}, erroSumida()
+		}
 		return EstadoStripe{}, ErrNaoExiste
 	}
 	return a, nil
@@ -101,4 +105,20 @@ func (f *Falso) Canceladas() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.canceladas...)
+}
+
+// Sumir faz a assinatura deixar de existir no Stripe falso: Assinatura passa a responder 404 resource_missing,
+// como o Stripe real para uma assinatura apagada.
+func (f *Falso) Sumir(id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.assinaturas, id)
+	if f.sumidas == nil {
+		f.sumidas = map[string]bool{}
+	}
+	f.sumidas[id] = true
+}
+
+func erroSumida() error {
+	return &stripe.Error{Type: stripe.ErrorTypeInvalidRequest, Code: stripe.ErrorCodeResourceMissing, HTTPStatusCode: 404}
 }

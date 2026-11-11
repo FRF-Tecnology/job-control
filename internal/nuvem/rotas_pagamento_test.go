@@ -61,11 +61,17 @@ func (a *amb) webhookCru(corpo []byte, cabecalho string) *httptest.ResponseRecor
 	return w
 }
 
-// webhook monta um evento do Stripe, assina com o segredo dos testes e manda.
+// webhook monta um evento do Stripe (modo de teste), assina com o segredo dos testes e manda.
 func (a *amb) webhook(t *testing.T, id, tipo string, objeto map[string]any) *httptest.ResponseRecorder {
 	t.Helper()
+	return a.webhookModo(t, id, tipo, objeto, false)
+}
+
+// webhookModo é webhook com o livemode do evento escolhido.
+func (a *amb) webhookModo(t *testing.T, id, tipo string, objeto map[string]any, livemode bool) *httptest.ResponseRecorder {
+	t.Helper()
 	corpo, err := json.Marshal(map[string]any{
-		"id": id, "object": "event", "type": tipo, "api_version": stripe.APIVersion,
+		"id": id, "object": "event", "type": tipo, "api_version": stripe.APIVersion, "livemode": livemode,
 		"created": time.Now().Unix(), "data": map[string]any{"object": objeto},
 	})
 	if err != nil {
@@ -325,5 +331,44 @@ func TestPaginaVoltar(t *testing.T) {
 	}
 	if b := w.Body.String(); !strings.Contains(b, "Pode voltar para o Applyer.") || strings.Contains(b, "<script") {
 		t.Fatalf("corpo = %s", b)
+	}
+}
+
+// Assinatura que o Stripe diz não existir (404 resource_missing) não tem como sincronizar: 200 e log, sem
+// reenvios por 3 dias.
+func TestWebhookAssinaturaInexistente200(t *testing.T) {
+	a := novoAmb(t)
+	_, cliente, _ := a.assinante(t, emailLic)
+	a.st.Sumir("sub_apagada")
+	confere(t, a.webhook(t, "evt_404", "customer.subscription.deleted",
+		map[string]any{"id": "sub_apagada", "object": "subscription", "customer": cliente}), http.StatusOK, "")
+	if n := a.contar(t, "assinaturas"); n != 0 {
+		t.Fatalf("assinaturas = %d", n)
+	}
+	if l := a.log.String(); !strings.Contains(l, "evt_404") || !strings.Contains(l, "customer.subscription.deleted") {
+		t.Fatalf("log = %s", l)
+	}
+}
+
+// Evento de outro modo (live com chave de teste, ou o contrário) é ignorado: 200, sem consultar o Stripe.
+func TestWebhookLivemodeDiferenteDaChave(t *testing.T) {
+	a := novoAmb(t)
+	id, cliente, _ := a.assinante(t, emailLic)
+	a.st.DefinirAssinatura(pagamento.EstadoStripe{ID: "sub_1", Status: "active", Cliente: cliente})
+	sub := map[string]any{"id": "sub_1", "object": "subscription"}
+
+	a.s.cfg.StripeSecretKey = "sk_test_ficticia"
+	confere(t, a.webhookModo(t, "evt_live", "customer.subscription.updated", sub, true), http.StatusOK, "")
+	a.s.cfg.StripeSecretKey = "sk_live_ficticia"
+	confere(t, a.webhookModo(t, "evt_teste", "customer.subscription.updated", sub, false), http.StatusOK, "")
+	if n := a.st.Consultas(); n != 0 || a.lerAss(t, id) != nil {
+		t.Fatalf("evento de outro modo foi aplicado (consultas = %d)", n)
+	}
+	if l := a.log.String(); !strings.Contains(l, "evt_live") || !strings.Contains(l, "evt_teste") {
+		t.Fatalf("log = %s", l)
+	}
+	confere(t, a.webhookModo(t, "evt_ok", "customer.subscription.updated", sub, true), http.StatusOK, "")
+	if as := a.lerAss(t, id); as == nil || as.Estado != "active" {
+		t.Fatalf("evento do mesmo modo não aplicado: %+v", as)
 	}
 }

@@ -147,3 +147,14 @@ func TestJaCancelada(t *testing.T) {
 		}
 	}
 }
+
+func TestModoLiveEInexistente(t *testing.T) {
+	for chave, live := range map[string]bool{"sk_live_x": true, "rk_live_x": true, "sk_test_x": false, "rk_test_x": false, "": false} {
+		if ModoLive(chave) != live {
+			t.Errorf("ModoLive(%q) = %v", chave, !live)
+		}
+	}
+	if !Inexistente(erroSumida()) || Inexistente(ErrNaoExiste) || Inexistente(nil) {
+		t.Error("Inexistente classifica errado")
+	}
+}

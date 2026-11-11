@@ -164,6 +164,12 @@ func (s *Servidor) webhook(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	tipo := string(ev.Type)
+	// Evento de outro modo (live com chave de teste, ou o contrário) não é deste ambiente: ignora.
+	if ev.Livemode != pagamento.ModoLive(s.cfg.StripeSecretKey) {
+		s.log.Warn("webhook ignorado: modo diferente da chave", "tipo", tipo, "evento", ev.ID)
+		escreverJSON(w, http.StatusOK, map[string]bool{"ok": true})
+		return
+	}
 	var visto bool
 	if err := s.dep.Banco.QueryRow(ctx, `select exists (select 1 from eventos_stripe where event_id = $1)`, ev.ID).Scan(&visto); err != nil {
 		s.interno(w, r, "evento visto", err)
@@ -216,6 +222,12 @@ func (s *Servidor) eventoIlegivel(w http.ResponseWriter, ev stripe.Event) {
 func (s *Servidor) sincronizar(w http.ResponseWriter, r *http.Request, ev stripe.Event, assinaturaID, referencia string) {
 	ctx := r.Context()
 	est, err := s.dep.Stripe.Assinatura(ctx, assinaturaID)
+	if pagamento.Inexistente(err) {
+		// Apagada no Stripe: não há o que sincronizar, e um 500 faria o Stripe reenviar por 3 dias.
+		s.log.Warn("webhook ignorado: assinatura não existe no Stripe", "tipo", string(ev.Type), "evento", ev.ID)
+		escreverJSON(w, http.StatusOK, map[string]bool{"ok": true})
+		return
+	}
 	if err != nil {
 		s.log.Error("falha no Stripe", "rota", r.URL.Path, "onde", "consultar assinatura", "tipo", string(ev.Type),
 			"evento", ev.ID, "erro", pagamento.Resumo(err))
@@ -265,6 +277,8 @@ func (s *Servidor) donoFalhou(w http.ResponseWriter, r *http.Request, ev stripe.
 
 // donoDa acha o usuário: metadata usuario_id (cliente/assinatura), client_reference_id do Checkout,
 // e por fim usuarios.stripe_cliente. Nenhum: contas.ErrNaoEncontrado.
+// Não use Payment Links do Stripe: o client_reference_id é confiado sem conferir o cliente, e um link
+// público deixaria qualquer um escolher esse id (pagar apontando a assinatura para outra conta).
 func (s *Servidor) donoDa(ctx context.Context, meta, referencia, cliente string) (string, error) {
 	for _, id := range []string{meta, referencia} {
 		if !reUUID.MatchString(id) {

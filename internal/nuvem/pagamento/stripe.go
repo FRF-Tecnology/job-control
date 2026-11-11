@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/stripe/stripe-go/v87"
@@ -126,6 +127,14 @@ func (r *Real) Cancelar(ctx context.Context, assinatura string) error {
 func jaCancelada(err error) bool {
 	var se *stripe.Error
 	return errors.As(err, &se) && (se.Code == stripe.ErrorCodeResourceMissing || se.HTTPStatusCode == 404)
+}
+
+// Inexistente diz se o erro é o 404 resource_missing do Stripe (o objeto não existe, nem vai existir).
+func Inexistente(err error) bool { return jaCancelada(err) }
+
+// ModoLive diz se a chave secreta é do modo live (sk_live_ ou rk_live_); qualquer outra é de teste.
+func ModoLive(chave string) bool {
+	return strings.HasPrefix(chave, "sk_live_") || strings.HasPrefix(chave, "rk_live_")
 }
 
 func (r *Real) Evento(corpo []byte, cabecalho string) (stripe.Event, error) {
