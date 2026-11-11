@@ -37,6 +37,13 @@ const HOST_PADRAO: Record<string, string> = { anthropic: 'api.anthropic.com', op
 const hostDe = (endereco?: string) => {
   try { const u = new URL((endereco ?? '').trim()); return u.protocol === 'https:' ? u.host.toLowerCase().replace(/\.$/, '') : ''; } catch { return ''; }
 };
+export function iaProntaParaBusca(ia: EstadoIA) {
+  if (!ia.configurada || !ia.provedor) return false;
+  if (CHAVES.some(c => c.provedor === ia.provedor)) return Boolean(ia.chaves?.[ia.provedor]);
+  const cli = ia.clis?.find(c => c.provedor === ia.provedor);
+  return !cli || (cli.instalada && cli.pronta !== false && cli.logada !== false);
+}
+
 const destinoDe = (provedor: string, endereco?: string) => {
   const proprio = (endereco ?? '').trim();
   return proprio ? { host: hostDe(proprio) || 'endereço inválido (use https://)', padrao: false } : { host: HOST_PADRAO[provedor] ?? '', padrao: true };
@@ -51,6 +58,7 @@ export function TelaConectarIA() {
   const [modelo, setModelo] = useState('');
   const [url, setUrl] = useState('');
   const campoChave = useRef<HTMLInputElement>(null);
+  const primeiraBusca = new URLSearchParams(location.hash.split('?')[1]).get('primeira-busca') === '1';
 
   const ler = useCallback(async () => { const d: EstadoIA = await app.api('/api/v1/ia'); setIA(d); return d; }, [app]);
   // Na primeira leitura, o formulário já vem com o provedor de chave em uso, o modelo e o endereço dele: salvar sem
@@ -120,6 +128,12 @@ export function TelaConectarIA() {
         <div><h1>Conectar IA</h1><p>A IA tria vagas, responde formulários e escreve rascunhos de mensagem. Você escolhe qual usar e troca quando quiser.</p></div>
       </header>
 
+      {primeiraBusca && <Convite titulo="Seu perfil de busca está salvo" texto={iaProntaParaBusca(ia)
+        ? 'Sua IA está conectada. Abra a Triagem para iniciar a primeira busca.'
+        : 'Conecte a IA abaixo para iniciar a primeira busca com os critérios do seu perfil.'}>
+        <div className="acoes">{iaProntaParaBusca(ia) && <a className="botao" href="#/triagem?buscar=1">Buscar vagas</a>}
+          <a className="botao-fantasma" href="#/triagem">Ir para a Triagem</a></div>
+      </Convite>}
       {ativa && naoPronta(cliAtiva) ? (
         <Convite ambar titulo={`Conectada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
           <span className="acoes">

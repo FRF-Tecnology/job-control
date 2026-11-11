@@ -7,7 +7,15 @@ O Claude Code busca e aplica. Você decide e acompanha na tela.
 
 Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. Nada sai da máquina.
 
-## Abrir
+## Primeiro acesso no aplicativo desktop (Windows e macOS)
+
+No Applyer, anexe seu currículo em PDF e informe o cargo, os níveis aceitos, as duas stacks, as exclusões, o mercado, os modelos de trabalho, o inglês e a pretensão mensal em USD. A última etapa permite revisar e salvar. O PDF fica na pasta de currículos do app e o perfil no banco local. Instalações que já têm dados continuam abrindo normalmente.
+
+Com uma IA conectada, **Salvar e buscar vagas** abre a Triagem. Para outra rodada, use **Buscar vagas com meu perfil** em Hoje ou Triagem. O app consulta a Gupy para o Brasil, a Himalayas para oportunidades internacionais remotas e a Arbeitnow para vagas europeias quando os modelos selecionados incluem trabalho híbrido ou presencial. A cobertura depende dos anúncios dessas fontes. [Gupy](https://portal.gupy.io/) · [Himalayas](https://himalayas.app/) · [Arbeitnow](https://www.arbeitnow.com/)
+
+Cada rodada processa até oito vagas. As exclusões explícitas ficam registradas com motivo. A IA compara anúncio e critérios profissionais e a Triagem apresenta A, B e C em ordem de prioridade. Uma avaliação interrompida fica pendente para outra rodada. Para modificar as preferências, abra **Perfil**.
+
+## Abrir a Central em Node
 1. Instale o [Node.js](https://nodejs.org) 18 ou mais novo (só uma vez).
 2. Dê dois cliques em **`iniciar.bat`** (Windows) ou rode `./iniciar.sh` (Mac/Linux).
 3. O navegador abre em http://localhost:4321. Para desligar, feche a janela preta.

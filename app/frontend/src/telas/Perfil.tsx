@@ -1,6 +1,7 @@
 // Perfil e regras (porte de web/telas/perfil.mjs). O formulário guarda as edições localmente até salvar.
 import { useState } from 'react';
 import { useApp } from '../app/contexto';
+import { NOMES_FOCO } from '../dominio/modelo';
 import { JanelaApp } from './JanelaApp';
 import { SeusDados } from './SeusDados';
 
@@ -80,6 +81,10 @@ export function TelaPerfil() {
         ) : <p className="aviso-cv"><strong>Nenhum currículo ainda. </strong>Copie seu PDF para a pasta <code>{app.estado.pastaCurriculos ?? 'de currículos do app'}</code>. Esta página atualiza sozinha quando ele aparecer.</p>}
       </fieldset>
       <fieldset><legend>Busca e filtros</legend>
+        <label className="campo"><span>Mercado de vagas</span><select value={perfil.foco ?? 'ambos'}
+          onChange={ev => { const foco = ev.target.value; mudar(p => { p.foco = foco; }); }}>
+          {Object.entries(NOMES_FOCO).map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
+        </select></label>
         <div className="duas">
           {lista('Níveis aceitos', perfil.filtros.niveis, (p, v) => { p.filtros.niveis = v; }, 'Júnior\nPleno')}
           {lista('Modelo de trabalho', perfil.filtros.modelo, (p, v) => { p.filtros.modelo = v; }, 'Remoto')}

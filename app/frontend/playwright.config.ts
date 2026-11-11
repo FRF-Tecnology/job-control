@@ -8,7 +8,7 @@ const aqui = dirname(fileURLToPath(import.meta.url));
 
 // A jornada de "usuário novo" roda contra o servidor de desenvolvimento (API Go + telas compiladas)
 // com uma pasta de dados vazia. Antes: npm run build (gera dist/).
-// Exposta aos testes (ex.: currículo fictício na pasta de currículos); os workers herdam a variável e usam a mesma pasta.
+// Todos os workers usam a mesma conta de teste e um cofre em memória no central-dev.
 const pasta = (process.env.CENTRAL_E2E_PASTA ??= mkdtempSync(join(tmpdir(), 'central-e2e-')));
 const raiz = resolve(aqui, '../..');
 
@@ -19,14 +19,15 @@ export default defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   use: { baseURL: 'http://localhost:4510', trace: 'retain-on-failure' },
   projects: [
-    { name: 'pc', use: { ...devices['Desktop Chrome'] } },
-    { name: 'celular', use: { ...devices['Pixel 7'] } },
+    { name: 'primeiro-acesso', testMatch: 'primeiro-acesso.setup.ts', use: { ...devices['Desktop Chrome'] } },
+    { name: 'pc', dependencies: ['primeiro-acesso'], use: { ...devices['Desktop Chrome'] } },
+    { name: 'celular', dependencies: ['primeiro-acesso'], use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
     command: 'go run ./cmd/central-dev',
     cwd: raiz,
     url: 'http://localhost:4510/api/v1/saude',
-    env: { PORT: '4510', CENTRAL_PASTA: pasta, CENTRAL_TELAS: resolve(aqui, 'dist') },
+    env: { PORT: '4510', APPLYER_PASTA: pasta, CENTRAL_PASTA: pasta, CENTRAL_E2E_PASTA: pasta, CENTRAL_TELAS: resolve(aqui, 'dist') },
     timeout: 180_000,
     reuseExistingServer: false,
   },

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,14 +162,39 @@ func (a *Armazem) BackupDiario(ctx context.Context, hoje string) (bool, error) {
 	destino := filepath.Join(a.pasta, "backups", "central-"+hoje+".db")
 	if _, err := os.Stat(destino); err == nil {
 		return false, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, err
 	}
 	if err := os.MkdirAll(filepath.Dir(destino), 0o700); err != nil {
 		return false, err
 	}
-	if _, err := a.db.ExecContext(ctx, `VACUUM INTO ?`, destino); err != nil {
+	// Outra instância pode iniciar o backup no mesmo dia. Cada uma faz o
+	// VACUUM INTO em seu arquivo e só o primeiro backup completo é publicado.
+	tmp, err := os.CreateTemp(filepath.Dir(destino), ".backup-*.tmp")
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(tmp.Name())
+	if err := tmp.Close(); err != nil {
+		return false, err
+	}
+	if _, err := a.db.ExecContext(ctx, `VACUUM INTO ?`, tmp.Name()); err != nil {
 		return false, fmt.Errorf("backup: %w", err)
 	}
-	return true, nil
+	criado := false
+	err = a.Transacao(ctx, func(_ *sql.Tx) error {
+		if _, err := os.Stat(destino); err == nil {
+			return nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := os.Rename(tmp.Name(), destino); err != nil {
+			return err
+		}
+		criado = true
+		return nil
+	})
+	return criado, err
 }
 
 // Pasta é onde o banco mora ("" para banco em memória).

@@ -2,6 +2,7 @@
 // Só leitura neste passo; aprovar e as outras ações chegam no jc-a2y.6.3.2. A impressão é recalculada aqui a
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { grupoADireto } from '../app/preparoAutomatico';
 import { ErroApi, useApp, type Pergunta } from '../app/contexto';
 import { impressaoCandidatura, type EstruturaFormulario } from '../app/impressao';
 import { FormularioCand, formularioSemAprovar, type CandFormulario } from './Formulario';
@@ -280,7 +281,7 @@ export function TelaFila() {
   // Vagas que podem ganhar candidatura: em Aplicar (ou grupo A em Descoberta no modo direto), sem uma ativa.
   const ativas = new Set(lista.filter(c => c.estado !== 'cancelada').map(c => c.vagaId));
   const prontas = (app.estado.vagas ?? []).filter((v: any) => !ativas.has(v.id)
-    && (v.etapa === 'aplicar' || (perfil.modo === 'direto' && v.etapa === 'descoberta' && v.aderencia === 'A')));
+    && (v.etapa === 'aplicar' || (perfil.modo === 'direto' && grupoADireto(v))));
 
   const nomeCand = (id: string) => { const c = lista.find(x => x.id === id); const v = c && vaga(c.vagaId); return v ? `${v.empresa} — ${v.titulo}` : 'uma candidatura'; };
 
