@@ -12,6 +12,6 @@ import (
 const Ligado = false
 
 // Ligar não faz nada no build padrão: nenhuma candidatura é enviada.
-func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
+func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string, podeAgir func() (bool, string)) Controle {
 	return desligado()
 }

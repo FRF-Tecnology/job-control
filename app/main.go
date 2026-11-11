@@ -65,7 +65,7 @@ func main() {
 		falhar("primeira vez", err)
 	}
 	// Envio de candidaturas: desligado no build padrão (não faz nada); só o build -tags envio_dev liga o executor.
-	controleEnvio := envio.Ligar(ctx, banco, pasta)
+	controleEnvio := envio.Ligar(ctx, banco, pasta, nil) // a trava real (Conta.PodeAgir) entra na Task 6
 	defer controleEnvio.Parar()
 
 	// A janela abre no tamanho que a pessoa deixou (ou no padrão) e, se ela pediu, o app fica em segundo plano.

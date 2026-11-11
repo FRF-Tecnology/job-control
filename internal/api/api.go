@@ -103,6 +103,8 @@ type API struct {
 	acompanhando    atomic.Bool
 	cadenciaAssinar time.Duration
 	prazoAssinar    time.Duration
+	// podeAgir: a trava das ações (trava.go). nil: tudo liberado.
+	podeAgir func() (bool, string)
 }
 
 // Opcoes configura a API.
@@ -147,6 +149,9 @@ type Opcoes struct {
 	// AbrirNavegador abre um endereço no navegador padrão (Checkout, portal, login Google). No app:
 	// application.Get().Browser.OpenURL.
 	AbrirNavegador func(url string) error
+	// PodeAgir: a trava das ações (trava.go, normalmente Conta.PodeAgir). false: toda escrita fora da lista "Sempre
+	// liberado" dá 402 com a frase do motivo. nil: tudo liberado (testes e central-dev sem conta).
+	PodeAgir func() (bool, string)
 }
 
 // ErroModoSoPessoa: só a pessoa liga o modo direto do perfil (jc-a2y.28).
@@ -201,7 +206,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
 		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp,
-		conta: o.Conta, abrirNavegador: o.AbrirNavegador}
+		conta: o.Conta, abrirNavegador: o.AbrirNavegador, podeAgir: o.PodeAgir}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -253,6 +258,10 @@ func (a *API) Chamar(ctx context.Context, p Pedido) (Resposta, error) {
 	defer a.trava.RUnlock()
 	if a.apagando {
 		return respostaFechando(), nil
+	}
+	// A trava das ações: vale para a tela e para o assistente (o ChamarAssistente volta aqui com doAssistente).
+	if r, travou := a.travado(p); travou {
+		return r, nil
 	}
 	if a.noMeioDoPedido != nil {
 		a.noMeioDoPedido(p.Caminho)

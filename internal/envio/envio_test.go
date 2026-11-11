@@ -19,7 +19,7 @@ func TestBuildPadraoSemGatilho(t *testing.T) {
 	if Ligado {
 		t.Fatal("build padrão com o envio ligado")
 	}
-	c := Ligar(context.Background(), nil, "") // não faz nada, nem com armazém nil
+	c := Ligar(context.Background(), nil, "", nil) // não faz nada, nem com armazém nil
 	c.Suspender()()
 	c.FecharNavegador()
 	c.MostrarEnvio(true) // não faz nada: não há navegador

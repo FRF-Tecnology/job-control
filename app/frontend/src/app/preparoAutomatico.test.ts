@@ -50,3 +50,18 @@ describe('prepararProntas', () => {
     expect(api).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('prepararProntas com a trava das ações', () => {
+  it('402: para na primeira, não marca a vaga e tenta de novo na próxima leitura', async () => {
+    const api = vi.fn()
+      .mockRejectedValueOnce(new ErroApi('Seu teste acabou.', 402, { erro: 'Seu teste acabou.', motivo: 'teste-acabou' }))
+      .mockResolvedValue({});
+    const tentadas = new Set<string>();
+    const dados = { vagas: [vaga('a', 'aplicar'), vaga('b', 'aplicar')], perfil: PERFIL, curriculos: PDFS };
+    expect(await prepararProntas(api, dados, [], tentadas)).toEqual({ preparadas: 0, semPdf: 0, travado: true });
+    expect(api).toHaveBeenCalledTimes(1); // não tentou a "b"
+    expect(tentadas.size).toBe(0);
+    // A licença voltou (próxima mudança de estado): prepara as duas.
+    expect(await prepararProntas(api, dados, [], tentadas)).toEqual({ preparadas: 2, semPdf: 0 });
+  });
+});

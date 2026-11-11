@@ -49,6 +49,9 @@ type Opcoes struct {
 	// Etapa (jc-a2y.6.9, "Ao vivo"): o passo do envio para o painel, só valores da lista fechada de internal/aovivo
 	// (nada da página). Padrão: não faz nada.
 	Etapa func(candidatura, etapa string)
+	// PodeAgir (trava das ações): false não começa ciclo nem pega a próxima da fila (o teste acabou, sem assinatura,
+	// sem internet ou sem conta). nil: liberado.
+	PodeAgir func() bool
 }
 
 // Executor envia, uma por vez, as candidaturas aprovadas.
@@ -209,6 +212,9 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 	if o, ok := x.o.Navegador.(interface{ Ocupado() bool }); ok && o.Ocupado() {
 		return []Desfecho{}, nil
 	}
+	if !x.podeAgir() { // trava das ações: o ciclo não começa
+		return []Desfecho{}, nil
+	}
 	e, err := x.arm.Carregar(ctx)
 	if err != nil {
 		return nil, err
@@ -226,7 +232,7 @@ func (x *Executor) EnviarAprovadas(ctx context.Context) ([]Desfecho, error) {
 	semLimite := map[string]bool{}
 	abriuPagina := false
 	for _, o := range fila {
-		if ctx.Err() != nil || x.arm.EnvioPausado(ctx) { // pausado: para a fila na hora (e de novo na transação)
+		if ctx.Err() != nil || x.arm.EnvioPausado(ctx) || !x.podeAgir() { // pausado ou travado: para a fila na hora
 			break
 		}
 		plataforma := dominio.Texto(o["plataforma"])
@@ -929,3 +935,6 @@ func normalizarPergunta(s string) string {
 	s = strings.Join(strings.Fields(strings.ToLower(s)), " ")
 	return strings.TrimSpace(strings.TrimRight(s, " *:"))
 }
+
+// podeAgir: a trava das ações (Opcoes.PodeAgir); sem ela, liberado.
+func (x *Executor) podeAgir() bool { return x.o.PodeAgir == nil || x.o.PodeAgir() }
