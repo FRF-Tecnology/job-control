@@ -89,7 +89,16 @@ func (c *Conta) Notas(ctx context.Context) ([]Nota, error) {
 	return c.nuvem.Notas(ctx, a)
 }
 
-// Excluir apaga a conta na nuvem (o email confirma) e, se deu certo, encerra a sessão aqui.
+// ErroSessaoLocal: a conta JÁ foi excluída na nuvem, mas não deu para apagar a sessão neste computador.
+type ErroSessaoLocal struct{ Err error }
+
+func (e *ErroSessaoLocal) Error() string {
+	return "conta excluída, mas a sessão local ficou: " + e.Err.Error()
+}
+func (e *ErroSessaoLocal) Unwrap() error { return e.Err }
+
+// Excluir apaga a conta na nuvem (o email confirma) e, se deu certo, encerra a sessão aqui. Falha só na parte
+// local volta como *ErroSessaoLocal (a exclusão na nuvem não se desfaz).
 func (c *Conta) Excluir(ctx context.Context, email string) error {
 	a, err := c.Acesso(ctx)
 	if err != nil {
@@ -98,7 +107,10 @@ func (c *Conta) Excluir(ctx context.Context, email string) error {
 	if err := c.nuvem.Excluir(ctx, a, email); err != nil {
 		return err
 	}
-	return c.Sair(ctx)
+	if err := c.Sair(ctx); err != nil {
+		return &ErroSessaoLocal{Err: err}
+	}
+	return nil
 }
 
 func (c *Conta) comAcesso(ctx context.Context, f func(context.Context, string) (string, error)) (string, error) {

@@ -51,9 +51,18 @@ func erroDaConta(err error) error {
 	var en *conta.ErroNuvem
 	switch {
 	case errors.As(err, &en):
+		switch en.Status {
+		case 400, 401, 403, 404, 409, 429, 503:
+		default: // 5xx inesperado ou status que o contrato não prevê: a tela não ganha nada com o texto cru
+			return &erroApi{502, Objeto{"erro": "A nuvem não respondeu direito. Tente de novo.", "motivo": "nuvem"}}
+		}
 		corpo := Objeto{"erro": en.Msg}
-		if en.Motivo != "" {
-			corpo["motivo"] = en.Motivo
+		motivo := en.Motivo
+		if motivo == "" && en.Status == 403 {
+			motivo = "nuvem-recusou" // o 403 da nuvem não pode se passar pelo 403 "só da tela" daqui
+		}
+		if motivo != "" {
+			corpo["motivo"] = motivo
 		}
 		if en.Versao != "" {
 			corpo["versao"] = en.Versao
@@ -259,29 +268,54 @@ func (a *API) iniciarGoogle(ctx context.Context, termos string) (Resposta, error
 	}
 }
 
-// excluirNaNuvem apaga a conta na nuvem e encerra a sessão aqui. Com apagarDados, Chamar passa depois pela trava
-// de escrita e apaga os dados locais (ver excluirEApagar).
-func (a *API) excluirNaNuvem(ctx context.Context, c Objeto) (Resposta, error) {
+// emailParaExcluir confere o corpo de POST /conta/excluir (antes de qualquer efeito).
+func emailParaExcluir(c Objeto) (string, error) {
 	if err := soCampos(c, "email", "apagarDados"); err != nil {
-		return Resposta{}, err
+		return "", err
 	}
 	if v, tem := c["apagarDados"]; tem {
 		if _, eBool := v.(bool); !eBool {
-			return Resposta{}, erroCampo("apagarDados: true ou false")
+			return "", erroCampo("apagarDados: true ou false")
 		}
 	}
-	t, err := textos(Objeto{"email": c["email"]}, []string{"email"})
+	corpo := Objeto{}
+	if v, tem := c["email"]; tem {
+		corpo["email"] = v
+	}
+	t, err := textos(corpo, []string{"email"})
+	if err != nil {
+		return "", err
+	}
+	return t["email"], nil
+}
+
+// avisoExclusao: a conta JÁ foi excluída na nuvem (não se desfaz), mas o que veio depois neste computador falhou.
+// A tela mostra o erro e oferece "Apagar meus dados" (POST /dados/apagar), que continua valendo.
+func avisoExclusao(erro string) (Resposta, error) {
+	return ok(Objeto{"contaExcluida": true, "dadosApagados": false, "erro": erro})
+}
+
+// excluirNaNuvem apaga a conta na nuvem e encerra a sessão aqui: 204. Se a nuvem apagou mas a sessão local não saiu,
+// 200 com o aviso (avisoExclusao). Com apagarDados, Chamar passa por excluirEApagar.
+func (a *API) excluirNaNuvem(ctx context.Context, c Objeto) (Resposta, error) {
+	email, err := emailParaExcluir(c)
 	if err != nil {
 		return Resposta{}, err
 	}
-	if err := a.conta.Excluir(ctx, t["email"]); err != nil {
+	switch err := a.conta.Excluir(ctx, email); {
+	case err == nil:
+		return semConteudo()
+	case errors.As(err, new(*conta.ErroSessaoLocal)):
+		return avisoExclusao("A conta foi excluída, mas não deu para encerrar a sessão neste computador. Saia da conta e tente apagar os dados.")
+	default:
 		return Resposta{}, err
 	}
-	return semConteudo()
 }
 
-// excluirEApagar: apaga a conta na nuvem (com a trava de leitura, como os outros pedidos) e, só se deu certo,
-// apaga os dados locais pelo mesmo caminho de POST /dados/apagar (trava de escrita, que fecha o app).
+// excluirEApagar: confere tudo o que dá antes de tocar na nuvem (corpo e as mesmas condições de /dados/apagar: sem
+// envio em andamento e pasta de dados de verdade; nesses casos nada é feito). Depois apaga a conta na nuvem (trava de
+// leitura) e, só se deu certo, os dados locais pelo mesmo caminho de POST /dados/apagar (trava de escrita, que fecha
+// o app). Se a nuvem apagou e o resto falhou, responde avisoExclusao.
 func (a *API) excluirEApagar(ctx context.Context, ped Pedido) (Resposta, error) {
 	autor := ped.Autor
 	if autor == "" {
@@ -291,18 +325,43 @@ func (a *API) excluirEApagar(ctx context.Context, ped Pedido) (Resposta, error) 
 		return Resposta{}, err
 	}
 	c := Objeto(ped.Corpo.(map[string]any))
+	email, err := emailParaExcluir(c)
+	if err != nil {
+		return Resposta{}, err
+	}
+	if err := validarApagar(Objeto{"confirmacao": FraseApagar}, "eu"); err != nil {
+		return Resposta{}, err
+	}
+	if a.arm.Pasta() == "" {
+		return Resposta{}, erroCampo("banco em memória: não há pasta de dados para apagar")
+	}
+	if err := a.semEnvioEmAndamento(ctx, "há uma candidatura sendo enviada agora: nada foi excluído nem apagado; tente de novo quando o envio terminar"); err != nil {
+		return Resposta{}, err
+	}
 	a.trava.RLock()
 	if a.apagando {
 		a.trava.RUnlock()
 		return respostaFechando(), nil
 	}
-	_, err := a.excluirNaNuvem(ctx, c)
+	err = a.conta.Excluir(ctx, email)
 	a.trava.RUnlock()
-	if err != nil {
+	var local *conta.ErroSessaoLocal
+	switch {
+	case errors.As(err, &local):
+		return avisoExclusao("A conta foi excluída, mas não deu para encerrar a sessão neste computador. Seus dados continuam aqui; você pode apagá-los em \"Apagar meus dados\".")
+	case err != nil:
 		return Resposta{}, erroDaConta(err)
 	}
-	return a.apagarComTrava(ctx, Pedido{Metodo: "POST", Caminho: Prefixo + "/dados/apagar", Autor: "eu",
+	r, err := a.apagarComTrava(ctx, Pedido{Metodo: "POST", Caminho: Prefixo + "/dados/apagar", Autor: "eu",
 		Corpo: Objeto{"confirmacao": FraseApagar}})
+	if err != nil {
+		msg := "A conta foi excluída, mas não deu para apagar os dados neste computador. Use \"Apagar meus dados\" para tentar de novo."
+		if resp, conhecido := respostaDeErro(err); conhecido && resp.Status == 409 {
+			msg = "A conta foi excluída, mas há uma candidatura sendo enviada e os dados não foram apagados. Use \"Apagar meus dados\" quando o envio terminar."
+		}
+		return avisoExclusao(msg)
+	}
+	return r, nil
 }
 
 // abrirAssinatura pede o endereço à nuvem e abre no navegador. Com acompanhar, passa a renovar a licença até a

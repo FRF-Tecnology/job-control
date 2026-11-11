@@ -706,6 +706,7 @@ paths:
   # Conta, licença e assinatura (app de PC). Só a tela; o assistente recebe 403 e a API sem conta (build sem nuvem) 503.
   # Erros da nuvem voltam com o mesmo status e {erro, motivo}; motivo "termos" traz também versao (a tela mostra os
   # links e "Aceito os novos termos" e reenvia o mesmo pedido com termos = versao). Sem internet: 503 motivo sem-internet.
+  # Status da nuvem repassados: 400, 401, 403 (com motivo, nunca confundir com o 403 só-da-tela daqui), 404, 409, 429, 503; qualquer outro vira 502 {erro, motivo nuvem}.
   /conta:
     get:
       x-so-tela: true
@@ -839,12 +840,20 @@ paths:
           application/json:
             schema: { type: object, additionalProperties: false, required: [email], properties: { email: { type: string }, apagarDados: { type: boolean } } }
       responses:
-        '200': { description: 'Só com apagarDados true: o que foi apagado e o que faltou; fechar true', content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoApagar' } } } }
+        '200':
+          description: 'Duas formas. (1) Só com apagarDados true e tudo certo: ResultadoApagar (o que foi apagado e o que faltou; fechar true). (2) AVISO: a conta JÁ foi excluída na nuvem (não se desfaz) mas o que veio depois neste computador falhou (sessão local não saiu, ou os dados não foram apagados): {contaExcluida: true, dadosApagados: false, erro}. Nesse caso nada mais foi feito e POST /dados/apagar continua valendo para tentar de novo'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/ResultadoApagar' }
+                  - { $ref: '#/components/schemas/AvisoExclusao' }
         '204': { description: 'Conta excluída (sem apagarDados)' }
         '400': { $ref: '#/components/responses/Validacao' }
         '401': { $ref: '#/components/responses/ErroConta' }
         '403': { $ref: '#/components/responses/SoTela' }
-        '409': { $ref: '#/components/responses/EnvioEmAndamento' }
+        '409': { description: 'Com apagarDados: há candidatura em enviando (estado enviando) e nada foi excluído nem apagado; ou erro da nuvem repassado (motivo)', content: { application/json: { schema: { $ref: '#/components/schemas/ErroConflitoCandidatura' } } } }
+        '502': { description: 'A nuvem respondeu algo inesperado: {erro, motivo nuvem}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroConta' } } } }
         '503': { $ref: '#/components/responses/ErroConta' }
   /assinatura:
     get:
@@ -913,6 +922,13 @@ components:
         google_motivo: { type: string, description: 'Só em GET /conta. Motivo do erro do Google (termos, entrar-com-senha)' }
         google_versao: { type: string, description: 'Só em GET /conta. Versão atual dos termos quando google_motivo é termos' }
         erro_cofre: { type: string, description: 'Só em GET /conta. Vazio, ou o erro ao guardar a sessão no cofre (a sessão vale só até o app fechar)' }
+    AvisoExclusao:
+      type: object
+      required: [contaExcluida, dadosApagados, erro]
+      properties:
+        contaExcluida: { type: boolean, const: true }
+        dadosApagados: { type: boolean, const: false }
+        erro: { type: string, description: 'Texto pronto para a tela' }
     MensagemConta:
       type: object
       required: [mensagem]

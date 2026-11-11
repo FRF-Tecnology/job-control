@@ -7,14 +7,18 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/config"
 	"github.com/FRF-Tecnology/job-control/internal/conta"
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
@@ -30,13 +34,17 @@ type ambConta struct {
 }
 
 func novoAmbConta(t *testing.T, canal string) *ambConta {
+	return novoAmbContaCom(t, canal, segredos.Memoria{})
+}
+
+func novoAmbContaCom(t *testing.T, canal string, cofre segredos.Cofre) *ambConta {
 	t.Helper()
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	a := &ambConta{t: t, f: conta.NovaFalsa(priv, nil), abertas: make(chan string, 8), saiu: make(chan struct{}, 1)}
-	a.c = conta.Nova(a.f, segredos.Memoria{}, t.TempDir(), pub, nil)
+	a.c = conta.Nova(a.f, cofre, t.TempDir(), pub, nil)
 	a.pasta = filepath.Join(t.TempDir(), "Applyer")
 	os.MkdirAll(a.pasta, 0o700)
 	arm, err := armazem.Abrir(context.Background(), config.CaminhoBanco(a.pasta))
@@ -266,5 +274,98 @@ func espera(t *testing.T, cond func() bool) {
 			t.Fatal("tempo esgotado esperando a condição")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func (a *ambConta) contaExisteNaNuvem() bool {
+	_, err := a.f.Entrar(context.Background(), "ana@exemplo.com", "senha-forte-1", dispTeste, conta.TermosVersao)
+	return err == nil
+}
+
+func TestExcluirComEnvioEmAndamentoNaoTocaNaNuvem(t *testing.T) {
+	a := novoAmbConta(t, "")
+	a.entrar()
+	a.chamar("POST", "/vagas", Objeto{"id": "li-1", "empresa": "Empresa Teste", "titulo": "Dev Go"}, 201)
+	semear := a.api.arm
+	if err := semear.Gravar(context.Background(), func(e dominio.Estado) (dominio.Estado, error) {
+		e.Candidaturas = append(e.Candidaturas, Objeto{"id": "c-1", "vagaId": "li-1", "estado": dominio.CandEnviando})
+		return e, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	o := a.chamar("POST", "/conta/excluir", Objeto{"email": "ana@exemplo.com", "apagarDados": true}, 409)
+	if o["estado"] != "enviando" {
+		t.Fatalf("409: %v", o)
+	}
+	if !a.c.Situacao().Entrada {
+		t.Fatal("a sessão local deveria estar intacta")
+	}
+	if !a.contaExisteNaNuvem() {
+		t.Fatal("a conta não pode ter sido excluída na nuvem")
+	}
+	if _, err := os.Stat(config.CaminhoBanco(a.pasta)); err != nil {
+		t.Fatalf("o banco deveria estar intacto: %v", err)
+	}
+}
+
+// cofre que não consegue apagar: a sessão local não sai depois de a nuvem excluir a conta.
+type cofreSemApagar struct{ segredos.Memoria }
+
+func (cofreSemApagar) Apagar(string) error { return errors.New("cofre travado (teste)") }
+
+func TestExcluirNuvemOkApagarFalhaAvisa(t *testing.T) {
+	a := novoAmbContaCom(t, "", cofreSemApagar{segredos.Memoria{}})
+	a.entrar()
+	o := a.chamar("POST", "/conta/excluir", Objeto{"email": "ana@exemplo.com", "apagarDados": true}, 200)
+	if o["contaExcluida"] != true || o["dadosApagados"] != false || o["erro"] == "" || o["erro"] == nil {
+		t.Fatalf("aviso: %v", o)
+	}
+	if a.contaExisteNaNuvem() {
+		t.Fatal("a conta deveria ter sido excluída na nuvem")
+	}
+	// Os dados ficaram, e POST /dados/apagar continua valendo para tentar de novo.
+	if _, err := os.Stat(config.CaminhoBanco(a.pasta)); err != nil {
+		t.Fatalf("os dados deveriam ter ficado: %v", err)
+	}
+	r := a.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
+	if r["fechar"] != true {
+		t.Fatalf("apagar depois do aviso: %v", r)
+	}
+	// Sem apagarDados o aviso é o mesmo.
+	b := novoAmbContaCom(t, "", cofreSemApagar{segredos.Memoria{}})
+	b.entrar()
+	if o := b.chamar("POST", "/conta/excluir", Objeto{"email": "ana@exemplo.com"}, 200); o["contaExcluida"] != true {
+		t.Fatalf("aviso sem apagarDados: %v", o)
+	}
+}
+
+func TestExcluirSemEmailEErrosDaNuvem(t *testing.T) {
+	a := novoAmbConta(t, "")
+	a.entrar()
+	for _, corpo := range []Objeto{{}, {"apagarDados": true}} {
+		r, _ := a.api.Chamar(context.Background(), Pedido{Metodo: "POST", Caminho: Prefixo + "/conta/excluir", Corpo: corpo, Autor: "eu"})
+		if r.Status != 400 || !strings.Contains(fmt.Sprint(r.Corpo), "email: obrigatório") {
+			t.Fatalf("sem email: %d %v", r.Status, r.Corpo)
+		}
+	}
+	for _, c := range []struct {
+		en   *conta.ErroNuvem
+		quer int
+		mot  string
+	}{
+		{&conta.ErroNuvem{Status: 403, Msg: "Recusado"}, 403, "nuvem-recusou"},
+		{&conta.ErroNuvem{Status: 429, Msg: "Devagar", Motivo: "limite"}, 429, "limite"},
+		{&conta.ErroNuvem{Status: 500, Msg: "pg: falha interna"}, 502, "nuvem"},
+		{&conta.ErroNuvem{Status: 418, Msg: "xícara"}, 502, "nuvem"},
+	} {
+		err := erroDaConta(c.en)
+		r, _ := respostaDeErro(err)
+		corpo, _ := r.Corpo.(Objeto)
+		if r.Status != c.quer || corpo["motivo"] != c.mot {
+			t.Errorf("%d: %d %v", c.en.Status, r.Status, r.Corpo)
+		}
+		if c.quer == 502 && corpo["erro"] != "A nuvem não respondeu direito. Tente de novo." {
+			t.Errorf("502 vazou texto: %v", corpo)
+		}
 	}
 }
