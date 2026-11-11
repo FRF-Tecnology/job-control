@@ -6,6 +6,7 @@ require (
 	github.com/chromedp/cdproto v0.159.0
 	github.com/chromedp/chromedp v0.21.1
 	github.com/coreos/go-oidc/v3 v3.21.0
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/fergusstrange/embedded-postgres v1.34.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
