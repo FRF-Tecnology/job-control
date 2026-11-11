@@ -98,10 +98,11 @@ func TestTravaPorRota(t *testing.T) {
 
 func TestTravaMotivos(t *testing.T) {
 	frases := map[string]string{
-		conta.MotivoTesteAcabou:   "Seu teste acabou. Você ainda vê tudo; para buscar e se candidatar, assine.",
-		conta.MotivoSemAssinatura: "Sua assinatura não está ativa. Você ainda vê tudo; para buscar e se candidatar, assine.",
-		conta.MotivoSemInternet:   "Sem conexão: dá para ver, mas não para buscar ou se candidatar.",
-		conta.MotivoSemConta:      "Entre na sua conta para buscar e se candidatar.",
+		conta.MotivoTesteAcabou:    "Seu teste acabou. Você ainda vê tudo; para buscar e se candidatar, assine.",
+		conta.MotivoSemAssinatura:  "Sua assinatura não está ativa. Você ainda vê tudo; para buscar e se candidatar, assine.",
+		conta.MotivoSemInternet:    "Sem conexão: dá para ver, mas não para buscar ou se candidatar.",
+		conta.MotivoSemConta:       "Entre na sua conta para buscar e se candidatar.",
+		conta.MotivoLicencaVencida: "Abra o Applyer para renovar o acesso.",
 	}
 	for motivo, frase := range frases {
 		r := chamarTela(t, apiTravada(t, "", motivo), "POST", "/vagas", Objeto{"id": "v-trava", "empresa": "Empresa Teste", "titulo": "Dev"})
@@ -113,9 +114,14 @@ func TestTravaMotivos(t *testing.T) {
 			t.Errorf("respostaTrava(%s) = %+v", motivo, got)
 		}
 	}
-	// Motivo desconhecido (falha fechada): ainda 402, com a frase de quem não tem assinatura.
-	if r := respostaTrava("outro"); r.Status != 402 || dominio.ObjetoDe(r.Corpo)["erro"] != frases[conta.MotivoSemAssinatura] {
+	// Motivo desconhecido (falha fechada): ainda 402, com a frase e o motivo de quem não tem assinatura (a tela só
+	// recebe motivos conhecidos).
+	if r := respostaTrava("outro"); r.Status != 402 || dominio.ObjetoDe(r.Corpo)["erro"] != frases[conta.MotivoSemAssinatura] ||
+		dominio.ObjetoDe(r.Corpo)["motivo"] != conta.MotivoSemAssinatura {
 		t.Errorf("respostaTrava(outro) = %+v", r)
+	}
+	if r := respostaTrava(""); r.Status != 402 || dominio.ObjetoDe(r.Corpo)["motivo"] != conta.MotivoSemAssinatura {
+		t.Errorf("respostaTrava(vazio) = %+v", r)
 	}
 	// Liberado: a mesma escrita passa.
 	if r := chamarTela(t, apiTravada(t, "", ""), "POST", "/vagas", Objeto{"id": "v-trava", "empresa": "Empresa Teste", "titulo": "Dev"}); r.Status != 201 {
@@ -170,5 +176,26 @@ func TestLiberadoSemLicenca(t *testing.T) {
 		if got := liberadoSemLicenca(c.m, c.caminho); got != c.quer {
 			t.Errorf("liberadoSemLicenca(%s, %s) = %v; queria %v", c.m, c.caminho, got, c.quer)
 		}
+	}
+}
+
+// Ruling A11 (Task 6): build sem a nuvem, sem Conta. GET /conta responde {"ativa": false} para a tela pular a
+// entrada; o resto da conta continua 503, e o assistente continua 403.
+func TestContaDesligadaNoBuild(t *testing.T) {
+	a := apiTravada(t, "", "")
+	a.podeAgir = nil
+	r := chamarTela(t, a, "GET", "/conta", nil)
+	if c := dominio.ObjetoDe(r.Corpo); r.Status != 200 || c["ativa"] != false || len(c) != 1 {
+		t.Fatalf("GET /conta sem Conta = %d %v", r.Status, r.Corpo)
+	}
+	if r := chamarTela(t, a, "POST", "/conta/entrar", Objeto{}); r.Status != 503 {
+		t.Fatalf("POST /conta/entrar sem Conta = %d", r.Status)
+	}
+	if r, _ := a.Chamar(context.Background(), Pedido{Metodo: "GET", Caminho: Prefixo + "/conta", Autor: "claude"}); r.Status != 403 {
+		t.Fatalf("GET /conta do assistente = %d", r.Status)
+	}
+	m := apiTravada(t, "mcp", "")
+	if r, _ := m.Chamar(context.Background(), Pedido{Metodo: "GET", Caminho: Prefixo + "/conta", Autor: "eu"}); r.Status != 403 {
+		t.Fatalf("GET /conta no canal mcp = %d", r.Status)
 	}
 }

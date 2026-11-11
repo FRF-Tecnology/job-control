@@ -15,6 +15,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/config"
 	"github.com/FRF-Tecnology/job-control/internal/envio"
+	"github.com/FRF-Tecnology/job-control/internal/segredos"
 	modelodados "github.com/FRF-Tecnology/job-control/modelo-dados"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -64,8 +65,18 @@ func main() {
 	if _, err := banco.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
 		falhar("primeira vez", err)
 	}
+	// A conta e a trava das ações sobre a nuvem do build, com o mesmo cofre da API (as chaves desta pasta). Build sem
+	// a nuvem: sem conta e sem trava, como antes (ruling A11).
+	cofre := segredos.Sistema{Servico: segredos.ServicoDaPasta(pasta)}
+	minhaConta, podeAgir, err := ligarConta(cofre, pasta)
+	if err != nil {
+		falhar("conta", err)
+	}
+	if minhaConta != nil {
+		minhaConta.Iniciar(ctx) // renova a sessão e a licença em segundo plano, sem segurar a janela
+	}
 	// Envio de candidaturas: desligado no build padrão (não faz nada); só o build -tags envio_dev liga o executor.
-	controleEnvio := envio.Ligar(ctx, banco, pasta, nil) // a trava real (Conta.PodeAgir) entra na Task 6
+	controleEnvio := envio.Ligar(ctx, banco, pasta, podeAgir)
 	defer controleEnvio.Parar()
 
 	// A janela abre no tamanho que a pessoa deixou (ou no padrão) e, se ela pediu, o app fica em segundo plano.
@@ -73,7 +84,8 @@ func main() {
 	controle := abrirJanela(app, banco, tamanho, segundoPlano)
 	aberta.Store(controle)
 
-	local := api.Nova(banco, api.Opcoes{
+	local := api.Nova(banco, opcoesDaConta(api.Opcoes{
+		Cofre:           cofre,
 		PararEnvio:      controleEnvio.Parar,
 		SuspenderEnvio:  controleEnvio.Suspender,
 		FecharNavegador: controleEnvio.FecharNavegador,
@@ -95,7 +107,7 @@ func main() {
 		LerFormulario: controleEnvio.LerFormulario,
 		// Janela do app (Perfil): segundo plano e voltar ao tamanho padrão.
 		JanelaApp: controle.ganchos(),
-	})
+	}, minhaConta, podeAgir, app.Browser.OpenURL)) // Checkout, portal e login Google no navegador padrão
 	apiLocal.definir(local.Handler())
 
 	if err := app.Run(); err != nil {

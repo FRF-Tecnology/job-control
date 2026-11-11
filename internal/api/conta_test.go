@@ -87,7 +87,7 @@ func (a *ambConta) entrar() {
 
 func TestContaFluxoPelaAPI(t *testing.T) {
 	a := novoAmbConta(t, "")
-	if s := a.chamar("GET", "/conta", nil, 200); s["entrada"] != false || s["motivo"] != "sem-conta" {
+	if s := a.chamar("GET", "/conta", nil, 200); s["ativa"] != true || s["entrada"] != false || s["motivo"] != "sem-conta" {
 		t.Fatalf("antes de entrar: %v", s)
 	}
 	a.chamar("POST", "/conta/criar", Objeto{"email": "ana@exemplo.com", "senha": "senha-forte-1", "termos": conta.TermosVersao}, 202)
@@ -174,7 +174,7 @@ func TestContaIndisponivelSemConta(t *testing.T) {
 	arm, _ := armazem.Abrir(context.Background(), ":memory:")
 	t.Cleanup(func() { arm.Fechar() })
 	api := Nova(arm, Opcoes{Cofre: segredos.Memoria{}})
-	if r, _ := api.Chamar(context.Background(), Pedido{Metodo: "GET", Caminho: Prefixo + "/conta"}); r.Status != 503 {
+	if r, _ := api.Chamar(context.Background(), Pedido{Metodo: "POST", Caminho: Prefixo + "/conta/criar", Corpo: Objeto{}}); r.Status != 503 {
 		t.Fatalf("sem Conta: %d", r.Status)
 	}
 }

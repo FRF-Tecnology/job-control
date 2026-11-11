@@ -103,6 +103,7 @@ func textos(c Objeto, obrigatorios []string, opcionais ...string) (map[string]st
 }
 
 type respostaConta struct {
+	Ativa bool `json:"ativa"` // sempre true aqui: a conta existe neste build
 	conta.Situacao
 	Google       string `json:"google"`
 	GoogleMotivo string `json:"google_motivo"`
@@ -111,7 +112,7 @@ type respostaConta struct {
 }
 
 func (a *API) estadoDaConta() respostaConta {
-	return respostaConta{Situacao: a.conta.Situacao(), Google: a.conta.EstadoGoogle(),
+	return respostaConta{Ativa: true, Situacao: a.conta.Situacao(), Google: a.conta.EstadoGoogle(),
 		GoogleMotivo: a.conta.EstadoGoogleMotivo(), GoogleVersao: a.conta.EstadoGoogleVersao(), ErroCofre: a.conta.ErroCofre()}
 }
 
@@ -129,6 +130,10 @@ func (a *API) rotasConta(ctx context.Context, m, p string, c Objeto, autor strin
 	case m == "GET" && p == "/assinatura", m == "POST" && (p == "/assinatura/assinar" || p == "/assinatura/gerenciar"):
 	default:
 		return Resposta{}, false, nil
+	}
+	// Build sem a nuvem (ruling A11): para a tela, GET /conta diz só que a conta está desligada, e ela pula a entrada.
+	if a.conta == nil && m == "GET" && p == "/conta" && autor == "eu" && a.canal == "" {
+		return Resposta{Status: 200, Corpo: Objeto{"ativa": false}}, true, nil
 	}
 	if err := a.soTelaConta(autor); err != nil {
 		return Resposta{}, true, err

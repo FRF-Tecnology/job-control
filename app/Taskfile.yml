@@ -9,6 +9,13 @@ vars:
   # by `wails3 build GOOS=...` (or the GOOS env var) for cross-compilation. The
   # tasks below dispatch to the matching platform Taskfile via this variable.
   GOOS: '{{.GOOS | default OS}}'
+  # Conta (internal/conta): a nuvem do build vem das variáveis de ambiente APPLYER_NUVEM_URL, APPLYER_NUVEM_PUB (base64
+  # da chave pública Ed25519) e APPLYER_GOOGLE_CLIENT_ID. Vazias (o padrão): conta e trava desligadas (ruling A11).
+  # Entra no -ldflags do build de produção de cada plataforma (build/*/Taskfile.yml).
+  CONTA_LDFLAGS: >-
+    -X github.com/FRF-Tecnology/job-control/internal/conta.EnderecoNuvem={{.APPLYER_NUVEM_URL | default ""}}
+    -X github.com/FRF-Tecnology/job-control/internal/conta.ChavePublica={{.APPLYER_NUVEM_PUB | default ""}}
+    -X github.com/FRF-Tecnology/job-control/internal/conta.GoogleClientID={{.APPLYER_GOOGLE_CLIENT_ID | default ""}}
 
 includes:
   common: ./build/Taskfile.yml

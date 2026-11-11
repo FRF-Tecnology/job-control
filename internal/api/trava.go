@@ -16,6 +16,8 @@ var frasesDaTrava = map[string]string{
 	conta.MotivoSemAssinatura: "Sua assinatura não está ativa. Você ainda vê tudo; para buscar e se candidatar, assine.",
 	conta.MotivoSemInternet:   "Sem conexão: dá para ver, mas não para buscar ou se candidatar.",
 	conta.MotivoSemConta:      "Entre na sua conta para buscar e se candidatar.",
+	// Só da CLI e do MCP (licenca.json vencido): eles não renovam a licença.
+	conta.MotivoLicencaVencida: "Abra o Applyer para renovar o acesso.",
 }
 
 // reEnvioPausarPlataforma: POST /envio/plataformas/{plataforma}/pausar (o mesmo formato que envio.go aceita).
@@ -48,12 +50,12 @@ func liberadoSemLicenca(metodo, caminho string) bool {
 	return strings.HasPrefix(p, "/conta/") || strings.HasPrefix(p, "/assinatura/") || reIAChave.MatchString(p) // reIAChave: ia.go
 }
 
-// respostaTrava: o 402 com a frase fixa do motivo. Motivo desconhecido trava do mesmo jeito (falha fechada), com a
-// frase de quem não tem assinatura; o motivo vai como veio.
+// respostaTrava: o 402 com a frase fixa do motivo. Motivo desconhecido trava do mesmo jeito (falha fechada), como
+// quem não tem assinatura (frase e motivo): a tela e o assistente só recebem motivos conhecidos.
 func respostaTrava(motivo string) Resposta {
 	frase, ok := frasesDaTrava[motivo]
 	if !ok {
-		frase = frasesDaTrava[conta.MotivoSemAssinatura]
+		motivo, frase = conta.MotivoSemAssinatura, frasesDaTrava[conta.MotivoSemAssinatura]
 	}
 	return Resposta{Status: 402, Corpo: Objeto{"erro": frase, "motivo": motivo}}
 }

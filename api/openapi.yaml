@@ -712,9 +712,8 @@ paths:
       x-so-tela: true
       summary: 'Situação da conta neste app: se entrou, email, estado da licença (teste, assinante, bloqueado), fim do teste e do período pago, e o motivo de não poder agir. Traz também o login com Google em andamento e o erro do cofre, se houve'
       responses:
-        '200': { description: Situação, content: { application/json: { schema: { $ref: '#/components/schemas/SituacaoConta' } } } }
+        '200': { description: 'Situação (ativa true), ou só {ativa: false} quando este build não tem a nuvem: a tela pula a entrada', content: { application/json: { schema: { oneOf: [{ $ref: '#/components/schemas/ContaDesligada' }, { $ref: '#/components/schemas/SituacaoConta' }] } } } }
         '403': { $ref: '#/components/responses/SoTela' }
-        '503': { description: 'Este build não tem a conta: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /conta/criar:
     post:
       x-so-tela: true
@@ -908,10 +907,17 @@ paths:
 
 components:
   schemas:
+    ContaDesligada:
+      type: object
+      required: [ativa]
+      additionalProperties: false
+      description: 'GET /conta num build sem a nuvem: sem conta e sem trava'
+      properties: { ativa: { type: boolean, const: false } }
     SituacaoConta:
       type: object
       required: [entrada, email, estado, teste_fim, periodo_fim, motivo]
       properties:
+        ativa: { type: boolean, const: true, description: 'Só em GET /conta. A conta existe neste build' }
         entrada: { type: boolean, description: 'Há uma conta entrada neste app' }
         email: { type: string }
         estado: { type: string, enum: ['', teste, assinante, bloqueado] }
@@ -946,7 +952,7 @@ components:
       description: '402 das ações bloqueadas pela trava (teste acabou, sem assinatura, sem internet): a tela leva à assinatura'
       properties:
         erro: { type: string }
-        motivo: { type: string, enum: [teste-acabou, sem-assinatura, sem-internet, sem-conta] }
+        motivo: { type: string, enum: [teste-acabou, sem-assinatura, sem-internet, sem-conta, licenca-vencida], description: 'licenca-vencida só na CLI e no MCP (licenca.json vencido: abrir o app renova)' }
     Erro:
       type: object
       required: [erro]
