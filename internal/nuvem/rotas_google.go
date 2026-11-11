@@ -49,7 +49,7 @@ func (s *Servidor) entrarGoogle(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		// Os erros do pacote google não trazem o texto do Google nem o code.
-		s.log.Warn("login com Google recusado", "ip", ipDe(r), "erro", err.Error())
+		s.log.Warn("login com Google recusado", "ip", s.ipDe(r), "erro", err.Error())
 		erro(w, http.StatusUnauthorized, msgGoogle)
 		return
 	}

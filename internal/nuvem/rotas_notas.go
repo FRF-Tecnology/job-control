@@ -9,7 +9,7 @@ import (
 
 // rotasNotas registra GET /v1/notas: as notas fiscais da conta (mais novas primeiro).
 func (s *Servidor) rotasNotas() {
-	s.mux.Handle("GET /v1/notas", sessoes.Middleware(s.sessoes, s.notas))
+	s.rota("GET /v1/notas", sessoes.Middleware(s.sessoes, s.notas))
 }
 
 type notaJSON struct {

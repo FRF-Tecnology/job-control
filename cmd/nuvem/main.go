@@ -1,4 +1,5 @@
 // Comando nuvem sobe o servidor de contas, licença e assinatura do Applyer.
+// "nuvem chaves [-pub caminho]" gera o par de chaves da licença (Ed25519).
 package main
 
 import (
@@ -21,6 +22,14 @@ import (
 )
 
 func main() {
+	// Subcomando sem banco nem configuração.
+	if len(os.Args) > 1 && os.Args[1] == "chaves" {
+		if err := chaves(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "nuvem:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := executar(); err != nil {
 		fmt.Fprintln(os.Stderr, "nuvem:", err)
 		os.Exit(1)

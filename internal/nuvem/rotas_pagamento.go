@@ -44,10 +44,10 @@ const paginaVoltar = `<!doctype html>
 `
 
 func (s *Servidor) rotasPagamento() {
-	s.mux.Handle("POST /v1/assinar", sessoes.Middleware(s.sessoes, s.assinar))
-	s.mux.Handle("POST /v1/portal", sessoes.Middleware(s.sessoes, s.portal))
-	s.mux.HandleFunc("POST "+caminhoWebhook, s.webhook)
-	s.mux.HandleFunc("GET "+pagamento.CaminhoVoltar, voltar)
+	s.rota("POST /v1/assinar", sessoes.Middleware(s.sessoes, s.assinar))
+	s.rota("POST /v1/portal", sessoes.Middleware(s.sessoes, s.portal))
+	s.rota("POST "+caminhoWebhook, http.HandlerFunc(s.webhook))
+	s.rota("GET "+pagamento.CaminhoVoltar, http.HandlerFunc(voltar))
 }
 
 // emVigor: estados do Stripe em que a assinatura ainda vale (past_due com a tolerância de estadoDa).

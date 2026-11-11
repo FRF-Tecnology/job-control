@@ -9,7 +9,7 @@ import (
 
 // rotasLicenca registra GET /v1/licenca?dispositivo=<hash>: o app chama a cada 10 min.
 func (s *Servidor) rotasLicenca() {
-	s.mux.Handle("GET /v1/licenca", sessoes.Middleware(s.sessoes, s.licenca))
+	s.rota("GET /v1/licenca", sessoes.Middleware(s.sessoes, s.licenca))
 }
 
 func (s *Servidor) licenca(w http.ResponseWriter, r *http.Request, usuarioID string) {

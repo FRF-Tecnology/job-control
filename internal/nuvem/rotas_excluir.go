@@ -19,7 +19,7 @@ const (
 
 // rotasExcluir registra DELETE /v1/contas/eu (LGPD: a pessoa apaga a própria conta pelo app).
 func (s *Servidor) rotasExcluir() {
-	s.mux.Handle("DELETE /v1/contas/eu", s.limitarIP(sessoes.Middleware(s.sessoes, s.excluirConta).ServeHTTP))
+	s.rota("DELETE /v1/contas/eu", s.limitarIP(sessoes.Middleware(s.sessoes, s.excluirConta).ServeHTTP))
 }
 
 // semUsuario responde 401 quando o token ainda confere mas a conta já foi apagada (vale até 15 min).

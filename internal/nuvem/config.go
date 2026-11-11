@@ -6,32 +6,34 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/netip"
 	"strings"
 )
 
 // Config reúne as variáveis de ambiente do servidor. Só as obrigatórias de cada fase são exigidas;
 // as das integrações (Stripe, Google, notas) passam a ser exigidas pelas tasks que as usam.
 type Config struct {
-	DatabaseURL         string // DATABASE_URL
-	ChavePrivada        string // APPLYER_CHAVE_PRIVADA (Ed25519 em base64)
-	SegredoCodigos      string // APPLYER_SEGREDO_CODIGOS
-	StripeSecretKey     string // STRIPE_SECRET_KEY
-	StripeWebhookSecret string // STRIPE_WEBHOOK_SECRET
-	StripePriceID       string // STRIPE_PRICE_ID
-	GoogleClientID      string // GOOGLE_CLIENT_ID
-	GoogleClientSecret  string // GOOGLE_CLIENT_SECRET
-	SMTPHost            string // SMTP_HOST
-	SMTPPorta           string // SMTP_PORTA
-	SMTPUsuario         string // SMTP_USUARIO
-	SMTPSenha           string // SMTP_SENHA
-	SMTPRemetente       string // SMTP_REMETENTE
-	NotasProvedor       string // NOTAS_PROVEDOR: nfeio | falso
-	NotasChave          string // NOTAS_CHAVE
-	NotasEmpresa        string // NOTAS_EMPRESA
-	NotasServico        string // NOTAS_SERVICO
-	TermosVersao        string // APPLYER_TERMOS_VERSAO
-	Endereco            string // APPLYER_ENDERECO (padrão ":8080")
-	EnderecoPublico     string // APPLYER_ENDERECO_PUBLICO
+	DatabaseURL         string         // DATABASE_URL
+	ChavePrivada        string         // APPLYER_CHAVE_PRIVADA (Ed25519 em base64)
+	SegredoCodigos      string         // APPLYER_SEGREDO_CODIGOS
+	StripeSecretKey     string         // STRIPE_SECRET_KEY
+	StripeWebhookSecret string         // STRIPE_WEBHOOK_SECRET
+	StripePriceID       string         // STRIPE_PRICE_ID
+	GoogleClientID      string         // GOOGLE_CLIENT_ID
+	GoogleClientSecret  string         // GOOGLE_CLIENT_SECRET
+	SMTPHost            string         // SMTP_HOST
+	SMTPPorta           string         // SMTP_PORTA
+	SMTPUsuario         string         // SMTP_USUARIO
+	SMTPSenha           string         // SMTP_SENHA
+	SMTPRemetente       string         // SMTP_REMETENTE
+	NotasProvedor       string         // NOTAS_PROVEDOR: nfeio | falso
+	NotasChave          string         // NOTAS_CHAVE
+	NotasEmpresa        string         // NOTAS_EMPRESA
+	NotasServico        string         // NOTAS_SERVICO
+	TermosVersao        string         // APPLYER_TERMOS_VERSAO
+	Endereco            string         // APPLYER_ENDERECO (padrão ":8080")
+	EnderecoPublico     string         // APPLYER_ENDERECO_PUBLICO
+	ProxyConfiavel      []netip.Prefix // APPLYER_PROXY_CONFIAVEL: CIDRs de proxies cujos cabeçalhos de IP valem (opcional)
 }
 
 // LerConfig lê a configuração por env (os.Getenv em produção). O erro cita só o nome da variável que falta.
@@ -104,6 +106,10 @@ func LerConfig(env func(string) string) (Config, error) {
 	default:
 		return Config{}, errors.New("NOTAS_PROVEDOR inválido: use nfeio ou falso")
 	}
+	var err error
+	if cfg.ProxyConfiavel, err = lerProxies(v("APPLYER_PROXY_CONFIAVEL")); err != nil {
+		return Config{}, err
+	}
 	if _, err := cfg.Chave(); err != nil {
 		return Config{}, err
 	}
@@ -111,6 +117,7 @@ func LerConfig(env func(string) string) (Config, error) {
 }
 
 var errChave = errors.New("APPLYER_CHAVE_PRIVADA inválida: esperava Ed25519 em base64 (semente de 32 ou chave de 64 bytes)")
+var errProxy = errors.New("APPLYER_PROXY_CONFIAVEL inválida: esperava CIDRs ou IPs separados por vírgula")
 
 // Chave decodifica APPLYER_CHAVE_PRIVADA. O erro nunca traz o valor.
 func (c Config) Chave() (ed25519.PrivateKey, error) {

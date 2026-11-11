@@ -1,0 +1,7 @@
+# Só o que a imagem da nuvem usa entra no contexto (o BuildKit lê este arquivo para deploy/nuvem/Dockerfile).
+*
+!go.mod
+!go.sum
+!cmd/nuvem
+!internal/nuvem
+!internal/licenca

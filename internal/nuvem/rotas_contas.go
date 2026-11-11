@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -69,27 +68,19 @@ func (s *Servidor) rotasContas() {
 		"POST /v1/sessao/renovar":    s.renovar,
 		"POST /v1/sessao/sair":       s.sair,
 	} {
-		s.mux.Handle(padrao, s.limitarIP(h))
+		s.rota(padrao, s.limitarIP(h))
 	}
 }
 
-// limitarIP: até limitePorIP pedidos por minuto por IP. O IP é o da conexão (RemoteAddr); atrás de proxy
-// todos chegam com o IP do proxy — ver o relatório da task antes de publicar atrás do Coolify/Cloudflare.
+// limitarIP: até limitePorIP pedidos por minuto por IP (s.ipDe: o da conexão, ou o do cliente atrás de proxy confiável).
 func (s *Servidor) limitarIP(h http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.porIP.Permitir("ip|" + ipDe(r)) {
+		if !s.porIP.Permitir("ip|" + s.ipDe(r)) {
 			erro(w, http.StatusTooManyRequests, msgLimite)
 			return
 		}
 		h(w, r)
 	})
-}
-
-func ipDe(r *http.Request) string {
-	if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return h
-	}
-	return r.RemoteAddr
 }
 
 func erro(w http.ResponseWriter, status int, msg string) {
@@ -370,7 +361,7 @@ func (s *Servidor) entrar(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if bloqueou {
-			s.log.Warn("login bloqueado por senhas erradas", "usuario", u.ID, "ip", ipDe(r))
+			s.log.Warn("login bloqueado por senhas erradas", "usuario", u.ID, "ip", s.ipDe(r))
 		}
 		erro(w, http.StatusUnauthorized, msgCredenciais)
 		return
@@ -480,7 +471,7 @@ func (s *Servidor) renovar(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		escreverJSON(w, http.StatusOK, par)
 	case errors.Is(err, sessoes.ErrReuso):
-		s.log.Warn("renovação reutilizada; família revogada", "ip", ipDe(r))
+		s.log.Warn("renovação reutilizada; família revogada", "ip", s.ipDe(r))
 		erro(w, http.StatusUnauthorized, msgSessao)
 	case errors.Is(err, sessoes.ErrSessao):
 		erro(w, http.StatusUnauthorized, msgSessao)

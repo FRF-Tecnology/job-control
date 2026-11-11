@@ -1,0 +1,638 @@
+openapi: 3.1.0
+info:
+  title: Applyer nuvem
+  version: 0.1.0
+  description: >
+    API do servidor de contas, licença e assinatura do Applyer (cmd/nuvem). O app de PC (internal/conta) é o
+    cliente. O teste internal/nuvem/contrato_test.go confere este arquivo contra as rotas registradas no servidor.
+
+
+    Erros: sempre JSON {erro, motivo?}; "erro" é texto para mostrar à pessoa e "motivo" é um código para o app
+    decidir o que fazer (termos, confirmar, entrar-com-senha). Nenhuma resposta de conta revela se um email tem
+    conta: quem tem e quem não tem recebem o mesmo status e o mesmo corpo. 429 em qualquer rota de conta com
+    limite por IP (20 por minuto, por IP do cliente); criar conta e recuperar também limitam por email. 500
+    {erro: "Erro interno. Tente de novo"} em falha inesperada, sem detalhe.
+
+
+    Sessão: o token de acesso dura 15 minutos (acesso_ate) e vai em "Authorization: Bearer <acesso>"; o de
+    renovação é de uso único (POST /v1/sessao/renovar devolve um par novo; reusar um já gasto revoga a família
+    inteira). O dispositivo é o SHA-256 hexadecimal do identificador do computador (64 caracteres minúsculos).
+
+
+    Licença: o app confere a assinatura Ed25519 com a chave pública embutida (nuvem chaves) e pede de novo a cada
+    10 minutos; cada licença vale 30 minutos.
+servers:
+  - url: https://nuvem.exemplo.com
+    description: Endereço público (APPLYER_ENDERECO_PUBLICO). Exemplo fictício.
+tags:
+  - name: contas
+  - name: sessao
+  - name: licenca
+  - name: pagamento
+  - name: notas
+  - name: sistema
+paths:
+  /v1/saude:
+    get:
+      tags: [sistema]
+      operationId: saude
+      summary: Confere se o servidor está de pé
+      security: []
+      responses:
+        "200":
+          description: Servidor no ar.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+  /v1/contas:
+    post:
+      tags: [contas]
+      operationId: criarConta
+      summary: Cria a conta (ou reenvia o código) e manda o código de confirmação por email
+      description: >
+        Sempre 202 com a mesma mensagem, haja conta ou não. Email que já tem conta confirmada recebe um aviso em
+        vez de código. Pedido repetido antes de 60 s não gera outro código (o anterior segue valendo). Recadastrar
+        um email ainda não confirmado troca a senha pendente.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha, termos_versao]
+              properties:
+                email: { $ref: "#/components/schemas/Email" }
+                senha: { $ref: "#/components/schemas/Senha" }
+                termos_versao: { $ref: "#/components/schemas/TermosVersao" }
+      responses:
+        "202": { $ref: "#/components/responses/CodigoEnviado" }
+        "400":
+          description: >
+            Pedido inválido, email inválido, senha curta (menos de 10), longa (mais de 128) ou comum demais, ou
+            termos desatualizados (motivo "termos", com a versao atual).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/contas/confirmar:
+    post:
+      tags: [contas]
+      operationId: confirmarConta
+      summary: Confirma o email com o código e abre a sessão
+      description: >
+        A senha tem de ser a do cadastro pendente. Se os termos mudaram desde o cadastro e termos_versao não é a
+        atual, responde 409 (motivo "termos") e manda um código novo por email.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha, codigo, dispositivo]
+              properties:
+                email: { $ref: "#/components/schemas/Email" }
+                senha: { $ref: "#/components/schemas/SenhaEntrada" }
+                codigo: { $ref: "#/components/schemas/Codigo" }
+                dispositivo: { $ref: "#/components/schemas/Dispositivo" }
+                termos_versao: { $ref: "#/components/schemas/TermosVersao" }
+      responses:
+        "200": { $ref: "#/components/responses/Sessao" }
+        "400":
+          description: Pedido, email ou dispositivo inválido, ou código inválido ou vencido (mesmo texto nos dois casos).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "401":
+          description: A senha não confere com a do cadastro pendente.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "409": { $ref: "#/components/responses/TermosMudaram" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/contas/entrar:
+    post:
+      tags: [contas]
+      operationId: entrar
+      summary: Entra com email e senha
+      description: >
+        Dez senhas erradas seguidas bloqueiam a conta por 15 minutos (429), com a mesma regra para emails sem
+        conta. Conta ainda não confirmada: 403 com motivo "confirmar" e um código novo por email.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha, dispositivo]
+              properties:
+                email: { $ref: "#/components/schemas/Email" }
+                senha: { $ref: "#/components/schemas/SenhaEntrada" }
+                dispositivo: { $ref: "#/components/schemas/Dispositivo" }
+                termos_versao: { $ref: "#/components/schemas/TermosVersao" }
+      responses:
+        "200": { $ref: "#/components/responses/Sessao" }
+        "400":
+          description: Pedido, email ou dispositivo inválido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "401":
+          description: Email ou senha incorretos (igual para email sem conta).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "403":
+          description: A conta ainda não foi confirmada; um código novo foi enviado (motivo "confirmar").
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "409": { $ref: "#/components/responses/TermosMudaram" }
+        "429":
+          description: Limite por IP, ou conta bloqueada por senhas erradas (tente de novo em 15 minutos).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/contas/recuperar:
+    post:
+      tags: [contas]
+      operationId: recuperarSenha
+      summary: Manda por email o código para criar uma senha nova
+      description: Sempre 202 com a mesma mensagem, haja conta ou não.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { $ref: "#/components/schemas/Email" }
+      responses:
+        "202": { $ref: "#/components/responses/CodigoEnviado" }
+        "400":
+          description: Pedido ou email inválido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/contas/nova-senha:
+    post:
+      tags: [contas]
+      operationId: novaSenha
+      summary: Troca a senha com o código da recuperação e abre a sessão
+      description: >
+        A senha é validada antes do código (senha fraca não gasta o código). Troca bem-sucedida revoga todas as
+        sessões antigas da conta e manda um aviso por email.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha, codigo, dispositivo]
+              properties:
+                email: { $ref: "#/components/schemas/Email" }
+                senha: { $ref: "#/components/schemas/Senha" }
+                codigo: { $ref: "#/components/schemas/Codigo" }
+                dispositivo: { $ref: "#/components/schemas/Dispositivo" }
+      responses:
+        "200": { $ref: "#/components/responses/Sessao" }
+        "400":
+          description: >
+            Pedido, email ou dispositivo inválido, senha fora das regras, ou código inválido ou vencido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/contas/google:
+    post:
+      tags: [contas]
+      operationId: entrarComGoogle
+      summary: Entra (ou cria a conta) com o Google
+      description: >
+        O app abre o navegador com PKCE e retorno em loopback (http://127.0.0.1:<porta>/retorno) e manda para cá o
+        code, o verifier e o redirect_uri. A nuvem troca o code (só ela tem o segredo do cliente) e confere o
+        id_token. Conta nova, ou pendente de confirmação, exige termos_versao igual à atual (senão 409, motivo
+        "termos"). Email que já tem conta com senha só é ligado ao Google se o Google for dono do email (
+        gmail.com, googlemail.com ou domínio do Workspace no claim hd); senão 409 com motivo "entrar-com-senha".
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, verifier, redirect_uri, dispositivo]
+              properties:
+                code: { type: string, minLength: 1, description: Código de autorização devolvido pelo Google. }
+                verifier: { type: string, minLength: 1, description: Verificador PKCE (code_verifier). }
+                redirect_uri: { type: string, format: uri, description: O mesmo endereço de loopback usado na autorização. }
+                dispositivo: { $ref: "#/components/schemas/Dispositivo" }
+                termos_versao: { $ref: "#/components/schemas/TermosVersao" }
+      responses:
+        "200": { $ref: "#/components/responses/Sessao" }
+        "400":
+          description: Pedido, dispositivo ou endereço de retorno inválido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "401":
+          description: O Google recusou o code, ou o email já está ligado a outra conta Google.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "409":
+          description: Termos desatualizados (motivo "termos", com versao) ou conta com senha (motivo "entrar-com-senha").
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/contas/eu:
+    delete:
+      tags: [contas]
+      operationId: excluirConta
+      summary: Apaga a própria conta (LGPD)
+      description: >
+        Cancela a assinatura no Stripe primeiro (se não der, nada é apagado: 502) e depois apaga, numa transação,
+        códigos, sessões, assinatura e usuário. As notas fiscais ficam (obrigação fiscal) e o computador do teste
+        só perde o dono.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { $ref: "#/components/schemas/Email" }
+      responses:
+        "204": { description: Conta apagada. }
+        "400":
+          description: Pedido inválido, ou o email não é o da conta ("Confirme digitando o email da conta").
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+        "502":
+          description: Não deu para cancelar a assinatura no Stripe; nada foi apagado.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+  /v1/sessao/renovar:
+    post:
+      tags: [sessao]
+      operationId: renovarSessao
+      summary: Troca o token de renovação por um par novo
+      description: Token reusado, vencido ou desconhecido respondem igual (401).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [renovacao]
+              properties:
+                renovacao: { type: string, minLength: 1 }
+      responses:
+        "200": { $ref: "#/components/responses/Sessao" }
+        "400":
+          description: Corpo inválido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/sessao/sair:
+    post:
+      tags: [sessao]
+      operationId: sairDaSessao
+      summary: Encerra a sessão do dispositivo
+      description: Sem renovacao no corpo não faz nada e também responde 204.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                renovacao: { type: string }
+      responses:
+        "204": { description: Sessão encerrada. }
+        "400":
+          description: Corpo inválido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "429": { $ref: "#/components/responses/MuitasTentativas" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/licenca:
+    get:
+      tags: [licenca]
+      operationId: licenca
+      summary: Licença assinada da conta
+      description: >
+        O primeiro pedido de uma conta confirmada inicia o teste de 24 horas (um por computador). O estado vem de,
+        nesta ordem: cortesia, assinatura em dia, past_due até 72 horas depois do fim do período, teste, bloqueado.
+        Resposta com Cache-Control no-store.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dispositivo
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/Dispositivo" }
+      responses:
+        "200":
+          description: Licença assinada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Licenca" }
+        "400":
+          description: Dispositivo inválido.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/assinar:
+    post:
+      tags: [pagamento]
+      operationId: assinar
+      summary: Abre o Checkout do Stripe para assinar
+      description: Sem corpo. Resposta com Cache-Control no-store.
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { $ref: "#/components/responses/UrlStripe" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
+        "403":
+          description: Email ainda não confirmado.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "409":
+          description: Já existe assinatura em vigor (ativa, em teste do Stripe ou past_due); use o portal.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+        "502": { $ref: "#/components/responses/StripeFora" }
+  /v1/portal:
+    post:
+      tags: [pagamento]
+      operationId: portal
+      summary: Abre o portal do cliente do Stripe (cartão, cancelamento, faturas)
+      description: Sem corpo. Resposta com Cache-Control no-store.
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { $ref: "#/components/responses/UrlStripe" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
+        "409":
+          description: A conta ainda não tem cliente no Stripe ("Você ainda não tem assinatura").
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+        "502": { $ref: "#/components/responses/StripeFora" }
+  /v1/pagamento/voltar:
+    get:
+      tags: [pagamento]
+      operationId: pagamentoVoltar
+      summary: Página estática para onde o Checkout e o Portal voltam
+      description: HTML mínimo ("Pode voltar para o Applyer"), com Content-Security-Policy restritiva.
+      security: []
+      responses:
+        "200":
+          description: Página HTML.
+          content:
+            text/html:
+              schema: { type: string }
+  /v1/stripe/webhook:
+    post:
+      tags: [pagamento]
+      operationId: webhookStripe
+      summary: Recebe os eventos do Stripe
+      description: >
+        Só o Stripe chama. Não usa bearer: a autenticidade vem do cabeçalho Stripe-Signature, conferido (com o
+        STRIPE_WEBHOOK_SECRET) antes de qualquer outra coisa. Corpo de até 1 MiB. Trata checkout.session.completed,
+        customer.subscription.* e invoice.paid; evento já visto, de tipo ignorado ou de cliente desconhecido
+        responde 200. Falha passageira responde 500 para o Stripe reenviar.
+      security:
+        - stripeSignature: []
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema: { type: string }
+          description: Assinatura do evento (t=...,v1=...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Evento do Stripe (https://docs.stripe.com/api/events/object), lido como veio, byte a byte.
+              additionalProperties: true
+      responses:
+        "200":
+          description: Evento recebido (aplicado, repetido ou ignorado).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+        "400":
+          description: Assinatura inválida ("assinatura inválida") ou corpo ilegível.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "413":
+          description: Corpo maior que 1 MiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+  /v1/notas:
+    get:
+      tags: [notas]
+      operationId: notas
+      summary: Notas fiscais da conta, da mais nova para a mais antiga
+      description: Resposta com Cache-Control no-store.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista (vazia se não há notas).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Nota" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
+        "500": { $ref: "#/components/responses/ErroInterno" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de acesso (campo acesso do par de sessão), válido por 15 minutos.
+    stripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
+      description: Assinatura do webhook, conferida com o STRIPE_WEBHOOK_SECRET.
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string, description: Texto para mostrar à pessoa. }
+        motivo:
+          type: string
+          description: >
+            Código para o app decidir o que fazer: "termos" (os termos mudaram; trazer versao), "confirmar"
+            (confirmar o email) ou "entrar-com-senha" (a conta tem senha).
+          enum: [termos, confirmar, entrar-com-senha]
+        versao:
+          type: string
+          description: Versão atual dos termos; só com motivo "termos".
+    Mensagem:
+      type: object
+      required: [mensagem]
+      properties:
+        mensagem: { type: string, examples: ["Se o email estiver certo, enviamos um código"] }
+    Email:
+      type: string
+      description: Email; a nuvem guarda em minúsculas, sem espaços nas pontas.
+      examples: [ana@exemplo.com]
+    Senha:
+      type: string
+      minLength: 10
+      maxLength: 128
+      description: Senha nova (10 a 128 caracteres, fora da lista de senhas comuns).
+    SenhaEntrada:
+      type: string
+      description: Senha já existente; só é conferida, não validada.
+    Codigo:
+      type: string
+      pattern: "^[0-9]{6}$"
+      description: Código de 6 dígitos enviado por email; vale 15 minutos e 5 tentativas.
+    Dispositivo:
+      type: string
+      pattern: "^[0-9a-f]{64}$"
+      description: SHA-256 hexadecimal (minúsculas) do identificador do computador.
+    TermosVersao:
+      type: string
+      description: Versão dos termos que a pessoa aceitou (APPLYER_TERMOS_VERSAO).
+      examples: ["2026-11"]
+    Sessao:
+      type: object
+      required: [acesso, renovacao, acesso_ate]
+      properties:
+        acesso: { type: string, description: Token de acesso (Bearer), 15 minutos. }
+        renovacao: { type: string, description: Token de renovação, uso único. }
+        acesso_ate: { type: string, format: date-time, description: Quando o token de acesso vence. }
+    Licenca:
+      type: object
+      required: [dados, assinatura]
+      description: >
+        Documento assinado. "dados" é o JSON de DadosLicenca em base64 (padrão, com preenchimento) e "assinatura" é
+        a assinatura Ed25519 dos bytes decodificados de "dados", em base64. O app confere com a chave pública e
+        só então lê os dados.
+      properties:
+        dados: { type: string, contentEncoding: base64, contentMediaType: application/json }
+        assinatura: { type: string, contentEncoding: base64 }
+    DadosLicenca:
+      type: object
+      description: Conteúdo de Licenca.dados depois de decodificado.
+      required: [usuario, email, estado, teste_fim, periodo_fim, emitida_em, valida_ate]
+      properties:
+        usuario: { type: string, format: uuid }
+        email: { $ref: "#/components/schemas/Email" }
+        estado:
+          type: string
+          enum: [teste, assinante, bloqueado]
+          description: Teste e assinante podem usar os recursos da nuvem; bloqueado não.
+        teste_fim: { type: [string, "null"], format: date-time }
+        periodo_fim: { type: [string, "null"], format: date-time, description: Fim do período pago atual. }
+        emitida_em: { type: string, format: date-time }
+        valida_ate: { type: string, format: date-time, description: Depois disso o app trata a licença como vencida (30 minutos). }
+    UrlStripe:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri, description: Página do Stripe para abrir no navegador. }
+    Nota:
+      type: object
+      required: [numero, link_pdf, estado, criada_em]
+      properties:
+        numero: { type: string }
+        link_pdf: { type: string }
+        estado: { type: string }
+        criada_em: { type: string, format: date-time }
+  responses:
+    CodigoEnviado:
+      description: Aceito. Mesma resposta haja conta ou não.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Mensagem" }
+    Sessao:
+      description: Sessão aberta.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Sessao" }
+    UrlStripe:
+      description: Endereço do Stripe para abrir no navegador.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UrlStripe" }
+    SessaoInvalida:
+      description: Sessão inválida, vencida ou de conta apagada (erro "sessão inválida").
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    TermosMudaram:
+      description: Os termos mudaram; reenvie o pedido com termos_versao igual à versao devolvida.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    MuitasTentativas:
+      description: Limite de tentativas (por IP ou por email). Tente de novo em alguns minutos.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    ErroInterno:
+      description: Falha inesperada; sem detalhe.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    StripeFora:
+      description: O Stripe não respondeu ("Pagamento indisponível. Tente de novo").
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }

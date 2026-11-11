@@ -47,7 +47,9 @@ type Servidor struct {
 	cfg Config
 	dep Dependencias
 	mux *http.ServeMux
-	log *slog.Logger
+	// padroes são os "MÉTODO /caminho" registrados em mux (o teste do contrato confere com api/nuvem.yaml).
+	padroes []string
+	log     *slog.Logger
 
 	chave    ed25519.PrivateKey
 	contas   *contas.Repo
@@ -77,7 +79,7 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		dep.Log = slog.Default()
 	}
 	s := &Servidor{cfg: cfg, dep: dep, mux: http.NewServeMux(), log: dep.Log}
-	s.mux.HandleFunc("GET /v1/saude", s.saude)
+	s.rota("GET /v1/saude", http.HandlerFunc(s.saude))
 	if dep.Banco != nil {
 		priv, err := cfg.Chave()
 		if err != nil {
@@ -141,4 +143,10 @@ func escreverJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// rota registra o padrão no mux e na lista que o teste do contrato lê.
+func (s *Servidor) rota(padrao string, h http.Handler) {
+	s.padroes = append(s.padroes, padrao)
+	s.mux.Handle(padrao, h)
 }

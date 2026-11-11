@@ -221,6 +221,9 @@ jobs:
   # Nuvem (contas, licença e assinatura): testes com um Postgres 17 de verdade.
   nuvem:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     services:
       postgres:
         image: postgres:17
@@ -245,3 +248,18 @@ jobs:
           cache-dependency-path: go.sum
       - run: go vet ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
       - run: go test -count=1 ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
+      # Imagem da nuvem (o Docker já vem no runner). PR só constrói; push na reescrita-go também publica no GHCR,
+      # com a tag do commit e a da branch. O token só tem packages: write neste job.
+      - name: Construir a imagem
+        run: docker build -f deploy/nuvem/Dockerfile -t applyer-nuvem .
+      - name: Publicar a imagem no GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/reescrita-go' && github.repository == 'FRF-Tecnology/job-control'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          imagem=ghcr.io/frf-tecnology/applyer-nuvem
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag applyer-nuvem "$imagem:$GITHUB_SHA"
+          docker tag applyer-nuvem "$imagem:reescrita-go"
+          docker push "$imagem:$GITHUB_SHA"
+          docker push "$imagem:reescrita-go"
