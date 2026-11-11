@@ -176,7 +176,8 @@ func (c *Conta) Entrou(ctx context.Context, p Par) error {
 	c.renovacao = p.Renovacao
 	c.mu.Lock()
 	c.entrada, c.acesso, c.acessoAte = true, p.Acesso, p.AcessoAte
-	c.lic = nil // o desvio fica: é do relógio do PC, não da conta
+	c.errCofre = "" // a gravação acima deu certo
+	c.lic = nil     // o desvio fica: é do relógio do PC, não da conta
 	c.geracao++
 	c.mu.Unlock()
 	c.arqMu.Lock()
@@ -203,6 +204,7 @@ func (c *Conta) limpar() error {
 	errCofre := c.cofre.Apagar(chaveRenovacao)
 	c.mu.Lock()
 	c.entrada, c.acesso, c.acessoAte = false, "", time.Time{}
+	c.errCofre = ""
 	c.lic = nil
 	c.geracao++
 	c.mu.Unlock()

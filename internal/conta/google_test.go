@@ -337,3 +337,66 @@ func TestGoogleSoUmRetornoValido(t *testing.T) {
 		t.Fatalf("a nuvem foi chamada %d vezes", ch)
 	}
 }
+
+// googleBloqueado segura a troca do código até soltar, para provar o uso único do retorno.
+type googleBloqueado struct {
+	*capturaGoogle
+	chegou chan struct{}
+	solta  chan struct{}
+}
+
+func (g *googleBloqueado) Google(ctx context.Context, code, v, r, d, termos string) (Par, error) {
+	g.chegou <- struct{}{}
+	<-g.solta
+	return g.capturaGoogle.Google(ctx, code, v, r, d, termos)
+}
+
+func TestGoogleRetornoSimultaneoSoUmPassa(t *testing.T) {
+	a := novoAmbiente(t, 0)
+	cap := &capturaGoogle{Falsa: a.f}
+	n := &googleBloqueado{capturaGoogle: cap, chegou: make(chan struct{}, 2), solta: make(chan struct{})}
+	c := a.conta(n)
+	u := iniciarGoogle(t, c)
+	q := url.Values{"code": {"ana@exemplo.com"}, "state": {u.Query().Get("state")}}
+	primeiro := make(chan int, 1)
+	go func() { st, _, _ := retorno(t, u, q); primeiro <- st }()
+	<-n.chegou // a primeira já está na nuvem
+	st, _, _ := retorno(t, u, q)
+	if st != http.StatusConflict {
+		t.Fatalf("segunda: %d, queria 409", st)
+	}
+	close(n.solta)
+	if st := <-primeiro; st != http.StatusOK {
+		t.Fatalf("primeira: %d", st)
+	}
+	if ch, _, _, _ := cap.vistos(); ch != 1 {
+		t.Fatalf("a nuvem foi chamada %d vezes", ch)
+	}
+	querAgir(t, c, true, "")
+}
+
+// googleLento responde certo mas só depois do prazo da troca.
+type googleLento struct{ *Falsa }
+
+func (g googleLento) Google(ctx context.Context, code, v, r, d, termos string) (Par, error) {
+	p, err := g.Falsa.Google(ctx, code, v, r, d, termos)
+	<-ctx.Done()
+	return p, err
+}
+
+func TestGooglePrazoDaTrocaEstouraNaoEntra(t *testing.T) {
+	velho := prazoTrocaGoogle
+	prazoTrocaGoogle = 50 * time.Millisecond
+	t.Cleanup(func() { prazoTrocaGoogle = velho })
+	a := novoAmbiente(t, 0)
+	c := a.conta(googleLento{a.f})
+	u := iniciarGoogle(t, c)
+	st, corpo, _ := retorno(t, u, url.Values{"code": {"ana@exemplo.com"}, "state": {u.Query().Get("state")}})
+	if st == http.StatusOK || strings.Contains(corpo, "Pode voltar") {
+		t.Fatalf("o navegador não pode ver sucesso: %d %s", st, corpo)
+	}
+	if got := c.EstadoGoogle(); !strings.HasPrefix(got, "erro:") {
+		t.Fatalf("estado: %q", got)
+	}
+	querAgir(t, c, false, MotivoSemConta)
+}

@@ -23,7 +23,7 @@ var GoogleClientID string
 const prazoGoogle = 5 * time.Minute
 
 // prazoTrocaGoogle limita a troca do código na nuvem (e a entrada que vem junto).
-const prazoTrocaGoogle = 30 * time.Second
+var prazoTrocaGoogle = 30 * time.Second
 
 // ErrGoogleEmAndamento: já existe um login com Google esperando a volta do navegador.
 var ErrGoogleEmAndamento = errors.New("já existe um login com Google em andamento")
@@ -272,7 +272,10 @@ func (c *Conta) trocarGoogle(s *sessaoGoogle, code string) (estado, motivo, vers
 	if err == nil {
 		par, err = c.nuvem.Google(ctx, code, s.verifier, s.redirect, disp, s.termos)
 	}
-	if err == nil && ctx.Err() == nil {
+	if err == nil && ctx.Err() != nil {
+		err = ctx.Err() // prazo estourado (ou cancelado) logo depois da resposta: não entra
+	}
+	if err == nil {
 		// A sessão já está guardada mesmo que a licença não venha agora (ex.: caiu a internet): o ciclo de
 		// Iniciar pede de novo.
 		if errEntrou := c.Entrou(ctx, par); errEntrou != nil && !c.Situacao().Entrada {

@@ -483,3 +483,73 @@ func TestErroCofreFicaVisivel(t *testing.T) {
 		t.Fatalf("devia limpar: %q", c.ErroCofre())
 	}
 }
+
+func TestErroCofreLimpaAoSairEEntrar(t *testing.T) {
+	a := novoAmbiente(t, 0)
+	cf := &cofreQueFalha{Cofre: a.cofre}
+	p := a.parConfirmado(t, "ana@exemplo.com")
+	c := Nova(a.f, cf, a.pasta, a.pub, a.local)
+	c.dispositivo = func() (string, error) { return dispA, nil }
+	if err := c.Entrou(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	falhar := func() {
+		cf.falha.Store(true)
+		a.rel.avancar(15 * time.Minute)
+		if _, err := c.Acesso(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		cf.falha.Store(false)
+		if c.ErroCofre() == "" {
+			t.Fatal("devia ter erro do cofre")
+		}
+	}
+	falhar()
+	if err := c.Sair(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if c.ErroCofre() != "" {
+		t.Fatalf("Sair devia limpar: %q", c.ErroCofre())
+	}
+	if err := c.Entrou(context.Background(), a.parConfirmado(t, "bia@exemplo.com")); err != nil {
+		t.Fatal(err)
+	}
+	falhar()
+	if err := c.Entrou(context.Background(), a.parConfirmado(t, "cris@exemplo.com")); err != nil {
+		t.Fatal(err)
+	}
+	if c.ErroCofre() != "" {
+		t.Fatalf("Entrou devia limpar: %q", c.ErroCofre())
+	}
+}
+
+// nuvemVeCtx guarda o estado do ctx que a renovação recebeu.
+type nuvemVeCtx struct {
+	*Falsa
+	erroCtx error
+	chamou  bool
+}
+
+func (n *nuvemVeCtx) Renovar(ctx context.Context, r string) (Par, error) {
+	n.chamou, n.erroCtx = true, ctx.Err()
+	return n.Falsa.Renovar(ctx, r)
+}
+
+func TestRenovarSobreviveAoCancelamentoDoChamador(t *testing.T) {
+	a := novoAmbiente(t, 0)
+	n := &nuvemVeCtx{Falsa: a.f}
+	c, p := a.entrou(t, n)
+	a.rel.avancar(15 * time.Minute)
+	ctx, cancelar := context.WithCancel(context.Background())
+	cancelar()
+	acesso, err := c.Acesso(ctx)
+	if err != nil || acesso == p.Acesso {
+		t.Fatalf("a renovação devia concluir: %q %v", acesso, err)
+	}
+	if !n.chamou || n.erroCtx != nil {
+		t.Fatalf("Renovar devia receber ctx vivo: chamou=%v err=%v", n.chamou, n.erroCtx)
+	}
+	if a.cofre[chaveRenovacao] == p.Renovacao {
+		t.Fatal("o token novo devia estar no cofre")
+	}
+}
