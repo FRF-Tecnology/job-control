@@ -18,6 +18,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/limites"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/pagamento"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/senhas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/sessoes"
 )
@@ -29,13 +30,15 @@ const (
 )
 
 // Dependencias são as peças de fora que o servidor usa; os testes trocam por falsas.
-// As tasks seguintes acrescentam Stripe e notas.
+// Notas agenda a nota fiscal de cada fatura paga (Task 10 implementa).
 type Dependencias struct {
 	Banco     *pgxpool.Pool
 	Agora     func() time.Time // nil: time.Now
 	Aleatorio io.Reader        // nil: crypto/rand.Reader
 	Emails    emails.Enviador
 	Google    google.Trocador
+	Stripe    pagamento.Stripe
+	Notas     AgendadorNotas
 	Log       *slog.Logger // nil: slog.Default()
 }
 
@@ -81,6 +84,9 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		if dep.Emails == nil {
 			panic("nuvem: Dependencias.Emails é obrigatório com banco")
 		}
+		if dep.Stripe == nil || dep.Notas == nil {
+			panic("nuvem: Dependencias.Stripe e Notas são obrigatórios com banco")
+		}
 		if dep.Google == nil {
 			panic("nuvem: Dependencias.Google é obrigatório com banco")
 		}
@@ -96,6 +102,7 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		}
 		s.rotasContas()
 		s.rotasLicenca()
+		s.rotasPagamento()
 	}
 	return s
 }

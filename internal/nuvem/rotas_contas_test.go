@@ -22,6 +22,7 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/pagamento"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/pgteste"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/sessoes"
 )
@@ -59,12 +60,14 @@ func (b *bufLog) Write(p []byte) (int, error) { b.mu.Lock(); defer b.mu.Unlock()
 func (b *bufLog) String() string              { b.mu.Lock(); defer b.mu.Unlock(); return b.b.String() }
 
 type amb struct {
-	s   *Servidor
-	em  *emails.Falso
-	rel *relogio
-	db  *pgxpool.Pool
-	log *bufLog
-	ids map[string]google.Identidade // codes que o Google falso aceita
+	s     *Servidor
+	em    *emails.Falso
+	rel   *relogio
+	db    *pgxpool.Pool
+	log   *bufLog
+	ids   map[string]google.Identidade // codes que o Google falso aceita
+	st    *pagamento.Falso
+	notas *notasFalsas
 }
 
 func novoAmb(t *testing.T) *amb {
@@ -79,9 +82,11 @@ func novoAmb(t *testing.T) *amb {
 		SegredoCodigos: "segredo-ficticio-dos-testes",
 		TermosVersao:   termosAtual,
 	}
-	a := &amb{ids: map[string]google.Identidade{}, em: &emails.Falso{}, rel: &relogio{t: time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)}, db: db, log: &bufLog{}}
+	a := &amb{ids: map[string]google.Identidade{}, em: &emails.Falso{}, rel: &relogio{t: time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)}, db: db, log: &bufLog{},
+		st: pagamento.NovoFalso(segredoWebhook), notas: &notasFalsas{}}
 	a.s = Novo(cfg, Dependencias{
 		Banco: db, Agora: a.rel.agora, Aleatorio: rand.Reader, Emails: a.em, Google: google.Falso{Identidades: a.ids},
+		Stripe: a.st, Notas: a.notas,
 		Log: slog.New(slog.NewTextHandler(a.log, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	})
 	return a

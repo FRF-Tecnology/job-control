@@ -211,3 +211,32 @@ func (r *Repo) ZerarFalhas(ctx context.Context, id string) error {
 		 where id = $1::uuid and (falhas_login <> 0 or bloqueado_ate is not null)`, id)
 	return err
 }
+
+// StripeCliente devolve o cliente Stripe do usuário ("" se ainda não tem).
+func (r *Repo) StripeCliente(ctx context.Context, id string) (string, error) {
+	var c string
+	err := r.db.QueryRow(ctx, `select coalesce(stripe_cliente, '') from usuarios where id = $1::uuid`, id).Scan(&c)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNaoEncontrado
+	}
+	return c, err
+}
+
+// GravarStripeCliente grava o cliente se o usuário ainda não tem um e devolve o que ficou gravado
+// (numa corrida, o primeiro vence).
+func (r *Repo) GravarStripeCliente(ctx context.Context, id, cliente string) (string, error) {
+	if _, err := r.db.Exec(ctx, `update usuarios set stripe_cliente = $2 where id = $1::uuid and stripe_cliente is null`, id, cliente); err != nil {
+		return "", err
+	}
+	return r.StripeCliente(ctx, id)
+}
+
+// PorStripeCliente devolve o id do usuário dono do cliente Stripe.
+func (r *Repo) PorStripeCliente(ctx context.Context, cliente string) (string, error) {
+	var id string
+	err := r.db.QueryRow(ctx, `select id::text from usuarios where stripe_cliente = $1`, cliente).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNaoEncontrado
+	}
+	return id, err
+}

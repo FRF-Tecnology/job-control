@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/banco"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/pagamento"
 )
 
 func main() {
@@ -40,7 +42,9 @@ func executar() error {
 
 	envio := emails.SMTP{Host: cfg.SMTPHost, Porta: cfg.SMTPPorta, Usuario: cfg.SMTPUsuario, Senha: cfg.SMTPSenha, Remetente: cfg.SMTPRemetente}
 	srv := nuvem.Novo(cfg, nuvem.Dependencias{Banco: pool, Agora: time.Now, Aleatorio: rand.Reader, Emails: envio,
-		Google: &google.Real{ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret}})
+		Google: &google.Real{ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},
+		Stripe: pagamento.NovoReal(cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.StripePriceID, cfg.EnderecoPublico),
+		Notas:  notasDepois{}})
 	sh := &http.Server{
 		Addr:              cfg.Endereco,
 		Handler:           srv.Handler(),
@@ -60,4 +64,12 @@ func executar() error {
 	errDesligar := sh.Shutdown(fim)
 	srv.Esperar(fim) // emails em andamento (códigos) terminam dentro do mesmo prazo
 	return errDesligar
+}
+
+// notasDepois é o agendador provisório até a emissão de notas (Task 10): só registra os ids.
+type notasDepois struct{}
+
+func (notasDepois) Agendar(_ context.Context, invoiceID, usuarioID string) error {
+	slog.Info("nota fiscal pendente", "fatura", invoiceID, "usuario", usuarioID)
+	return nil
 }

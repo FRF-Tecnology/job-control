@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/FRF-Tecnology/job-control/internal/licenca"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/contas"
@@ -17,7 +18,7 @@ const (
 	validadeLic    = 30 * time.Minute
 )
 
-// Assinatura é a linha de assinaturas (espelho do Stripe); a Task 9 grava, aqui só se lê.
+// Assinatura é a linha de assinaturas (espelho do Stripe, gravado pelos webhooks).
 type Assinatura struct {
 	Estado     string
 	PeriodoFim *time.Time
@@ -37,6 +38,24 @@ func lerAssinatura(ctx context.Context, q interface {
 		return nil, err
 	}
 	return &a, nil
+}
+
+// gravarAssinatura grava o estado atual de uma assinatura do Stripe. Se o usuário já tem outra assinatura
+// valendo (active, trialing, past_due), uma diferente que não vale (ex.: a antiga cancelada) não a apaga.
+func gravarAssinatura(ctx context.Context, q interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}, usuarioID, stripeAssinatura, estado string, periodoFim *time.Time, agora time.Time) error {
+	_, err := q.Exec(ctx, `
+		insert into assinaturas (usuario_id, stripe_assinatura, estado, periodo_fim, atualizada_em)
+		values ($1::uuid, $2, $3, $4, $5)
+		on conflict (usuario_id) do update
+		set stripe_assinatura = excluded.stripe_assinatura, estado = excluded.estado,
+		    periodo_fim = excluded.periodo_fim, atualizada_em = excluded.atualizada_em
+		where assinaturas.stripe_assinatura = excluded.stripe_assinatura
+		   or excluded.estado in ('active', 'trialing', 'past_due')
+		   or assinaturas.estado not in ('active', 'trialing', 'past_due')`,
+		usuarioID, stripeAssinatura, estado, periodoFim, agora)
+	return err
 }
 
 // estadoDa aplica a regra, nesta ordem: cortesia, assinatura em dia, past_due até 72h depois do fim do período

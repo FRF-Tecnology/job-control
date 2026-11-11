@@ -57,7 +57,7 @@ func LerConfig(env func(string) string) (Config, error) {
 		NotasServico:        v("NOTAS_SERVICO"),
 		TermosVersao:        v("APPLYER_TERMOS_VERSAO"),
 		Endereco:            v("APPLYER_ENDERECO"),
-		EnderecoPublico:     v("APPLYER_ENDERECO_PUBLICO"),
+		EnderecoPublico:     strings.TrimRight(v("APPLYER_ENDERECO_PUBLICO"), "/"), // sem barra final: recebe caminhos
 	}
 	if cfg.Endereco == "" {
 		cfg.Endereco = ":8080"
@@ -75,6 +75,10 @@ func LerConfig(env func(string) string) (Config, error) {
 		{"SMTP_REMETENTE", cfg.SMTPRemetente},
 		{"GOOGLE_CLIENT_ID", cfg.GoogleClientID},
 		{"GOOGLE_CLIENT_SECRET", cfg.GoogleClientSecret},
+		{"STRIPE_SECRET_KEY", cfg.StripeSecretKey},
+		{"STRIPE_WEBHOOK_SECRET", cfg.StripeWebhookSecret},
+		{"STRIPE_PRICE_ID", cfg.StripePriceID},
+		{"APPLYER_ENDERECO_PUBLICO", cfg.EnderecoPublico},
 	} {
 		if o.valor == "" {
 			faltam = append(faltam, o.nome)
