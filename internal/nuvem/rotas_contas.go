@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -24,9 +23,10 @@ import (
 //   - o log nunca leva senha, código, token nem o email inteiro (só mascarar(email) ou o id do usuário).
 
 const (
-	limitePorIP    = 20 // por minuto, somando todas as rotas de conta
-	limitePorEmail = 5  // a cada 15 min, em criar conta e recuperar
-	prazoEmail     = time.Minute
+	limitePorIP        = 20 // por minuto, somando todas as rotas de conta
+	limitePorEmail     = 5  // a cada 15 min, em criar conta e recuperar
+	prazoEmail         = time.Minute
+	capacidadeSemConta = 100_000 // emails sem conta acompanhados em memória (teto de memória)
 
 	msgEnviamos    = "Se o email estiver certo, enviamos um código"
 	msgLimite      = "Muitas tentativas. Tente de novo em alguns minutos"
@@ -43,15 +43,6 @@ const (
 )
 
 var reDispositivo = regexp.MustCompile(`^[0-9a-f]{64}$`)
-
-// resumoFalso é conferido quando o email não tem senha, para o tempo de resposta não revelar a conta.
-var resumoFalso = sync.OnceValue(func() string {
-	h, err := senhas.Resumir("applyer-conta-que-nao-existe")
-	if err != nil {
-		panic(err)
-	}
-	return h
-})
 
 // pedido é o corpo de todas as rotas de conta; cada rota usa só os campos dela.
 type pedido struct {
@@ -276,6 +267,28 @@ func (s *Servidor) confirmar(w http.ResponseWriter, r *http.Request) {
 		s.interno(w, r, "ler conta", err)
 		return
 	}
+	// A senha precisa bater com a pendente: quem recadastrou o email com outra senha não ganha a conta
+	// quando o dono confirma (o dono recupera pelo email). O código já foi gasto; tudo bem.
+	if u.SenhaHash == "" {
+		erro(w, http.StatusUnauthorized, msgCredenciais)
+		return
+	}
+	certa, err := senhas.Conferir(u.SenhaHash, p.Senha)
+	if err != nil {
+		s.interno(w, r, "conferir senha", err)
+		return
+	}
+	if !certa {
+		erro(w, http.StatusUnauthorized, msgCredenciais)
+		return
+	}
+	if u.TermosVersao != s.cfg.TermosVersao && p.TermosVersao != s.cfg.TermosVersao {
+		// O código foi gasto: manda outro para a nova tentativa, já com a versão atual.
+		if err := s.mandarCodigo(r.Context(), email, codigos.Confirmar); err != nil {
+			s.interno(w, r, "gerar código", err)
+			return
+		}
+	}
 	if !s.conferirTermos(w, r, u, p) {
 		return
 	}
@@ -317,7 +330,13 @@ func (s *Servidor) entrar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil || u.SenhaHash == "" {
-		_, _ = senhas.Conferir(resumoFalso(), p.Senha) // mesmo custo de quem tem conta
+		// Sem conta (ou só Google): mesmo custo e mesmo bloqueio de quem tem, para não revelar nada.
+		if s.semConta.Bloqueada(email) {
+			erro(w, http.StatusTooManyRequests, msgBloqueado)
+			return
+		}
+		_, _ = senhas.Conferir(s.resumoFalso, p.Senha)
+		s.semConta.Falhar(email)
 		erro(w, http.StatusUnauthorized, msgCredenciais)
 		return
 	}
@@ -418,12 +437,14 @@ func (s *Servidor) novaSenha(w http.ResponseWriter, r *http.Request) {
 		s.interno(w, r, "resumir senha", err)
 		return
 	}
-	if err := s.contas.TrocarSenha(ctx, u.ID, hash, s.dep.Agora()); err != nil {
-		s.interno(w, r, "trocar senha", err)
-		return
-	}
+	// Revoga antes de trocar: se a troca falhar, sobra só a senha antiga sem sessões, nunca a senha
+	// nova com as sessões antigas vivas.
 	if err := s.sessoes.RevogarTodas(ctx, u.ID); err != nil {
 		s.interno(w, r, "revogar sessões", err)
+		return
+	}
+	if err := s.contas.TrocarSenha(ctx, u.ID, hash, s.dep.Agora()); err != nil {
+		s.interno(w, r, "trocar senha", err)
 		return
 	}
 	s.log.Info("senha trocada; sessões revogadas", "usuario", u.ID)

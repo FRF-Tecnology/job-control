@@ -1,6 +1,7 @@
 package nuvem
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/contas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/limites"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/senhas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/sessoes"
 )
 
@@ -46,7 +48,11 @@ type Servidor struct {
 	sessoes  *sessoes.Repo
 	porIP    *limites.Janela
 	porEmail *limites.Janela
-	envios   sync.WaitGroup // emails em andamento (os testes esperam)
+	// semConta conta senhas erradas de emails sem conta (ou só Google), com a mesma regra do banco:
+	// assim o bloqueio na 11ª tentativa não revela se a conta existe.
+	semConta    *limites.Seguidas
+	resumoFalso string         // conferido quando o email não tem senha: mesmo custo de quem tem
+	envios      sync.WaitGroup // emails em andamento (os testes esperam)
 }
 
 // Novo monta o servidor com as rotas. As rotas de conta só existem com banco; a chave vem de LerConfig,
@@ -76,6 +82,10 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		s.sessoes = sessoes.Novo(dep.Banco, priv, dep.Agora, dep.Aleatorio)
 		s.porIP = limites.Nova(limitePorIP, time.Minute, dep.Agora)
 		s.porEmail = limites.Nova(limitePorEmail, 15*time.Minute, dep.Agora)
+		s.semConta = limites.NovaSeguidas(contas.MaxFalhas, contas.Bloqueio, capacidadeSemConta, dep.Agora)
+		if s.resumoFalso, err = senhas.Resumir("applyer-conta-que-nao-existe"); err != nil {
+			panic(err)
+		}
 		s.rotasContas()
 	}
 	return s
@@ -91,6 +101,16 @@ func (s *Servidor) Handler() http.Handler {
 		r.Body = http.MaxBytesReader(w, r.Body, limite)
 		s.mux.ServeHTTP(w, r)
 	})
+}
+
+// Esperar aguarda os emails em andamento (ou o fim do ctx). O main chama depois do Shutdown.
+func (s *Servidor) Esperar(ctx context.Context) {
+	fim := make(chan struct{})
+	go func() { s.envios.Wait(); close(fim) }()
+	select {
+	case <-fim:
+	case <-ctx.Done():
+	}
 }
 
 func (s *Servidor) saude(w http.ResponseWriter, _ *http.Request) {

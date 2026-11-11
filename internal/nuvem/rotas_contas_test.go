@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -167,7 +168,7 @@ func (a *amb) criarConfirmado(t *testing.T, email, senha string) sessoes.Par {
 	t.Helper()
 	w := a.post(t, "/v1/contas", map[string]string{"email": email, "senha": senha, "termos_versao": termosAtual})
 	confere(t, w, http.StatusAccepted, "")
-	return par(t, a.post(t, "/v1/contas/confirmar", map[string]string{
+	return par(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senha,
 		"email": email, "codigo": a.codigo(t, email), "dispositivo": dispositivo}))
 }
 
@@ -183,7 +184,7 @@ func TestCriarConfirmarEntrar(t *testing.T) {
 	if m := corpoJSON(t, w)["mensagem"]; m != "Se o email estiver certo, enviamos um código" {
 		t.Fatalf("mensagem = %q", m)
 	}
-	p := par(t, a.post(t, "/v1/contas/confirmar", map[string]string{
+	p := par(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna,
 		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "dispositivo": dispositivo}))
 
 	var confirmado, aceito *time.Time
@@ -236,7 +237,7 @@ func TestCriarPendenteTrocaSenha(t *testing.T) {
 	if n := len(a.emails("ana@exemplo.com")); n != 2 {
 		t.Fatalf("esperava 2 códigos, veio %d", n)
 	}
-	par(t, a.post(t, "/v1/contas/confirmar", map[string]string{
+	par(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaNova,
 		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "dispositivo": dispositivo}))
 	par(t, a.entrar(t, "ana@exemplo.com", senhaNova))
 }
@@ -276,16 +277,26 @@ func TestDezErrosBloqueiamQuinzeMinutos(t *testing.T) {
 func TestErrosConcorrentesNaoSePerdem(t *testing.T) {
 	a := novoAmb(t)
 	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	corpo, _ := json.Marshal(map[string]string{"email": "ana@exemplo.com", "senha": senhaErrada, "dispositivo": dispositivo})
+	status := make([]int, 9)
 	var wg sync.WaitGroup
-	for i := 0; i < 9; i++ {
+	for i := range status {
 		wg.Add(1)
-		go func(i int) {
+		go func(i int) { // sem t aqui: o resultado é conferido depois, na goroutine do teste
 			defer wg.Done()
-			a.postDe(t, "192.0.2."+string(rune('a'+i)), "/v1/contas/entrar",
-				map[string]string{"email": "ana@exemplo.com", "senha": senhaErrada, "dispositivo": dispositivo})
+			req := httptest.NewRequest("POST", "/v1/contas/entrar", bytes.NewReader(corpo))
+			req.RemoteAddr = fmt.Sprintf("192.0.2.%d:40000", i+1)
+			w := httptest.NewRecorder()
+			a.s.Handler().ServeHTTP(w, req)
+			status[i] = w.Code
 		}(i)
 	}
 	wg.Wait()
+	for i, c := range status {
+		if c != http.StatusUnauthorized {
+			t.Errorf("pedido %d: status %d", i, c)
+		}
+	}
 	var falhas int
 	if err := a.db.QueryRow(context.Background(),
 		`select falhas_login from usuarios where email = 'ana@exemplo.com'`).Scan(&falhas); err != nil {
@@ -309,7 +320,7 @@ func TestEntrarSemConfirmarPedeCodigo(t *testing.T) {
 	if n := len(a.emails("ana@exemplo.com")); n != 2 {
 		t.Fatalf("esperava código novo (2 emails), veio %d", n)
 	}
-	par(t, a.post(t, "/v1/contas/confirmar", map[string]string{
+	par(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna,
 		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "dispositivo": dispositivo}))
 	par(t, a.entrar(t, "ana@exemplo.com", senhaAna))
 }
@@ -322,9 +333,9 @@ func TestConfirmarCodigoErrado(t *testing.T) {
 	if cod == errado {
 		errado = "111111"
 	}
-	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"email": "ana@exemplo.com", "codigo": errado, "dispositivo": dispositivo}),
+	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna, "email": "ana@exemplo.com", "codigo": errado, "dispositivo": dispositivo}),
 		http.StatusBadRequest, "Código inválido ou vencido")
-	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"email": "ze@exemplo.com", "codigo": errado, "dispositivo": dispositivo}),
+	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna, "email": "ze@exemplo.com", "codigo": errado, "dispositivo": dispositivo}),
 		http.StatusBadRequest, "Código inválido ou vencido")
 }
 
@@ -445,17 +456,85 @@ func TestTermosMudaramNaConfirmacao(t *testing.T) {
 	if cod == errado {
 		errado = "111111"
 	}
-	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"email": "ana@exemplo.com", "codigo": errado, "dispositivo": dispositivo}),
+	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna, "email": "ana@exemplo.com", "codigo": errado, "dispositivo": dispositivo}),
 		http.StatusBadRequest, "Código inválido ou vencido")
-	w := a.post(t, "/v1/contas/confirmar", map[string]string{"email": "ana@exemplo.com", "codigo": cod, "dispositivo": dispositivo})
+	a.rel.avancar(2 * time.Minute) // passa dos 60 s: o 409 pode mandar código novo
+	w := a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna, "email": "ana@exemplo.com", "codigo": cod, "dispositivo": dispositivo})
 	confere(t, w, http.StatusConflict, "Os termos mudaram")
-	// O 409 só vem depois do código certo, que foi gasto: o app pede outro pelo entrar (com a versão atual).
+	// O 409 vem depois do código certo, que foi gasto; junto vai um código novo.
+	novo := a.codigo(t, "ana@exemplo.com")
+	if novo == cod || len(a.emails("ana@exemplo.com")) != 2 {
+		t.Fatal("o 409 deveria mandar um código novo")
+	}
+	par(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna,
+		"email": "ana@exemplo.com", "codigo": novo, "dispositivo": dispositivo, "termos_versao": termosAtual}))
+}
+
+func TestSobrescreverPendenteNaoTomaConta(t *testing.T) {
+	a := novoAmb(t)
+	const senhaAtacante = "atacante-quer-entrar-31"
+	a.post(t, "/v1/contas", map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual})
 	a.rel.avancar(2 * time.Minute)
-	confere(t, a.post(t, "/v1/contas/entrar", map[string]string{
-		"email": "ana@exemplo.com", "senha": senhaAna, "dispositivo": dispositivo, "termos_versao": termosAtual}),
-		http.StatusForbidden, "Confirme seu email")
-	par(t, a.post(t, "/v1/contas/confirmar", map[string]string{
-		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "dispositivo": dispositivo, "termos_versao": termosAtual}))
+	// O atacante recadastra o email da vítima com a senha dele: troca a senha pendente.
+	confere(t, a.post(t, "/v1/contas", map[string]string{"email": "ana@exemplo.com", "senha": senhaAtacante, "termos_versao": termosAtual}),
+		http.StatusAccepted, "")
+	// A vítima confirma com o código (que chega a ela) e a senha dela: recusado, não cai no hash do atacante.
+	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{"senha": senhaAna,
+		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "dispositivo": dispositivo}),
+		http.StatusUnauthorized, "Email ou senha incorretos")
+	// O atacante nunca entra: a conta segue sem confirmar.
+	a.rel.avancar(2 * time.Minute)
+	confere(t, a.entrar(t, "ana@exemplo.com", senhaAtacante), http.StatusForbidden, "Confirme seu email")
+	// A vítima recupera pelo email e fica com a senha dela.
+	a.rel.avancar(2 * time.Minute)
+	confere(t, a.post(t, "/v1/contas/recuperar", map[string]string{"email": "ana@exemplo.com"}), http.StatusAccepted, "")
+	par(t, a.post(t, "/v1/contas/nova-senha", map[string]string{
+		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "senha": senhaAna, "dispositivo": dispositivo}))
+	confere(t, a.entrar(t, "ana@exemplo.com", senhaAtacante), http.StatusUnauthorized, "Email ou senha incorretos")
+	par(t, a.entrar(t, "ana@exemplo.com", senhaAna))
+}
+
+func TestBloqueioIgualParaEmailInexistente(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	tentar := func(email string) *httptest.ResponseRecorder {
+		var w *httptest.ResponseRecorder
+		for i := 1; i <= 11; i++ {
+			// IPs diferentes para o limite por IP não interferir.
+			w = a.postDe(t, fmt.Sprintf("203.0.113.%d", i), "/v1/contas/entrar",
+				map[string]string{"email": email, "senha": senhaErrada, "dispositivo": dispositivo})
+			if i <= 10 && w.Code != http.StatusUnauthorized {
+				t.Fatalf("%s, tentativa %d: %d %s", email, i, w.Code, w.Body)
+			}
+		}
+		return w
+	}
+	wAna, wZe := tentar("ana@exemplo.com"), tentar("ze@exemplo.com")
+	confere(t, wAna, http.StatusTooManyRequests, "Muitas tentativas. Tente de novo em 15 minutos")
+	if wZe.Code != wAna.Code || wZe.Body.String() != wAna.Body.String() {
+		t.Fatalf("11ª diferente: existente %d %s / inexistente %d %s", wAna.Code, wAna.Body, wZe.Code, wZe.Body)
+	}
+	a.rel.avancar(15*time.Minute + time.Second)
+	confere(t, a.entrar(t, "ze@exemplo.com", senhaErrada), http.StatusUnauthorized, "Email ou senha incorretos")
+}
+
+func TestEsperarEnvios(t *testing.T) {
+	a := novoAmb(t)
+	a.post(t, "/v1/contas", map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual})
+	ctx, cancelar := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelar()
+	a.s.Esperar(ctx)
+	if len(a.em.Lista()) != 1 {
+		t.Fatal("Esperar voltou antes do envio")
+	}
+}
+
+func TestConfirmarSemSenha(t *testing.T) {
+	a := novoAmb(t)
+	a.post(t, "/v1/contas", map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual})
+	confere(t, a.post(t, "/v1/contas/confirmar", map[string]string{
+		"email": "ana@exemplo.com", "codigo": a.codigo(t, "ana@exemplo.com"), "dispositivo": dispositivo}),
+		http.StatusUnauthorized, "Email ou senha incorretos")
 }
 
 func TestDispositivoInvalido(t *testing.T) {
@@ -470,7 +549,7 @@ func TestDispositivoInvalido(t *testing.T) {
 func TestLimitePorIP(t *testing.T) {
 	a := novoAmb(t)
 	for i := 0; i < 20; i++ {
-		confere(t, a.postDe(t, "198.51.100.7", "/v1/contas/recuperar", map[string]string{"email": "p" + string(rune('a'+i)) + "@exemplo.com"}),
+		confere(t, a.postDe(t, "198.51.100.7", "/v1/contas/recuperar", map[string]string{"email": fmt.Sprintf("p%d@exemplo.com", i)}),
 			http.StatusAccepted, "")
 	}
 	confere(t, a.postDe(t, "198.51.100.7", "/v1/contas/entrar", map[string]string{"email": "x@exemplo.com", "senha": senhaAna, "dispositivo": dispositivo}),
@@ -483,7 +562,7 @@ func TestLimitePorIP(t *testing.T) {
 func TestLimitePorEmail(t *testing.T) {
 	a := novoAmb(t)
 	for i := 0; i < 5; i++ {
-		confere(t, a.postDe(t, "198.51.100."+string(rune('1'+i)), "/v1/contas/recuperar", map[string]string{"email": "ana@exemplo.com"}),
+		confere(t, a.postDe(t, fmt.Sprintf("198.51.100.%d", i+1), "/v1/contas/recuperar", map[string]string{"email": "ana@exemplo.com"}),
 			http.StatusAccepted, "")
 	}
 	confere(t, a.postDe(t, "203.0.113.1", "/v1/contas/recuperar", map[string]string{"email": "ANA@exemplo.com"}),

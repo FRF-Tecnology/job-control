@@ -55,8 +55,7 @@ func executar() error {
 	}
 	fim, cancelar := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelar()
-	if err := sh.Shutdown(fim); err != nil {
-		return err
-	}
-	return nil
+	errDesligar := sh.Shutdown(fim)
+	srv.Esperar(fim) // emails em andamento (códigos) terminam dentro do mesmo prazo
+	return errDesligar
 }
