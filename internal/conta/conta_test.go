@@ -400,3 +400,86 @@ func TestRenovacaoNuncaConcorrente(t *testing.T) {
 		t.Fatal("a sessão devia continuar")
 	}
 }
+
+// nuvem5xx faz a renovação falhar com 503 da nuvem.
+type nuvem5xx struct{ *Falsa }
+
+func (nuvem5xx) Renovar(context.Context, string) (Par, error) {
+	return Par{}, &ErroNuvem{Status: 503, Msg: "Fora do ar"}
+}
+
+func TestRenovar5xxMantemSessao(t *testing.T) {
+	a := novoAmbiente(t, 0)
+	c, p := a.entrou(t, nuvem5xx{a.f})
+	a.rel.avancar(15 * time.Minute)
+	_, err := c.Acesso(context.Background())
+	var en *ErroNuvem
+	if !errors.As(err, &en) || en.Status != 503 || errors.Is(err, ErrSemConta) {
+		t.Fatalf("queria ErroNuvem 503, veio %v", err)
+	}
+	if a.cofre[chaveRenovacao] != p.Renovacao {
+		t.Fatal("o cofre não podia mudar")
+	}
+	s := c.Situacao()
+	if !s.Entrada || s.Motivo == MotivoSemConta {
+		t.Fatalf("a sessão devia continuar: %+v", s)
+	}
+	if _, err := os.Stat(filepath.Join(a.pasta, arquivoLicencaNome)); err != nil {
+		t.Fatalf("licenca.json devia ficar: %v", err)
+	}
+}
+
+func TestIniciarParaNoCancelamento(t *testing.T) {
+	a := novoAmbiente(t, 0)
+	c, _ := a.entrou(t, nil)
+	ctx, cancelar := context.WithCancel(context.Background())
+	c.Iniciar(ctx)
+	esperar(t, func() bool { return c.laco.Load() == 1 })
+	cancelar()
+	esperar(t, func() bool { return c.laco.Load() == 0 })
+}
+
+// cofreQueFalha deixa ligar e desligar a falha ao gravar.
+type cofreQueFalha struct {
+	segredos.Cofre
+	falha atomic.Bool
+}
+
+func (c *cofreQueFalha) Gravar(p, v string) error {
+	if c.falha.Load() {
+		return errors.New("cofre trancado")
+	}
+	return c.Cofre.Gravar(p, v)
+}
+
+func TestErroCofreFicaVisivel(t *testing.T) {
+	a := novoAmbiente(t, 0)
+	cf := &cofreQueFalha{Cofre: a.cofre}
+	p := a.parConfirmado(t, "ana@exemplo.com")
+	c := Nova(a.f, cf, a.pasta, a.pub, a.local)
+	c.dispositivo = func() (string, error) { return dispA, nil }
+	if err := c.Entrou(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	if c.ErroCofre() != "" {
+		t.Fatalf("erro à toa: %q", c.ErroCofre())
+	}
+	cf.falha.Store(true)
+	a.rel.avancar(15 * time.Minute)
+	acesso, err := c.Acesso(context.Background())
+	if err != nil || acesso == p.Acesso {
+		t.Fatalf("a sessão devia seguir na memória: %q %v", acesso, err)
+	}
+	if !strings.Contains(c.ErroCofre(), "cofre trancado") {
+		t.Fatalf("ErroCofre = %q", c.ErroCofre())
+	}
+	querAgir(t, c, true, "")
+	cf.falha.Store(false)
+	a.rel.avancar(15 * time.Minute)
+	if _, err := c.Acesso(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if c.ErroCofre() != "" {
+		t.Fatalf("devia limpar: %q", c.ErroCofre())
+	}
+}

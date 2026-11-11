@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/licenca"
@@ -68,6 +69,11 @@ type Conta struct {
 	lic       *licenca.Licenca
 	desvio    time.Duration // emitida_em − relógio do PC quando a licença chegou
 	geracao   uint64        // muda a cada entrada/saída: descarta licença pedida pela sessão anterior
+	errCofre  string        // último erro ao gravar a renovação no cofre ("" se está tudo certo)
+
+	laco atomic.Int32 // quantas goroutines de Iniciar estão vivas (para os testes)
+
+	google estadoGoogle // login Google em andamento (google.go)
 }
 
 // Nova monta a conta a partir do cofre (renovação) e de licenca.json na pasta. agora nil usa time.Now.
@@ -89,7 +95,9 @@ func Nova(n Nuvem, cofre segredos.Cofre, pasta string, pub ed25519.PublicKey, ag
 
 // Iniciar renova a sessão e pede a licença sem bloquear; depois repete a cada 10 min até ctx acabar.
 func (c *Conta) Iniciar(ctx context.Context) {
+	c.laco.Add(1)
 	go func() {
+		defer c.laco.Add(-1)
 		for {
 			espera := intervaloLicenca
 			if c.Situacao().Entrada {
@@ -106,6 +114,14 @@ func (c *Conta) Iniciar(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// ErroCofre é o erro da última gravação da renovação no cofre ("" quando está tudo certo). Se não for vazio, a
+// sessão vale só até o app fechar.
+func (c *Conta) ErroCofre() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.errCofre
 }
 
 // Situacao devolve o estado atual sem I/O.
@@ -224,7 +240,11 @@ func (c *Conta) renovar(ctx context.Context, velho string) (string, error) {
 	if c.renovacao == "" {
 		return "", ErrSemConta
 	}
-	p, err := c.nuvem.Renovar(ctx, c.renovacao)
+	// Sem o cancelamento de quem chamou: se a nuvem já gastou o token (uso único) e a resposta se perdesse, a
+	// próxima tentativa reusaria o token velho e a nuvem revogaria a família inteira.
+	rctx, cancelar := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+	defer cancelar()
+	p, err := c.nuvem.Renovar(rctx, c.renovacao)
 	if err != nil {
 		var en *ErroNuvem
 		if errors.As(err, &en) && en.Status == 401 {
@@ -233,11 +253,15 @@ func (c *Conta) renovar(ctx context.Context, velho string) (string, error) {
 		return "", err
 	}
 	// A renovação nova fica na memória mesmo se o cofre falhar: esta sessão continua; ao reabrir, o cofre
-	// teria a antiga (já usada) e a pessoa entra de novo.
+	// teria a antiga (já usada) e a pessoa entra de novo. O erro fica visível em ErroCofre.
 	c.renovacao = p.Renovacao
-	_ = c.cofre.Gravar(chaveRenovacao, p.Renovacao)
+	errCofre := c.cofre.Gravar(chaveRenovacao, p.Renovacao)
 	c.mu.Lock()
 	c.acesso, c.acessoAte = p.Acesso, p.AcessoAte
+	c.errCofre = ""
+	if errCofre != nil {
+		c.errCofre = errCofre.Error()
+	}
 	c.mu.Unlock()
 	return p.Acesso, nil
 }
