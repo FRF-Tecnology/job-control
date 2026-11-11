@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"strconv"
 	"strings"
 )
 
@@ -34,6 +35,9 @@ type Config struct {
 	Endereco            string         // APPLYER_ENDERECO (padrão ":8080")
 	EnderecoPublico     string         // APPLYER_ENDERECO_PUBLICO
 	ProxyConfiavel      []netip.Prefix // APPLYER_PROXY_CONFIAVEL: CIDRs de proxies cujos cabeçalhos de IP valem (opcional)
+	// APPLYER_CONFIAR_CLOUDFLARE=true: vale o CF-Connecting-IP (vindo de proxy confiável). Padrão false: só o
+	// X-Forwarded-For. Ligue só se a origem aceita conexões apenas da Cloudflare.
+	ConfiarCloudflare bool
 }
 
 // LerConfig lê a configuração por env (os.Getenv em produção). O erro cita só o nome da variável que falta.
@@ -109,6 +113,11 @@ func LerConfig(env func(string) string) (Config, error) {
 	var err error
 	if cfg.ProxyConfiavel, err = lerProxies(v("APPLYER_PROXY_CONFIAVEL")); err != nil {
 		return Config{}, err
+	}
+	if c := v("APPLYER_CONFIAR_CLOUDFLARE"); c != "" {
+		if cfg.ConfiarCloudflare, err = strconv.ParseBool(c); err != nil {
+			return Config{}, errors.New("APPLYER_CONFIAR_CLOUDFLARE inválida: use true ou false")
+		}
 	}
 	if _, err := cfg.Chave(); err != nil {
 		return Config{}, err

@@ -73,10 +73,11 @@ func (s *Servidor) rotasContas() {
 	}
 }
 
-// limitarIP: até limitePorIP pedidos por minuto por IP (s.ipDe: o da conexão, ou o do cliente atrás de proxy confiável).
+// limitarIP: até limitePorIP pedidos por minuto por IP (s.ipDe: o da conexão, ou o do cliente atrás de proxy
+// confiável; IPv6 junta pelo /64).
 func (s *Servidor) limitarIP(h http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.porIP.Permitir("ip|" + s.ipDe(r)) {
+		if !s.porIP.Permitir("ip|" + chaveDoIP(s.ipDe(r))) {
 			erro(w, http.StatusTooManyRequests, msgLimite)
 			return
 		}
