@@ -10,8 +10,20 @@ info:
     Erros: sempre JSON {erro, motivo?}; "erro" é texto para mostrar à pessoa e "motivo" é um código para o app
     decidir o que fazer (termos, confirmar, entrar-com-senha). Nenhuma resposta de conta revela se um email tem
     conta: quem tem e quem não tem recebem o mesmo status e o mesmo corpo. 429 em qualquer rota de conta com
-    limite por IP (20 por minuto, por IP do cliente); criar conta e recuperar também limitam por email. 500
-    {erro: "Erro interno. Tente de novo"} em falha inesperada, sem detalhe.
+    limite por IP (20 por minuto, por IP do cliente; IPv6 conta pelo prefixo /64); criar conta e recuperar também
+    limitam por email. 500 {erro: "Erro interno. Tente de novo"} em falha inesperada, sem detalhe. 503 {erro:
+    "Serviço ocupado. Tente de novo em instantes"} nas rotas que conferem ou resumem senha quando há resumos
+    demais ao mesmo tempo (tente de novo em alguns segundos).
+
+
+    Códigos por email: no máximo 5 envios em 15 minutos e 20 em 24 horas por email e tipo, somando todos os
+    pedidos; acima disso a resposta é a mesma e nenhum código sai. Com 20 códigos errados em 24 horas, nenhum
+    código daquele email e tipo vale até a janela passar.
+
+
+    IP do cliente: o da conexão; atrás de um proxy listado em APPLYER_PROXY_CONFIAVEL, o X-Forwarded-For mais à
+    direita que não é de proxy confiável. CF-Connecting-IP só vale com APPLYER_CONFIAR_CLOUDFLARE=true (padrão
+    false; ligue só se a origem aceita conexões apenas da Cloudflare).
 
 
     Sessão: o token de acesso dura 15 minutos (acesso_ate) e vai em "Authorization: Bearer <acesso>"; o de
@@ -80,6 +92,7 @@ paths:
               schema: { $ref: "#/components/schemas/Erro" }
         "429": { $ref: "#/components/responses/MuitasTentativas" }
         "500": { $ref: "#/components/responses/ErroInterno" }
+        "503": { $ref: "#/components/responses/Ocupado" }
   /v1/contas/confirmar:
     post:
       tags: [contas]
@@ -117,6 +130,7 @@ paths:
         "409": { $ref: "#/components/responses/TermosMudaram" }
         "429": { $ref: "#/components/responses/MuitasTentativas" }
         "500": { $ref: "#/components/responses/ErroInterno" }
+        "503": { $ref: "#/components/responses/Ocupado" }
   /v1/contas/entrar:
     post:
       tags: [contas]
@@ -162,12 +176,15 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Erro" }
         "500": { $ref: "#/components/responses/ErroInterno" }
+        "503": { $ref: "#/components/responses/Ocupado" }
   /v1/contas/recuperar:
     post:
       tags: [contas]
       operationId: recuperarSenha
       summary: Manda por email o código para criar uma senha nova
-      description: Sempre 202 com a mesma mensagem, haja conta ou não.
+      description: >
+        Sempre 202 com a mesma mensagem, haja conta ou não; a resposta não espera a geração do código nem o
+        envio.
       security: []
       requestBody:
         required: true
@@ -194,7 +211,8 @@ paths:
       summary: Troca a senha com o código da recuperação e abre a sessão
       description: >
         A senha é validada antes do código (senha fraca não gasta o código). Troca bem-sucedida revoga todas as
-        sessões antigas da conta e manda um aviso por email.
+        sessões antigas da conta e manda um aviso por email. Email fora de gmail.com e googlemail.com perde o
+        login com Google ligado (a conta Google pode ser de um dono antigo do domínio).
       security: []
       requestBody:
         required: true
@@ -216,8 +234,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Erro" }
+        "401": { $ref: "#/components/responses/SessaoInvalida" }
         "429": { $ref: "#/components/responses/MuitasTentativas" }
         "500": { $ref: "#/components/responses/ErroInterno" }
+        "503": { $ref: "#/components/responses/Ocupado" }
   /v1/contas/google:
     post:
       tags: [contas]
@@ -268,9 +288,9 @@ paths:
       operationId: excluirConta
       summary: Apaga a própria conta (LGPD)
       description: >
-        Cancela a assinatura no Stripe primeiro (se não der, nada é apagado: 502) e depois apaga, numa transação,
-        códigos, sessões, assinatura e usuário. As notas fiscais ficam (obrigação fiscal) e o computador do teste
-        só perde o dono.
+        Cancela a assinatura e apaga o cliente no Stripe primeiro (se não der, nada é apagado: 502) e depois apaga,
+        numa transação, códigos, sessões, assinatura e usuário. As notas fiscais ficam (obrigação fiscal) e o
+        computador do teste só perde o dono.
       security:
         - bearerAuth: []
       requestBody:
@@ -293,7 +313,7 @@ paths:
         "429": { $ref: "#/components/responses/MuitasTentativas" }
         "500": { $ref: "#/components/responses/ErroInterno" }
         "502":
-          description: Não deu para cancelar a assinatura no Stripe; nada foi apagado.
+          description: Não deu para cancelar a assinatura ou apagar o cliente no Stripe; nada foi apagado.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Erro" }
@@ -593,7 +613,7 @@ components:
       properties:
         numero: { type: string }
         link_pdf: { type: string }
-        estado: { type: string }
+        estado: { type: string, enum: [pendente, emitida, falhou] }
         criada_em: { type: string, format: date-time }
   responses:
     CodigoEnviado:
@@ -628,6 +648,11 @@ components:
           schema: { $ref: "#/components/schemas/Erro" }
     ErroInterno:
       description: Falha inesperada; sem detalhe.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    Ocupado:
+      description: Resumos de senha demais ao mesmo tempo ("Serviço ocupado. Tente de novo em instantes").
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Erro" }

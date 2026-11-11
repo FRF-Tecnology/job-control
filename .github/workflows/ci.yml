@@ -218,12 +218,11 @@ jobs:
           fi
           ./gitleaks git --redact --verbose .
 
-  # Nuvem (contas, licença e assinatura): testes com um Postgres 17 de verdade.
+  # Nuvem (contas, licença e assinatura): testes com um Postgres 17 de verdade. Só leitura no token.
   nuvem:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     services:
       postgres:
         image: postgres:17
@@ -248,8 +247,19 @@ jobs:
           cache-dependency-path: go.sum
       - run: go vet ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
       - run: go test -count=1 ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
-      # Imagem da nuvem (o Docker já vem no runner). PR só constrói; push na reescrita-go também publica no GHCR,
-      # com a tag do commit e a da branch. O token só tem packages: write neste job.
+
+  # Imagem da nuvem (o Docker já vem no runner), só depois dos testes. PR só constrói; push na reescrita-go
+  # também publica no GHCR, com a tag do commit e a da branch. Só este job tem packages: write.
+  nuvem-imagem:
+    needs: nuvem
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Construir a imagem
         run: docker build -f deploy/nuvem/Dockerfile -t applyer-nuvem .
       - name: Publicar a imagem no GHCR
