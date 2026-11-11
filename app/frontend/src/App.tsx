@@ -39,7 +39,7 @@ const ICONES: Record<string, string> = {
 // Nome da IA em uso, para o resumo do menu lateral (provedores do GET /ia/config; fora da lista, fica genérico).
 const NOMES_IA: Record<string, string> = {
   'claude-cli': 'Claude Code conectado', 'codex-cli': 'Codex conectado', 'gemini-cli': 'Gemini CLI conectado',
-  anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)',
+  anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)', xai: 'Grok conectado (chave)',
 };
 const RETOMAR_BUSCA = 'applyer.primeiraBuscaPendente';
 type R = ReturnType<typeof resumo>;
@@ -233,7 +233,7 @@ export default function App() {
 
   const app: AppApi | null = useMemo(() => {
     if (!estado) return null;
-    const api = (caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) => chamarApi(caminho, metodo, corpo, cabecalhos);
+    const api = chamarApi;
     const agir = async (fn: () => Promise<unknown>, mensagem?: string) => {
       try {
         await fn();
@@ -311,7 +311,7 @@ export default function App() {
       setEstado((atual: Estado) => ({ ...atual, onboardingConcluido: true }));
     };
     return <><Contexto.Provider value={app}><Protecao chave="primeiro-acesso">
-      <PrimeiroAcesso iaPronta={ia?.configurada === true} alternarTema={alternarTema} concluir={concluir} />
+      <PrimeiroAcesso alternarTema={alternarTema} concluir={concluir} />
     </Protecao></Contexto.Provider>{avisosEDialogo}</>;
   }
   return (

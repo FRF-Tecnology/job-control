@@ -1,81 +1,130 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Contexto, ErroApi, chamarApi, type App } from '../app/contexto';
+import { Contexto, ErroApi, type App } from '../app/contexto';
 import { PrimeiroAcesso } from './PrimeiroAcesso';
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(cleanup);
 
 const perfil = {
   cargo: 'Designer', stackPrincipal: ['Pesquisa'], stackSecundaria: ['Figma'],
   filtros: { niveis: ['Pleno'], modelo: ['Remoto'], pularSe: ['Plantão'] },
   foco: 'internacional', ingles: 'Avançado', pretensaoUSD: 3200,
 };
+const pdf = (nome: string, conteudo = '%PDF-1.4\n%%EOF') => new File([conteudo], nome, { type: 'application/pdf' });
+const clicar = (nome: string | RegExp) => fireEvent.click(screen.getByRole('button', { name: nome }));
+const proximo = () => clicar('Continuar');
 
-function montar(iaPronta: boolean, api = vi.fn().mockResolvedValue({ ok: true })) {
+function montar(base: object = perfil, sugerir = vi.fn().mockResolvedValue({ sugestoes: [] }), salvar = vi.fn().mockResolvedValue({ ok: true })) {
   const concluir = vi.fn();
-  const app = { estado: { perfil }, rota: 'hoje', api, limpar: vi.fn(), recarregar: vi.fn(), aviso: vi.fn(), navegar: vi.fn() } as unknown as App;
-  const tela = render(<Contexto.Provider value={app}><PrimeiroAcesso iaPronta={iaPronta} alternarTema={() => {}} concluir={concluir} /></Contexto.Provider>);
-  return { tela, concluir, app, api };
+  const api = vi.fn(async (url: string, _metodo?: string, corpo?: unknown, cabecalhos?: Record<string, string>) => {
+    if (url === '/api/v1/ia') return { configurada: true, provedor: 'openai', chaves: { openai: '…1234' }, clis: [] };
+    if (url === '/api/v1/onboarding/sugerir') return sugerir(corpo, cabecalhos);
+    if (url === '/api/v1/onboarding') return salvar(corpo, cabecalhos);
+    return {};
+  });
+  const app = { estado: { perfil: base }, api, limpar: vi.fn(), recarregar: vi.fn(), aviso: vi.fn() } as unknown as App;
+  render(<Contexto.Provider value={app}><PrimeiroAcesso alternarTema={() => {}} concluir={concluir} /></Contexto.Provider>);
+  return { concluir, sugerir, salvar };
 }
 
+async function conectar() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Usar conexão atual' }));
+  await screen.findByRole('heading', { name: 'Anexe seu currículo.' });
+}
 function anexar(arquivo: File) {
   fireEvent.change(screen.getByLabelText('Currículo em PDF'), { target: { files: [arquivo] } });
 }
-const proximo = () => fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+async function escolher(nome: string) {
+  anexar(pdf(nome));
+  await screen.findByRole('heading', { name: nome });
+}
+function editar(rotulo: string | RegExp, valor: string) {
+  fireEvent.change(screen.getByLabelText(rotulo), { target: { value: valor } });
+}
 
 describe('Primeiro acesso', () => {
-  it('exige um PDF verdadeiro e mantém o arquivo anterior se a substituição falhar', async () => {
-    montar(true);
-    proximo();
+  it('começa pela conexão e só apresenta o PDF depois de confirmar o provedor', async () => {
+    montar();
+    await screen.findByRole('button', { name: 'Usar conexão atual' });
+    expect(screen.getByRole('heading', { name: 'Conecte sua IA.' })).toBeTruthy();
+    expect(screen.queryByLabelText('Currículo em PDF')).toBeNull();
+    expect((screen.getByRole('button', { name: /Currículo Seu documento/ }) as HTMLButtonElement).disabled).toBe(true);
+    await conectar();
+  });
+
+  it('exige um PDF completo e mantém o arquivo anterior se a substituição falhar', async () => {
+    montar();
+    await conectar();
+    clicar('Preencher com IA');
     expect(screen.getByRole('alert').textContent).toMatch(/Escolha seu currículo/);
-    anexar(new File(['%PDF-1.4\n%%EOF'], 'Curriculo.pdf', { type: 'application/pdf' }));
-    await screen.findByRole('heading', { name: 'Curriculo.pdf' });
-    anexar(new File(['uma página HTML'], 'Outro.pdf', { type: 'application/pdf' }));
+    await escolher('Curriculo.pdf');
+    anexar(pdf('Outro.pdf', 'uma página HTML'));
     await screen.findByText('Esse arquivo não tem o formato de um PDF.');
-    anexar(new File(['%PDF-1.4\n1 0 obj'], 'Incompleto.pdf', { type: 'application/pdf' }));
+    anexar(pdf('Incompleto.pdf', '%PDF-1.4\n1 0 obj'));
     await screen.findByText(/O PDF está incompleto/);
     expect(screen.getByRole('heading', { name: 'Curriculo.pdf' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
-    proximo();
+    clicar('Remover');
+    clicar('Preencher com IA');
     expect(screen.getByRole('alert').textContent).toMatch(/Escolha seu currículo/);
   });
 
-  it.each([true, false])('envia o PDF e as edições, preservando os campos após um erro de gravação (IA %s)', async iaPronta => {
-    const api = vi.fn().mockRejectedValueOnce(new ErroApi('PDF recusado', 400, {})).mockResolvedValueOnce({ ok: true });
-    const { concluir } = montar(iaPronta, api);
-    const pdf = new File(['%PDF-1.4\n%%EOF'], 'MeuCV.pdf', { type: 'application/pdf' });
-    anexar(pdf);
-    await screen.findByRole('heading', { name: 'MeuCV.pdf' });
-    proximo();
-    const cargo = screen.getByLabelText('Cargo ou área de interesse');
-    expect((cargo as HTMLInputElement).value).toBe('Designer');
-    fireEvent.change(cargo, { target: { value: 'Analista de pesquisa' } });
-    fireEvent.change(screen.getByLabelText(/Stack secundária/), { target: { value: 'Figma; SQL, Figma' } });
+  it.each(['USD', 'BRL', 'EUR'])('salva a faixa mensal na moeda %s e o PDF intacto; mantém rascunho após um erro', async moeda => {
+    const salvar = vi.fn().mockRejectedValueOnce(new ErroApi('PDF recusado', 400, {})).mockResolvedValueOnce({ ok: true });
+    const { concluir, sugerir } = montar(perfil, undefined, salvar);
+    await conectar(); await escolher('MeuCV.pdf');
+    clicar('Preencher manualmente');
+    editar('Cargo ou área de interesse', 'Analista de pesquisa'); editar(/Stack secundária/, 'Figma; SQL, Figma');
     proximo();
     fireEvent.click(screen.getByRole('radio', { name: 'Nacional' }));
-    expect(screen.queryByLabelText(/Pretensão internacional/)).toBeNull();
-    proximo();
-    const nome = iaPronta ? /Salvar e buscar vagas/ : /Salvar e conectar IA/;
-    expect(screen.getByText('Analista de pesquisa')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: nome }));
-    await screen.findByText('PDF recusado');
+    expect((screen.getByLabelText('Mínimo') as HTMLInputElement).value).toBe('3200');
+    editar('Moeda', moeda); editar('Mínimo', '4000'); editar('Máximo', '3000'); proximo();
+    expect(screen.getByRole('alert').textContent).toMatch(/maior ou igual/);
+    editar('Máximo', '6000'); proximo();
+    expect(screen.getByText(new RegExp('por mês \\(' + moeda + '\\)'))).toBeTruthy();
+    clicar('Salvar e buscar vagas'); await screen.findByText('PDF recusado');
     expect(concluir).not.toHaveBeenCalled();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: nome })); });
-    await waitFor(() => expect(concluir).toHaveBeenCalledWith(iaPronta));
-    const [url, metodo, dados, headers] = api.mock.calls[1];
-    expect([url, metodo, headers]).toEqual(['/api/v1/onboarding', 'POST', { 'X-Applyer-Onboarding': '1' }]);
-    expect(dados.get('curriculo')).toBe(pdf);
-    expect(JSON.parse(dados.get('perfil'))).toEqual({
+    clicar('Salvar e buscar vagas'); await waitFor(() => expect(concluir).toHaveBeenCalledWith(true));
+    expect(sugerir).not.toHaveBeenCalled();
+    const [corpo, cabecalhos] = salvar.mock.calls[1];
+    expect(cabecalhos).toEqual({ 'X-Applyer-Onboarding': '1' });
+    expect(atob(corpo.curriculoBase64)).toBe('%PDF-1.4\n%%EOF');
+    expect(corpo.perfil).toEqual({
       cargo: 'Analista de pesquisa', stackPrincipal: ['Pesquisa'], stackSecundaria: ['Figma', 'SQL'],
-      filtros: perfil.filtros, foco: 'nacional', ingles: 'Avançado',
+      filtros: perfil.filtros, foco: 'nacional', ingles: 'Avançado', faixaSalarial: { min: 4000, max: 6000, moeda },
     });
   });
 
-  it('preserva o FormData para o navegador gerar o boundary do multipart', async () => {
-    const fetch = vi.fn().mockResolvedValue({ ok: true, headers: { get: () => 'application/json' }, json: async () => ({ ok: true }) });
-    vi.stubGlobal('fetch', fetch);
-    const corpo = new FormData();
-    await chamarApi('/api/v1/onboarding', 'POST', corpo, { 'X-Applyer-Onboarding': '1' });
-    expect(fetch.mock.calls[0][1]).toEqual({ method: 'POST', headers: { 'X-Applyer-Onboarding': '1' }, body: corpo });
+  it('preenche pelos trechos do PDF, deixa as preferências livres e preserva edições se o PDF mudar', async () => {
+    const sugerir = vi.fn().mockResolvedValueOnce({ sugestoes: [
+      { campo: 'cargo', valor: 'Analista', evidencia: 'Analista na equipe de dados' },
+      { campo: 'niveis', valor: 'Pleno', evidencia: 'Analista Pleno' },
+      { campo: 'stackPrincipal', valor: 'Python', evidencia: 'Automação com Python' },
+      { campo: 'ingles', valor: 'Avançado', evidencia: 'Inglês avançado' },
+    ] }).mockResolvedValueOnce({ sugestoes: [{ campo: 'stackPrincipal', valor: 'SQL', evidencia: 'Consultas com SQL' }] });
+    montar({}, sugerir);
+    await conectar(); await escolher('A.pdf');
+    expect(sugerir).not.toHaveBeenCalled();
+    clicar('Preencher com IA');
+    await screen.findByDisplayValue('Analista');
+    expect(screen.getByText('“Automação com Python”')).toBeTruthy();
+    expect((screen.getByLabelText('Pleno') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText(/Pular quando/) as HTMLInputElement).value).toBe('');
+    editar('Cargo ou área de interesse', 'Analista de BI'); proximo();
+    expect((screen.getByLabelText('Seu nível de inglês') as HTMLSelectElement).value).toBe('Avançado');
+    expect((screen.getByLabelText('Mínimo') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Remoto') as HTMLInputElement).checked).toBe(false);
+    clicar('← Voltar'); clicar('← Voltar'); await escolher('B.pdf'); clicar('Preencher com IA');
+    await screen.findByDisplayValue('SQL');
+    expect(screen.getByDisplayValue('Analista de BI')).toBeTruthy();
+    expect((screen.getByLabelText('Pleno') as HTMLInputElement).checked).toBe(false);
+    expect(sugerir).toHaveBeenCalledTimes(2);
+  });
+
+  it('permite preenchimento manual após falha de leitura da IA', async () => {
+    montar({}, vi.fn().mockRejectedValue(new Error('O PDF não contém texto selecionável.')));
+    await conectar(); await escolher('Digitalizado.pdf'); clicar('Preencher com IA');
+    await screen.findByText('O PDF não contém texto selecionável.');
+    clicar('Preencher manualmente');
+    expect(screen.getByRole('heading', { name: 'Quais vagas interessam?' })).toBeTruthy();
   });
 });

@@ -1,0 +1,69 @@
+.pa-provedores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.pa-provedor {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--superficie);
+  color: var(--tinta);
+  border: 1px solid var(--linha);
+  border-radius: 16px;
+  text-align: start;
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+.pa-provedor[aria-pressed="true"] {
+  border-color: var(--destaque);
+  background: var(--destaque-suave);
+  box-shadow: inset 0 0 0 1px var(--destaque);
+}
+.pa-logotipo {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #f5f7fa;
+}
+.openai .pa-logotipo { --simbolo: url('../../../../site/marcas/chatgpt.svg'); --cor: #17181c; }
+.anthropic .pa-logotipo { --simbolo: url('../../../../site/marcas/claude.svg'); --cor: #bf5b3b; background: #fff0e6; }
+.xai .pa-logotipo { --simbolo: url('../../../../site/marcas/grok.svg'); --cor: #fff; background: #1b1c22; }
+.google .pa-logotipo { --simbolo: url('../../../../site/marcas/gemini.svg'); --cor: conic-gradient(from -70deg, #5286ee, #e15249 24%, #f4b533 41%, #38a669 61%, #4387ed 80%, #5286ee); }
+.pa-logotipo::before { content: ''; width: 27px; height: 27px; background: var(--cor); -webkit-mask: var(--simbolo) center / contain no-repeat; mask: var(--simbolo) center / contain no-repeat; }
+.pa-marcador {
+  position: absolute;
+  right: 12px;
+  top: 13px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--linha);
+  border-radius: 50%;
+  font-size: .68rem;
+}
+.pa-provedor[aria-pressed="true"] .pa-marcador { background: var(--destaque-fundo); color: white; }
+.pa-ia-painel { margin-top: 16px; padding: clamp(15px, 2vw, 24px); border: 1px solid var(--linha); border-radius: 16px; background: var(--peca); }
+.pa-ia-painel h2 { margin: 0 0 12px; font-size: 1.12rem; }
+.pa-ia-painel p { margin: 0; color: var(--tinta-2); font-size: .86rem; overflow-wrap: anywhere; }
+.pa-ia-modos { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+.pa-ia-modos button { padding: 7px 12px; border-radius: 8px; color: var(--tinta-2); background: var(--superficie); border: 1px solid var(--linha); }
+.pa-ia-modos button[aria-pressed="true"] { border-color: var(--destaque); color: var(--destaque); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .pa-provedor:not(:disabled):hover { transform: translateY(-3px); border-color: var(--destaque); }
+}
+@media (prefers-reduced-motion: reduce) { .pa-provedor { transition: none; } }
+@media (max-width: 950px) { .pa-provedor { padding: 12px; } }
+@media (max-width: 530px) {
+  .pa-provedores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .pa-provedor { flex-direction: row; align-items: center; gap: 8px; padding: 12px 8px; }
+  .pa-marcador { display: none; }
+  .pa-logotipo { width: 34px; height: 34px; }
+  .pa-logotipo::before { width: 22px; height: 22px; }
+}

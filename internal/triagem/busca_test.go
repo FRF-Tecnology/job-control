@@ -99,6 +99,56 @@ func TestChamaIAConfiguradaComDescricaoEPerfilProfissional(t *testing.T) {
 	}
 }
 
+func TestComparacaoDaFaixaSalarialMensal(t *testing.T) {
+	for _, moeda := range []string{"BRL", "USD", "EUR"} {
+		t.Run(moeda, func(t *testing.T) {
+			perfil := dominio.Objeto{"faixaSalarial": dominio.Objeto{"moeda": moeda, "min": 4000, "max": 6000}}
+			vaga := dominio.Objeto{"moeda": moeda, "salarioMin": 22000, "salarioMax": 42000, "periodoSalario": "annual"}
+			r := compararSalario(perfil, vaga, nil)
+			if r.Estado != "" || !strings.Contains(strings.Join(r.Conferir, " "), "abaixo da pretensão") {
+				t.Fatal("teto abaixo sem regra de exclusão", r)
+			}
+			regras := []string{"pagamento abaixo da pretensão"}
+			if r := compararSalario(perfil, vaga, regras); r.Estado != "pulada" {
+				t.Fatal("piso na moeda escolhida", r)
+			}
+			vaga["salarioMax"] = 48000
+			if r := compararSalario(perfil, vaga, regras); r.Estado != "" || len(r.Conferir) > 0 {
+				t.Fatal("há sobreposição no limite anual", r)
+			}
+			vaga["salarioMin"], vaga["salarioMax"] = 7500, 9000
+			vaga["periodoSalario"] = "monthly"
+			if r := compararSalario(perfil, vaga, regras); r.Estado != "" || len(r.Conferir) > 0 {
+				t.Fatal("oferta superior à faixa", r)
+			}
+			vaga["salarioMax"], vaga["salarioMin"] = 50, 20
+			vaga["periodoSalario"] = "hourly"
+			if r := compararSalario(perfil, vaga, regras); r.Estado != "" || len(r.Conferir) == 0 {
+				t.Fatal("estimou carga horária", r)
+			}
+			vaga["moeda"], vaga["periodoSalario"] = "CAD", "monthly"
+			vaga["salarioUSDMax"] = 99001
+			if r := compararSalario(perfil, vaga, regras); r.Estado != "" || len(r.Conferir) == 0 {
+				t.Fatal("estimou câmbio", r)
+			}
+			m := ia.MontarPrompt("triarVaga", entrada(perfil, vaga, nil)).Mensagem
+			if strings.Contains(m, "99001") {
+				t.Fatal("o prompt tratou uma oferta em CAD como USD")
+			}
+			for _, s := range []string{"faixaSalarial", moeda, "4000", "6000"} {
+				if !strings.Contains(m, s) {
+					t.Fatalf("faltou %s no prompt", s)
+				}
+			}
+		})
+	}
+	for simbolo, moeda := range map[string]string{"R$": "BRL", "€": "EUR", "US$": "USD"} {
+		if p := pisoDeExclusao([]string{"Abaixo de " + simbolo + " 4.500,50/mês"}, moeda, 0); p != 4500.50 {
+			t.Errorf("piso em %s: %v", moeda, p)
+		}
+	}
+}
+
 func TestFalhaOuRecusaSemNota(t *testing.T) {
 	for _, p := range []*provedorTeste{
 		{err: &ia.ErroIA{Tipo: "provedor", Mensagem: "indisponível"}}, {resposta: `{"aderencia":"A"}`},

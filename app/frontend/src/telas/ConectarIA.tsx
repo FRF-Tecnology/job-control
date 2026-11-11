@@ -15,24 +15,25 @@ const naoPronta = (c?: CLI) => !!c && c.instalada && c.pronta === false;
 const AVISO_PADRAO = 'O app não consegue usar esta instalação. Veja como instalar a versão indicada.';
 // O aviso do back vem em minúscula (cabe no meio de uma frase); na tela ele é frase própria.
 const avisoDe = (c: CLI) => { const t = c.aviso?.trim() || AVISO_PADRAO; return t[0].toUpperCase() + t.slice(1); };
-type EstadoIA = {
+export type EstadoIA = {
   configurada: boolean; provedor?: string; modelo?: string; url?: string;
   chaves: Record<string, string | null>; clis: CLI[]; gratis: { disponivel: boolean };
   uso: { chamadas: number; falhas: number; custoEstimadoUSD: number };
 };
 
-const NOMES: Record<string, string> = {
+export const NOMES: Record<string, string> = {
   'claude-cli': 'Claude (sua assinatura)', 'codex-cli': 'ChatGPT (sua assinatura)', 'gemini-cli': 'Gemini (sua assinatura)',
-  anthropic: 'Claude (sua chave de API)', openai: 'OpenAI ou compatível (sua chave)', google: 'Gemini (sua chave de API)',
+  anthropic: 'Claude (sua chave de API)', openai: 'OpenAI ou compatível (sua chave)', google: 'Gemini (sua chave de API)', xai: 'Grok (sua chave da xAI)',
 };
 const CHAVES = [
   { provedor: 'anthropic', nome: 'Anthropic (Claude)', modelo: 'claude-haiku-5-5', ajuda: 'console.anthropic.com → API Keys' },
   { provedor: 'openai', nome: 'OpenAI ou compatível (ex.: OpenRouter)', modelo: '', ajuda: 'platform.openai.com → API keys, ou a chave do serviço compatível' },
   { provedor: 'google', nome: 'Google (Gemini)', modelo: '', ajuda: 'aistudio.google.com → Get API key' },
+  { provedor: 'xai', nome: 'xAI (Grok)', modelo: '', ajuda: 'console.x.ai → API keys' },
 ];
 // A chave fica presa ao endereço configurado na hora em que é gravada (jc-a2y.27); a tela mostra qual é (jc-a2y.40).
 // Endereços padrão iguais aos de internal/ia/provedores.go.
-const HOST_PADRAO: Record<string, string> = { anthropic: 'api.anthropic.com', openai: 'api.openai.com', google: 'generativelanguage.googleapis.com' };
+export const HOST_PADRAO: Record<string, string> = { anthropic: 'api.anthropic.com', openai: 'api.openai.com', google: 'generativelanguage.googleapis.com', xai: 'api.x.ai' };
 // Só o host (sem caminho, usuário ou senha), em minúsculas; "" se não for um endereço https válido.
 const hostDe = (endereco?: string) => {
   try { const u = new URL((endereco ?? '').trim()); return u.protocol === 'https:' ? u.host.toLowerCase().replace(/\.$/, '') : ''; } catch { return ''; }

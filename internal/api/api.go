@@ -434,6 +434,9 @@ func MesclarPerfil(atual, p Objeto) Objeto {
 	for k, v := range p {
 		novo[k] = v
 	}
+	if _, mudouFaixa := p["faixaSalarial"]; mudouFaixa {
+		delete(novo, "pretensaoUSD")
+	}
 	filtros := Objeto{}
 	for k, v := range dominio.ObjetoDe(atual["filtros"]) {
 		filtros[k] = v
@@ -645,6 +648,8 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 
 	case p == "/onboarding" && m == "POST":
 		return a.concluirOnboarding(ctx, autor, c)
+	case p == "/onboarding/sugerir" && m == "POST":
+		return a.sugerirPeloCurriculo(ctx, autor, c)
 
 	case m == "POST" && p == "/pedidos":
 		var ped Objeto

@@ -9,10 +9,15 @@ import { SeusDados } from './SeusDados';
 const CAMPOS: [string, [string, string, string, string?][]][] = [
   ['Contato', [['nome', 'Nome completo', 'text'], ['email', 'E-mail', 'email'], ['telefone', 'Telefone', 'text'], ['cidade', 'Cidade', 'text'], ['linkedin', 'LinkedIn', 'url'], ['github', 'GitHub', 'url']]],
   ['Profissional', [['cargo', 'Como você se apresenta', 'text'], ['experienciaAnos', 'Anos de experiência', 'number'], ['ingles', 'Inglês', 'text', 'Básico, Conversacional, Avançado…'], ['formacao', 'Formação', 'text'], ['inicio', 'Disponibilidade para começar', 'text']]],
-  ['Remuneração', [['pretensaoCLT', 'Pretensão CLT (R$/mês)', 'number'], ['pretensaoPJ', 'Pretensão PJ (R$/mês)', 'number'], ['pretensaoUSD', 'Pretensão internacional (US$/mês)', 'number', 'vagas contractor no exterior'], ['salarioAtual', 'Salário atual', 'text', 'deixe em branco se preferir']]],
+  ['Remuneração', [['pretensaoCLT', 'Pretensão CLT (R$/mês)', 'number'], ['pretensaoPJ', 'Pretensão PJ (R$/mês)', 'number'], ['salarioAtual', 'Salário atual', 'text', 'deixe em branco se preferir']]],
 ];
 
 const caminho = (nome: string) => `curriculos/${nome}`;
+
+function faixaDoPerfil(perfil: any) {
+  const legado = Number(perfil.pretensaoUSD);
+  return perfil.faixaSalarial ?? { moeda: 'USD', min: Number.isFinite(legado) && legado > 0 ? legado : undefined };
+}
 
 function perfilInicial(estado: any) {
   const perfil = structuredClone(estado.perfil ?? {});
@@ -34,6 +39,14 @@ export function TelaPerfil() {
   const [perfil, setPerfil] = useState<any>(() => perfilInicial(app.estado));
   const pdfs: any[] = app.estado.curriculos ?? [];
   const mudar = (fn: (p: any) => void) => setPerfil((p: any) => { const n = structuredClone(p); fn(n); return n; });
+  const faixa = faixaDoPerfil(perfil);
+  const mudarFaixa = (chave: string, valor: string) => mudar(p => {
+    const atual = faixaDoPerfil(p);
+    if (valor === '') delete atual[chave];
+    else atual[chave] = chave === 'moeda' ? valor : Number(valor);
+    p.faixaSalarial = atual;
+    delete p.pretensaoUSD;
+  });
 
   const campo = ([k, rotulo, tipo, dica]: [string, string, string, string?]) => (
     <label key={k} className="campo"><span>{rotulo}</span>
@@ -67,11 +80,26 @@ export function TelaPerfil() {
   return (<>
     <form className="formulario" onSubmit={async ev => {
       ev.preventDefault();
-      if (await app.agir(() => app.api('/api/v1/perfil', 'PUT', perfil), 'Perfil salvo')) app.limpar();
+      const atualizado = { ...perfil };
+      if (!faixa.min && !faixa.max) delete atualizado.faixaSalarial;
+      if (await app.agir(() => app.api('/api/v1/perfil', 'PUT', atualizado), 'Perfil salvo')) app.limpar();
     }}>
       <header className="cabecalho"><div><h1>Perfil e regras</h1><p>O Claude lê esta página antes de cada rodada. CPF, RG e senhas nunca ficam aqui.</p></div>
         <button className="botao" type="submit">Salvar perfil</button></header>
-      {CAMPOS.map(([grupo, campos]) => <fieldset key={grupo}><legend>{grupo}</legend><div className="duas">{campos.map(campo)}</div></fieldset>)}
+      {CAMPOS.map(([grupo, campos]) => <fieldset key={grupo}><legend>{grupo}</legend>
+        {grupo === 'Remuneração' && <>
+          <label className="campo"><span>Faixa salarial mensal desejada</span>
+            <select aria-label="Moeda da faixa salarial" value={faixa.moeda} onChange={ev => mudarFaixa('moeda', ev.target.value)}>
+              <option value="USD">USD · Dólar americano</option><option value="BRL">BRL · Real</option><option value="EUR">EUR · Euro</option>
+            </select>
+          </label>
+          <div className="duas">
+            <label className="campo"><span>Mínimo mensal</span><input type="number" min="0.01" step="0.01" inputMode="decimal" value={faixa.min ?? ''} onChange={ev => mudarFaixa('min', ev.target.value)} /></label>
+            <label className="campo"><span>Máximo mensal</span><input type="number" min={Number(faixa.min) || 0.01} step="0.01" inputMode="decimal" value={faixa.max ?? ''} onChange={ev => mudarFaixa('max', ev.target.value)} /></label>
+          </div>
+        </>}
+        <div className="duas">{campos.map(campo)}</div>
+      </fieldset>)}
       <fieldset><legend>Currículos</legend>
         {pdfs.length ? (
           <>

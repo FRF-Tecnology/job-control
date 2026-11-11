@@ -54,7 +54,7 @@ func (a *API) Handler() http.Handler {
 			p = Prefixo + p[len("/api"):]
 		}
 		m := r.Method
-		onboarding := m == http.MethodPost && p == Prefixo+"/onboarding"
+		onboarding := m == http.MethodPost && (p == Prefixo+"/onboarding" || p == Prefixo+"/onboarding/sugerir")
 		if m != http.MethodGet && m != http.MethodHead && m != http.MethodOptions {
 			if s := r.Header.Get("Sec-Fetch-Site"); s != "" && s != "same-origin" && s != "none" {
 				enviar(w, Resposta{Status: 403, Corpo: Objeto{"erro": "gravação recusada: pedido veio de outro site"}})

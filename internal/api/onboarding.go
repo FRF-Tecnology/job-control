@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -30,8 +31,45 @@ func erroMultipart(err error) error {
 // não são usados no disco. Só os dois campos conhecidos são aceitos.
 func lerOnboarding(w http.ResponseWriter, r *http.Request) (Objeto, error) {
 	tipo, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err == nil && tipo == "application/json" {
+		// A janela lê o arquivo selecionado e envia seus bytes em base64. O mesmo
+		// documento serve à extração e à gravação, inclusive após mudar de etapa.
+		maxCodificado := base64.StdEncoding.EncodedLen(int(curriculos.MaxBytes))
+		limite := int64(maxCodificado + limitePerfilOnboarding + 1024)
+		if r.ContentLength > limite {
+			return nil, falha(413, "o arquivo ou o formulário excede o limite")
+		}
+		var entrada struct {
+			Perfil    json.RawMessage `json:"perfil"`
+			Curriculo string          `json:"curriculoBase64"`
+		}
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limite))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&entrada); err != nil {
+			return nil, erroMultipart(err)
+		}
+		if err := dec.Decode(new(any)); err != io.EOF {
+			return nil, erroMultipart(err)
+		}
+		if len(entrada.Curriculo) > maxCodificado || len(entrada.Perfil) > limitePerfilOnboarding {
+			return nil, falha(413, "o arquivo ou o perfil excede o limite")
+		}
+		pdf, err := base64.StdEncoding.DecodeString(entrada.Curriculo)
+		if err != nil {
+			return nil, falha(400, "não foi possível transferir o PDF. Selecione o arquivo novamente")
+		}
+		dados := Objeto{"curriculo": pdf}
+		if entrada.Perfil != nil {
+			var perfil Objeto
+			if json.Unmarshal(entrada.Perfil, &perfil) != nil || perfil == nil {
+				return nil, falha(400, "o perfil de busca deve ser um objeto JSON")
+			}
+			dados["perfil"] = perfil
+		}
+		return dados, nil
+	}
 	if err != nil || tipo != "multipart/form-data" {
-		return nil, falha(415, "envie perfil e currículo por multipart/form-data")
+		return nil, falha(415, "envie o currículo como JSON ou multipart/form-data")
 	}
 	const limite = curriculos.MaxBytes + limitePerfilOnboarding + (64 << 10)
 	if r.ContentLength > limite {
@@ -106,7 +144,7 @@ func listaOnboarding(x any, obrigatoria bool) bool {
 }
 
 func validarOnboarding(p Objeto) error {
-	if err := soCampos(p, "cargo", "stackPrincipal", "stackSecundaria", "filtros", "foco", "ingles", "pretensaoUSD"); err != nil {
+	if err := soCampos(p, "cargo", "stackPrincipal", "stackSecundaria", "filtros", "foco", "ingles", "pretensaoUSD", "faixaSalarial"); err != nil {
 		return err
 	}
 	if err := exigirPerfilOk(p); err != nil {
@@ -137,17 +175,34 @@ func validarOnboarding(p Objeto) error {
 	return nil
 }
 
+func pdfDoOnboarding(dados Objeto) ([]byte, error) {
+	pdf, _ := dados["curriculo"].([]byte)
+	if int64(len(pdf)) > curriculos.MaxBytes {
+		return nil, falha(413, "o currículo excede 20 MB")
+	}
+	if len(pdf) == 0 {
+		return nil, falha(400, "o PDF não chegou ao app. Volte à etapa Currículo e selecione o arquivo novamente")
+	}
+	if !bytes.HasPrefix(pdf, []byte("%PDF-")) {
+		return nil, falha(400, "o arquivo recebido não tem o cabeçalho de um PDF")
+	}
+	if !bytes.Contains(pdf[max(0, len(pdf)-1024):], []byte("%%EOF")) {
+		return nil, falha(400, "o PDF chegou incompleto. Selecione o arquivo novamente")
+	}
+	return pdf, nil
+}
+
 func (a *API) concluirOnboarding(ctx context.Context, autor string, dados Objeto) (Resposta, error) {
 	if autor != "eu" {
 		return Resposta{}, falha(403, msgForaDoAssistente)
 	}
-	perfil, okPerfil := dados["perfil"].(map[string]any)
-	pdf, okPDF := dados["curriculo"].([]byte)
-	if int64(len(pdf)) > curriculos.MaxBytes {
-		return Resposta{}, falha(413, "o currículo excede 20 MB")
+	pdf, err := pdfDoOnboarding(dados)
+	if err != nil {
+		return Resposta{}, err
 	}
-	if !okPerfil || !okPDF || !bytes.HasPrefix(pdf, []byte("%PDF-")) || !bytes.Contains(pdf[max(0, len(pdf)-1024):], []byte("%%EOF")) {
-		return Resposta{}, falha(400, "envie o perfil e um arquivo PDF válido")
+	perfil, okPerfil := dados["perfil"].(map[string]any)
+	if !okPerfil {
+		return Resposta{}, falha(400, "o perfil de busca não chegou ao app. Revise as preferências e tente novamente")
 	}
 	if err := validarOnboarding(perfil); err != nil {
 		return Resposta{}, err
@@ -155,7 +210,7 @@ func (a *API) concluirOnboarding(ctx context.Context, autor string, dados Objeto
 	if _, err := a.arm.BackupDiario(ctx, a.hoje()); err != nil {
 		return Resposta{}, err
 	}
-	err := a.arm.ConcluirOnboarding(ctx, pdf, func(atual Objeto, nome string) (Objeto, error) {
+	err = a.arm.ConcluirOnboarding(ctx, pdf, func(atual Objeto, nome string) (Objeto, error) {
 		novo := MesclarPerfil(atual, perfil)
 		cvs := dominio.ObjetoDe(novo["curriculos"])
 		if cvs == nil {

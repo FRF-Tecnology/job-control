@@ -23,6 +23,10 @@ func assinaturaDeBusca(perfil Objeto) string {
 	for _, campo := range []string{"cargo", "foco", "filtros", "contratos", "stackPrincipal", "stackSecundaria", "ingles", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "experienciaAnos", "formacao", "cidade"} {
 		dados[campo] = perfil[campo]
 	}
+	// Mantenha a assinatura de quem ainda usa o perfil anterior à faixa mensal.
+	if faixa := perfil["faixaSalarial"]; faixa != nil {
+		dados["faixaSalarial"] = faixa
+	}
 	b, _ := json.Marshal(dados)
 	return fmt.Sprintf("%x", sha256.Sum256(b))
 }

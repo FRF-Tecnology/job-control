@@ -24,7 +24,7 @@ import (
 func avaliar(args []string) error {
 	fs := flag.NewFlagSet("avaliar", flag.ExitOnError)
 	dir := fs.String("dir", "avaliacao", "pasta do conjunto de avaliação")
-	provedor := fs.String("provedor", "claude-cli", "claude-cli | codex-cli | gemini-cli | anthropic | openai | google")
+	provedor := fs.String("provedor", "claude-cli", "claude-cli | codex-cli | gemini-cli | anthropic | openai | google | xai")
 	modelo := fs.String("modelo", "", "modelo (padrão do provedor quando vazio)")
 	limite := fs.Int("limite", 0, "no máximo N casos de cada função (0 = todos)")
 	saida := fs.String("saida", "respostas-avaliacao.json", "arquivo com as respostas brutas")

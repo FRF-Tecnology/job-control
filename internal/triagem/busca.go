@@ -176,25 +176,11 @@ func filtros(perfil, vaga dominio.Objeto) Resultado {
 		return pular(motivo, "Outro")
 	}
 
-	piso := numeroPositivo(perfil["pretensaoUSD"])
-	excluirAbaixo := pisoDeExclusao(regras, piso)
-	minimo, maximo := numeroPositivo(vaga["salarioUSDMin"]), numeroPositivo(vaga["salarioUSDMax"])
-	if fixo := numeroPositivo(vaga["salarioUSDMensal"]); fixo > 0 {
-		minimo, maximo = fixo, fixo
+	salario := compararSalario(perfil, vaga, regras)
+	if salario.Estado == "pulada" {
+		return salario
 	}
-	moeda := strings.ToUpper(texto(vaga["moeda"]))
-	if (piso > 0 || excluirAbaixo > 0) && (moeda == "USD" || moeda == "" && (minimo > 0 || maximo > 0 || mercado == "internacional")) {
-		switch {
-		case maximo > 0 && minimo > maximo:
-			conferir = append(conferir, "Faixa salarial mensal em USD inconsistente na fonte.")
-		case maximo > 0 && maximo < excluirAbaixo:
-			return pular(fmt.Sprintf("Teto de US$ %.2f/mês abaixo do piso explícito de exclusão de US$ %.2f/mês.", maximo, excluirAbaixo), "Outro")
-		case maximo > 0 && maximo < piso:
-			conferir = append(conferir, fmt.Sprintf("Teto de US$ %.2f/mês abaixo da pretensão de US$ %.2f/mês.", maximo, piso))
-		case minimo < max(piso, excluirAbaixo):
-			conferir = append(conferir, "Confirmar se a oferta em USD por mês atende à pretensão.")
-		}
-	}
+	conferir = append(conferir, salario.Conferir...)
 	if texto(perfil["cargo"]) == "" {
 		conferir = append(conferir, "Cargo desejado a confirmar.")
 	}
@@ -210,6 +196,61 @@ func filtros(perfil, vaga dominio.Objeto) Resultado {
 	return Resultado{Conferir: conferir}
 }
 
+func ofertaMensal(vaga dominio.Objeto) (moeda string, minimo, maximo float64) {
+	moeda = strings.ToUpper(texto(vaga["moeda"]))
+	if moeda == "USD" || moeda == "" {
+		minimo, maximo = numeroPositivo(vaga["salarioUSDMin"]), numeroPositivo(vaga["salarioUSDMax"])
+		if fixo := numeroPositivo(vaga["salarioUSDMensal"]); fixo > 0 {
+			return "USD", fixo, fixo
+		}
+		if minimo > 0 || maximo > 0 {
+			return "USD", minimo, maximo
+		}
+	}
+	minimo, maximo = numeroPositivo(vaga["salarioMin"]), numeroPositivo(vaga["salarioMax"])
+	switch dominio.Normalizar(vaga["periodoSalario"]) {
+	case "monthly", "mensal", "mes":
+		return moeda, minimo, maximo
+	case "annual", "yearly", "anual", "ano":
+		return moeda, minimo / 12, maximo / 12
+	}
+	return moeda, 0, 0
+}
+
+func compararSalario(perfil, vaga dominio.Objeto, regras []string) Resultado {
+	faixa := dominio.ObjetoDe(perfil["faixaSalarial"])
+	moedaPretendida := texto(faixa["moeda"])
+	piso := numeroPositivo(faixa["min"])
+	if moedaPretendida == "" {
+		if piso = numeroPositivo(perfil["pretensaoUSD"]); piso > 0 {
+			moedaPretendida = "USD"
+		}
+	}
+	moeda, minimo, maximo := ofertaMensal(vaga)
+	pisoNaMoeda := piso
+	if moeda != moedaPretendida {
+		pisoNaMoeda = 0
+	}
+	excluirAbaixo := pisoDeExclusao(regras, moeda, pisoNaMoeda)
+	var aviso string
+	switch {
+	case moeda != "" && maximo > 0 && minimo > maximo:
+		aviso = "Faixa salarial mensal em " + moeda + " inconsistente na fonte."
+	case maximo > 0 && maximo < excluirAbaixo:
+		return pular(fmt.Sprintf("Teto de %s %.2f/mês abaixo do piso explícito de exclusão de %s %.2f/mês.", moeda, maximo, moeda, excluirAbaixo), "Outro")
+	case maximo > 0 && maximo < pisoNaMoeda:
+		aviso = fmt.Sprintf("Teto de %s %.2f/mês abaixo da pretensão de %s %.2f/mês.", moeda, maximo, moeda, pisoNaMoeda)
+	case moedaPretendida != "" && (moeda != moedaPretendida || minimo == 0 && maximo == 0):
+		aviso = "Confirmar se a oferta por mês atende à faixa em " + moedaPretendida + "."
+	case minimo < max(pisoNaMoeda, excluirAbaixo) && maximo == 0:
+		aviso = "Confirmar o teto da oferta mensal em " + moeda + "."
+	}
+	if aviso != "" {
+		return Resultado{Conferir: []string{aviso}}
+	}
+	return Resultado{}
+}
+
 // Somente dados profissionais. Não entram contato, respostas pessoais, links, PDFs nem seus caminhos.
 func entrada(perfil, vaga dominio.Objeto, conferir []string) dominio.Objeto {
 	p, v := dominio.Objeto{}, dominio.Objeto{}
@@ -222,6 +263,16 @@ func entrada(perfil, vaga dominio.Objeto, conferir []string) dominio.Objeto {
 		if n, ok := numero(perfil[campo]); ok {
 			p[campo] = n
 		}
+	}
+	if faixa := dominio.ObjetoDe(perfil["faixaSalarial"]); faixa != nil {
+		resumo := dominio.Objeto{"moeda": texto(faixa["moeda"])}
+		for _, limite := range []string{"min", "max"} {
+			if n := numeroPositivo(faixa[limite]); n > 0 {
+				resumo[limite] = n
+			}
+		}
+		p["faixaSalarial"] = resumo
+		delete(p, "pretensaoUSD")
 	}
 	for _, campo := range []string{"stackPrincipal", "stackSecundaria", "contratos"} {
 		if l := lista(perfil[campo]); len(l) > 0 {
@@ -256,9 +307,11 @@ func entrada(perfil, vaga dominio.Objeto, conferir []string) dominio.Objeto {
 			}
 		}
 	}
-	for _, campo := range []string{"salarioUSDMensal", "salarioUSDMin", "salarioUSDMax"} {
-		if n := numeroPositivo(vaga[campo]); n > 0 {
-			v[campo] = n
+	if moeda := texto(vaga["moeda"]); moeda == "" || strings.EqualFold(moeda, "USD") {
+		for _, campo := range []string{"salarioUSDMensal", "salarioUSDMin", "salarioUSDMax"} {
+			if n := numeroPositivo(vaga[campo]); n > 0 {
+				v[campo] = n
+			}
 		}
 	}
 	if len(conferir) > 0 {

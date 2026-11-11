@@ -30,12 +30,12 @@ const chaveConfig = "ia"
 
 // Provedores que a pessoa pode escolher e o modelo padrão de cada um ("" = ela escolhe / padrão da CLI).
 var provedoresIA = map[string]string{
-	"anthropic": "claude-haiku-5-5", "openai": "", "google": "",
+	"anthropic": "claude-haiku-5-5", "openai": "", "google": "", "xai": "",
 	"claude-cli": "haiku", "codex-cli": "", "gemini-cli": "",
 }
 
 // Provedores que usam chave de API (as CLIs usam o login da pessoa).
-var comChave = []string{"anthropic", "openai", "google"}
+var comChave = []string{"anthropic", "openai", "google", "xai"}
 
 var (
 	reIAChave  = regexp.MustCompile(`^/ia/chaves/([a-z-]+)$`)
@@ -211,14 +211,10 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		if err != nil {
 			return Resposta{}, true, err
 		}
-		e, err := a.arm.Carregar(ctx)
-		if err != nil {
-			return Resposta{}, true, err
-		}
 		inicio := time.Now()
 		saida, err := x.Executar(ctx, "triarVaga", Objeto{
 			"vaga":   Objeto{"id": "teste", "empresa": "Empresa Exemplo", "titulo": "Vaga de teste", "notas": "Vaga fictícia para testar a conexão."},
-			"perfil": perfilOuVazio(e.Perfil),
+			"perfil": Objeto{"cargo": "Desenvolvimento de software"},
 		})
 		if err != nil {
 			r, err := respostaIA(err)

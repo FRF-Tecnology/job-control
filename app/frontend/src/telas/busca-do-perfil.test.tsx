@@ -36,7 +36,7 @@ describe('Busca pelo perfil', () => {
         case '/api/v1/ia':
         case '/api/v1/ia/config': return json({ configurada: true, provedor: 'openai', chaves: { openai: '…1234' }, clis: [] });
         case '/api/v1/onboarding':
-          expect(init.body).toBeInstanceOf(FormData);
+          expect(JSON.parse(init.body as string).curriculoBase64).toBe(btoa('%PDF-1.4\n%%EOF'));
           estado.onboardingConcluido = true; estado.versao = '2';
           return json({ ok: true, onboardingConcluido: true });
         case '/api/v1/busca':
@@ -50,10 +50,12 @@ describe('Busca pelo perfil', () => {
     });
     vi.stubGlobal('fetch', fetch);
     render(<StrictMode><Applyer /></StrictMode>);
-    await screen.findByRole('heading', { name: /Comece pelo/ });
+    fireEvent.click(await screen.findByRole('button', { name: 'Usar conexão atual' }));
+    await screen.findByRole('heading', { name: 'Anexe seu currículo.' });
     fireEvent.change(screen.getByLabelText('Currículo em PDF'), { target: { files: [new File(['%PDF-1.4\n%%EOF'], 'Teste.pdf')] } });
     await screen.findByRole('heading', { name: 'Teste.pdf' });
-    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Preencher manualmente' }));
+    for (let i = 0; i < 2; i++) fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Salvar e buscar vagas/ }));
     await screen.findByRole('button', { name: /Buscando e avaliando/ });
     expect(location.hash).toBe('#/triagem');

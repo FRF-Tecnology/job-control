@@ -9,21 +9,21 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-var pisoUSD = regexp.MustCompile(`^(?:(?:salario|pagamento|oferta|remuneracao)\s+)?(?:abaixo de|menor que|menos de|inferior a)\s+(?:us\$|usd)\s*([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{1,2})?)\s*(?:/\s*mes|por mes|mensais|mensal)$`)
+var pisoMensal = regexp.MustCompile(`^(?:(?:salario|pagamento|oferta|remuneracao)\s+)?(?:abaixo de|menor que|menos de|inferior a)\s+(us\$|usd|r\$|brl|€|eur)\s*([0-9]+(?:\.[0-9]{3})*(?:,[0-9]{1,2})?)\s*(?:/\s*mes|por mes|mensais|mensal)$`)
+var moedasPiso = map[string]string{"us$": "USD", "usd": "USD", "r$": "BRL", "brl": "BRL", "€": "EUR", "eur": "EUR"}
+var minhaPretensao = regexp.MustCompile(`^(?:(?:salario|pagamento|oferta|remuneracao) )?abaixo da (?:minha )?pretensao(?: em (usd|brl|eur))?$`)
 
-func pisoDeExclusao(regras []string, pretensao float64) float64 {
+func pisoDeExclusao(regras []string, moeda string, pretensao float64) float64 {
 	var maior float64
 	for _, regra := range regras {
 		s := dominio.Normalizar(inicioDaRegra.ReplaceAllString(strings.ToLower(strings.TrimSpace(regra)), ""))
-		switch s {
-		case "salario abaixo da pretensao", "salario abaixo da minha pretensao", "salario abaixo da pretensao em usd", "abaixo da minha pretensao em usd":
+		if m := minhaPretensao.FindStringSubmatch(s); m != nil && (m[1] == "" || moedasPiso[m[1]] == moeda) {
 			maior = max(maior, pretensao)
-		default:
-			if m := pisoUSD.FindStringSubmatch(s); m != nil {
-				n, err := strconv.ParseFloat(strings.ReplaceAll(strings.ReplaceAll(m[1], ".", ""), ",", "."), 64)
-				if err == nil {
-					maior = max(maior, n)
-				}
+		}
+		if m := pisoMensal.FindStringSubmatch(s); m != nil && moedasPiso[m[1]] == moeda {
+			n, err := strconv.ParseFloat(strings.ReplaceAll(strings.ReplaceAll(m[2], ".", ""), ",", "."), 64)
+			if err == nil {
+				maior = max(maior, n)
 			}
 		}
 	}

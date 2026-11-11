@@ -114,6 +114,40 @@ func TestOnboardingHTTPConcorrenciaEReabertura(t *testing.T) {
 	}
 }
 
+func TestOnboardingFaixaSalarialEPersistencia(t *testing.T) {
+	pasta := t.TempDir()
+	api := apiPrimeiroAcesso(t, pasta)
+	pdf := []byte("%PDF-1.4\n%%EOF")
+	for _, faixa := range []string{`{"min":0,"moeda":"USD"}`, `{"min":-1,"moeda":"BRL"}`, `{"max":6000,"moeda":"CAD"}`, `{"min":6000,"max":4000,"moeda":"EUR"}`, `{"moeda":"BRL"}`, `{"min":"4000","moeda":"USD"}`, `{"min":1,"moeda":"EUR","extra":true}`} {
+		w := httptest.NewRecorder()
+		p := strings.Replace(perfilInicialJSON, `"pretensaoUSD":3500`, `"faixaSalarial":`+faixa, 1)
+		api.Handler().ServeHTTP(w, pedidoOnboarding(t, p, "teste.pdf", pdf))
+		if w.Code != 400 {
+			t.Fatalf("%s: %d", faixa, w.Code)
+		}
+	}
+	p := strings.Replace(perfilInicialJSON, `"pretensaoUSD":3500`, `"faixaSalarial":{"min":4000,"max":6000,"moeda":"EUR"}`, 1)
+	w := httptest.NewRecorder()
+	api.Handler().ServeHTTP(w, pedidoOnboarding(t, p, "teste.pdf", pdf))
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	salvo := estadoInicial(t, apiPrimeiroAcesso(t, pasta))["perfil"].(Objeto)
+	faixa := salvo["faixaSalarial"].(Objeto)
+	if faixa["moeda"] != "EUR" || faixa["min"] != 4000.0 || faixa["max"] != 6000.0 || salvo["pretensaoUSD"] != nil {
+		t.Fatal(faixa)
+	}
+	if p := MesclarPerfil(Objeto{"pretensaoUSD": 3500}, Objeto{"faixaSalarial": faixa}); p["pretensaoUSD"] != nil {
+		t.Fatal("perfil com faixa conservou a pretensão antiga")
+	}
+	for _, f := range []Objeto{{"min": 4000, "max": 6000, "moeda": "BRL"}, {"min": 4000, "max": 5000, "moeda": "EUR"}, {"min": 4500, "max": 6000, "moeda": "EUR"}} {
+		alterado := MesclarPerfil(salvo, Objeto{"faixaSalarial": f})
+		if assinaturaDeBusca(salvo) == assinaturaDeBusca(alterado) {
+			t.Fatal("alterar a faixa salarial conservou a assinatura da triagem", f)
+		}
+	}
+}
+
 func TestOnboardingRecusaCamposInvalidosSemGravar(t *testing.T) {
 	api := apiPrimeiroAcesso(t, t.TempDir())
 	pdf := []byte("%PDF-1.4\n%%EOF")
@@ -147,8 +181,8 @@ func TestOnboardingRecusaCamposInvalidosSemGravar(t *testing.T) {
 	}{
 		{"sem header", func(r *http.Request) { r.Header.Del("X-Applyer-Onboarding") }, 403},
 		{"cross site", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "cross-site") }, 403},
-		{"json", func(r *http.Request) {
-			r.Header.Set("Content-Type", "application/json")
+		{"tipo inválido", func(r *http.Request) {
+			r.Header.Set("Content-Type", "text/plain")
 			r.Body = io.NopCloser(strings.NewReader("{}"))
 		}, 415},
 	} {
