@@ -29,6 +29,9 @@ func (s *Servidor) licenca(w http.ResponseWriter, r *http.Request, usuarioID str
 	}
 	if u.Confirmado() && u.TesteInicio == nil && !u.Cortesia {
 		if err := s.iniciarTeste(ctx, usuarioID, hash, agora); err != nil {
+			if semUsuario(w, err) {
+				return
+			}
 			s.interno(w, r, "teste", err)
 			return
 		}

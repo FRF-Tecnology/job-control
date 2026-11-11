@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -188,5 +189,31 @@ func TestExcluirLimitaPorIP(t *testing.T) {
 	}
 	if ultimo.Code != http.StatusTooManyRequests {
 		t.Fatalf("status = %d", ultimo.Code)
+	}
+}
+
+func TestExcluirRetentaDepoisDeFalhaNoBanco(t *testing.T) {
+	a := novoAmb(t)
+	id, cliente, acesso := a.assinante(t, emailExcluir)
+	fim := a.rel.agora().Add(30 * 24 * time.Hour)
+	a.st.DefinirAssinatura(pagamento.EstadoStripe{ID: "sub_1", Status: "active", Cliente: cliente, PeriodoFim: &fim,
+		Metadata: map[string]string{"usuario_id": id}})
+	confere(t, a.webhook(t, "evt_1", "customer.subscription.created", map[string]any{"id": "sub_1", "object": "subscription"}), http.StatusOK, "")
+
+	falhas := 1
+	a.s.antesDeApagar = func() error {
+		if falhas > 0 {
+			falhas--
+			return errors.New("banco caiu")
+		}
+		return nil
+	}
+	confere(t, a.excluir(map[string]string{"email": emailExcluir}, acesso), http.StatusInternalServerError, msgInterno)
+	if a.contarOnde(t, "usuarios", "id = $1::uuid", id) != 1 {
+		t.Fatal("a conta sumiu apesar da falha")
+	}
+	confere(t, a.excluir(map[string]string{"email": emailExcluir}, acesso), http.StatusNoContent, "")
+	if c := a.st.Canceladas(); len(c) != 1 {
+		t.Fatalf("Cancelar chamado %d vezes, quer 1: %v", len(c), c)
 	}
 }

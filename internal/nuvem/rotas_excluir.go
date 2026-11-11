@@ -63,6 +63,17 @@ func (s *Servidor) excluirConta(w http.ResponseWriter, r *http.Request, usuarioI
 			erro(w, http.StatusBadGateway, msgCancelar)
 			return
 		}
+		// Já cancelada no Stripe: marca aqui antes de apagar, para uma nova tentativa não chamar o Stripe de novo.
+		if _, err := s.dep.Banco.Exec(ctx, `update assinaturas set estado = 'canceled' where usuario_id = $1::uuid`, u.ID); err != nil {
+			s.interno(w, r, "marcar cancelada", err)
+			return
+		}
+	}
+	if s.antesDeApagar != nil {
+		if err := s.antesDeApagar(); err != nil {
+			s.interno(w, r, "excluir", err)
+			return
+		}
 	}
 	if err := s.apagarConta(ctx, u.ID, u.Email); err != nil {
 		s.interno(w, r, "excluir", err)

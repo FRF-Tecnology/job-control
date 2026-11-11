@@ -4,4 +4,5 @@
 alter table notas drop constraint notas_usuario_id_fkey;
 
 -- +goose Down
-alter table notas add constraint notas_usuario_id_fkey foreign key (usuario_id) references usuarios (id);
+-- not valid: já pode haver notas de contas apagadas (órfãs); a chave só vale para as linhas novas.
+alter table notas add constraint notas_usuario_id_fkey foreign key (usuario_id) references usuarios (id) not valid;

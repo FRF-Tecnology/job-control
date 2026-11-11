@@ -91,6 +91,9 @@ func (s *Servidor) iniciarTeste(ctx context.Context, usuarioID, hash string, ago
 	defer tx.Rollback(ctx)
 	var inicio *time.Time
 	if err := tx.QueryRow(ctx, `select teste_inicio from usuarios where id = $1::uuid for update`, usuarioID).Scan(&inicio); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return contas.ErrNaoEncontrado
+		}
 		return err
 	}
 	if inicio != nil {

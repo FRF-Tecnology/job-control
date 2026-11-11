@@ -2,6 +2,8 @@ package pagamento
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -122,5 +124,26 @@ func TestEventoConfereAssinatura(t *testing.T) {
 	ruim := stripe.GenerateTestSignedPayload(&stripe.UnsignedPayload{Payload: corpo, Secret: "whsec_outro", Timestamp: time.Now()})
 	if _, err := r.Evento(corpo, ruim.Header); err != ErrAssinaturaWebhook {
 		t.Fatalf("segredo errado: %v", err)
+	}
+}
+
+func TestJaCancelada(t *testing.T) {
+	casos := []struct {
+		nome string
+		err  error
+		quer bool
+	}{
+		{"nil", nil, false},
+		{"resource_missing", &stripe.Error{Code: stripe.ErrorCodeResourceMissing, HTTPStatusCode: 404}, true},
+		{"404 sem código", &stripe.Error{HTTPStatusCode: 404}, true},
+		{"embrulhado", fmt.Errorf("x: %w", &stripe.Error{Code: stripe.ErrorCodeResourceMissing}), true},
+		{"500", &stripe.Error{HTTPStatusCode: 500}, false},
+		{"401", &stripe.Error{HTTPStatusCode: 401, Code: stripe.ErrorCodeAPIKeyExpired}, false},
+		{"rede", errors.New("connection reset"), false},
+	}
+	for _, c := range casos {
+		if got := jaCancelada(c.err); got != c.quer {
+			t.Errorf("%s: jaCancelada = %v, quer %v", c.nome, got, c.quer)
+		}
 	}
 }

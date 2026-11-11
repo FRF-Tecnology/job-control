@@ -60,6 +60,8 @@ type Servidor struct {
 	semConta    *limites.Seguidas
 	resumoFalso string         // conferido quando o email não tem senha: mesmo custo de quem tem
 	envios      sync.WaitGroup // emails em andamento (os testes esperam)
+	// antesDeApagar: gancho só dos testes, para forçar falha da transação de exclusão.
+	antesDeApagar func() error
 }
 
 // Novo monta o servidor com as rotas. As rotas de conta só existem com banco; a chave vem de LerConfig,

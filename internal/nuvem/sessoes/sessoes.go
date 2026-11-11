@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -101,6 +102,10 @@ func (r *Repo) inserir(ctx context.Context, tx pgx.Tx, usuarioID, familia, dispo
 		`insert into sessoes (usuario_id, familia, hash_renovacao, dispositivo_hash, criada_em, usada_em)
 		 values ($1::uuid, $2::uuid, $3, $4, $5, $5)`,
 		usuarioID, familia, hashToken(ren), dispositivo, agora); err != nil {
+		var pe *pgconn.PgError
+		if errors.As(err, &pe) && pe.Code == "23503" { // a conta foi apagada agora há pouco
+			return Par{}, ErrSessao
+		}
 		return Par{}, err
 	}
 	acesso, ate, err := r.assinar(usuarioID, agora)

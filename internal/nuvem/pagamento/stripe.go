@@ -113,9 +113,19 @@ func (r *Real) Portal(ctx context.Context, cliente string) (string, error) {
 	return s.URL, nil
 }
 
+// Cancelar é idempotente: assinatura que já não existe ou já foi cancelada conta como sucesso.
 func (r *Real) Cancelar(ctx context.Context, assinatura string) error {
 	_, err := r.api.V1Subscriptions.Cancel(ctx, assinatura, nil)
+	if jaCancelada(err) {
+		return nil
+	}
 	return err
+}
+
+// jaCancelada: o Stripe responde 404 resource_missing ao cancelar uma assinatura que já terminou.
+func jaCancelada(err error) bool {
+	var se *stripe.Error
+	return errors.As(err, &se) && (se.Code == stripe.ErrorCodeResourceMissing || se.HTTPStatusCode == 404)
 }
 
 func (r *Real) Evento(corpo []byte, cabecalho string) (stripe.Event, error) {

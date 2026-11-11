@@ -198,6 +198,10 @@ func (s *Servidor) mandarCodigo(ctx context.Context, email string, t codigos.Tip
 func (s *Servidor) abrirSessao(w http.ResponseWriter, r *http.Request, usuarioID, dispositivo string) {
 	p, err := s.sessoes.Abrir(r.Context(), usuarioID, dispositivo)
 	if err != nil {
+		if errors.Is(err, sessoes.ErrSessao) {
+			erro(w, http.StatusUnauthorized, msgSessao)
+			return
+		}
 		s.interno(w, r, "abrir sessão", err)
 		return
 	}
