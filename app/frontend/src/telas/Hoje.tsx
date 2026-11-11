@@ -65,7 +65,7 @@ export function CaixaPedido({ sugestoes, iaConectada, aoCriar }: { sugestoes: st
   );
 }
 
-// Buscar vagas não está no app: quem busca é o assistente do Claude Code (/pedidos). Com a IA conectada no app, o
+// A caixa de pedidos continua com as ações do assistente. A busca nativa abre diretamente a Triagem. Com a IA conectada no app, o
 // pedido iria para ela e voltaria "O app não faz isso."; no lugar, a sugestão é o que o app faz: adicionar pelo link.
 export function sugestoesPara(foco: string, nAplicar: number, nDescoberta: number, iaNoApp = false) {
   const buscar = iaNoApp ? SUGESTAO_ADICIONAR : ({ internacional: 'Buscar vagas USD LATAM', nacional: 'Buscar vagas CLT/PJ remotas', ambos: 'Buscar vagas novas' } as Record<string, string>)[foco];
@@ -181,7 +181,11 @@ export function TelaHoje() {
   const emProcesso = vagas.filter((v: any) => v.etapa === 'em-processo' || v.etapa === 'oferta');
   const recentes = [...eventos].sort((a: any, b: any) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id)).slice(0, 8);
   const porId = new Map(vagas.map((v: any) => [v.id, v]));
-  const passos: any[] = app.estado.primeirosPassos ?? [];
+  const passos: any[] = (app.estado.primeirosPassos ?? []).map((p: any) => {
+    if (p.id === 'rodada') return { ...p, titulo: 'Encontrar a primeira vaga', texto: 'Use os critérios do perfil para buscar vagas e abrir os resultados na Triagem.', rota: '#/triagem?buscar=1', botao: 'Buscar vagas' };
+    if (p.id === 'perfil' && app.estado.onboardingConcluido && perfil?.cargo) return { ...p, titulo: 'Nome para as candidaturas', texto: 'Seu perfil de busca está salvo. Complete o nome na seção Contato para usá-lo nos pacotes.', botao: 'Editar contato' };
+    return p;
+  });
   const faltam = passos.filter(p => !p.feito).length;
   // Ficam à vista os que pedem algo (aberto, proposta, recusado de hoje) e os feitos hoje.
   const pedidos: Pedido[] = (app.estado.pedidos ?? []).filter((p: any) => p.status === 'aberto' || p.status === 'proposta'
@@ -200,6 +204,7 @@ export function TelaHoje() {
     <div>
       <section className="ola" aria-labelledby="ola-titulo">
         <div className="ola-topo">
+          <a className="botao" href="#/triagem?buscar=1">Buscar vagas com meu perfil</a>
           <div className="seletor" role="group" aria-label="Foco da busca">
             {FOCOS.map(([id, rotulo]) => <button key={id} type="button" aria-pressed={String(foco === id) as 'true' | 'false'} onClick={() => app.mudarFoco(id)}>{rotulo}</button>)}
           </div>

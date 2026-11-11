@@ -54,24 +54,37 @@ func (a *API) Handler() http.Handler {
 			p = Prefixo + p[len("/api"):]
 		}
 		m := r.Method
+		onboarding := m == http.MethodPost && (p == Prefixo+"/onboarding" || p == Prefixo+"/onboarding/sugerir")
 		if m != http.MethodGet && m != http.MethodHead && m != http.MethodOptions {
 			if s := r.Header.Get("Sec-Fetch-Site"); s != "" && s != "same-origin" && s != "none" {
 				enviar(w, Resposta{Status: 403, Corpo: Objeto{"erro": "gravação recusada: pedido veio de outro site"}})
 				return
 			}
-			if !strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			if onboarding && r.Header.Get("X-Applyer-Onboarding") != "1" {
+				enviar(w, Resposta{Status: 403, Corpo: Objeto{"erro": "use a tela de primeiro acesso do Applyer"}})
+				return
+			}
+			if !onboarding && !strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 				enviar(w, Resposta{Status: 415, Corpo: Objeto{"erro": "envie JSON (content-type: application/json)"}})
 				return
 			}
 		}
 		var corpo any = Objeto{}
 		if m != http.MethodGet {
-			c, err := lerCorpo(r.Body)
+			var c any
+			var err error
+			if onboarding {
+				c, err = lerOnboarding(w, r)
+			} else {
+				c, err = lerCorpo(r.Body)
+			}
 			if err != nil {
 				if resp, ok := respostaDeErro(err); ok {
 					enviar(w, resp)
 					return
 				}
+				enviar(w, Resposta{Status: 500, Corpo: Objeto{"erro": ErroInterno}})
+				return
 			}
 			corpo = c
 		}

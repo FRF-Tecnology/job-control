@@ -46,7 +46,95 @@ x-assistente:
   - POST /envio/plataformas/{plataforma}/pausar
 paths:
   /saude: { get: { summary: O app está de pé } }
-  /estado: { get: { summary: 'Estado inteiro (vagas, eventos, plataformas, rodadas, perfil, pedidos, emails) + hoje, versao, curriculos, primeirosPassos' } }
+  /estado: { get: { summary: 'Estado inteiro + hoje, versao, curriculos, primeirosPassos e onboardingConcluido (booleano)' } }
+  /onboarding:
+    post:
+      summary: Conclui o primeiro acesso na janela, salva o PDF local e as preferências de busca da pessoa.
+      parameters:
+        - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [perfil, curriculoBase64]
+              properties:
+                perfil: { type: object, description: 'Perfil com as preferências revisadas pela pessoa.' }
+                curriculoBase64: { type: string, format: byte, description: 'Bytes originais do PDF, até 20 MiB decodificados.' }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [perfil, curriculo]
+              properties:
+                perfil: { type: string, description: 'Objeto JSON com cargo, stacks, filtros, foco, inglês e faixaSalarial mensal opcional. A faixa contém moeda (USD, BRL, EUR) e ao menos um limite positivo min ou max. O campo anterior pretensaoUSD continua aceito.' }
+                curriculo: { type: string, format: binary, description: PDF de até 20 MiB. }
+      responses:
+        '200': { description: 'Perfil salvo e primeiro acesso concluído.' }
+        '400': { description: 'Arquivo ou perfil inválido.' }
+        '403': { description: 'Origem ou cabeçalho não permitido.' }
+        '409': { description: 'Primeiro acesso já concluído.' }
+        '413': { description: 'Arquivo excede o limite.' }
+        '415': { description: 'Envie JSON ou multipart/form-data.' }
+  /onboarding/sugerir:
+    post:
+      summary: 'Extrai o texto localmente e pede sugestões ao provedor de IA escolhido. Cada sugestão contém um trecho do currículo; a pessoa revisa antes de salvar.'
+      parameters:
+        - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [curriculoBase64]
+              properties:
+                curriculoBase64: { type: string, format: byte, description: 'PDF de até 20 MiB.' }
+      responses:
+        '200':
+          description: 'Sugestões para revisão, possivelmente vazias.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sugestoes]
+                properties:
+                  sugestoes:
+                    type: array
+                    items:
+                      type: object
+                      required: [campo, valor, evidencia]
+                      properties:
+                        campo: { type: string, enum: [cargo, niveis, stackPrincipal, stackSecundaria, ingles] }
+                        valor: { type: string }
+                        evidencia: { type: string }
+        '400': { description: 'PDF inválido.' }
+        '403': { description: 'Origem ou cabeçalho não permitido.' }
+        '409': { description: 'Conecte a IA.' }
+        '413': { description: 'Arquivo grande demais.' }
+        '422': { description: 'Texto indisponível ou resposta da IA inválida. O perfil pode ser preenchido manualmente.' }
+        '502': { description: 'Provedor indisponível.' }
+  /busca:
+    post:
+      summary: Consulta as fontes públicas com o perfil salvo e tria até oito vagas por rodada com a IA conectada.
+      responses:
+        '200':
+          description: 'Balanço da rodada. Uma falha parcial fica em avisos e vagas pendentes podem ser avaliadas novamente.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [encontradas, novas, grupos, puladas, pendentes, avisos]
+                properties:
+                  encontradas: { type: integer }
+                  novas: { type: integer }
+                  grupos: { type: object, additionalProperties: { type: integer } }
+                  puladas: { type: integer }
+                  pendentes: { type: integer }
+                  avisos: { type: array, items: { type: string } }
+        '400': { description: 'Falta configurar o cargo.' }
+        '403': { description: 'Somente a pessoa pode iniciar uma busca pelo app.' }
+        '409': { description: 'Busca em andamento, perfil alterado ou IA não conectada.' }
   /versao: { get: { summary: Versão dos dados (muda a cada gravação); a tela recarrega quando muda } }
   /resumo: { get: { summary: Números do dia } }
   /vagas:
@@ -142,15 +230,15 @@ paths:
               type: object
               required: [provedor]
               properties:
-                provedor: { type: string, enum: [nenhum, anthropic, openai, google, claude-cli, codex-cli, gemini-cli] }
-                modelo: { type: string, description: 'Obrigatório para openai e google (sem padrão). Só letras, números, espaço e . , _ : / \ = + @ ~ -, e não pode começar com -: o modelo vira argumento da CLI; outro caso dá 400 e nada é gravado (jc-a2y.43)' }
+                provedor: { type: string, enum: [nenhum, anthropic, openai, google, xai, claude-cli, codex-cli, gemini-cli] }
+                modelo: { type: string, description: 'Obrigatório para openai, google e xai (sem padrão). Só letras, números, espaço e . , _ : / \ = + @ ~ -, e não pode começar com -: o modelo vira argumento da CLI; outro caso dá 400 e nada é gravado (jc-a2y.43)' }
                 url: { type: string, pattern: '^https://', description: 'Endereço compatível (ex.: OpenRouter); só https' }
       responses:
         '200': { description: Conexão gravada, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
         '400': { $ref: '#/components/responses/Validacao' }
   /ia/chaves/{provedor}:
     parameters:
-      - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google] } }
+      - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google, xai] } }
     put:
       summary: 'Salva a chave de API no cofre do sistema, presa ao host configurado agora para o provedor (o padrão, se não houver url própria). A chave só é usada nesse host (jc-a2y.27)'
       requestBody:
@@ -761,7 +849,7 @@ components:
         url: { type: string }
         chaves:
           type: object
-          description: 'Um campo por provedor com chave (anthropic, openai, google): final ou null'
+          description: 'Um campo por provedor com chave (anthropic, openai, google, xai): final ou null'
           additionalProperties: { type: [string, 'null'] }
         clis: { type: array, items: { $ref: '#/components/schemas/EstadoCLI' } }
         gratis:

@@ -21,6 +21,7 @@ export const MOTIVOS_ENCERRAMENTO = ['Reprovada', 'Sem retorno', 'Vaga fechada',
 // Mercado da vaga e foco da busca (seletor Internacional / Nacional / Os dois).
 export const MERCADOS = ['internacional', 'nacional'];
 export const FOCOS = ['internacional', 'nacional', 'ambos'];
+export const NOMES_FOCO = { nacional: 'Nacional', internacional: 'Internacional', ambos: 'Os dois' };
 
 // Etapas que exigem um texto explicando o porquê.
 export const PEDE_MOTIVO = ['pulada', 'encerrada'];

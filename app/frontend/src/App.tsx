@@ -1,7 +1,7 @@
 // Casca da interface: estado, rotas, atualização automática, avisos e diálogos (porte de web/app.mjs).
 import { Component, type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Contexto, chamarApi, ErroApi, type App as AppApi, type Estado, type Pergunta } from './app/contexto';
-import { prepararProntas } from './app/preparoAutomatico';
+import { grupoADireto, prepararProntas } from './app/preparoAutomatico';
 import { resumo } from './dominio/funil';
 import { Icone } from './componentes';
 import { encode } from './util';
@@ -17,7 +17,8 @@ import { TelaNumeros } from './telas/Numeros';
 import { TelaPlataformas } from './telas/Plataformas';
 import { TelaRodadas } from './telas/Rodadas';
 import { TelaPerfil } from './telas/Perfil';
-import { TelaConectarIA } from './telas/ConectarIA';
+import { iaProntaParaBusca, TelaConectarIA } from './telas/ConectarIA';
+import { PrimeiroAcesso } from './telas/PrimeiroAcesso';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
 import { foiEnviada } from './dominio/modelo';
 
@@ -38,8 +39,9 @@ const ICONES: Record<string, string> = {
 // Nome da IA em uso, para o resumo do menu lateral (provedores do GET /ia/config; fora da lista, fica genérico).
 const NOMES_IA: Record<string, string> = {
   'claude-cli': 'Claude Code conectado', 'codex-cli': 'Codex conectado', 'gemini-cli': 'Gemini CLI conectado',
-  anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)',
+  anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)', xai: 'Grok conectado (chave)',
 };
+const RETOMAR_BUSCA = 'applyer.primeiraBuscaPendente';
 type R = ReturnType<typeof resumo>;
 const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
   { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
@@ -90,6 +92,7 @@ class Protecao extends Component<{ children: ReactNode; chave: string }, { erro:
 export default function App() {
   const { tela, vaga } = useHash();
   const [estado, setEstado] = useState<Estado | null>(null);
+  const primeiroAcesso = estado?.onboardingConcluido === false;
   const [conexao, setConexao] = useState<{ texto: string; estado: 'ok' | 'off' | '' }>({ texto: '', estado: '' });
   const [envio, setEnvio] = useState<Partial<EstadoEnvio> | null>(null); // GET /envio: a marca no cabeçalho (jc-a2y.51) e o navegador flutuante
   const envioAtivo = !!envio && envio.ligado === true && envio.pausado === false; // ligado e não pausado
@@ -154,7 +157,7 @@ export default function App() {
     if (!estado || fechando.current || preparando.current) return;
     const modoDireto = (estado.perfil as any)?.modo === 'direto';
     const talvez = (estado.vagas ?? []).some((v: any) => !tentadas.current.has(v.id)
-      && (v.etapa === 'aplicar' || (modoDireto && v.etapa === 'descoberta' && v.aderencia === 'A')));
+      && (v.etapa === 'aplicar' || (modoDireto && grupoADireto(v))));
     if (!talvez) return;
     preparando.current = true;
     (async () => {
@@ -183,9 +186,20 @@ export default function App() {
   // A IA em uso, para o resumo do menu lateral: lida ao abrir e ao trocar de seção (a pessoa pode ter conectado outra).
   useEffect(() => {
     let vivo = true;
-    chamarApi('/api/v1/ia/config').then(r => { if (vivo) setIA({ configurada: !!r?.configurada, provedor: typeof r?.provedor === 'string' ? r.provedor : undefined }); }).catch(() => { /* sem resposta: o resumo não aparece */ });
+    chamarApi(primeiroAcesso ? '/api/v1/ia' : '/api/v1/ia/config').then(r => {
+      if (vivo) setIA({ configurada: primeiroAcesso ? iaProntaParaBusca(r) : !!r?.configurada, provedor: r?.provedor });
+    }).catch(() => { if (vivo) setIA(null); });
     return () => { vivo = false; };
-  }, [tela.rota]);
+  }, [tela.rota, primeiroAcesso]);
+
+  useEffect(() => {
+    if (estado?.onboardingConcluido !== true) return;
+    try {
+      if (!localStorage.getItem(RETOMAR_BUSCA)) return;
+      if (!location.hash) location.replace('#/ia?primeira-busca=1');
+      else if (location.hash.split('?')[0] !== '#/ia') localStorage.removeItem(RETOMAR_BUSCA);
+    } catch { /* A navegação da sessão também funciona sem armazenamento local. */ }
+  }, [estado?.onboardingConcluido, tela.rota]);
 
   // A luz do fundo segue o ponteiro, devagar. Com "reduzir movimento", fica parada.
   const luz = useRef<HTMLElement>(null);
@@ -219,7 +233,7 @@ export default function App() {
 
   const app: AppApi | null = useMemo(() => {
     if (!estado) return null;
-    const api = (caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) => chamarApi(caminho, metodo, corpo, cabecalhos);
+    const api = chamarApi;
     const agir = async (fn: () => Promise<unknown>, mensagem?: string) => {
       try {
         await fn();
@@ -257,10 +271,10 @@ export default function App() {
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
-    document.title = `${tela.nome} · Applyer`;
+    document.title = `${primeiroAcesso && tela.rota !== 'ia' ? 'Primeiro acesso' : tela.nome} · Applyer`;
     main.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
-  }, [tela.rota]);
+  }, [tela.rota, primeiroAcesso]);
 
   const r = estado ? resumo(estado.vagas, estado.hoje) : null;
   const detalheAberto = Boolean(estado && vaga && estado.vagas.some((v: any) => v.id === vaga));
@@ -283,6 +297,23 @@ export default function App() {
   const linkedinHoje = enviadasHoje.filter((v: any) => v.plataforma === 'linkedin').length;
 
   const Tela = tela.Tela;
+  const avisosEDialogo = <>
+    <Dialogo pedido={dialogo} fechar={() => setDialogo(null)} />
+    <div className="avisos" aria-live="polite">{avisos.map(a =>
+      <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}</div>
+  </>;
+  if (primeiroAcesso && app && !falha) {
+    const concluir = (buscar: boolean) => {
+      try {
+        if (buscar) localStorage.removeItem(RETOMAR_BUSCA); else localStorage.setItem(RETOMAR_BUSCA, '1');
+      } catch { /* A escolha só precisa persistir para reabrir Conectar IA após fechar o app. */ }
+      app.navegar(buscar ? 'triagem?buscar=1' : 'ia?primeira-busca=1');
+      setEstado((atual: Estado) => ({ ...atual, onboardingConcluido: true }));
+    };
+    return <><Contexto.Provider value={app}><Protecao chave="primeiro-acesso">
+      <PrimeiroAcesso alternarTema={alternarTema} concluir={concluir} />
+    </Protecao></Contexto.Provider>{avisosEDialogo}</>;
+  }
   return (
     <>
       <div className="fundo" aria-hidden="true">
@@ -346,10 +377,7 @@ export default function App() {
       </aside>
       <div className="veu" hidden={!detalheAberto} onClick={fecharDetalhe} />
       {estado && !falha && <NavegadorFlutuante api={chamarApi} envio={envio} vagas={estado.vagas ?? []} aviso={aviso} />}
-      <Dialogo pedido={dialogo} fechar={() => setDialogo(null)} />
-      <div className="avisos" aria-live="polite">
-        {avisos.map(a => <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}
-      </div>
+      {avisosEDialogo}
     </>
   );
 }

@@ -148,7 +148,7 @@ const MsgModeloInseguro = "o nome do modelo não pode começar com - e só pode 
 func semChaves(env []string) []string {
 	saida := env[:0:0]
 	for _, v := range env {
-		if strings.HasPrefix(v, "ANTHROPIC_API_KEY=") || strings.HasPrefix(v, "OPENAI_API_KEY=") || strings.HasPrefix(v, "GEMINI_API_KEY=") || strings.HasPrefix(v, "GOOGLE_API_KEY=") {
+		if strings.HasPrefix(v, "ANTHROPIC_API_KEY=") || strings.HasPrefix(v, "OPENAI_API_KEY=") || strings.HasPrefix(v, "GEMINI_API_KEY=") || strings.HasPrefix(v, "GOOGLE_API_KEY=") || strings.HasPrefix(v, "XAI_API_KEY=") {
 			continue
 		}
 		saida = append(saida, v)
