@@ -60,6 +60,31 @@ func (s *Seguidas) Falhar(chave string) bool {
 	return false
 }
 
+// Tentar é Bloqueada e Falhar de uma vez só, para quem sabe que a tentativa vai falhar (email sem conta):
+// se a chave está bloqueada devolve false; senão conta a falha (bloqueando na max-ésima) e devolve true.
+// Tentativas simultâneas não passam de max.
+func (s *Seguidas) Tentar(chave string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	agora := s.agora()
+	e, ok := s.porChv[chave]
+	if ok && agora.Before(e.ate) {
+		return false
+	}
+	if !ok {
+		s.abrirEspaco(agora)
+		e = &seguida{}
+		s.porChv[chave] = e
+	}
+	e.ultima = agora
+	e.falhas++
+	if e.falhas >= s.max {
+		e.falhas = 0
+		e.ate = agora.Add(s.bloqueio)
+	}
+	return true
+}
+
 // Zerar esquece a chave (acerto).
 func (s *Seguidas) Zerar(chave string) {
 	s.mu.Lock()

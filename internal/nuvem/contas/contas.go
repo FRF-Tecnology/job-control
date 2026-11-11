@@ -187,14 +187,36 @@ func (r *Repo) TrocarSenha(ctx context.Context, id, senhaHash string, agora time
 	return err
 }
 
-// RegistrarFalha conta uma senha errada numa só instrução (tentativas concorrentes não se perdem).
-// Na MaxFalhas-ésima seguida, bloqueia até agora+Bloqueio, zera o contador e devolve true.
+// Reservar reserva uma tentativa de senha antes de conferi-la, numa só instrução: falhas_login conta as
+// tentativas em andamento e as erradas. Devolve false (sem conferir a senha) se o login está bloqueado ou
+// se já há MaxFalhas tentativas contadas; nesse caso o bloqueio começa agora (assim um contador que ficou
+// cheio por um pedido interrompido não prende a conta para sempre). Tentativas simultâneas não passam
+// de MaxFalhas senhas conferidas.
+func (r *Repo) Reservar(ctx context.Context, id string, agora time.Time) (bool, error) {
+	var livre bool
+	err := r.db.QueryRow(ctx,
+		`update usuarios set
+		   falhas_login  = case when bloqueado_ate > $2 then falhas_login
+		                        when falhas_login >= $3 then 0 else falhas_login + 1 end,
+		   bloqueado_ate = case when bloqueado_ate > $2 then bloqueado_ate
+		                        when falhas_login >= $3 then $4::timestamptz else bloqueado_ate end
+		 where id = $1::uuid
+		 returning not coalesce(bloqueado_ate > $2, false)`,
+		id, agora, MaxFalhas, agora.Add(Bloqueio)).Scan(&livre)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrNaoEncontrado
+	}
+	return livre, err
+}
+
+// RegistrarFalha fecha uma tentativa reservada que errou a senha (a reserva já a contou).
+// Quando o contador chega a MaxFalhas, bloqueia até agora+Bloqueio, zera o contador e devolve true.
 func (r *Repo) RegistrarFalha(ctx context.Context, id string, agora time.Time) (bool, error) {
 	var bloqueou bool
 	err := r.db.QueryRow(ctx,
 		`update usuarios set
-		   falhas_login  = case when falhas_login + 1 >= $3 then 0 else falhas_login + 1 end,
-		   bloqueado_ate = case when falhas_login + 1 >= $3 then $2::timestamptz else bloqueado_ate end
+		   falhas_login  = case when falhas_login >= $3 then 0 else falhas_login end,
+		   bloqueado_ate = case when falhas_login >= $3 then $2::timestamptz else bloqueado_ate end
 		 where id = $1::uuid
 		 returning bloqueado_ate is not null and bloqueado_ate = $2::timestamptz`,
 		id, agora.Add(Bloqueio), MaxFalhas).Scan(&bloqueou)

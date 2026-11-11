@@ -20,6 +20,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/contas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/pagamento"
@@ -652,4 +653,46 @@ func TestOrcamentoDeEnvioPorEmail(t *testing.T) {
 	if n := len(a.emails("ana@exemplo.com")); n != 6 {
 		t.Fatalf("depois de 15 min deveria mandar de novo: %d", n)
 	}
+}
+
+// Tentativas simultâneas não passam do bloqueio: cada uma reserva a vez antes de conferir a senha, então
+// no máximo 10 senhas são conferidas e as outras levam 429 (vale também para email sem conta, R11).
+func TestTentativasConcorrentesRespeitamBloqueio(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	for _, email := range []string{"ana@exemplo.com", "ze@exemplo.com"} {
+		corpo, _ := json.Marshal(map[string]string{"email": email, "senha": senhaErrada, "dispositivo": dispositivo})
+		status := make([]int, 30)
+		var wg sync.WaitGroup
+		for i := range status {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				req := httptest.NewRequest("POST", "/v1/contas/entrar", bytes.NewReader(corpo))
+				req.RemoteAddr = fmt.Sprintf("203.0.113.%d:40000", i+1)
+				w := httptest.NewRecorder()
+				a.s.Handler().ServeHTTP(w, req)
+				status[i] = w.Code
+			}(i)
+		}
+		wg.Wait()
+		conferidas, bloqueadas := 0, 0
+		for i, c := range status {
+			switch c {
+			case http.StatusUnauthorized:
+				conferidas++
+			case http.StatusTooManyRequests:
+				bloqueadas++
+			default:
+				t.Errorf("%s, pedido %d: status %d", email, i, c)
+			}
+		}
+		if conferidas > contas.MaxFalhas || conferidas+bloqueadas != 30 {
+			t.Fatalf("%s: %d senhas conferidas (máximo %d), %d bloqueadas", email, conferidas, contas.MaxFalhas, bloqueadas)
+		}
+	}
+	// A conta ficou bloqueada: nem a senha certa entra.
+	confere(t, a.postDe(t, "198.51.100.200", "/v1/contas/entrar",
+		map[string]string{"email": "ana@exemplo.com", "senha": senhaAna, "dispositivo": dispositivo}),
+		http.StatusTooManyRequests, "Muitas tentativas. Tente de novo em 15 minutos")
 }

@@ -340,17 +340,27 @@ func (s *Servidor) entrar(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil || u.SenhaHash == "" {
 		// Sem conta (ou só Google): mesmo custo e mesmo bloqueio de quem tem, para não revelar nada.
-		if s.semConta.Bloqueada(email) {
+		// A falha é contada antes de conferir (sempre falha), como a reserva das contas reais.
+		if !s.semConta.Tentar(email) {
 			erro(w, http.StatusTooManyRequests, msgBloqueado)
 			return
 		}
 		_, _ = senhas.Conferir(s.resumoFalso, p.Senha)
-		s.semConta.Falhar(email)
 		erro(w, http.StatusUnauthorized, msgCredenciais)
 		return
 	}
 	agora := s.dep.Agora()
-	if u.Bloqueado(agora) {
+	// A tentativa é reservada antes de conferir a senha: pedidos simultâneos não passam do bloqueio.
+	livre, err := s.contas.Reservar(ctx, u.ID, agora)
+	if errors.Is(err, contas.ErrNaoEncontrado) {
+		erro(w, http.StatusUnauthorized, msgCredenciais)
+		return
+	}
+	if err != nil {
+		s.interno(w, r, "reservar tentativa", err)
+		return
+	}
+	if !livre {
 		erro(w, http.StatusTooManyRequests, msgBloqueado)
 		return
 	}

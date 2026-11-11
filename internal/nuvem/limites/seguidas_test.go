@@ -45,3 +45,20 @@ func TestSeguidasLimitada(t *testing.T) {
 		t.Fatalf("guardou %d chaves, máximo 50", n)
 	}
 }
+
+func TestSeguidasTentar(t *testing.T) {
+	agora := time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)
+	s := NovaSeguidas(10, 15*time.Minute, 100, func() time.Time { return agora })
+	for i := 1; i <= 10; i++ {
+		if !s.Tentar("a") {
+			t.Fatalf("a %dª deveria passar", i)
+		}
+	}
+	if s.Tentar("a") || !s.Bloqueada("a") {
+		t.Fatal("a 11ª deveria ser recusada")
+	}
+	agora = agora.Add(15*time.Minute + time.Second)
+	if !s.Tentar("a") {
+		t.Fatal("o bloqueio deveria ter acabado")
+	}
+}
