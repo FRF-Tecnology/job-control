@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidar(t *testing.T) {
@@ -66,5 +67,49 @@ func TestResumoTemParametros(t *testing.T) {
 	}
 	if n := len(strings.Split(resumo, "$")); n != 6 {
 		t.Fatalf("partes = %d, esperado 6", n)
+	}
+}
+
+func TestConferirResumoHostil(t *testing.T) {
+	sal := "c2Fsc2Fsc2Fsc2Fsc2E"                      // 16 bytes
+	hash := "aGFzaGhhc2hoYXNoaGFzaGhhc2hoYXNoaGFzaGg" // 32 bytes
+	monta := func(v, params, s, h string) string {
+		return "$argon2id$" + v + "$" + params + "$" + s + "$" + h
+	}
+	casos := []struct{ nome, resumo string }{
+		{"vazio", ""},
+		{"memória enorme", monta("v=19", "m=4294967295,t=2,p=1", sal, hash)},
+		{"memória acima do teto", monta("v=19", "m=1048577,t=2,p=1", sal, hash)},
+		{"passadas enormes", monta("v=19", "m=19456,t=4294967295,p=1", sal, hash)},
+		{"passadas acima do teto", monta("v=19", "m=19456,t=11,p=1", sal, hash)},
+		{"fios enormes", monta("v=19", "m=19456,t=2,p=255", sal, hash)},
+		{"fios acima do teto", monta("v=19", "m=19456,t=2,p=9", sal, hash)},
+		{"versão errada", monta("v=16", "m=19456,t=2,p=1", sal, hash)},
+		{"versão com lixo", monta("v=19x", "m=19456,t=2,p=1", sal, hash)},
+		{"m zero", monta("v=19", "m=0,t=2,p=1", sal, hash)},
+		{"t zero", monta("v=19", "m=19456,t=0,p=1", sal, hash)},
+		{"p zero", monta("v=19", "m=19456,t=2,p=0", sal, hash)},
+		{"não numérico", monta("v=19", "m=abc,t=2,p=1", sal, hash)},
+		{"lixo no final", monta("v=19", "m=19456,t=2,p=1x", sal, hash)},
+		{"lixo extra", monta("v=19", "m=19456,t=2,p=1,x=3", sal, hash)},
+		{"sinal", monta("v=19", "m=+19456,t=2,p=1", sal, hash)},
+		{"sal base64 ruim", monta("v=19", "m=19456,t=2,p=1", "!!!", hash)},
+		{"hash base64 ruim", monta("v=19", "m=19456,t=2,p=1", sal, "!!!")},
+		{"sal curto", monta("v=19", "m=19456,t=2,p=1", "c2Fs", hash)},
+		{"hash curto", monta("v=19", "m=19456,t=2,p=1", sal, "aGFzaA")},
+		{"hash longo demais", monta("v=19", "m=19456,t=2,p=1", sal, strings.Repeat("QUFB", 30))},
+		{"outro algoritmo", "$argon2i$v=19$m=19456,t=2,p=1$" + sal + "$" + hash},
+	}
+	for _, c := range casos {
+		t.Run(c.nome, func(t *testing.T) {
+			ini := time.Now()
+			ok, err := Conferir(c.resumo, "cavalo bateria grampo")
+			if ok || err == nil {
+				t.Fatalf("esperado (false, erro), veio (%v, %v)", ok, err)
+			}
+			if d := time.Since(ini); d > time.Second {
+				t.Fatalf("demorou %v para recusar", d)
+			}
+		})
 	}
 }

@@ -82,28 +82,44 @@ func Resumir(s string) (string, error) {
 		base64.RawStdEncoding.EncodeToString(h)), nil
 }
 
+// Tetos para parâmetros lidos do resumo: um resumo corrompido não pode
+// esgotar memória nem CPU do servidor.
+const (
+	maxMemoriaKiB = 1 << 20
+	maxPassadas   = 10
+	maxFios       = 8
+	minSal        = 8
+	minHash       = 16
+	maxHash       = 64
+)
+
+var errResumo = errors.New("resumo de senha inválido")
+
 // Conferir compara a senha com o resumo em tempo constante, usando os
-// parâmetros gravados no próprio resumo.
+// parâmetros gravados no próprio resumo (dentro dos tetos acima).
 func Conferir(resumo, s string) (bool, error) {
 	p := strings.Split(resumo, "$")
 	if len(p) != 6 || p[0] != "" || p[1] != "argon2id" {
-		return false, errors.New("resumo de senha inválido")
+		return false, errResumo
 	}
-	var versao int
-	if _, err := fmt.Sscanf(p[2], "v=%d", &versao); err != nil || versao != argon2.Version {
+	if p[2] != fmt.Sprintf("v=%d", argon2.Version) {
 		return false, errors.New("versão do resumo não suportada")
 	}
 	var m, t uint32
 	var par uint8
-	if _, err := fmt.Sscanf(p[3], "m=%d,t=%d,p=%d", &m, &t, &par); err != nil || m == 0 || t == 0 || par == 0 {
+	if _, err := fmt.Sscanf(p[3], "m=%d,t=%d,p=%d", &m, &t, &par); err != nil ||
+		p[3] != fmt.Sprintf("m=%d,t=%d,p=%d", m, t, par) { // recusa lixo e sinais
 		return false, errors.New("parâmetros do resumo inválidos")
 	}
+	if m == 0 || m > maxMemoriaKiB || t == 0 || t > maxPassadas || par == 0 || par > maxFios {
+		return false, errors.New("parâmetros do resumo fora dos limites")
+	}
 	sal, err := base64.RawStdEncoding.DecodeString(p[4])
-	if err != nil {
+	if err != nil || len(sal) < minSal {
 		return false, errors.New("sal do resumo inválido")
 	}
 	esperado, err := base64.RawStdEncoding.DecodeString(p[5])
-	if err != nil || len(esperado) == 0 {
+	if err != nil || len(esperado) < minHash || len(esperado) > maxHash {
 		return false, errors.New("hash do resumo inválido")
 	}
 	h := argon2.IDKey([]byte(s), sal, t, m, par, uint32(len(esperado)))
