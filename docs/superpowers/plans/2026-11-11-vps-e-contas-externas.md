@@ -4,9 +4,11 @@
 
 **Goal:** A nuvem (`cmd/nuvem` + Postgres) rodando na VPS do Vinicius com HTTPS e backup, ligada ao Google, ao email, ao Stripe (modo de teste primeiro) e ao emissor de NFS-e, e o app de teste falando com ela de ponta a ponta.
 
-**Architecture:** `docker compose` versionado em `deploy/nuvem/` (postgres + nuvem + caddy + backup), segredos num `.env` que só existe na VPS. Claude opera por SSH com chave autorizada pelo Vinicius e pelos painéis web no Chrome dele, onde ele já está logado.
+**Architecture:** A VPS do Vinicius já existe: **Hetzner + Coolify + Cloudflare** (decisão dele, 11/11). A nuvem entra como recursos do Coolify: um banco **PostgreSQL 17** do Coolify (backups agendados do próprio Coolify) e uma aplicação com a imagem do `cmd/nuvem` (do GHCR) na rede interna do Coolify. O proxy do Coolify (Traefik) faz o HTTPS; o DNS fica na Cloudflare. Segredos ficam nas variáveis de ambiente do recurso no Coolify. Claude opera pelo painel do Coolify, da Cloudflare e da Hetzner no Chrome do Vinicius (já logado) e, se preciso, por SSH com chave autorizada por ele.
 
-**Tech Stack:** Docker + Compose, `postgres:17`, `caddy:2`, imagem do `cmd/nuvem` (plano da nuvem, Task 12), `pg_dump`, `ufw`.
+> **Esta versão do plano substitui o compose/Caddy/backup próprio abaixo pelo equivalente do Coolify.** Onde as tasks falam em `compose.yml`, `Caddyfile`, `backup.sh` ou `.env`, leia: recurso PostgreSQL do Coolify, aplicação do Coolify com domínio `api.<dominio>`, backup agendado do Coolify e variáveis de ambiente do recurso. `deploy/nuvem/` guarda só o Dockerfile e um `README.md` com a configuração usada no Coolify (sem valores secretos).
+
+**Tech Stack:** Coolify (Traefik), PostgreSQL 17 (recurso do Coolify), imagem do `cmd/nuvem` (plano da nuvem, Task 12), Cloudflare DNS, Hetzner Cloud Firewall.
 
 **Spec:** `docs/superpowers/specs/2026-11-11-conta-e-assinatura-design.md` · **Depende de:** plano da nuvem completo (imagem e `api/nuvem.yaml`).
 
@@ -14,7 +16,9 @@
 
 - Nenhum segredo passa pelo chat nem entra no git. Segredos de terceiros: o Vinicius cola direto no `.env` da VPS. Segredos nossos (`APPLYER_CHAVE_PRIVADA`, `APPLYER_SEGREDO_CODIGOS`, senha do Postgres): Claude gera **dentro da VPS** (`openssl`/binário da nuvem) e grava no `.env` sem imprimir.
 - Claude não cria conta em serviço de terceiros, não digita senha, chave, CNPJ/CPF ou dado bancário, não aceita termos nem paga nada. Isso é **[Vini]**.
-- Postgres nunca exposto na internet. Firewall: só 22, 80, 443.
+- Postgres nunca exposto na internet (no Coolify, sem "Make it publicly available"). Firewall da Hetzner: só 22, 80, 443 (e a porta do painel do Coolify, se ele já usa).
+- Cloudflare: registro `api.<dominio>` com proxy ligado e SSL/TLS em **Full (strict)**; o webhook do Stripe passa pelo proxy sem regra de bloqueio (conferir WAF/bot fight para `/v1/stripe/webhook`).
+- Os outros apps do Coolify do Vinicius não podem ser afetados: nada de mexer em recursos que não são do Applyer.
 - Stripe começa em **modo de teste**; virar para produção é decisão explícita do Vinicius.
 - Antes de qualquer comando que muda a VPS, Claude confere o que já roda nela (outros serviços dele não podem cair).
 
