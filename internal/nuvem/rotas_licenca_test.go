@@ -5,9 +5,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -286,5 +288,55 @@ func TestLicencaNaoLogaDispositivoNemEmail(t *testing.T) {
 	log := a.log.String()
 	if strings.Contains(log, pcA) || strings.Contains(log, emailLic) {
 		t.Fatalf("log vaza dado: %s", log)
+	}
+}
+
+func TestDuasContasMesmoPCConcorrente(t *testing.T) {
+	a := novoAmb(t)
+	for rodada := 0; rodada < 5; rodada++ {
+		a.rel.avancar(2 * time.Minute) // folga do limite por IP nas rotas de conta
+		pc := fmt.Sprintf("%064x", rodada+1)
+		emails := [2]string{fmt.Sprintf("ana%d@exemplo.com", rodada), fmt.Sprintf("bia%d@exemplo.com", rodada)}
+		var acessos [2]string
+		for i, e := range emails {
+			acessos[i] = a.criarConfirmado(t, e, senhaAna).Acesso
+		}
+		largada := make(chan struct{})
+		var resp [2]*httptest.ResponseRecorder
+		var wg sync.WaitGroup
+		for i := range resp {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-largada
+				resp[i] = a.getLicenca(pc, acessos[i])
+			}()
+		}
+		close(largada)
+		wg.Wait()
+
+		var testes, bloqueados int
+		vencedor := ""
+		for i := range resp {
+			switch l := a.lic(t, resp[i]); l.Estado {
+			case licenca.Teste:
+				testes++
+				vencedor = l.Usuario
+			case licenca.Bloqueado:
+				bloqueados++
+			default:
+				t.Fatalf("rodada %d: estado %s", rodada, l.Estado)
+			}
+		}
+		if testes != 1 || bloqueados != 1 {
+			t.Fatalf("rodada %d: %d em teste e %d bloqueados, queria 1 e 1", rodada, testes, bloqueados)
+		}
+		var n int
+		var dono string
+		err := a.db.QueryRow(context.Background(),
+			`select count(*), coalesce(max(usuario_id::text), '') from computadores_teste where hash = $1`, pc).Scan(&n, &dono)
+		if err != nil || n != 1 || dono != vencedor {
+			t.Fatalf("rodada %d: linhas = %d, dono = %q, vencedor = %q (%v)", rodada, n, dono, vencedor, err)
+		}
 	}
 }
