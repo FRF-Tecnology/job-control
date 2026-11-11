@@ -37,6 +37,7 @@ type contaFalsa struct {
 	usuario     string
 	testeFim    *time.Time
 	assinante   bool
+	periodoFim  *time.Time // fim do período pago (fica depois de cancelar)
 	cortesia    bool
 	recuperando bool
 	termos      string // versão dos termos que a pessoa aceitou
@@ -79,6 +80,16 @@ func (f *Falsa) Cortesia(email string) { f.marcar(email, func(c *contaFalsa) { c
 
 // Assinante põe a conta como assinante (o Falsa.Assinar é o da interface Nuvem, que devolve a URL).
 func (f *Falsa) Assinante(email string) { f.marcar(email, func(c *contaFalsa) { c.assinante = true }) }
+
+// Cancelar encerra a assinatura agora: a conta volta a bloqueado, com periodo_fim no passado.
+func (f *Falsa) Cancelar(email string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if c := f.contas[norm(email)]; c != nil {
+		fim := f.agoraL()
+		c.assinante, c.cortesia, c.periodoFim = false, false, &fim
+	}
+}
 
 func (f *Falsa) marcar(email string, fn func(*contaFalsa)) {
 	f.mu.Lock()
@@ -346,7 +357,7 @@ func (f *Falsa) Licenca(ctx context.Context, acesso, dispositivo string) (licenc
 		estado = licenca.Teste
 	}
 	l := licenca.Licenca{Usuario: c.usuario, Email: c.email, Estado: estado, TesteFim: c.testeFim,
-		EmitidaEm: agora, ValidaAte: agora.Add(30 * time.Minute)}
+		PeriodoFim: c.periodoFim, EmitidaEm: agora, ValidaAte: agora.Add(30 * time.Minute)}
 	return licenca.Assinar(f.priv, l)
 }
 
