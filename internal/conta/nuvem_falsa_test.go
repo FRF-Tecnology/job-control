@@ -43,7 +43,7 @@ func estadoDe(t *testing.T, f *Falsa, pub ed25519.PublicKey, acesso, disp string
 func TestFalsaFluxoCompleto(t *testing.T) {
 	f, pub := novaFalsaDeTeste(t)
 	ctx := context.Background()
-	if err := f.Criar(ctx, "ana@exemplo.com", "senha-forte-1", "2026-11"); err != nil {
+	if err := f.Criar(ctx, "ana@exemplo.com", "senha-forte-1", TermosPadrao); err != nil {
 		t.Fatal(err)
 	}
 	// não confirmada: 403 confirmar
@@ -87,16 +87,21 @@ func TestFalsaSenhaErradaEUmTestePorDispositivo(t *testing.T) {
 	f, pub := novaFalsaDeTeste(t)
 	ctx := context.Background()
 	for _, em := range []string{"ana@exemplo.com", "bia@exemplo.com"} {
-		_ = f.Criar(ctx, em, "senha-forte-1", "2026-11")
-		_, _ = f.Confirmar(ctx, em, "123456", "senha-forte-1", dispA, "")
+		criar(t, f, em, dispA)
 	}
 	_, err := f.Entrar(ctx, "ana@exemplo.com", "errada-errada", dispA, "")
 	var e *ErroNuvem
 	if !errors.As(err, &e) || e.Status != 401 || e.Msg != "Email ou senha incorretos" {
 		t.Fatalf("erro errado: %v", err)
 	}
-	pa, _ := f.Entrar(ctx, "ana@exemplo.com", "senha-forte-1", dispA, "")
-	pb, _ := f.Entrar(ctx, "bia@exemplo.com", "senha-forte-1", dispA, "")
+	pa, err := f.Entrar(ctx, "ana@exemplo.com", "senha-forte-1", dispA, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pb, err := f.Entrar(ctx, "bia@exemplo.com", "senha-forte-1", dispA, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if l := estadoDe(t, f, pub, pa.Acesso, dispA); l.Estado != licenca.Teste {
 		t.Fatalf("ana: %+v", l)
 	}
@@ -112,8 +117,7 @@ func TestFalsaSenhaErradaEUmTestePorDispositivo(t *testing.T) {
 func TestFalsaSemInternetERenovar(t *testing.T) {
 	f, _ := novaFalsaDeTeste(t)
 	ctx := context.Background()
-	_ = f.Criar(ctx, "ana@exemplo.com", "senha-forte-1", "2026-11")
-	p, _ := f.Confirmar(ctx, "ana@exemplo.com", "123456", "senha-forte-1", dispB, "")
+	p := criar(t, f, "ana@exemplo.com", dispB)
 	p2, err := f.Renovar(ctx, p.Renovacao)
 	if err != nil || p2.Acesso == p.Acesso {
 		t.Fatalf("renovar: %v", err)

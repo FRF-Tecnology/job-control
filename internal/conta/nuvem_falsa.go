@@ -5,16 +5,30 @@ package conta
 import (
 	"context"
 	"crypto/ed25519"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/FRF-Tecnology/job-control/internal/licenca"
 )
 
 // CodigoFalso é o código de confirmação e de recuperação da nuvem falsa.
 const CodigoFalso = "123456"
+
+// TermosPadrao é a versão dos termos com que a Falsa começa (igual à constante do app).
+const TermosPadrao = "0-rascunho"
+
+var reDispositivo = regexp.MustCompile("^[0-9a-f]{64}$")
+
+func dispositivoValido(d string) error {
+	if !reDispositivo.MatchString(d) {
+		return erro(400, "Dispositivo inválido", "")
+	}
+	return nil
+}
 
 type contaFalsa struct {
 	email       string
@@ -25,6 +39,7 @@ type contaFalsa struct {
 	assinante   bool
 	cortesia    bool
 	recuperando bool
+	termos      string // versão dos termos que a pessoa aceitou
 }
 
 // Falsa é uma nuvem em memória que segue as regras públicas da real. Segura para uso concorrente.
@@ -37,6 +52,7 @@ type Falsa struct {
 	testes  map[string]string // dispositivo -> email que usou o teste
 	sessoes map[string]string // token (acesso ou renovação) -> email
 	semNet  bool
+	termos  string // versão atual dos termos
 	seq     int
 }
 
@@ -46,7 +62,7 @@ func NovaFalsa(priv ed25519.PrivateKey, agora func() time.Time) *Falsa {
 		agora = time.Now
 	}
 	return &Falsa{priv: priv, agora: agora, contas: map[string]*contaFalsa{},
-		testes: map[string]string{}, sessoes: map[string]string{}}
+		testes: map[string]string{}, sessoes: map[string]string{}, termos: TermosPadrao}
 }
 
 func (f *Falsa) agoraL() time.Time { return f.agora().Add(f.desvio) }
@@ -70,6 +86,25 @@ func (f *Falsa) marcar(email string, fn func(*contaFalsa)) {
 	if c := f.contas[norm(email)]; c != nil {
 		fn(c)
 	}
+}
+
+// MudarTermos troca a versão atual dos termos; contas que aceitaram outra versão passam a receber 409.
+func (f *Falsa) MudarTermos(v string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.termos = v
+}
+
+// conferirTermos segue a regra da nuvem: se a pessoa aceitou outra versão e o pedido não traz a atual, 409.
+func (f *Falsa) conferirTermos(c *contaFalsa, termos string) error {
+	if c.termos == f.termos {
+		return nil
+	}
+	if termos != f.termos {
+		return &ErroNuvem{Status: 409, Msg: "Os termos mudaram", Motivo: "termos", Versao: f.termos}
+	}
+	c.termos = termos
+	return nil
 }
 
 // SemInternet liga ou desliga a falha de rede em todas as chamadas.
@@ -116,16 +151,16 @@ func (f *Falsa) Criar(ctx context.Context, email, senha, termos string) error {
 	if !strings.Contains(e, "@") {
 		return erro(400, "Email inválido", "")
 	}
-	if len(senha) < 10 || len(senha) > 128 {
+	if utf8.RuneCountInString(senha) < 10 || utf8.RuneCountInString(senha) > 128 {
 		return erro(400, "A senha precisa ter de 10 a 128 caracteres", "")
 	}
-	if termos == "" {
-		return erro(400, "Aceite os termos para continuar", "")
+	if termos != f.termos {
+		return &ErroNuvem{Status: 400, Msg: "Os termos mudaram", Motivo: "termos", Versao: f.termos}
 	}
 	if c := f.contas[e]; c != nil && c.confirmada {
 		return nil // a real manda um aviso em vez de código; a resposta é a mesma
 	}
-	f.contas[e] = &contaFalsa{email: e, senha: senha, usuario: f.novoUsuario()}
+	f.contas[e] = &contaFalsa{email: e, senha: senha, usuario: f.novoUsuario(), termos: termos}
 	return nil
 }
 
@@ -139,11 +174,14 @@ func (f *Falsa) Confirmar(ctx context.Context, email, codigo, senha, dispositivo
 	if c == nil || c.confirmada || codigo != CodigoFalso {
 		return Par{}, erro(400, "Código inválido ou vencido", "")
 	}
-	if dispositivo == "" {
-		return Par{}, erro(400, "Dispositivo inválido", "")
+	if err := dispositivoValido(dispositivo); err != nil {
+		return Par{}, err
 	}
 	if senha != c.senha {
 		return Par{}, erro(401, "Email ou senha incorretos", "")
+	}
+	if err := f.conferirTermos(c, termos); err != nil {
+		return Par{}, err
 	}
 	c.confirmada = true
 	return f.novoPar(c.email), nil
@@ -155,8 +193,8 @@ func (f *Falsa) Entrar(ctx context.Context, email, senha, dispositivo, termos st
 	if err := f.entrada(ctx); err != nil {
 		return Par{}, err
 	}
-	if dispositivo == "" {
-		return Par{}, erro(400, "Dispositivo inválido", "")
+	if err := dispositivoValido(dispositivo); err != nil {
+		return Par{}, err
 	}
 	c := f.contas[norm(email)]
 	if c == nil || c.senha == "" || c.senha != senha {
@@ -164,6 +202,9 @@ func (f *Falsa) Entrar(ctx context.Context, email, senha, dispositivo, termos st
 	}
 	if !c.confirmada {
 		return Par{}, erro(403, "Confirme seu email com o código que enviamos", "confirmar")
+	}
+	if err := f.conferirTermos(c, termos); err != nil {
+		return Par{}, err
 	}
 	return f.novoPar(c.email), nil
 }
@@ -186,12 +227,15 @@ func (f *Falsa) NovaSenha(ctx context.Context, email, codigo, senha, dispositivo
 	if err := f.entrada(ctx); err != nil {
 		return Par{}, err
 	}
-	if len(senha) < 10 || len(senha) > 128 {
+	if utf8.RuneCountInString(senha) < 10 || utf8.RuneCountInString(senha) > 128 {
 		return Par{}, erro(400, "A senha precisa ter de 10 a 128 caracteres", "")
 	}
 	c := f.contas[norm(email)]
-	if c == nil || !c.recuperando || codigo != CodigoFalso || dispositivo == "" {
+	if c == nil || !c.recuperando || codigo != CodigoFalso {
 		return Par{}, erro(400, "Código inválido ou vencido", "")
+	}
+	if err := dispositivoValido(dispositivo); err != nil {
+		return Par{}, err
 	}
 	c.senha, c.recuperando, c.confirmada = senha, false, true
 	f.revogar(c.email) // troca de senha revoga as sessões antigas
@@ -214,19 +258,24 @@ func (f *Falsa) Google(ctx context.Context, code, verifier, redirectURI, disposi
 		return Par{}, err
 	}
 	e := norm(code)
-	if !strings.Contains(e, "@") || verifier == "" || dispositivo == "" {
+	if !strings.Contains(e, "@") || verifier == "" {
 		return Par{}, erro(401, "O Google recusou o acesso", "")
+	}
+	if err := dispositivoValido(dispositivo); err != nil {
+		return Par{}, err
 	}
 	c := f.contas[e]
 	if c != nil && c.confirmada && c.senha != "" {
 		return Par{}, erro(409, "Esta conta entra com senha", "entrar-com-senha")
 	}
 	if c == nil || !c.confirmada {
-		if termos == "" {
-			return Par{}, erro(409, "Os termos mudaram", "termos")
+		if termos != f.termos {
+			return Par{}, &ErroNuvem{Status: 409, Msg: "Os termos mudaram", Motivo: "termos", Versao: f.termos}
 		}
-		c = &contaFalsa{email: e, usuario: f.novoUsuario()}
+		c = &contaFalsa{email: e, usuario: f.novoUsuario(), termos: termos}
 		f.contas[e] = c
+	} else if err := f.conferirTermos(c, termos); err != nil {
+		return Par{}, err
 	}
 	c.confirmada = true
 	return f.novoPar(e), nil
@@ -278,8 +327,8 @@ func (f *Falsa) Licenca(ctx context.Context, acesso, dispositivo string) (licenc
 	if err != nil {
 		return licenca.Documento{}, err
 	}
-	if dispositivo == "" {
-		return licenca.Documento{}, erro(400, "Dispositivo inválido", "")
+	if err := dispositivoValido(dispositivo); err != nil {
+		return licenca.Documento{}, err
 	}
 	agora := f.agoraL()
 	if c.testeFim == nil && c.confirmada {

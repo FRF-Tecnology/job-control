@@ -171,3 +171,14 @@ func TestDispositivoHex64(t *testing.T) {
 		t.Fatalf("não é hex de 64: %q", d)
 	}
 }
+
+func TestHTTPContextoCancelado(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer srv.Close()
+	n, _ := NovaHTTP(srv.URL, nil)
+	ctx, cancela := context.WithCancel(context.Background())
+	cancela()
+	if _, err := n.Renovar(ctx, "r"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("queria context.Canceled, veio %v", err)
+	}
+}

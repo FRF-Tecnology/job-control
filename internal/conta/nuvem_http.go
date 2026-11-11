@@ -77,6 +77,9 @@ func (n *nuvemHTTP) chamar(ctx context.Context, metodo, caminho, acesso string, 
 	}
 	resp, err := n.cliente.Do(req)
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return ErrSemInternet
 	}
 	defer resp.Body.Close()
