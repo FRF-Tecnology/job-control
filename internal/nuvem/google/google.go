@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,8 +34,17 @@ var (
 )
 
 // Identidade é quem entrou: o sub (id estável no Google), o email já normalizado e o nome.
+// Autoritativo: o Google é dono do email (@gmail.com, @googlemail.com ou o domínio do Workspace no
+// claim hd); só então ele prova a posse de um email que já tem conta com senha (R13).
 type Identidade struct {
 	Sub, Email, Nome string
+	Autoritativo     bool
+}
+
+// autoritativo aplica a R13 a um email já normalizado.
+func autoritativo(email, hd string) bool {
+	dominio := email[strings.LastIndex(email, "@")+1:]
+	return dominio == "gmail.com" || dominio == "googlemail.com" || (hd != "" && strings.EqualFold(hd, dominio))
 }
 
 // Trocador troca o code (com o verifier do PKCE) pela identidade.
@@ -99,8 +109,12 @@ func (r *Real) Trocar(ctx context.Context, code, verifier, redirectURI string) (
 	if err != nil {
 		return Identidade{}, fmt.Errorf("%w: descoberta: %v", ErrGoogle, err)
 	}
+	// Credenciais no corpo, como o Google aceita: sem a detecção automática, uma troca recusada não é
+	// repetida com o outro jeito de autenticar.
+	ponta := prov.Endpoint()
+	ponta.AuthStyle = oauth2.AuthStyleInParams
 	conf := oauth2.Config{
-		ClientID: r.ClientID, ClientSecret: r.ClientSecret, Endpoint: prov.Endpoint(),
+		ClientID: r.ClientID, ClientSecret: r.ClientSecret, Endpoint: ponta,
 		RedirectURL: redirectURI, Scopes: []string{oidc.ScopeOpenID, "email", "profile"},
 	}
 	tok, err := conf.Exchange(ctx, code, oauth2.VerifierOption(verifier))
@@ -129,6 +143,7 @@ func (r *Real) Trocar(ctx context.Context, code, verifier, redirectURI string) (
 		Email      string     `json:"email"`
 		Verificado verificado `json:"email_verified"`
 		Nome       string     `json:"name"`
+		HD         string     `json:"hd"`
 	}
 	if err := idt.Claims(&c); err != nil {
 		return Identidade{}, fmt.Errorf("%w: claims ilegíveis", ErrGoogle)
@@ -143,5 +158,5 @@ func (r *Real) Trocar(ctx context.Context, code, verifier, redirectURI string) (
 	if err != nil {
 		return Identidade{}, fmt.Errorf("%w: email ausente ou inválido", ErrGoogle)
 	}
-	return Identidade{Sub: idt.Subject, Email: email, Nome: c.Nome}, nil
+	return Identidade{Sub: idt.Subject, Email: email, Nome: c.Nome, Autoritativo: autoritativo(email, c.HD)}, nil
 }

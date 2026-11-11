@@ -14,8 +14,9 @@ import (
 // sessão. O log nunca leva o code, o verifier, tokens nem o email inteiro.
 
 const (
-	msgGoogle  = "Não foi possível entrar com o Google"
-	msgRetorno = "Endereço de retorno inválido"
+	msgGoogle   = "Não foi possível entrar com o Google"
+	msgRetorno  = "Endereço de retorno inválido"
+	msgComSenha = "Este email já tem conta com senha. Entre com a senha."
 )
 
 type resultadoGoogle int
@@ -24,6 +25,7 @@ const (
 	googleOK       resultadoGoogle = iota
 	googleTermos                   // conta nova ou pendente sem o aceite da versão atual no corpo
 	googleOutroSub                 // o email já está ligado a outra conta Google
+	googleComSenha                 // conta com senha e o Google não é dono do email (R13)
 )
 
 // POST /v1/contas/google
@@ -73,6 +75,10 @@ func (s *Servidor) entrarGoogle(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("email já ligado a outra conta Google", "usuario", u.ID)
 		erro(w, http.StatusUnauthorized, msgGoogle)
 		return
+	case googleComSenha:
+		s.log.Info("Google não autoritativo para conta com senha; não ligada", "usuario", u.ID)
+		escreverJSON(w, http.StatusConflict, map[string]string{"erro": msgComSenha, "motivo": "entrar-com-senha"})
+		return
 	}
 	if !s.conferirTermos(w, r, u, p) {
 		return
@@ -98,7 +104,12 @@ func (s *Servidor) contaGoogle(ctx context.Context, id google.Identidade, termos
 		if !u.Confirmado() && !aceitou {
 			return u, googleTermos, nil
 		}
-		u, err = s.contas.LigarGoogle(ctx, u.ID, id.Sub, id.Nome, s.cfg.TermosVersao, s.dep.Agora())
+		// R13: conta confirmada com senha só liga se o Google for dono do email; senão, quem controla
+		// a conta Google (ex.: um email de domínio próprio cadastrado no Google) tomaria a conta.
+		if u.Confirmado() && u.SenhaHash != "" && !id.Autoritativo {
+			return u, googleComSenha, nil
+		}
+		u, err = s.contas.LigarGoogle(ctx, u.ID, id.Sub, id.Nome, s.cfg.TermosVersao, id.Autoritativo, s.dep.Agora())
 		if err != nil {
 			return contas.Usuario{}, googleOK, err
 		}

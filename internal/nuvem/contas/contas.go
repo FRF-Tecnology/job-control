@@ -148,7 +148,8 @@ func (r *Repo) CriarGoogle(ctx context.Context, email, sub, nome, termosVersao s
 // fica confirmada, com o aceite de termosVersao, e perde a senha pendente: quem cadastrou pode não ser
 // o dono do email, e o Google acabou de provar quem é. Conta confirmada mantém a senha e os termos.
 // Se a conta ganhou um sub no meio (ou o sub já está em outra), volta ErrConflito.
-func (r *Repo) LigarGoogle(ctx context.Context, id, sub, nome, termosVersao string, agora time.Time) (Usuario, error) {
+// Sem autoritativo (R13), conta confirmada com senha não é ligada (volta ErrConflito; quem chama relê).
+func (r *Repo) LigarGoogle(ctx context.Context, id, sub, nome, termosVersao string, autoritativo bool, agora time.Time) (Usuario, error) {
 	// No update, as expressões leem a linha de antes: o "pendente" é o de antes da confirmação.
 	u, err := ler(r.db.QueryRow(ctx,
 		`update usuarios set google_sub = $2,
@@ -158,7 +159,8 @@ func (r *Repo) LigarGoogle(ctx context.Context, id, sub, nome, termosVersao stri
 		   termos_aceitos_em   = case when email_confirmado_em is null then $4 else termos_aceitos_em end,
 		   email_confirmado_em = coalesce(email_confirmado_em, $4)
 		 where id = $1::uuid and google_sub is null
-		 returning `+colunas, id, sub, nome, agora, termosVersao))
+		   and ($6 or email_confirmado_em is null or senha_hash is null)
+		 returning `+colunas, id, sub, nome, agora, termosVersao, autoritativo))
 	if err != nil {
 		return Usuario{}, conflito(err)
 	}

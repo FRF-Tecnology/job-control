@@ -81,7 +81,7 @@ func TestGoogleLigaPorEmail(t *testing.T) {
 	a := novoAmb(t)
 	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
 	antes := a.usuario(t, "ana@exemplo.com")
-	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@exemplo.com", Nome: "Ana Teste"}
+	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@exemplo.com", Nome: "Ana Teste", Autoritativo: true}
 	// Conta existente com termos em dia: não precisa mandar a versão.
 	par(t, a.google(t, "c1", ""))
 	u := a.usuario(t, "ana@exemplo.com")
@@ -92,6 +92,56 @@ func TestGoogleLigaPorEmail(t *testing.T) {
 	par(t, a.entrar(t, "ana@exemplo.com", senhaAna))
 	if n := a.contarUsuarios(t); n != 1 {
 		t.Fatalf("usuários = %d", n)
+	}
+}
+
+// R13: email de domínio comum (sem hd) não prova a posse para o Google; a conta com senha não é ligada.
+func TestGoogleNaoAutoritativoNaoLigaContaComSenha(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	antes := a.usuario(t, "ana@exemplo.com")
+	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@exemplo.com"}
+	w := a.google(t, "c1", termosAtual)
+	confere(t, w, http.StatusConflict, "Este email já tem conta com senha. Entre com a senha.")
+	if c := corpoJSON(t, w); c["motivo"] != "entrar-com-senha" {
+		t.Fatalf("corpo = %v", c)
+	}
+	u := a.usuario(t, "ana@exemplo.com")
+	if u.GoogleSub != "" || u.SenhaHash != antes.SenhaHash || a.contarUsuarios(t) != 1 {
+		t.Fatalf("conta mudou: %+v", u)
+	}
+	par(t, a.entrar(t, "ana@exemplo.com", senhaAna))
+}
+
+func TestGoogleGmailLiga(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@gmail.com", senhaAna)
+	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@gmail.com", Autoritativo: true}
+	par(t, a.google(t, "c1", ""))
+	if u := a.usuario(t, "ana@gmail.com"); u.GoogleSub != "1000001" || u.SenhaHash == "" {
+		t.Fatalf("ligação errada: %+v", u)
+	}
+}
+
+func TestGoogleHDLiga(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@exemplo.com", Autoritativo: true}
+	par(t, a.google(t, "c1", ""))
+	if u := a.usuario(t, "ana@exemplo.com"); u.GoogleSub != "1000001" {
+		t.Fatalf("ligação errada: %+v", u)
+	}
+}
+
+// A regra do hd mora no google.Real (TestRealAutoritativo); aqui, a identidade que ele devolve para hd
+// de outro domínio (não autoritativa) não liga a conta com senha.
+func TestGoogleHDDeOutroDominioNaoAutoritativo(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@exemplo.com", Autoritativo: false}
+	confere(t, a.google(t, "c1", ""), http.StatusConflict, "Este email já tem conta com senha. Entre com a senha.")
+	if u := a.usuario(t, "ana@exemplo.com"); u.GoogleSub != "" {
+		t.Fatalf("ligou: %+v", u)
 	}
 }
 
@@ -232,5 +282,20 @@ func TestConfirmarComHashVelhoNaoConfirma(t *testing.T) {
 	}
 	if !a.usuario(t, "ana@exemplo.com").Confirmado() {
 		t.Fatal("não confirmou com o hash atual")
+	}
+}
+
+// A R13 também vale dentro do UPDATE: se a conta foi confirmada com senha depois da leitura, o
+// LigarGoogle não autoritativo não pega a linha.
+func TestLigarGoogleNaoAutoritativoNoBanco(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	u := a.usuario(t, "ana@exemplo.com")
+	ctx := context.Background()
+	if _, err := a.s.contas.LigarGoogle(ctx, u.ID, "1000001", "", termosAtual, false, a.rel.agora()); err != contas.ErrConflito {
+		t.Fatalf("erro = %v", err)
+	}
+	if v, err := a.s.contas.LigarGoogle(ctx, u.ID, "1000001", "", termosAtual, true, a.rel.agora()); err != nil || v.GoogleSub != "1000001" {
+		t.Fatalf("%+v %v", v, err)
 	}
 }

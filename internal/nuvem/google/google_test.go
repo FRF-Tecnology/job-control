@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -48,8 +49,10 @@ type emissorTeste struct {
 	srv    *httptest.Server
 	priv   *rsa.PrivateKey
 	claims map[string]map[string]any // code → claims
-	// descobertas conta os GET da descoberta (o Real deve fazer só um).
-	descobertas int
+	// chaveDe troca a chave que assina o id_token de um code (chave que o JWKS não publica).
+	chaveDe map[string]*rsa.PrivateKey
+	// descobertas conta os GET da descoberta (o Real deve fazer só um); trocas, os POST do /token.
+	descobertas, trocas atomic.Int32
 }
 
 func novoEmissor(t *testing.T) *emissorTeste {
@@ -58,23 +61,22 @@ func novoEmissor(t *testing.T) *emissorTeste {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &emissorTeste{priv: priv, claims: map[string]map[string]any{}}
+	e := &emissorTeste{priv: priv, claims: map[string]map[string]any{}, chaveDe: map[string]*rsa.PrivateKey{}}
 	o := &oidctest.Server{PublicKeys: []oidctest.PublicKey{{PublicKey: priv.Public(), KeyID: "k1", Algorithm: oidc.RS256}}}
 	mux := http.NewServeMux()
 	mux.Handle("/", o)
 	mux.HandleFunc("GET /.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
-		e.descobertas++
+		e.descobertas.Add(1)
 		o.ServeHTTP(w, r)
 	})
 	mux.HandleFunc("POST /token", func(w http.ResponseWriter, r *http.Request) {
+		e.trocas.Add(1)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "form", http.StatusBadRequest)
 			return
 		}
-		id, seg, ok := r.BasicAuth()
-		if !ok {
-			id, seg = r.PostForm.Get("client_id"), r.PostForm.Get("client_secret")
-		}
+		// O Real manda as credenciais no corpo (AuthStyleInParams).
+		id, seg := r.PostForm.Get("client_id"), r.PostForm.Get("client_secret")
 		c, achou := e.claims[r.PostForm.Get("code")]
 		if id != idTeste || seg != segredoTeste || r.PostForm.Get("code_verifier") != verifierOK ||
 			r.PostForm.Get("redirect_uri") != retornoTeste || !achou {
@@ -84,10 +86,14 @@ func novoEmissor(t *testing.T) *emissorTeste {
 			return
 		}
 		b, _ := json.Marshal(c)
+		chave := priv
+		if k, ok := e.chaveDe[r.PostForm.Get("code")]; ok {
+			chave = k
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"access_token": "acesso-ficticio", "token_type": "Bearer", "expires_in": 3600,
-			"id_token": oidctest.SignIDToken(priv, "k1", oidc.RS256, string(b)),
+			"id_token": oidctest.SignIDToken(chave, "k1", oidc.RS256, string(b)),
 		})
 	})
 	e.srv = httptest.NewServer(mux)
@@ -116,7 +122,13 @@ func TestRealConfereIDToken(t *testing.T) {
 		"sem-sub":        func(c map[string]any) { c["sub"] = "" },
 		"sem-email":      func(c map[string]any) { delete(c, "email") },
 		"verif-texto":    func(c map[string]any) { c["email_verified"] = "true" },
+		"outra-chave":    func(c map[string]any) {}, // assinado com chave fora do JWKS
 	}
+	outra, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.chaveDe["outra-chave"] = outra
 	for code, mudar := range casos {
 		c := e.claimsBase()
 		mudar(c)
@@ -142,16 +154,57 @@ func TestRealConfereIDToken(t *testing.T) {
 			t.Errorf("%s: erro = %v", code, err)
 		}
 	}
-	// Verifier errado e code desconhecido: o Google recusa; o erro não traz o texto dele.
+	// Verifier errado e code desconhecido: o Google recusa; o erro não traz o texto dele, e a troca
+	// recusada não é repetida com outro jeito de autenticar.
 	for _, v := range [][2]string{{"ok", "verificador-errado"}, {"desconhecido", verifierOK}} {
+		antes := e.trocas.Load()
 		_, err := r.Trocar(ctx, v[0], v[1], retornoTeste)
+		if n := e.trocas.Load() - antes; n != 1 {
+			t.Errorf("%v: %d POST no /token", v, n)
+		}
 		if !errors.Is(err, ErrGoogle) || strings.Contains(err.Error(), "texto do Google") {
 			t.Errorf("%v: erro = %v", v, err)
 		}
 	}
 	// A descoberta acontece uma vez só (o provedor fica guardado).
-	if e.descobertas != 1 {
-		t.Errorf("descobertas = %d", e.descobertas)
+	if n := e.descobertas.Load(); n != 1 {
+		t.Errorf("descobertas = %d", n)
+	}
+}
+
+// O Google só manda no email de @gmail.com/@googlemail.com ou do domínio do Workspace (claim hd).
+func TestRealAutoritativo(t *testing.T) {
+	e := novoEmissor(t)
+	casos := map[string]struct {
+		email, hd string
+		quer      bool
+	}{
+		"comum":       {"ana@exemplo.com", "", false},
+		"gmail":       {"Ana@Gmail.com", "", true},
+		"googlemail":  {"ana@googlemail.com", "", true},
+		"hd":          {"ana@exemplo.com", "exemplo.com", true},
+		"hd-maiusc":   {"ana@Exemplo.com", "EXEMPLO.COM", true},
+		"hd-outro":    {"ana@exemplo.com", "outro.com", false},
+		"hd-sub":      {"ana@sub.exemplo.com", "exemplo.com", false},
+		"gmail-falso": {"ana@gmail.com.exemplo.com", "", false},
+	}
+	for code, c := range casos {
+		cl := e.claimsBase()
+		cl["email"] = c.email
+		if c.hd != "" {
+			cl["hd"] = c.hd
+		}
+		e.claims[code] = cl
+	}
+	r := &Real{ClientID: idTeste, ClientSecret: segredoTeste, emissor: e.srv.URL}
+	for code, c := range casos {
+		id, err := r.Trocar(context.Background(), code, verifierOK, retornoTeste)
+		if err != nil {
+			t.Fatalf("%s: %v", code, err)
+		}
+		if id.Autoritativo != c.quer {
+			t.Errorf("%s: Autoritativo = %v", code, id.Autoritativo)
+		}
 	}
 }
 
