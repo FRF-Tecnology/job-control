@@ -83,7 +83,9 @@
   #pa-principal > form > section { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding: 3px 7px 5px 3px; }
   .pa-andamento, .pa-erro, .pa-acoes { flex-shrink: 0; }
   .pa-andamento { margin-bottom: 16px; }.pa-acoes { margin-top: 12px; padding-top: 14px; }
-  .pa-resumo div { padding-block: 4px; }
+  #pa-principal section:has(.pa-resumo) .pa-sub { margin-bottom: 16px; }
+  .pa-resumo div { padding-block: 3px; }
+  .pa-resumo + .pa-nota { margin-top: 8px; }
 }
 @media(max-width: 760px) {
   .pa-janela { display: block; }.pa-rail { padding: 10px 16px; border: 0; border-bottom: 1px solid var(--linha); }
