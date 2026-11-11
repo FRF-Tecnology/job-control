@@ -2,6 +2,7 @@ package nuvem
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
 	"io"
@@ -45,6 +46,7 @@ type Servidor struct {
 	mux *http.ServeMux
 	log *slog.Logger
 
+	chave    ed25519.PrivateKey
 	contas   *contas.Repo
 	codigos  *codigos.Repo
 	sessoes  *sessoes.Repo
@@ -82,6 +84,7 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		if dep.Google == nil {
 			panic("nuvem: Dependencias.Google é obrigatório com banco")
 		}
+		s.chave = priv
 		s.contas = contas.Novo(dep.Banco)
 		s.codigos = codigos.Novo(dep.Banco, []byte(cfg.SegredoCodigos), dep.Agora, dep.Aleatorio)
 		s.sessoes = sessoes.Novo(dep.Banco, priv, dep.Agora, dep.Aleatorio)
@@ -92,6 +95,7 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 			panic(err)
 		}
 		s.rotasContas()
+		s.rotasLicenca()
 	}
 	return s
 }

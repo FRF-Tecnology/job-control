@@ -32,6 +32,9 @@ type Usuario struct {
 	TermosAceitosEm   *time.Time
 	FalhasLogin       int
 	BloqueadoAte      *time.Time
+	TesteInicio       *time.Time
+	TesteFim          *time.Time
+	Cortesia          bool
 }
 
 // Confirmado diz se o email já foi confirmado.
@@ -52,7 +55,8 @@ const (
 )
 
 const colunas = `id::text, email, nome, coalesce(senha_hash, ''), coalesce(google_sub, ''), email_confirmado_em,
-	termos_versao, termos_aceitos_em, falhas_login, bloqueado_ate`
+	termos_versao, termos_aceitos_em, falhas_login, bloqueado_ate,
+	teste_inicio, teste_fim, cortesia`
 
 // Repo lê e grava usuarios.
 type Repo struct{ db *pgxpool.Pool }
@@ -62,7 +66,7 @@ func Novo(db *pgxpool.Pool) *Repo { return &Repo{db: db} }
 func ler(row pgx.Row, extra ...any) (Usuario, error) {
 	var u Usuario
 	dest := append([]any{&u.ID, &u.Email, &u.Nome, &u.SenhaHash, &u.GoogleSub, &u.EmailConfirmadoEm,
-		&u.TermosVersao, &u.TermosAceitosEm, &u.FalhasLogin, &u.BloqueadoAte}, extra...)
+		&u.TermosVersao, &u.TermosAceitosEm, &u.FalhasLogin, &u.BloqueadoAte, &u.TesteInicio, &u.TesteFim, &u.Cortesia}, extra...)
 	err := row.Scan(dest...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Usuario{}, ErrNaoEncontrado
