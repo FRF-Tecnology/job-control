@@ -2,6 +2,8 @@ package nuvem
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,7 +30,7 @@ func TestCorpoLimitado(t *testing.T) {
 		for {
 			_, err := r.Body.Read(b[:])
 			if err != nil {
-				if err.Error() == "EOF" {
+				if errors.Is(err, io.EOF) {
 					w.WriteHeader(200)
 				} else {
 					w.WriteHeader(413)

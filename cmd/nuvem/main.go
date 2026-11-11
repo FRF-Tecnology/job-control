@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -54,7 +53,7 @@ func executar() error {
 	}
 	fim, cancelar := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelar()
-	if err := sh.Shutdown(fim); err != nil && !errors.Is(err, context.Canceled) {
+	if err := sh.Shutdown(fim); err != nil {
 		return err
 	}
 	return nil

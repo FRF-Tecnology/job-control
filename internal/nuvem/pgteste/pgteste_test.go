@@ -18,3 +18,20 @@ func TestBancosIsolados(t *testing.T) {
 		t.Fatalf("bancos não isolados: n=%d err=%v", n, err)
 	}
 }
+
+func TestModoDe(t *testing.T) {
+	casos := []struct {
+		env  map[string]string
+		want modo
+	}{
+		{map[string]string{"APPLYER_PG_TESTE": "postgres://x"}, modoExterno},
+		{map[string]string{"APPLYER_PG_TESTE": "postgres://x", "CI": "true"}, modoExterno},
+		{map[string]string{"CI": "true"}, modoPular},
+		{map[string]string{}, modoEmbutido},
+	}
+	for _, c := range casos {
+		if got := modoDe(func(k string) string { return c.env[k] }); got != c.want {
+			t.Errorf("env %v: modo %d, esperava %d", c.env, got, c.want)
+		}
+	}
+}
