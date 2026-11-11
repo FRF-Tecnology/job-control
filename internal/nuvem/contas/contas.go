@@ -179,11 +179,15 @@ func (r *Repo) AceitarTermos(ctx context.Context, id, versao string, agora time.
 }
 
 // TrocarSenha grava a senha nova depois de um código de recuperação: o código prova o email, então ele
-// também fica confirmado; zera as falhas e o bloqueio.
+// também fica confirmado; zera as falhas e o bloqueio. Email fora de @gmail.com/@googlemail.com perde o
+// Google ligado: num domínio próprio, a conta Google pode ser de um dono antigo do email, e quem acabou de
+// provar o email é o dono de agora.
 func (r *Repo) TrocarSenha(ctx context.Context, id, senhaHash string, agora time.Time) error {
 	_, err := r.db.Exec(ctx,
 		`update usuarios set senha_hash = $2, falhas_login = 0, bloqueado_ate = null,
-		 email_confirmado_em = coalesce(email_confirmado_em, $3) where id = $1::uuid`, id, senhaHash, agora)
+		 email_confirmado_em = coalesce(email_confirmado_em, $3),
+		 google_sub = case when split_part(email, '@', 2) in ('gmail.com', 'googlemail.com') then google_sub end
+		 where id = $1::uuid`, id, senhaHash, agora)
 	return err
 }
 

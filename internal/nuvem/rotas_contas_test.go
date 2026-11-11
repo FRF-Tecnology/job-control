@@ -710,3 +710,43 @@ func TestSenhasOcupadas503(t *testing.T) {
 	confere(t, a.post(t, "/v1/contas", map[string]string{"email": "bia@exemplo.com", "senha": senhaAna, "termos_versao": termosAtual}),
 		http.StatusServiceUnavailable, msg)
 }
+
+// recuperar responde sem esperar o banco nem o email (o tempo não revela se a conta existe): com a geração
+// do código travada, a resposta sai mesmo assim e o código chega depois.
+func TestRecuperarEmSegundoPlano(t *testing.T) {
+	a := novoAmb(t)
+	a.criarConfirmado(t, "ana@exemplo.com", senhaAna)
+	ctx := context.Background()
+	tx, err := a.db.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	// A mesma trava que codigos.Gerar pega para o email+tipo.
+	if _, err := tx.Exec(ctx, `select pg_advisory_xact_lock(hashtext('ana@exemplo.com|recuperar'))`); err != nil {
+		t.Fatal(err)
+	}
+	resp := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		req := httptest.NewRequest("POST", "/v1/contas/recuperar", strings.NewReader(`{"email":"ana@exemplo.com"}`))
+		req.RemoteAddr = "192.0.2.10:40000"
+		w := httptest.NewRecorder()
+		a.s.Handler().ServeHTTP(w, req)
+		resp <- w
+	}()
+	select {
+	case w := <-resp:
+		confere(t, w, http.StatusAccepted, "")
+	case <-time.After(3 * time.Second):
+		tx.Rollback(ctx)
+		<-resp
+		t.Fatal("recuperar esperou a geração do código para responder")
+	}
+	antes := len(a.em.Lista())
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(a.emails("ana@exemplo.com")); n != antes+1 {
+		t.Fatalf("o código não chegou depois: %d emails", n)
+	}
+}

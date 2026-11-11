@@ -429,18 +429,29 @@ func (s *Servidor) recuperar(w http.ResponseWriter, r *http.Request) {
 		erro(w, http.StatusTooManyRequests, msgLimite)
 		return
 	}
-	_, err := s.contas.PorEmail(r.Context(), email)
-	switch {
-	case err == nil:
-		if err := s.mandarCodigo(r.Context(), email, codigos.Recuperar); err != nil {
-			s.interno(w, r, "gerar código", err)
-			return
+	// Em segundo plano, como o envio: o tempo da resposta não depende de a conta existir.
+	s.envios.Add(1)
+	go func() {
+		defer s.envios.Done()
+		ctx, cancelar := context.WithTimeout(context.Background(), prazoEmail)
+		defer cancelar()
+		if err := s.codigoDeRecuperacao(ctx, email); err != nil {
+			s.log.Error("falha ao gerar código de recuperação", "para", mascarar(email), "erro", err.Error())
 		}
-	case !errors.Is(err, contas.ErrNaoEncontrado):
-		s.interno(w, r, "ler conta", err)
-		return
-	}
+	}()
 	escreverJSON(w, http.StatusAccepted, map[string]string{"mensagem": msgEnviamos})
+}
+
+// codigoDeRecuperacao manda o código se a conta existe (sem conta, nada).
+func (s *Servidor) codigoDeRecuperacao(ctx context.Context, email string) error {
+	_, err := s.contas.PorEmail(ctx, email)
+	if errors.Is(err, contas.ErrNaoEncontrado) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return s.mandarCodigo(ctx, email, codigos.Recuperar)
 }
 
 // POST /v1/contas/nova-senha

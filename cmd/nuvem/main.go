@@ -68,10 +68,18 @@ func executar() error {
 	filaFim := make(chan struct{})
 	go func() { fila.Rodar(ctxFila); close(filaFim) }()
 	defer func() { pararFila(); <-filaFim }()
+	// Limpeza de contas pendentes velhas e códigos vencidos: de hora em hora, até o desligamento.
+	ctxLimpeza, pararLimpeza := context.WithCancel(ctx)
+	limpezaFim := make(chan struct{})
+	go func() { srv.RodarLimpeza(ctxLimpeza); close(limpezaFim) }()
+	defer func() { pararLimpeza(); <-limpezaFim }()
 	sh := &http.Server{
 		Addr:              cfg.Endereco,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 	falha := make(chan error, 1)
 	go func() { falha <- sh.ListenAndServe() }()

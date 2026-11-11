@@ -110,6 +110,10 @@ func LerConfig(env func(string) string) (Config, error) {
 	default:
 		return Config{}, errors.New("NOTAS_PROVEDOR inválido: use nfeio ou falso")
 	}
+	// HMAC dos códigos: menos de 32 bytes deixaria o segredo adivinhável.
+	if len(cfg.SegredoCodigos) < 32 {
+		return Config{}, errors.New("APPLYER_SEGREDO_CODIGOS inválida: use pelo menos 32 bytes (ex.: openssl rand -base64 32)")
+	}
 	var err error
 	if cfg.ProxyConfiavel, err = lerProxies(v("APPLYER_PROXY_CONFIAVEL")); err != nil {
 		return Config{}, err

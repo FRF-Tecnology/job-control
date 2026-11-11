@@ -21,7 +21,7 @@ func envCompleto(t *testing.T) map[string]string {
 	}
 	return map[string]string{
 		"DATABASE_URL": "postgres://x", "APPLYER_CHAVE_PRIVADA": base64.StdEncoding.EncodeToString(priv),
-		"APPLYER_SEGREDO_CODIGOS": "s", "APPLYER_TERMOS_VERSAO": "2026-11",
+		"APPLYER_SEGREDO_CODIGOS": "segredo-ficticio-dos-codigos-com-32-bytes", "APPLYER_TERMOS_VERSAO": "2026-11",
 		"SMTP_HOST": "smtp.exemplo.com", "SMTP_PORTA": "587", "SMTP_USUARIO": "u",
 		"SMTP_SENHA": "senha-ficticia", "SMTP_REMETENTE": "app@exemplo.com",
 		"GOOGLE_CLIENT_ID": "cliente-ficticio.apps.googleusercontent.com", "GOOGLE_CLIENT_SECRET": "segredo-ficticio",
@@ -107,5 +107,19 @@ func TestLerConfigNotas(t *testing.T) {
 	env["NOTAS_CHAVE"], env["NOTAS_EMPRESA"], env["NOTAS_SERVICO"] = "chave-ficticia", "emp1", "1.05"
 	if _, err := LerConfig(envDe(env)); err != nil {
 		t.Errorf("nfeio completo: %v", err)
+	}
+}
+
+// APPLYER_SEGREDO_CODIGOS precisa de pelo menos 32 bytes; o erro cita a variável, nunca o valor.
+func TestLerConfigSegredoCodigosCurto(t *testing.T) {
+	env := envCompleto(t)
+	env["APPLYER_SEGREDO_CODIGOS"] = "curto-demais-31-bytes-xxxxxxxxx"[:31]
+	_, err := LerConfig(envDe(env))
+	if err == nil || !strings.Contains(err.Error(), "APPLYER_SEGREDO_CODIGOS") || strings.Contains(err.Error(), env["APPLYER_SEGREDO_CODIGOS"]) {
+		t.Fatalf("segredo curto: %v", err)
+	}
+	env["APPLYER_SEGREDO_CODIGOS"] = strings.Repeat("x", 32)
+	if _, err := LerConfig(envDe(env)); err != nil {
+		t.Fatalf("32 bytes: %v", err)
 	}
 }

@@ -299,3 +299,28 @@ func TestLigarGoogleNaoAutoritativoNoBanco(t *testing.T) {
 		t.Fatalf("%+v %v", v, err)
 	}
 }
+
+// Trocar a senha pelo código do email desliga o Google de email de domínio próprio (a conta Google pode ser de
+// um dono antigo do domínio); em @gmail.com o Google é do mesmo dono do email e fica ligado.
+func TestNovaSenhaDesligaGoogleDeDominioProprio(t *testing.T) {
+	a := novoAmb(t)
+	a.ids["c1"] = google.Identidade{Sub: "1000001", Email: "ana@exemplo.com"}
+	a.ids["c2"] = google.Identidade{Sub: "1000002", Email: "bia@gmail.com"}
+	par(t, a.google(t, "c1", termosAtual))
+	par(t, a.google(t, "c2", termosAtual))
+	for _, email := range []string{"ana@exemplo.com", "bia@gmail.com"} {
+		confere(t, a.post(t, "/v1/contas/recuperar", map[string]string{"email": email}), http.StatusAccepted, "")
+		par(t, a.post(t, "/v1/contas/nova-senha", map[string]string{
+			"email": email, "codigo": a.codigo(t, email), "senha": senhaNova, "dispositivo": dispositivo}))
+	}
+	if u := a.usuario(t, "ana@exemplo.com"); u.GoogleSub != "" {
+		t.Fatalf("domínio próprio manteve o Google: %q", u.GoogleSub)
+	}
+	if u := a.usuario(t, "bia@gmail.com"); u.GoogleSub != "1000002" {
+		t.Fatalf("gmail perdeu o Google: %q", u.GoogleSub)
+	}
+	// O Google antigo não entra mais na conta de domínio próprio (agora com senha, não autoritativo: 409).
+	if w := a.google(t, "c1", termosAtual); w.Code == http.StatusOK {
+		t.Fatalf("Google antigo ainda entra: %s", w.Body)
+	}
+}
