@@ -1,9 +1,11 @@
 package notas
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -117,6 +119,8 @@ func TestFalhaTentaDeNovo(t *testing.T) {
 func TestDesisteDepoisDe24(t *testing.T) {
 	a := novoAmb(t)
 	ctx := context.Background()
+	var buf bytes.Buffer
+	a.fila.log = slog.New(slog.NewTextHandler(&buf, nil))
 	a.em.Falhas = 1000
 	_ = a.fila.Agendar(ctx, "in_1", a.user)
 	for i := 0; i < 30; i++ {
@@ -125,6 +129,9 @@ func TestDesisteDepoisDe24(t *testing.T) {
 	estado, _, _, _, tent := a.linha(t, "in_1")
 	if estado != "falhou" || tent != MaxTentativas {
 		t.Fatalf("estado=%s tentativas=%d", estado, tent)
+	}
+	if got := buf.String(); strings.Count(got, "ALERTA") != 1 || !strings.Contains(got, "fatura=in_1") {
+		t.Fatalf("log sem exatamente um ALERTA com a fatura: %s", got)
 	}
 	if n := a.em.Chamadas(); n != MaxTentativas {
 		t.Fatalf("emissor chamado %d vezes", n)
@@ -158,14 +165,31 @@ func TestDuasInstanciasNaoEmitemEmDobro(t *testing.T) {
 	ctx := context.Background()
 	_ = a.fila.Agendar(ctx, "in_1", a.user)
 	outra := NovaFila(a.db, a.st, a.em, nil)
-	a.em.Atraso = 300 * time.Millisecond
+	a.em.Segurar, a.em.Entrou = make(chan struct{}), make(chan struct{}, 1)
 	fim := make(chan struct{})
 	go func() { a.fila.Processar(ctx); close(fim) }()
-	time.Sleep(100 * time.Millisecond)
-	outra.Processar(ctx)
+	<-a.em.Entrou        // a primeira instância está dentro do emissor, com a linha travada
+	outra.Processar(ctx) // pula a linha travada (skip locked) e volta sem emitir
+	close(a.em.Segurar)
 	<-fim
 	if n := a.em.Chamadas(); n != 1 {
 		t.Fatalf("emissor chamado %d vezes", n)
+	}
+}
+
+func TestPassadaDoGatilhoNaoRetentaFalhou(t *testing.T) {
+	a := novoAmb(t)
+	ctx := context.Background()
+	a.em.Falhas = 1000
+	_ = a.fila.Agendar(ctx, "in_1", a.user)
+	a.fila.ProcessarNovas(ctx) // pendente: tenta
+	a.fila.ProcessarNovas(ctx) // falhou: espera a hora
+	if estado, _, _, _, tent := a.linha(t, "in_1"); estado != "falhou" || tent != 1 {
+		t.Fatalf("estado=%s tentativas=%d", estado, tent)
+	}
+	a.fila.Processar(ctx) // passada horária: refaz
+	if _, _, _, _, tent := a.linha(t, "in_1"); tent != 2 {
+		t.Fatalf("tentativas = %d depois da passada horária", tent)
 	}
 }
 

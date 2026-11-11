@@ -69,25 +69,34 @@ func (f *Fila) Agendar(ctx context.Context, invoiceID, usuarioID string) error {
 }
 
 // Rodar processa a fila ao subir, a cada Intervalo e logo após cada Agendar, até o ctx acabar.
+// Só a passada horária refaz notas que falharam; a da subida e a do gatilho tratam só as pendentes,
+// para uma pane do emissor não queimar as 24 tentativas em minutos.
 func (f *Fila) Rodar(ctx context.Context) {
 	tic := time.NewTicker(f.Intervalo)
 	defer tic.Stop()
+	f.processar(ctx, false) // subida: só pendentes
 	for {
-		f.Processar(ctx)
 		select {
 		case <-ctx.Done():
 			return
 		case <-tic.C:
+			f.processar(ctx, true)
 		case <-f.gatilho:
+			f.processar(ctx, false)
 		}
 	}
 }
 
-// Processar faz uma passada: até porPassada notas pendentes/falhas, uma tentativa cada, uma por vez.
-func (f *Fila) Processar(ctx context.Context) {
+// Processar faz a passada horária: até porPassada notas pendentes ou falhas, uma tentativa cada, uma por vez.
+func (f *Fila) Processar(ctx context.Context) { f.processar(ctx, true) }
+
+// ProcessarNovas faz a passada do gatilho: só as pendentes (as que falharam esperam a passada horária).
+func (f *Fila) ProcessarNovas(ctx context.Context) { f.processar(ctx, false) }
+
+func (f *Fila) processar(ctx context.Context, refazer bool) {
 	vistas := []string{}
 	for i := 0; i < porPassada && ctx.Err() == nil; i++ {
-		id, achou, err := f.proxima(ctx, vistas)
+		id, achou, err := f.proxima(ctx, vistas, refazer)
 		if err != nil {
 			if ctx.Err() == nil {
 				f.log.Error("fila de notas falhou", "erro", fmt.Sprintf("%T", err))
@@ -102,18 +111,21 @@ func (f *Fila) Processar(ctx context.Context) {
 }
 
 // proxima trabalha uma nota dentro de uma transação que segura a linha até gravar o resultado.
-func (f *Fila) proxima(ctx context.Context, vistas []string) (string, bool, error) {
+func (f *Fila) proxima(ctx context.Context, vistas []string, refazer bool) (string, bool, error) {
 	tx, err := f.banco.Begin(ctx)
 	if err != nil {
 		return "", false, err
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	// A gravação final não pode ser cortada pelo desligamento: depois que o emissor aceitou, a linha tem de ficar emitida.
+	fim, cancelar := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancelar()
+	defer func() { _ = tx.Rollback(fim) }()
 	var id, usuario string
 	var tentativas int
 	err = tx.QueryRow(ctx,
 		`select invoice_id, coalesce(usuario_id::text, ''), tentativas from notas
-		  where estado in ('pendente', 'falhou') and tentativas < $1 and invoice_id <> all($2)
-		  order by criada_em, invoice_id limit 1 for update skip locked`, MaxTentativas, vistas).
+		  where (estado = 'pendente' or ($3 and estado = 'falhou')) and tentativas < $1 and invoice_id <> all($2)
+		  order by criada_em, invoice_id limit 1 for update skip locked`, MaxTentativas, vistas, refazer).
 		Scan(&id, &usuario, &tentativas)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
@@ -124,14 +136,14 @@ func (f *Fila) proxima(ctx context.Context, vistas []string) (string, bool, erro
 	numero, link, errEmitir := f.emitir(ctx, id, usuario)
 	tentativas++
 	if errEmitir == nil {
-		_, err = tx.Exec(ctx, `update notas set estado = 'emitida', numero = $2, link_pdf = $3, erro = '', tentativas = $4 where invoice_id = $1`,
+		_, err = tx.Exec(fim, `update notas set estado = 'emitida', numero = $2, link_pdf = $3, erro = '', tentativas = $4 where invoice_id = $1`,
 			id, numero, link, tentativas)
 	} else {
 		if ctx.Err() != nil { // desligando: a tentativa não conta
 			return id, true, ctx.Err()
 		}
 		msg := descrever(errEmitir)
-		_, err = tx.Exec(ctx, `update notas set estado = 'falhou', erro = $2, tentativas = $3 where invoice_id = $1`,
+		_, err = tx.Exec(fim, `update notas set estado = 'falhou', erro = $2, tentativas = $3 where invoice_id = $1`,
 			id, msg, tentativas)
 		f.log.Warn("nota fiscal falhou", "fatura", id, "tentativa", tentativas, "erro", msg)
 		if tentativas >= MaxTentativas {
@@ -141,7 +153,7 @@ func (f *Fila) proxima(ctx context.Context, vistas []string) (string, bool, erro
 	if err != nil {
 		return "", false, err
 	}
-	return id, true, tx.Commit(ctx)
+	return id, true, tx.Commit(fim)
 }
 
 func (f *Fila) emitir(ctx context.Context, invoiceID, usuarioID string) (string, string, error) {

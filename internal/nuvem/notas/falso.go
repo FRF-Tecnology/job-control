@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 )
 
 // Falso é o emissor dos testes e das rodadas locais: não emite nada de verdade, só marca a nota como
 // emitida com um número inventado. Falha as primeiras Falhas chamadas.
 type Falso struct {
-	Falhas int           // quantas chamadas ainda devem falhar
-	Atraso time.Duration // espera dentro de Emitir (simula emissor lento)
+	Falhas int // quantas chamadas ainda devem falhar
+	// Segurar, se não for nil, prende Emitir até receber (ou fechar) e avisa em Entrou quando chega: os testes
+	// usam para controlar a ordem sem depender de tempo.
+	Segurar chan struct{}
+	Entrou  chan struct{}
 
 	mu       sync.Mutex
 	chamadas int
@@ -25,11 +27,14 @@ func (f *Falso) Emitir(ctx context.Context, p Pedido) (string, string, error) {
 	if falha {
 		f.Falhas--
 	}
-	atraso := f.Atraso
+	segurar, entrou := f.Segurar, f.Entrou
 	f.mu.Unlock()
-	if atraso > 0 {
+	if segurar != nil {
+		if entrou != nil {
+			entrou <- struct{}{}
+		}
 		select {
-		case <-time.After(atraso):
+		case <-segurar:
 		case <-ctx.Done():
 			return "", "", ctx.Err()
 		}

@@ -28,7 +28,7 @@ func (r *Real) Fatura(ctx context.Context, id string) (Fatura, error) {
 	return faturaDe(inv), nil
 }
 
-// faturaDe prefere o tax id brasileiro (br_cpf/br_cnpj); sem ele, o primeiro que houver.
+// faturaDe pega só tax id brasileiro (br_cpf, depois br_cnpj); sem eles, Documento fica vazio.
 func faturaDe(inv *stripe.Invoice) Fatura {
 	f := Fatura{Nome: inv.CustomerName, Email: inv.CustomerEmail, ValorCentavos: inv.AmountPaid,
 		Moeda: strings.ToUpper(string(inv.Currency)), Endereco: map[string]string{}}
@@ -41,16 +41,13 @@ func faturaDe(inv *stripe.Invoice) Fatura {
 			}
 		}
 	}
+	// Só CPF/CNPJ vão para a nota; outro tipo (ex.: CUIT argentino) fica de fora: o contador define o caso estrangeiro.
 	for _, t := range inv.CustomerTaxIDs {
-		if t == nil {
-			continue
-		}
-		if t.Type != nil && (*t.Type == stripe.TaxIDTypeBRCPF || *t.Type == stripe.TaxIDTypeBRCNPJ) {
+		if t != nil && t.Type != nil && (*t.Type == stripe.TaxIDTypeBRCPF || *t.Type == stripe.TaxIDTypeBRCNPJ) {
 			f.Documento = t.Value
-			break
-		}
-		if f.Documento == "" {
-			f.Documento = t.Value
+			if *t.Type == stripe.TaxIDTypeBRCPF {
+				break // CPF vence; se só houver CNPJ, fica o CNPJ
+			}
 		}
 	}
 	return f
