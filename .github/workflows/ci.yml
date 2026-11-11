@@ -217,3 +217,31 @@ jobs:
               go install github.com/zricethezav/gitleaks/v8@v8.28.0
           fi
           ./gitleaks git --redact --verbose .
+
+  # Nuvem (contas, licença e assinatura): testes com um Postgres 17 de verdade.
+  nuvem:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APPLYER_PG_TESTE: postgres://postgres:teste@localhost:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: go vet ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
+      - run: go test -count=1 ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
