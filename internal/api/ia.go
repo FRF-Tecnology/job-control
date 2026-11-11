@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -29,12 +30,12 @@ const chaveConfig = "ia"
 
 // Provedores que a pessoa pode escolher e o modelo padrão de cada um ("" = ela escolhe / padrão da CLI).
 var provedoresIA = map[string]string{
-	"anthropic": "claude-haiku-5-5", "openai": "", "google": "",
+	"anthropic": "claude-haiku-5-5", "openai": "", "google": "", "xai": "",
 	"claude-cli": "haiku", "codex-cli": "", "gemini-cli": "",
 }
 
 // Provedores que usam chave de API (as CLIs usam o login da pessoa).
-var comChave = []string{"anthropic", "openai", "google"}
+var comChave = []string{"anthropic", "openai", "google", "xai"}
 
 var (
 	reIAChave  = regexp.MustCompile(`^/ia/chaves/([a-z-]+)$`)
@@ -84,14 +85,24 @@ func (a *API) novaIA(ctx context.Context) (*ia.IA, error) {
 	if err != nil {
 		return nil, err
 	}
-	hosts, err := a.hostsDasChaves(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// jc-a2y.27: a chave só sai para o host para o qual foi colada ("" = endereço padrão do provedor).
+	// Uma rodada pode fazer várias chamadas. Confira a rota e a vinculação na hora de ler cada
+	// credencial, sob a mesma trava das alterações. A chamada ao provedor ocorre depois de soltar a trava.
 	chave := func(p string) string {
-		c, _ := a.cofre.Ler(p)
-		if c == "" || hosts[p] != hostDe(cfg.Provedores[p].URL) {
+		if !contem(comChave, p) {
+			return ""
+		}
+		a.credenciaisIA.RLock()
+		defer a.credenciaisIA.RUnlock()
+		atual, err := a.configIA(ctx)
+		if err != nil || !reflect.DeepEqual(atual, cfg) {
+			return ""
+		}
+		hosts, err := a.hostsDasChaves(ctx)
+		if err != nil || hosts[p] != hostDe(cfg.Provedores[p].URL) {
+			return ""
+		}
+		c, err := a.cofre.Ler(p)
+		if err != nil {
 			return ""
 		}
 		return c
@@ -147,6 +158,8 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		return r, true, err
 
 	case reIAChave.MatchString(p) && (m == "PUT" || m == "DELETE"):
+		a.credenciaisIA.Lock()
+		defer a.credenciaisIA.Unlock()
 		prov := reIAChave.FindStringSubmatch(p)[1]
 		if !contem(comChave, prov) {
 			return Resposta{}, true, falha(400, "este provedor não usa chave de API")
@@ -174,12 +187,19 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		if err != nil {
 			return Resposta{}, true, err
 		}
-		if err := a.cofre.Gravar(prov, chave); err != nil {
+		// Se uma gravação falhar, nunca deixe a nova chave presa ao host anterior,
+		// nem a chave anterior presa ao novo host.
+		destino := hostDe(cfg.Provedores[prov].URL)
+		if hosts[prov] != destino {
+			if err := a.cofre.Apagar(prov); err != nil {
+				return Resposta{}, true, err
+			}
+		}
+		hosts[prov] = destino
+		if err := a.arm.GravarMeta(ctx, chaveHosts, hosts); err != nil {
 			return Resposta{}, true, err
 		}
-		// A chave fica presa ao host configurado agora para este provedor (jc-a2y.27).
-		hosts[prov] = hostDe(cfg.Provedores[prov].URL)
-		if err := a.arm.GravarMeta(ctx, chaveHosts, hosts); err != nil {
+		if err := a.cofre.Gravar(prov, chave); err != nil {
 			return Resposta{}, true, err
 		}
 		r, err := ok(Objeto{"provedor": prov, "final": segredos.Final(chave)})
@@ -191,14 +211,10 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		if err != nil {
 			return Resposta{}, true, err
 		}
-		e, err := a.arm.Carregar(ctx)
-		if err != nil {
-			return Resposta{}, true, err
-		}
 		inicio := time.Now()
 		saida, err := x.Executar(ctx, "triarVaga", Objeto{
 			"vaga":   Objeto{"id": "teste", "empresa": "Empresa Exemplo", "titulo": "Vaga de teste", "notas": "Vaga fictícia para testar a conexão."},
-			"perfil": perfilOuVazio(e.Perfil),
+			"perfil": Objeto{"cargo": "Desenvolvimento de software"},
 		})
 		if err != nil {
 			r, err := respostaIA(err)
@@ -268,6 +284,8 @@ func trimEspacos(s string) string {
 }
 
 func (a *API) configurarIA(ctx context.Context, c Objeto) (Resposta, error) {
+	a.credenciaisIA.Lock()
+	defer a.credenciaisIA.Unlock()
 	prov, _ := c["provedor"].(string)
 	if prov == "nenhum" {
 		if err := a.arm.GravarMeta(ctx, chaveConfig, ia.Config{}); err != nil {
@@ -357,10 +375,12 @@ func (a *API) esquecerCLIsDetectadas() {
 	a.cacheCLIs.mu.Unlock()
 }
 
-func (a *API) estadoIA(ctx context.Context) (Resposta, error) {
+func (a *API) configEChavesIA(ctx context.Context) (ia.Config, Objeto, error) {
+	a.credenciaisIA.RLock()
+	defer a.credenciaisIA.RUnlock()
 	cfg, err := a.configIA(ctx)
 	if err != nil {
-		return Resposta{}, err
+		return cfg, nil, err
 	}
 	chaves := Objeto{}
 	for _, p := range comChave {
@@ -370,6 +390,14 @@ func (a *API) estadoIA(ctx context.Context) (Resposta, error) {
 		} else {
 			chaves[p] = segredos.Final(c)
 		}
+	}
+	return cfg, chaves, nil
+}
+
+func (a *API) estadoIA(ctx context.Context) (Resposta, error) {
+	cfg, chaves, err := a.configEChavesIA(ctx)
+	if err != nil {
+		return Resposta{}, err
 	}
 	corpo := Objeto{"configurada": false, "chaves": chaves, "clis": a.clisDetectadas(ctx), "gratis": Objeto{"disponivel": false}}
 	if r, okR := cfg.Rotas["padrao"]; okR {

@@ -92,7 +92,12 @@ func TestGoldenDaApiNode(t *testing.T) {
 		if r.Tipo != tipo || !reflect.DeepEqual(r.Cabecalhos, c.Resposta.Cabecalhos) && !(len(r.Cabecalhos) == 0 && len(c.Resposta.Cabecalhos) == 0) {
 			t.Fatalf("%s: tipo/cabeçalhos %q %v; Node deu %q %v", nome, r.Tipo, r.Cabecalhos, tipo, c.Resposta.Cabecalhos)
 		}
-		if got := normal(r.Corpo); !reflect.DeepEqual(got, c.Resposta.Corpo) {
+		got := normal(r.Corpo)
+		if c.Caminho == Prefixo+"/estado" && c.Metodo == "GET" {
+			// Campo da janela Go; o retrato fixo do Node não tinha onboarding.
+			delete(got.(map[string]any), "onboardingConcluido")
+		}
+		if !reflect.DeepEqual(got, c.Resposta.Corpo) {
 			t.Fatalf("%s: corpo diferente do Node\nGo:   %s\nNode: %s", nome, cortar(emJSON(got)), cortar(emJSON(c.Resposta.Corpo)))
 		}
 	}

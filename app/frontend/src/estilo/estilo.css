@@ -363,6 +363,11 @@ label.campo > span { font-weight: 600; color: var(--tinta); }
 
 /* ---------- triagem (cartão que se arrasta) ---------- */
 .triagem { max-width: 640px; margin: 0 auto; }
+.busca-perfil { margin-bottom: 22px; padding: 17px; border-radius: var(--raio-m); background: var(--peca); box-shadow: inset 0 0 0 1px var(--aro); }
+.busca-perfil p { margin: 9px 0 0; }
+.balanco-grupos { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.triagem .motivo ul { margin: 6px 0 0; padding-inline-start: 21px; }
+@media (pointer: coarse) { .triagem a.fonte-busca { min-height: 44px; } }
 .progresso { height: 8px; border-radius: 99px; background: var(--linha); overflow: hidden; margin: 8px 0 24px; }
 .progresso > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #5865f2, #3fd8f5); transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform .3s var(--facil); }
 .pilha { position: relative; }

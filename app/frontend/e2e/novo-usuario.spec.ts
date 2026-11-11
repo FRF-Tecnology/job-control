@@ -2,8 +2,7 @@
 // Roda no PC e no celular (playwright.config.ts). Cada projeto usa a mesma pasta de dados, então
 // a jornada é feita uma vez (PC) e o celular confere as telas com os dados que ela deixou.
 import { expect, test, type Page } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { posix } from 'node:path';
 
 const ir = async (page: Page, rota: string) => {
   await page.goto(`/#/${rota}`);
@@ -37,12 +36,12 @@ const avisou = (page: Page, texto: string) => expect.poll(() => page.evaluate(()
 test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   test.skip(info.project.name !== 'pc', 'a jornada grava dados; roda só uma vez');
 
-  // 1. Primeiro acesso: guia "Primeiros passos" com 0 de 3 e plataformas iniciais já cadastradas.
+  // 1. Após o onboarding: o currículo já está na pasta e as plataformas iniciais estão cadastradas.
   await ir(page, 'hoje');
   await expect(page.getByRole('heading', { name: 'Olá.' })).toBeVisible();
   // O selo do topo é a conexão com os dados locais, não a IA (jc-a2y.38).
   await expect(page.locator('.status-conexao')).toHaveText('Dados locais');
-  await expect(page.getByText('0 de 3 prontos')).toBeVisible();
+  await expect(page.getByText('1 de 3 prontos')).toBeVisible();
   await ir(page, 'plataformas');
   await expect(page.locator('article.plataforma').first()).toBeVisible();
 
@@ -53,7 +52,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await avisou(page, 'Perfil salvo');
   await ir(page, 'hoje');
   await expect(page.getByRole('heading', { name: 'Olá, Ana.' })).toBeVisible();
-  await expect(page.getByText('1 de 3 prontos')).toBeVisible();
+  await expect(page.getByText('2 de 3 prontos')).toBeVisible();
 
   // 3. Pedido pela caixa "O que vamos fazer hoje?".
   await page.getByLabel('O que vamos fazer hoje?').fill('Buscar vagas de React remotas');
@@ -134,9 +133,8 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   // 9. Fila (P5, jc-a2y.6.3.1, .6.3.3 e .6.12): a vaga que chega a Aplicar ganha a candidatura preparada sozinha,
   //    com o pacote vindo do perfil e da pasta de currículos; a impressão que a tela calcula bate com a do servidor
   //    ("Conferida nesta tela"); depois a pessoa edita o pacote. Currículo e dados fictícios.
-  const pasta = process.env.CENTRAL_E2E_PASTA!;
-  mkdirSync(join(pasta, 'curriculos'), { recursive: true });
-  writeFileSync(join(pasta, 'curriculos', 'curriculo-exemplo.pdf'), '%PDF-1.4\n% curriculo ficticio para teste\n');
+  const perfil = await (await page.request.get('/api/v1/perfil')).json();
+  const curriculoEscolhido = posix.basename(perfil.curriculos.PT);
   const vagaFila = 'li-fila-exemplo-1';
   const nova = await page.request.post('/api/v1/vagas', { data: { id: vagaFila, empresa: 'Empresa Fila Exemplo', titulo: 'Pessoa Dev Fila', link: 'https://www.linkedin.com/jobs/view/987654321', plataforma: 'linkedin' } });
   expect(nova.status(), await nova.text()).toBe(201);
@@ -152,7 +150,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect.poll(daVaga, { timeout: 15_000 }).toBeTruthy();
   const criada = await daVaga();
   expect(criada.estado).toBe('preparada');
-  expect(criada.conteudo.curriculo.arquivo).toBe('curriculo-exemplo.pdf');
+  expect(criada.conteudo.curriculo.arquivo).toBe(curriculoEscolhido);
   expect(criada.conteudo.contato.nome).toBe('Ana Teste'); // do perfil (passo 2)
   const avisouPreparo = async () => ((await page.evaluate(() => (window as any).__avisos as string[])) ?? []).some(t => /preparadas? sozinhas?: revise/.test(t));
   // Espera o aviso, ou esta aba ter tentado e só ter recebido 409 (outra aba preparou tudo antes).

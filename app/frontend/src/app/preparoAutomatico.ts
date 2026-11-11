@@ -5,14 +5,17 @@
 import { conteudoParaEnviar, pacoteInicial } from './pacote';
 import { ErroApi } from './contexto';
 
-type Vaga = { id: string; etapa?: string; aderencia?: string; idioma?: string; contrato?: string; mercado?: string };
+type Vaga = { id: string; etapa?: string; aderencia?: string; triagemDecisao?: string; idioma?: string; contrato?: string; mercado?: string };
 type Cand = { vagaId: string; estado: string };
 
 // As mesmas regras da seção "Prontas para preparar" da Fila.
+export function grupoADireto(v: Vaga): boolean {
+  return v.etapa === 'descoberta' && v.aderencia === 'A' && (!v.triagemDecisao || v.triagemDecisao === 'aplicar');
+}
 export function vagasProntas(vagas: Vaga[], candidaturas: Cand[], perfil: any): Vaga[] {
   const ativas = new Set(candidaturas.filter(c => c.estado !== 'cancelada').map(c => c.vagaId));
   return vagas.filter(v => !ativas.has(v.id)
-    && (v.etapa === 'aplicar' || (perfil?.modo === 'direto' && v.etapa === 'descoberta' && v.aderencia === 'A')));
+    && (v.etapa === 'aplicar' || (perfil?.modo === 'direto' && grupoADireto(v))));
 }
 
 export type ResultadoPreparo = { preparadas: number; semPdf: number };

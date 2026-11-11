@@ -18,7 +18,7 @@ import (
 // e o destino não recebe pedido nem chave (jc-a2y.22). Só servidores locais e chave fictícia.
 func TestRedirecionamentoDoProvedorPeloHTTP(t *testing.T) {
 	const chave = "sk-ant-api03-SENTINELAredirect-123xyz" // gitleaks:allow
-	for _, prov := range []string{"anthropic", "openai", "google"} {
+	for _, prov := range []string{"anthropic", "openai", "google", "xai"} {
 		t.Run(prov, func(t *testing.T) {
 			var noDestino atomic.Int32
 			destino := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -191,12 +191,49 @@ func ValidarPerfil(x any) []string {
 	if p["foco"] != nil && !contem(Focos, p["foco"]) {
 		erros = append(erros, "foco deve ser "+strings.Join(Focos, ", "))
 	}
+	if faixa := p["faixaSalarial"]; faixa != nil {
+		if problema := validarFaixaSalarial(faixa); problema != "" {
+			erros = append(erros, problema)
+		}
+	}
 	for _, k := range numerosPerfil {
 		if p[k] != nil && !igual(p[k], "") && !finito(p[k]) {
 			erros = append(erros, k+" deve ser número")
 		}
 	}
 	return erros
+}
+
+func validarFaixaSalarial(v any) string {
+	faixa := ObjetoDe(v)
+	if !contem([]string{"USD", "BRL", "EUR"}, faixa["moeda"]) {
+		return "escolha USD, BRL ou EUR para a faixa salarial mensal"
+	}
+	for campo, valor := range faixa {
+		switch campo {
+		case "moeda":
+		case "min", "max":
+			switch valor.(type) {
+			case int, float64:
+				n, _ := NumeroDe(valor)
+				if n > 0 && finito(valor) {
+					continue
+				}
+			}
+			return "os limites da faixa salarial devem ser números positivos"
+		default:
+			return "campo desconhecido na faixa salarial"
+		}
+	}
+	if faixa["min"] == nil && faixa["max"] == nil {
+		return "informe ao menos um limite da faixa salarial"
+	}
+	minimo, _ := NumeroDe(faixa["min"])
+	maximo, _ := NumeroDe(faixa["max"])
+	if maximo > 0 && minimo > maximo {
+		return "o máximo da faixa salarial deve ser maior ou igual ao mínimo"
+	}
+	return ""
 }
 
 func respostasValidas(x any) bool {

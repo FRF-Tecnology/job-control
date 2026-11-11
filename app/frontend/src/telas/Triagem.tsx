@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useApp, type App } from '../app/contexto';
 import { MOTIVOS_PULO, mercadoDe, noFoco } from '../dominio/modelo';
 import { Icone, LinkExterno } from '../componentes';
-import { dataCurta, encode, nomePlataforma, plural } from '../util';
+import { BuscaDoPerfil } from './BuscaDoPerfil';
+import { dataCurta, encode, nomePlataforma, plural, safeHref } from '../util';
 
 const DECISOES: Record<string, string> = { aplicar: 'Aplicar', pular: 'Pular', perguntar: 'Na dúvida' };
 
@@ -73,7 +74,7 @@ export function TelaTriagem() {
   });
 
   const cabecalho = (
-    <header className="cabecalho">
+    <><header className="cabecalho">
       <div>
         <h1>Triagem</h1>
         <p>{todas.length
@@ -83,17 +84,17 @@ export function TelaTriagem() {
       {grupoA.length > 1 && (
         <button className="botao-fantasma" type="button" onClick={aprovarGrupoA}>{`Aprovar todas do grupo A (${grupoA.length})`}</button>
       )}
-    </header>
+    </header><BuscaDoPerfil /></>
   );
 
   if (!v) {
     const texto = puladasNestaSessao.size ? `${plural(puladasNestaSessao.size, 'vaga ficou', 'vagas ficaram')} para depois.`
-      : foraDoFoco ? `Há ${plural(foraDoFoco, 'vaga', 'vagas')} fora do foco ${foco}.` : 'Peça ao Claude novas vagas com /buscar.';
+      : foraDoFoco ? `Há ${plural(foraDoFoco, 'vaga', 'vagas')} fora do foco ${foco}.` : 'Busque vagas com seu perfil para iniciar a triagem.';
     return (
       <div className="triagem">
         {cabecalho}
         <div className="convite">
-          <div><strong>Tudo decidido</strong><p style={{ margin: '4px 0 0' }}>{texto}</p></div>
+          <div><strong>{app.estado.vagas.length ? 'Tudo decidido' : 'Sua triagem começa aqui'}</strong><p style={{ margin: '4px 0 0' }}>{texto}</p></div>
           {puladasNestaSessao.size ? <button className="botao-fantasma" type="button" onClick={() => { puladasNestaSessao = new Set(); redesenhar(n => n + 1); }}>Rever as adiadas</button>
             : foraDoFoco ? <button className="botao" type="button" onClick={() => app.mudarFoco('ambos')}>Ver todas</button>
               : <a className="botao" href="#/quadro">Ver o quadro</a>}
@@ -196,6 +197,7 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
       <div className="acoes" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <span className="acoes">
           {v.aderencia && <span className={`chip ader-${v.aderencia}`}>{`Aderência ${v.aderencia}`}</span>}
+          {v.triagemBusca === 'pendente' && <span className="chip">Avaliação pendente</span>}
           <span className={`chip m-${mercado}`}>{mercado === 'internacional' ? 'Internacional' : 'Nacional'}</span>
         </span>
         <span className="chip">{`encontrada ${dataCurta(v.descobertaEm)}`}</span>
@@ -203,9 +205,17 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
       <div><div className="empresa">{v.empresa}</div><h2 style={{ marginTop: '6px' }}>{v.titulo}</h2></div>
       <div className="acoes">
         <span className="chip contorno">{nomePlataforma(v.plataforma, app.estado.plataformas)}</span>
+        {v.fonteBusca && <LinkExterno className="chip contorno fonte-busca" url={safeHref(v.fonteURL) ?? v.link}
+          semLink={<span className="chip contorno">Fonte: {v.fonteBusca}</span>}>Fonte: {v.fonteBusca}</LinkExterno>}
         {chips.map((c, i) => <span key={i} className="chip contorno">{c}</span>)}
       </div>
       {v.motivoClaude && <div className="motivo"><b><Icone d="M12 3l1.8 4.5L18 9l-4.2 1.5L12 15l-1.8-4.5L6 9l4.2-1.5z" />Por que aparece</b>{v.motivoClaude}</div>}
+      {v.triagemDecisao === 'pular' && v.triagemMotivoPulo && <div className="motivo">
+        <b>A IA sugere pular</b>{v.triagemMotivoPulo}
+      </div>}
+      {Array.isArray(v.triagemConferir) && v.triagemConferir.length > 0 && <div className="motivo">
+        <b>Pontos a conferir</b><ul>{v.triagemConferir.map((ponto: string, i: number) => <li key={i}>{ponto}</li>)}</ul>
+      </div>}
       {v.notas && <div className="motivo"><b>Notas</b>{v.notas}</div>}
       {opiniao && <div className="motivo" role="status"><b>Opinião da IA</b>{`${DECISOES[opiniao.decisao] ?? opiniao.decisao} · grupo ${opiniao.aderencia}${opiniao.motivoPulo ? ` · ${opiniao.motivoPulo}` : ''}. ${opiniao.motivo}`}</div>}
       <div className="acoes">

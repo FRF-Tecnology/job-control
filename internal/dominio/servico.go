@@ -559,7 +559,8 @@ func FilaAplicar(e Estado) []Objeto {
 	direto := igual(obj(e.Perfil)["modo"], "direto")
 	fila := []Objeto{}
 	for _, v := range e.Vagas {
-		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")) {
+		recomendada := v["triagemDecisao"] == nil || igual(v["triagemDecisao"], "aplicar")
+		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && recomendada && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")) {
 			fila = append(fila, v)
 		}
 	}
