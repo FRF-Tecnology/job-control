@@ -2,10 +2,13 @@ package emails
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"mime"
+	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
@@ -72,7 +75,11 @@ func (s SMTP) Enviar(ctx context.Context, m Mensagem) error {
 	if err != nil {
 		return err
 	}
-	if _, err := w.Write(montar(de.String(), para.String(), m, time.Now())); err != nil {
+	id, err := novoMessageID(de.Address)
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(montar(de.String(), para.String(), m, time.Now(), id)); err != nil {
 		return err
 	}
 	if err := w.Close(); err != nil {
@@ -81,17 +88,32 @@ func (s SMTP) Enviar(ctx context.Context, m Mensagem) error {
 	return c.Quit()
 }
 
-// montar escreve o email (cabeçalhos + corpo UTF-8) com quebras CRLF.
-func montar(de, para string, m Mensagem, agora time.Time) []byte {
-	corpo := strings.ReplaceAll(strings.ReplaceAll(m.Texto, "\r\n", "\n"), "\n", "\r\n")
+// novoMessageID gera um Message-ID aleatório no domínio do remetente (alguns filtros de spam o exigem).
+func novoMessageID(remetente string) (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return "<" + hex.EncodeToString(b[:]) + remetente[strings.LastIndex(remetente, "@"):] + ">", nil
+}
+
+// montar escreve o email com quebras CRLF: cabeçalhos e corpo UTF-8 em quoted-printable (só ASCII, linhas
+// de até 76 caracteres, sem depender de 8BITMIME no servidor).
+func montar(de, para string, m Mensagem, agora time.Time, messageID string) []byte {
+	var corpo strings.Builder
+	qp := quotedprintable.NewWriter(&corpo)
+	// Escrever num strings.Builder não falha. O Writer troca cada \n do texto por CRLF.
+	_, _ = qp.Write([]byte(strings.ReplaceAll(m.Texto, "\r\n", "\n")))
+	_ = qp.Close()
 	cab := []string{
 		"From: " + de,
 		"To: " + para,
 		"Subject: " + mime.QEncoding.Encode("utf-8", m.Assunto),
 		"Date: " + agora.Format(time.RFC1123Z),
+		"Message-ID: " + messageID,
 		"MIME-Version: 1.0",
 		"Content-Type: text/plain; charset=UTF-8",
-		"Content-Transfer-Encoding: 8bit",
+		"Content-Transfer-Encoding: quoted-printable",
 	}
-	return []byte(strings.Join(cab, "\r\n") + "\r\n\r\n" + corpo)
+	return []byte(strings.Join(cab, "\r\n") + "\r\n\r\n" + corpo.String())
 }

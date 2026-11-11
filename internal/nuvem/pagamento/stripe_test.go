@@ -158,3 +158,18 @@ func TestModoLiveEInexistente(t *testing.T) {
 		t.Error("Inexistente classifica errado")
 	}
 }
+
+func TestApagarClienteIdempotente(t *testing.T) {
+	_, base := novaAPI(t, map[string]string{
+		"DELETE /v1/customers/cus_9": `{"id":"cus_9","object":"customer","deleted":true}`,
+	})
+	r := novoReal("sk_test_ficticia", "whsec_ficticio", "price_ficticio", "https://nuvem.exemplo.com", &base)
+	ctx := context.Background()
+	if err := r.ApagarCliente(ctx, "cus_9"); err != nil {
+		t.Fatal(err)
+	}
+	// Cliente que já não existe (404): sucesso.
+	if err := r.ApagarCliente(ctx, "cus_nao"); err != nil {
+		t.Fatalf("cliente inexistente: %v", err)
+	}
+}

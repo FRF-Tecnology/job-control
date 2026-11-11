@@ -3,6 +3,8 @@ package emails
 import (
 	"bufio"
 	"context"
+	"io"
+	"mime/quotedprintable"
 	"net"
 	"strings"
 	"testing"
@@ -56,8 +58,9 @@ func TestSMTPRecusaInjecao(t *testing.T) {
 
 func TestMontarCabecalhos(t *testing.T) {
 	b := string(montar("app@exemplo.com", "a@b.co", Mensagem{Assunto: "Seu código", Texto: "linha1\nlinha2"},
-		time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)))
+		time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC), "<abc@exemplo.com>"))
 	for _, quer := range []string{"Subject: =?utf-8?q?Seu_c=C3=B3digo?=\r\n", "Content-Type: text/plain; charset=UTF-8\r\n",
+		"Content-Transfer-Encoding: quoted-printable\r\n", "Message-ID: <abc@exemplo.com>\r\n",
 		"Date: ", "From: ", "To: ", "\r\n\r\nlinha1\r\nlinha2"} {
 		if !strings.Contains(b, quer) {
 			t.Errorf("falta %q em %q", quer, b)
@@ -111,5 +114,41 @@ func TestSMTPExigeTLS(t *testing.T) {
 	case <-recebeuDados:
 		t.Fatal("enviou dados sem TLS")
 	default:
+	}
+}
+
+// O corpo vai em quoted-printable: só ASCII, linhas de no máximo 76 caracteres, e volta igual ao texto.
+func TestCorpoQuotedPrintable(t *testing.T) {
+	texto := "Olá! Use o código abaixo para confirmar o seu email no Applyer:\n\n123456\n\n" + strings.Repeat("ação ", 60) + "\n"
+	b := string(montar("app@exemplo.com", "a@b.co", Mensagem{Assunto: "x", Texto: texto}, time.Now(), "<id@exemplo.com>"))
+	i := strings.Index(b, "\r\n\r\n")
+	corpo := b[i+4:]
+	for _, l := range strings.Split(corpo, "\r\n") {
+		if len(l) > 76 {
+			t.Fatalf("linha com %d caracteres: %q", len(l), l)
+		}
+		for _, c := range []byte(l) {
+			if c > 126 {
+				t.Fatalf("byte não ASCII no corpo: %q", l)
+			}
+		}
+	}
+	lido, err := io.ReadAll(quotedprintable.NewReader(strings.NewReader(corpo)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quer := strings.ReplaceAll(texto, "\n", "\r\n"); string(lido) != quer {
+		t.Fatalf("corpo decodificado diferente:\n%q\n%q", lido, quer)
+	}
+}
+
+func TestMessageID(t *testing.T) {
+	a, err := novoMessageID("app@exemplo.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := novoMessageID("app@exemplo.com")
+	if a == b || !strings.HasPrefix(a, "<") || !strings.HasSuffix(a, "@exemplo.com>") || len(a) < 20 {
+		t.Fatalf("Message-ID %q / %q", a, b)
 	}
 }

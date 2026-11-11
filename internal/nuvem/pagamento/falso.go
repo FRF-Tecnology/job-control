@@ -16,14 +16,16 @@ var ErrNaoExiste = errors.New("assinatura não existe no Stripe falso")
 type Falso struct {
 	segredo string
 
-	mu          sync.Mutex
-	clientes    []string    // usuarioID de cada cliente criado (cus_falso_<n> = índice+1)
-	checkouts   [][2]string // cliente, usuarioID
-	assinaturas map[string]EstadoStripe
-	canceladas  []string
-	consultas   int
-	faturas     map[string]Fatura
-	sumidas     map[string]bool // Assinatura responde 404
+	mu           sync.Mutex
+	clientes     []string    // usuarioID de cada cliente criado (cus_falso_<n> = índice+1)
+	checkouts    [][2]string // cliente, usuarioID
+	assinaturas  map[string]EstadoStripe
+	canceladas   []string
+	consultas    int
+	faturas      map[string]Fatura
+	sumidas      map[string]bool // Assinatura responde 404
+	apagados     []string        // clientes apagados
+	falharApagar bool
 }
 
 // NovoFalso cria o Falso; os webhooks dos testes são assinados com segredo.
@@ -121,4 +123,31 @@ func (f *Falso) Sumir(id string) {
 
 func erroSumida() error {
 	return &stripe.Error{Type: stripe.ErrorTypeInvalidRequest, Code: stripe.ErrorCodeResourceMissing, HTTPStatusCode: 404}
+}
+
+// ErrApagar simula o Stripe fora do ar ao apagar um cliente (FalharApagarCliente).
+var ErrApagar = errors.New("Stripe falso: falha ao apagar o cliente")
+
+func (f *Falso) ApagarCliente(_ context.Context, cliente string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.falharApagar {
+		return ErrApagar
+	}
+	f.apagados = append(f.apagados, cliente)
+	return nil
+}
+
+// FalharApagarCliente faz ApagarCliente falhar (ou voltar a funcionar).
+func (f *Falso) FalharApagarCliente(falhar bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.falharApagar = falhar
+}
+
+// ClientesApagados lista os clientes apagados por ApagarCliente.
+func (f *Falso) ClientesApagados() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.apagados...)
 }

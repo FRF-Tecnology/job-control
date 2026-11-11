@@ -22,6 +22,8 @@ type Stripe interface {
 	Portal(ctx context.Context, cliente string) (url string, err error)
 	// Cancelar encerra a assinatura agora.
 	Cancelar(ctx context.Context, assinatura string) error
+	// ApagarCliente apaga o cliente (LGPD, na exclusão da conta). Cliente que já não existe conta como sucesso.
+	ApagarCliente(ctx context.Context, cliente string) error
 	// Evento confere a assinatura do webhook (cabeçalho Stripe-Signature) e decodifica o evento.
 	Evento(corpo []byte, assinaturaCabecalho string) (stripe.Event, error)
 	// Assinatura busca o estado atual da assinatura no Stripe.
@@ -117,6 +119,15 @@ func (r *Real) Portal(ctx context.Context, cliente string) (string, error) {
 // Cancelar é idempotente: assinatura que já não existe ou já foi cancelada conta como sucesso.
 func (r *Real) Cancelar(ctx context.Context, assinatura string) error {
 	_, err := r.api.V1Subscriptions.Cancel(ctx, assinatura, nil)
+	if jaCancelada(err) {
+		return nil
+	}
+	return err
+}
+
+// ApagarCliente é idempotente: cliente que já não existe (404 resource_missing) conta como sucesso.
+func (r *Real) ApagarCliente(ctx context.Context, cliente string) error {
+	_, err := r.api.V1Customers.Delete(ctx, cliente, nil)
 	if jaCancelada(err) {
 		return nil
 	}

@@ -217,3 +217,27 @@ func TestExcluirRetentaDepoisDeFalhaNoBanco(t *testing.T) {
 		t.Fatalf("Cancelar chamado %d vezes, quer 1: %v", len(c), c)
 	}
 }
+
+// LGPD: a exclusão também apaga o cliente no Stripe (depois de cancelar, antes de apagar aqui).
+func TestExcluirApagaClienteStripe(t *testing.T) {
+	a := novoAmb(t)
+	_, cliente, acesso := a.assinante(t, emailExcluir)
+	confere(t, a.excluir(map[string]string{"email": emailExcluir}, acesso), http.StatusNoContent, "")
+	if c := a.st.ClientesApagados(); len(c) != 1 || c[0] != cliente {
+		t.Fatalf("clientes apagados = %v, quer [%s]", c, cliente)
+	}
+}
+
+// Se o Stripe não apaga o cliente, nada é apagado aqui (502, a pessoa tenta de novo).
+func TestExcluirFalhaApagarClienteNaoApaga(t *testing.T) {
+	a := novoAmb(t)
+	id, _, acesso := a.assinante(t, emailExcluir)
+	a.st.FalharApagarCliente(true)
+	confere(t, a.excluir(map[string]string{"email": emailExcluir}, acesso), http.StatusBadGateway,
+		"Não deu para cancelar a assinatura agora. Tente de novo.")
+	if a.contarOnde(t, "usuarios", "id = $1::uuid", id) != 1 {
+		t.Fatal("a conta foi apagada apesar da falha do Stripe")
+	}
+	a.st.FalharApagarCliente(false)
+	confere(t, a.excluir(map[string]string{"email": emailExcluir}, acesso), http.StatusNoContent, "")
+}

@@ -69,6 +69,20 @@ func (s *Servidor) excluirConta(w http.ResponseWriter, r *http.Request, usuarioI
 			return
 		}
 	}
+	// LGPD: o cliente no Stripe (email, nome, CPF/CNPJ, endereço) também sai. Depois de cancelar e antes de
+	// apagar aqui: se falhar, nada foi apagado e uma nova tentativa repete (apagar de novo é idempotente).
+	cliente, err := s.contas.StripeCliente(ctx, u.ID)
+	if err != nil {
+		s.interno(w, r, "cliente", err)
+		return
+	}
+	if cliente != "" {
+		if err := s.dep.Stripe.ApagarCliente(ctx, cliente); err != nil {
+			s.log.Error("falha no Stripe", "rota", r.URL.Path, "onde", "apagar cliente", "usuario", u.ID, "erro", pagamento.Resumo(err))
+			erro(w, http.StatusBadGateway, msgCancelar)
+			return
+		}
+	}
 	if s.antesDeApagar != nil {
 		if err := s.antesDeApagar(); err != nil {
 			s.interno(w, r, "excluir", err)
