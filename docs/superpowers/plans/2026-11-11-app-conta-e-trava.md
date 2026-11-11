@@ -51,7 +51,7 @@
   - `var ErrSemInternet = errors.New("sem internet")` — qualquer falha de rede/timeout vira este erro
   - `type Nuvem interface {`
     `Criar(ctx, email, senha, termos string) error;`
-    `Confirmar(ctx, email, codigo, dispositivo string) (Par, error);`
+    `Confirmar(ctx, email, codigo, senha, dispositivo, termos string) (Par, error);`
     `Entrar(ctx, email, senha, dispositivo string) (Par, error);`
     `Recuperar(ctx, email string) error;`
     `NovaSenha(ctx, email, codigo, senha, dispositivo string) (Par, error);`
@@ -125,7 +125,7 @@
 - Consumes: Tasks 1–3. Para abrir o navegador: `Opcoes.AbrirNavegador func(url string) error` (app: `application.Get().Browser.OpenURL`).
 - Produces (só a tela: `autor == "eu"`; do assistente → 403):
   - `GET /conta` → `200 Situacao` (+ `google` = `EstadoGoogle()`)
-  - `POST /conta/criar {email, senha, termos}` → 202 `{mensagem}`; `POST /conta/confirmar {email, codigo}` → 200 `Situacao`; `POST /conta/entrar {email, senha}` → 200 `Situacao`; `POST /conta/recuperar {email}` → 202; `POST /conta/nova-senha {email, codigo, senha}` → 200; `POST /conta/google {termos}` → 202; `POST /conta/google/cancelar` → 204; `POST /conta/sair` → 204; `POST /conta/excluir {email, apagarDados: bool}` → 204 (com `apagarDados` chama o mesmo caminho de `/dados/apagar` depois)
+  - `POST /conta/criar {email, senha, termos}` → 202 `{mensagem}`; `POST /conta/confirmar {email, codigo, senha}` (a tela guarda a senha só em memória entre criar/entrar e confirmar; ruling R10 da nuvem) → 200 `Situacao`; `POST /conta/entrar {email, senha}` → 200 `Situacao`; `POST /conta/recuperar {email}` → 202; `POST /conta/nova-senha {email, codigo, senha}` → 200; `POST /conta/google {termos}` → 202; `POST /conta/google/cancelar` → 204; `POST /conta/sair` → 204; `POST /conta/excluir {email, apagarDados: bool}` → 204 (com `apagarDados` chama o mesmo caminho de `/dados/apagar` depois)
   - `GET /assinatura` → `200 {situacao, notas: [...]}`; `POST /assinatura/assinar` → abre o Checkout no navegador e liga a renovação de licença a cada 5 s por até 10 min → 202; `POST /assinatura/gerenciar` → abre o portal → 202
   - Termos que mudaram: a nuvem responde 409 `motivo: "termos"`; a rota repassa e a tela mostra os links e "Aceito os novos termos", reenviando o mesmo pedido com `termos` = versão atual (`entrar`, `confirmar` e `google` aceitam o campo `termos`).
   - Erros da nuvem: `*ErroNuvem` → mesmo status e `{erro: Msg, motivo}`; `ErrSemInternet` → `503 {"erro":"Sem conexão com a internet","motivo":"sem-internet"}`
