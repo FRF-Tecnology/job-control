@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, searchForWorkspaceRoot, type Plugin } from "vite";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import wails from "@wailsio/runtime/plugins/vite";
 
@@ -19,6 +20,8 @@ export default defineConfig({
     strictPort: true,
     // Fora do Wails (npm run dev), a API vem do servidor de desenvolvimento: go run ./cmd/central-dev
     proxy: { "/api": "http://127.0.0.1:4500" },
+    // Os termos e a política (docs/legal, na raiz do repositório) entram no app como texto (?raw), para ler sem internet.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), fileURLToPath(new URL("../../docs/legal", import.meta.url))] },
   },
   plugins: [react(), wails("./bindings"), cspSoNoBuild],
   test: {

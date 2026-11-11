@@ -16,9 +16,14 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
 
-// rotaAvancar: só no central-dev com -tags contafalsa (nunca nos binários do app). Adianta o relógio da nuvem falsa
-// e o da conta juntos e pede a licença de novo, para o teste de ponta a ponta ver o teste de 24 h acabar.
-const rotaAvancar = "/api/v1/_teste/avancar"
+// Rotas de teste: só no central-dev com -tags contafalsa (nunca nos binários do app).
+// rotaAvancar adianta o relógio da nuvem falsa e o da conta juntos e pede a licença de novo, para o teste de ponta a
+// ponta ver o teste de 24 h acabar. rotaPagar faz o papel da pessoa que pagou no Checkout: a Falsa marca a conta como
+// assinante e a licença é pedida de novo (o central-dev não abre o navegador).
+const (
+	rotaAvancar = "/api/v1/_teste/avancar"
+	rotaPagar   = "/api/v1/_teste/pagar"
+)
 
 // maxHorasAvancar: até 400 dias por chamada.
 const maxHorasAvancar = 24 * 400
@@ -32,16 +37,28 @@ func contaDoDev(pasta string) (*conta.Conta, func(http.Handler) http.Handler) {
 	}
 	var adiante atomic.Int64 // ns
 	agora := func() time.Time { return time.Now().Add(time.Duration(adiante.Load())) }
-	c := conta.Nova(conta.NovaFalsa(priv, agora), segredos.Memoria{}, pasta, pub, agora)
+	falsa := conta.NovaFalsa(priv, agora)
+	c := conta.Nova(falsa, segredos.Memoria{}, pasta, pub, agora)
 	log.Print("conta: nuvem falsa (contafalsa), código de confirmação " + conta.CodigoFalso)
 	envolver := func(api http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != rotaAvancar {
+			if r.URL.Path != rotaAvancar && r.URL.Path != rotaPagar {
 				api.ServeHTTP(w, r)
 				return
 			}
 			if r.Method != http.MethodPost {
 				responder(w, 405, map[string]any{"erro": "use POST"})
+				return
+			}
+			if r.URL.Path == rotaPagar {
+				s := c.Situacao()
+				if !s.Entrada || s.Email == "" {
+					responder(w, 409, map[string]any{"erro": "entre numa conta antes de pagar"})
+					return
+				}
+				falsa.Assinante(s.Email)
+				_ = c.AtualizarLicenca(r.Context())
+				responder(w, 200, c.Situacao())
 				return
 			}
 			var corpo struct {

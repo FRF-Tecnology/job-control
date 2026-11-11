@@ -1,5 +1,6 @@
 // O que as telas recebem da casca do app: o estado e as ações (porte do objeto `app` de web/app.mjs).
 import { createContext, useContext } from 'react';
+import { EVENTO_TRAVA, type Situacao } from './conta';
 
 // O estado vem de GET /api/v1/estado (vagas, eventos, plataformas, rodadas, perfil, pedidos, emails...).
 export type Estado = any;
@@ -32,6 +33,10 @@ export interface App {
   perguntar(p: Pergunta): Promise<string | null>;
   recarregar(): Promise<void>;
   limpar(): void; // nada mais por salvar na tela (a atualização automática volta)
+  // Conta (Task 7). podeAgir false: a trava das ações está ligada (as telas ficam só para ver). Ausentes: tudo liberado.
+  podeAgir?: boolean;
+  conta?: Situacao | null;
+  releConta?(): Promise<void>;
 }
 
 export const Contexto = createContext<App | null>(null);
@@ -52,6 +57,8 @@ export class ErroApi extends Error {
 export async function chamarApi(caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) {
   const r = await fetch(caminho, { method: metodo, headers: { ...cabecalhos, 'content-type': 'application/json' }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
   const dados = r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text();
+  // 402: a trava das ações (o teste acabou, sem assinatura, sem internet ou sem conta). A casca relê a conta e mostra a faixa.
+  if (r.status === 402) window.dispatchEvent(new CustomEvent(EVENTO_TRAVA, { detail: dados?.motivo ?? '' }));
   if (!r.ok) throw new ErroApi(dados?.erros?.join('; ') || dados?.erro || `erro ${r.status}`, r.status, dados);
   return dados;
 }

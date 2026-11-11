@@ -20,6 +20,10 @@ import { TelaPerfil } from './telas/Perfil';
 import { TelaConectarIA } from './telas/ConectarIA';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
 import { foiEnviada } from './dominio/modelo';
+import { podeAgir as podeAgirCom, useConta } from './app/conta';
+import { FaixaConta, TravaDaTela } from './telas/FaixaConta';
+import { TelaConta } from './telas/Conta';
+import { TelaAssinatura } from './telas/Assinatura';
 
 // Ícone de cada seção (menu lateral no PC e abas no celular).
 const ICONES: Record<string, string> = {
@@ -32,6 +36,7 @@ const ICONES: Record<string, string> = {
   plataformas: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
   rodadas: 'M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4',
   perfil: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0',
+  assinatura: 'M3 6h18v12H3zM3 10h18M7 15h4',
   ia: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
   mais: 'M5 12h.01M12 12h.01M19 12h.01',
 };
@@ -41,7 +46,8 @@ const NOMES_IA: Record<string, string> = {
   anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)',
 };
 type R = ReturnType<typeof resumo>;
-const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
+// soConta: só aparece no menu quando a conta existe neste build (ruling A11).
+const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean; soConta?: boolean }[] = [
   { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
   { rota: 'triagem', nome: 'Triagem', Tela: TelaTriagem, contador: r => r.descoberta, aba: true },
   { rota: 'fila', nome: 'Fila', Tela: TelaFila },
@@ -52,6 +58,7 @@ const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r:
   { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
   { rota: 'perfil', nome: 'Perfil', Tela: TelaPerfil }, // no menu, "Perfil"; o título da tela segue "Perfil e regras"
   { rota: 'ia', nome: 'Conectar IA', Tela: TelaConectarIA },
+  { rota: 'assinatura', nome: 'Assinatura', Tela: TelaAssinatura, soConta: true },
 ];
 
 function lerHash() {
@@ -102,6 +109,12 @@ export default function App() {
   const temEstado = useRef(false);
   // Há texto digitado e ainda não salvo (perfil, nota nova, notas da vaga…)? Enquanto houver, nada é redesenhado.
   const sujo = useRef(false);
+  // Conta (Task 7): GET /conta ao abrir, a cada 60 s e depois de um 402. undefined: ainda não sabe (nada aparece).
+  // ativa false (build sem a nuvem, ruling A11): sem porta, sem faixa e sem trava, como antes.
+  const { situacao: conta, reler: releConta } = useConta(chamarApi);
+  const contaAtiva = !!conta?.ativa;
+  const liberado = podeAgirCom(conta);
+  const telas = useMemo(() => TELAS.filter(t => !t.soConta || contaAtiva), [contaAtiva]);
 
   const aviso = useCallback((texto: string, erro = false) => {
     const id = Date.now() + Math.random();
@@ -169,7 +182,8 @@ export default function App() {
         if (r.preparadas) aviso(r.preparadas === 1 ? 'Uma candidatura foi preparada sozinha: revise o pacote e aprove na Fila.' : `${r.preparadas} candidaturas foram preparadas sozinhas: revise os pacotes e aprove na Fila.`);
       } catch { /* sem a lista, tenta na próxima leitura */ } finally { preparando.current = false; }
     })();
-  }, [estado, aviso]);
+    // liberado: quando a conta volta a deixar agir (motivo vazio), o preparo pausado pelo 402 tenta de novo.
+  }, [estado, aviso, liberado]);
   // Envio ligado e não pausado aparece no cabeçalho em todas as telas, não só na Fila (nota do CyberSec no #60).
   // Pausar e retomar não mudam a /versao, então a casca lê /envio a cada 5 s e ouve o painel da Fila na hora.
   useEffect(() => {
@@ -256,8 +270,11 @@ export default function App() {
       perguntar,
       recarregar: () => carregar(true),
       limpar: () => { sujo.current = false; },
+      podeAgir: liberado,
+      conta,
+      releConta,
     };
-  }, [estado, tela.rota, vaga, aviso, perguntar, carregar]);
+  }, [estado, tela.rota, vaga, aviso, perguntar, carregar, liberado, conta, releConta]);
 
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
@@ -288,6 +305,9 @@ export default function App() {
   const linkedinHoje = enviadasHoje.filter((v: any) => v.plataforma === 'linkedin').length;
 
   const Tela = tela.Tela;
+  // Porta da conta: com a conta ligada e sem entrada, só a tela Conta (antes do primeiro acesso e de tudo o mais).
+  const porta = contaAtiva && !conta?.entrada;
+  const entrou = async () => { await releConta(); await carregar(true); };
   return (
     <>
       <div className="fundo" aria-hidden="true">
@@ -301,15 +321,15 @@ export default function App() {
             <span className="logo-ic"><Icone><path d="M21 3L3 10.5l7 2.5 2.5 7z" /><path d="M21 3L10 13" /></Icone></span>
             <span>Applyer</span>
           </a>
-          <Menu atual={tela.rota} contador={contador} />
-          {estado && (
+          {!porta && <Menu telas={telas} atual={tela.rota} contador={contador} />}
+          {estado && !porta && (
             <div className="lateral-extra so-alto">
               <b>Hoje</b>
               <div className="medidor" aria-hidden="true"><span style={{ width: `${Math.round(Math.min(linkedinHoje / limiteLinkedin, 1) * 100)}%` }} /></div>
               <span>{`${enviadasHoje.length} ${enviadasHoje.length === 1 ? 'candidatura enviada' : 'candidaturas enviadas'} · LinkedIn: ${linkedinHoje} de ${limiteLinkedin}`}</span>
             </div>
           )}
-          {ia && (
+          {ia && !porta && (
             <a className="lateral-extra" href="#/ia">
               <span className="status-ia"><span className={`ponto${ia.configurada ? ' ok' : ''}`} aria-hidden="true" /><b>{ia.configurada ? (NOMES_IA[ia.provedor ?? ''] ?? 'IA conectada') : 'Nenhuma IA conectada'}</b></span>
               <span>{ia.configurada ? 'Sua IA, sua assinatura. Seus dados ficam neste computador.' : 'Conecte a sua IA para ela opinar na triagem e escrever rascunhos.'}</span>
@@ -327,30 +347,35 @@ export default function App() {
       <main id="conteudo" tabIndex={-1} ref={main}>
         {falha ? (
           <div className="convite"><div><strong>{falha.titulo}</strong><p>{falha.texto}</p></div></div>
+        ) : conta === undefined ? null : porta ? (
+          <TelaConta api={chamarApi} aoEntrar={entrou} />
         ) : app && (
           <Contexto.Provider value={app}>
+            {contaAtiva && <FaixaConta situacao={conta} reler={releConta} />}
             <Protecao chave={tela.rota}>
-              {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
-              <Tela key={tela.rota === 'perfil' ? `perfil-${estado.versao}` : tela.rota} />
+              <TravaDaTela rota={tela.rota} ativa={contaAtiva} podeAgir={liberado}>
+                {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
+                <Tela key={tela.rota === 'perfil' ? `perfil-${estado.versao}` : tela.rota} />
+              </TravaDaTela>
             </Protecao>
           </Contexto.Provider>
         )}
       </main>
-      <nav className="abas" aria-label="Seções principais">
-        {TELAS.filter(t => t.aba).map(t => (
+      <nav className="abas" aria-label="Seções principais" hidden={porta}>
+        {telas.filter(t => t.aba).map(t => (
           <a key={t.rota} href={`#/${t.rota}`} aria-current={t.rota === tela.rota ? 'page' : undefined}>
             <Icone d={ICONES[t.rota]} />{t.nome}{contador(t)}
           </a>
         ))}
-        <button type="button" aria-current={!tela.aba ? 'page' : undefined} onClick={() => setDialogo({ tipo: 'mais', telas: TELAS.filter(t => !t.aba) })}>
+        <button type="button" aria-current={!tela.aba ? 'page' : undefined} onClick={() => setDialogo({ tipo: 'mais', telas: telas.filter(t => !t.aba) })}>
           <Icone d={ICONES.mais} />Mais
         </button>
       </nav>
-      <aside className="gaveta" aria-label="Detalhe da vaga" hidden={!detalheAberto}>
-        {detalheAberto && app && <Contexto.Provider value={app}><Detalhe key={vaga!} id={vaga!} fechar={fecharDetalhe} /></Contexto.Provider>}
+      <aside className="gaveta" aria-label="Detalhe da vaga" hidden={!detalheAberto || porta}>
+        {detalheAberto && !porta && app && <Contexto.Provider value={app}><Detalhe key={vaga!} id={vaga!} fechar={fecharDetalhe} /></Contexto.Provider>}
       </aside>
-      <div className="veu" hidden={!detalheAberto} onClick={fecharDetalhe} />
-      {estado && !falha && <NavegadorFlutuante api={chamarApi} envio={envio} vagas={estado.vagas ?? []} aviso={aviso} />}
+      <div className="veu" hidden={!detalheAberto || porta} onClick={fecharDetalhe} />
+      {estado && !falha && !porta && <NavegadorFlutuante api={chamarApi} envio={envio} vagas={estado.vagas ?? []} aviso={aviso} />}
       <Dialogo pedido={dialogo} fechar={() => setDialogo(null)} />
       <div className="avisos" aria-live="polite">
         {avisos.map(a => <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}
@@ -368,7 +393,7 @@ function alternarTema() {
 
 // Menu das seções: lateral em telas largas, no topo nas estreitas. No topo, o menu rola para o lado; as pontas
 // cortadas esmaecem e a seção atual fica à vista.
-function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)[number]) => ReactNode }) {
+function Menu({ telas, atual, contador }: { telas: typeof TELAS; atual: string; contador: (t: (typeof TELAS)[number]) => ReactNode }) {
   const nav = useRef<HTMLElement>(null);
   const rolado = useRef(false);
   const marcar = useCallback(() => {
@@ -392,9 +417,9 @@ function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)
   return (
     <nav aria-label="Seções" ref={nav} onScroll={marcar}>
       {/* No menu lateral, a marca da seção atual desliza até ela (só enfeite: quem diz a seção atual é o aria-current). */}
-      <span className="indicador" aria-hidden="true" style={{ '--i': Math.max(TELAS.findIndex(t => t.rota === atual), 0) } as CSSProperties} />
+      <span className="indicador" aria-hidden="true" style={{ '--i': Math.max(telas.findIndex(t => t.rota === atual), 0) } as CSSProperties} />
       <ul className="menu">
-        {TELAS.map(t => (
+        {telas.map(t => (
           <li key={t.rota}>
             <a href={`#/${t.rota}`} aria-current={t.rota === atual ? 'page' : undefined}><Icone d={ICONES[t.rota]} /><span>{t.nome}</span>{contador(t)}</a>
           </li>

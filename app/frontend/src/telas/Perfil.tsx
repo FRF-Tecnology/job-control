@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useApp } from '../app/contexto';
 import { JanelaApp } from './JanelaApp';
 import { SeusDados } from './SeusDados';
+import { SecaoConta } from './Conta';
 
 // Campos simples do perfil: [chave, rótulo, tipo, dica]
 const CAMPOS: [string, [string, string, string, string?][]][] = [
@@ -108,6 +109,7 @@ export function TelaPerfil() {
       </fieldset>
       <div><button className="botao" type="submit">Salvar perfil</button></div>
     </form>
+    <SecaoConta />
     <JanelaApp />
     <SeusDados />
   </>);
