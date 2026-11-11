@@ -21,6 +21,9 @@ const (
 	intervalo  = time.Hour
 )
 
+// prazoGravacao é o tempo para gravar o resultado e fechar a transação (variável: o teste o encurta).
+var prazoGravacao = 10 * time.Second
+
 // Faturas busca os dados da fatura (o Stripe).
 type Faturas interface {
 	Fatura(ctx context.Context, id string) (pagamento.Fatura, error)
@@ -116,10 +119,11 @@ func (f *Fila) proxima(ctx context.Context, vistas []string, refazer bool) (stri
 	if err != nil {
 		return "", false, err
 	}
-	// A gravação final não pode ser cortada pelo desligamento: depois que o emissor aceitou, a linha tem de ficar emitida.
-	fim, cancelar := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-	defer cancelar()
-	defer func() { _ = tx.Rollback(fim) }()
+	defer func() { // rollback próprio: não depende do ctx (cancelado no desligamento) nem do prazo da gravação final
+		rb, cancelar := context.WithTimeout(context.WithoutCancel(ctx), prazoGravacao)
+		defer cancelar()
+		_ = tx.Rollback(rb)
+	}()
 	var id, usuario string
 	var tentativas int
 	err = tx.QueryRow(ctx,
@@ -134,6 +138,10 @@ func (f *Fila) proxima(ctx context.Context, vistas []string, refazer bool) (stri
 		return "", false, err
 	}
 	numero, link, errEmitir := f.emitir(ctx, id, usuario)
+	// A gravação final não pode ser cortada pelo desligamento nem pelo tempo gasto no emissor: depois que ele
+	// aceitou, a linha tem de ficar emitida. O prazo só começa agora.
+	fim, cancelarFim := context.WithTimeout(context.WithoutCancel(ctx), prazoGravacao)
+	defer cancelarFim()
 	tentativas++
 	if errEmitir == nil {
 		_, err = tx.Exec(fim, `update notas set estado = 'emitida', numero = $2, link_pdf = $3, erro = '', tentativas = $4 where invoice_id = $1`,

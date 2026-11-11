@@ -320,3 +320,22 @@ func TestNFEioErroSemCorpo(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestEmissaoLentaAindaGravaEmitida(t *testing.T) {
+	antes := prazoGravacao
+	prazoGravacao = 50 * time.Millisecond
+	t.Cleanup(func() { prazoGravacao = antes })
+	a := novoAmb(t)
+	ctx := context.Background()
+	_ = a.fila.Agendar(ctx, "in_1", a.user)
+	a.em.Segurar, a.em.Entrou = make(chan struct{}), make(chan struct{}, 1)
+	fim := make(chan struct{})
+	go func() { a.fila.Processar(ctx); close(fim) }()
+	<-a.em.Entrou
+	time.Sleep(200 * time.Millisecond) // o emissor passa bem além do prazo da gravação final
+	close(a.em.Segurar)
+	<-fim
+	if estado, numero, _, _, tent := a.linha(t, "in_1"); estado != "emitida" || numero == "" || tent != 1 {
+		t.Fatalf("estado=%s numero=%q tentativas=%d", estado, numero, tent)
+	}
+}
