@@ -22,6 +22,7 @@ type Falso struct {
 	assinaturas map[string]EstadoStripe
 	canceladas  []string
 	consultas   int
+	faturas     map[string]Fatura
 }
 
 // NovoFalso cria o Falso; os webhooks dos testes são assinados com segredo.

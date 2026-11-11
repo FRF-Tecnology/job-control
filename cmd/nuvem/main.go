@@ -16,6 +16,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/banco"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/emails"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/google"
+	"github.com/FRF-Tecnology/job-control/internal/nuvem/notas"
 	"github.com/FRF-Tecnology/job-control/internal/nuvem/pagamento"
 )
 
@@ -41,10 +42,23 @@ func executar() error {
 	defer pool.Close()
 
 	envio := emails.SMTP{Host: cfg.SMTPHost, Porta: cfg.SMTPPorta, Usuario: cfg.SMTPUsuario, Senha: cfg.SMTPSenha, Remetente: cfg.SMTPRemetente}
+	stripe := pagamento.NovoReal(cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.StripePriceID, cfg.EnderecoPublico)
+	var emissor notas.Emissor
+	if cfg.NotasProvedor == "nfeio" {
+		emissor = &notas.NFEio{Chave: cfg.NotasChave, Empresa: cfg.NotasEmpresa, Servico: cfg.NotasServico}
+	} else {
+		slog.Warn("NOTAS_PROVEDOR=falso: nenhuma nota fiscal de verdade será emitida; use só em teste ou rodada local")
+		emissor = &notas.Falso{}
+	}
+	fila := notas.NovaFila(pool, stripe, emissor, slog.Default())
 	srv := nuvem.Novo(cfg, nuvem.Dependencias{Banco: pool, Agora: time.Now, Aleatorio: rand.Reader, Emails: envio,
 		Google: &google.Real{ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret},
-		Stripe: pagamento.NovoReal(cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.StripePriceID, cfg.EnderecoPublico),
-		Notas:  notasDepois{}})
+		Stripe: stripe, Notas: fila})
+	// A fila roda até o desligamento; o main espera a passada em andamento terminar.
+	ctxFila, pararFila := context.WithCancel(ctx)
+	filaFim := make(chan struct{})
+	go func() { fila.Rodar(ctxFila); close(filaFim) }()
+	defer func() { pararFila(); <-filaFim }()
 	sh := &http.Server{
 		Addr:              cfg.Endereco,
 		Handler:           srv.Handler(),
@@ -64,12 +78,4 @@ func executar() error {
 	errDesligar := sh.Shutdown(fim)
 	srv.Esperar(fim) // emails em andamento (códigos) terminam dentro do mesmo prazo
 	return errDesligar
-}
-
-// notasDepois é o agendador provisório até a emissão de notas (Task 10): só registra os ids.
-type notasDepois struct{}
-
-func (notasDepois) Agendar(_ context.Context, invoiceID, usuarioID string) error {
-	slog.Info("nota fiscal pendente", "fatura", invoiceID, "usuario", usuarioID)
-	return nil
 }

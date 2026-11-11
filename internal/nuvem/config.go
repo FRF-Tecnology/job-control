@@ -79,6 +79,7 @@ func LerConfig(env func(string) string) (Config, error) {
 		{"STRIPE_WEBHOOK_SECRET", cfg.StripeWebhookSecret},
 		{"STRIPE_PRICE_ID", cfg.StripePriceID},
 		{"APPLYER_ENDERECO_PUBLICO", cfg.EnderecoPublico},
+		{"NOTAS_PROVEDOR", cfg.NotasProvedor},
 	} {
 		if o.valor == "" {
 			faltam = append(faltam, o.nome)
@@ -86,6 +87,22 @@ func LerConfig(env func(string) string) (Config, error) {
 	}
 	if len(faltam) > 0 {
 		return Config{}, fmt.Errorf("variáveis de ambiente que faltam: %s", strings.Join(faltam, ", "))
+	}
+	switch cfg.NotasProvedor {
+	case "falso":
+	case "nfeio":
+		for _, o := range []struct{ nome, valor string }{
+			{"NOTAS_CHAVE", cfg.NotasChave}, {"NOTAS_EMPRESA", cfg.NotasEmpresa}, {"NOTAS_SERVICO", cfg.NotasServico},
+		} {
+			if o.valor == "" {
+				faltam = append(faltam, o.nome)
+			}
+		}
+		if len(faltam) > 0 {
+			return Config{}, fmt.Errorf("variáveis de ambiente que faltam: %s", strings.Join(faltam, ", "))
+		}
+	default:
+		return Config{}, errors.New("NOTAS_PROVEDOR inválido: use nfeio ou falso")
 	}
 	if _, err := cfg.Chave(); err != nil {
 		return Config{}, err

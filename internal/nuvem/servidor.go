@@ -103,6 +103,7 @@ func Novo(cfg Config, dep Dependencias) *Servidor {
 		s.rotasContas()
 		s.rotasLicenca()
 		s.rotasPagamento()
+		s.rotasNotas()
 	}
 	return s
 }

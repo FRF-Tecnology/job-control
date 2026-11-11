@@ -25,6 +25,8 @@ type Stripe interface {
 	Evento(corpo []byte, assinaturaCabecalho string) (stripe.Event, error)
 	// Assinatura busca o estado atual da assinatura no Stripe.
 	Assinatura(ctx context.Context, id string) (EstadoStripe, error)
+	// Fatura busca nome, tax id, endereço e valor pago de uma fatura (para a nota fiscal).
+	Fatura(ctx context.Context, id string) (Fatura, error)
 }
 
 // EstadoStripe é o que importa de uma assinatura do Stripe.

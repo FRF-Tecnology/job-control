@@ -26,7 +26,7 @@ func envCompleto(t *testing.T) map[string]string {
 		"SMTP_SENHA": "senha-ficticia", "SMTP_REMETENTE": "app@exemplo.com",
 		"GOOGLE_CLIENT_ID": "cliente-ficticio.apps.googleusercontent.com", "GOOGLE_CLIENT_SECRET": "segredo-ficticio",
 		"STRIPE_SECRET_KEY": "sk_test_ficticia", "STRIPE_WEBHOOK_SECRET": "whsec_ficticio", "STRIPE_PRICE_ID": "price_ficticio",
-		"APPLYER_ENDERECO_PUBLICO": "https://nuvem.exemplo.com/",
+		"APPLYER_ENDERECO_PUBLICO": "https://nuvem.exemplo.com/", "NOTAS_PROVEDOR": "falso",
 	}
 }
 
@@ -41,7 +41,7 @@ func TestLerConfigFaltando(t *testing.T) {
 
 func TestLerConfigExigeTermosESMTP(t *testing.T) {
 	for _, k := range []string{"APPLYER_TERMOS_VERSAO", "SMTP_HOST", "SMTP_PORTA", "SMTP_USUARIO", "SMTP_SENHA", "SMTP_REMETENTE", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
-		"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_ID", "APPLYER_ENDERECO_PUBLICO"} {
+		"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_ID", "APPLYER_ENDERECO_PUBLICO", "NOTAS_PROVEDOR"} {
 		env := envCompleto(t)
 		delete(env, k)
 		if _, err := LerConfig(envDe(env)); err == nil || !strings.Contains(err.Error(), k) {
@@ -88,5 +88,24 @@ func TestLerConfigPadroes(t *testing.T) {
 	}
 	if cfg.DatabaseURL != "postgres://x" || cfg.TermosVersao != "2026-11" {
 		t.Errorf("cfg = %+v", cfg)
+	}
+}
+
+func TestLerConfigNotas(t *testing.T) {
+	env := envCompleto(t)
+	env["NOTAS_PROVEDOR"] = "outro"
+	if _, err := LerConfig(envDe(env)); err == nil || !strings.Contains(err.Error(), "NOTAS_PROVEDOR") {
+		t.Errorf("provedor desconhecido: veio %v", err)
+	}
+	env["NOTAS_PROVEDOR"] = "nfeio"
+	_, err := LerConfig(envDe(env))
+	for _, k := range []string{"NOTAS_CHAVE", "NOTAS_EMPRESA", "NOTAS_SERVICO"} {
+		if err == nil || !strings.Contains(err.Error(), k) {
+			t.Errorf("nfeio sem %s: veio %v", k, err)
+		}
+	}
+	env["NOTAS_CHAVE"], env["NOTAS_EMPRESA"], env["NOTAS_SERVICO"] = "chave-ficticia", "emp1", "1.05"
+	if _, err := LerConfig(envDe(env)); err != nil {
+		t.Errorf("nfeio completo: %v", err)
 	}
 }
