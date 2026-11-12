@@ -30,8 +30,8 @@ func TestChaveDoBuild(t *testing.T) {
 		ligada, erro          bool
 	}{
 		{"vazio", "", "", false, false},
-		{"só endereço", "https://nuvem.exemplo.com", "", false, false},
-		{"só chave", "", b64, false, false},
+		{"só endereço", "https://nuvem.exemplo.com", "", false, true},
+		{"só chave", "", b64, false, true},
 		{"as duas", "https://nuvem.exemplo.com", b64, true, false},
 		{"chave não é base64", "https://nuvem.exemplo.com", "%%%", false, true},
 		{"chave curta", "https://nuvem.exemplo.com", base64.StdEncoding.EncodeToString([]byte("curta")), false, true},
@@ -141,5 +141,44 @@ func TestTravaDoBuild(t *testing.T) {
 	}
 	if pode, motivo := trava(); pode || motivo != MotivoSemConta {
 		t.Fatalf("sem arquivo = %v %q", pode, motivo)
+	}
+}
+
+// Build com só um dos dois (endereço ou chave): erro que diz o que falta, no app, na CLI e no MCP (nunca destravado).
+func TestBuildPelaMetade(t *testing.T) {
+	pub, _, _ := ed25519.GenerateKey(rand.Reader)
+	b64 := base64.StdEncoding.EncodeToString(pub)
+	for _, c := range []struct{ endereco, chave, falta string }{
+		{"https://nuvem.exemplo.com", "", "ChavePublica"},
+		{"", b64, "EnderecoNuvem"},
+	} {
+		trocarBuild(t, c.endereco, c.chave)
+		quer := "build com a nuvem pela metade: falta " + c.falta
+		if _, _, err := ChaveDoBuild(); err == nil || err.Error() != quer {
+			t.Errorf("ChaveDoBuild = %v; queria %q", err, quer)
+		}
+		if conta, err := DoBuild(segredos.Memoria{}, t.TempDir()); conta != nil || err == nil {
+			t.Errorf("DoBuild = %v %v", conta != nil, err)
+		}
+		if trava, err := TravaDoBuild(t.TempDir()); trava != nil || err == nil {
+			t.Errorf("TravaDoBuild = %v %v", trava != nil, err)
+		}
+	}
+}
+
+// Ruling A15 (falha fechada): build sem a nuvem, mas com licenca.json na pasta (a instalação já tem conta): a CLI
+// e o MCP não conseguem conferir e travam com licenca-vencida. Sem licenca.json, sem trava (A11).
+func TestTravaDoBuildSemNuvemComLicencaNaPasta(t *testing.T) {
+	trocarBuild(t, "", "")
+	pasta := t.TempDir()
+	if err := os.WriteFile(filepath.Join(pasta, "licenca.json"), []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	trava, err := TravaDoBuild(pasta)
+	if err != nil || trava == nil {
+		t.Fatalf("trava %v erro %v", trava != nil, err)
+	}
+	if pode, motivo := trava(); pode || motivo != MotivoLicencaVencida {
+		t.Fatalf("= %v %q; queria travado %q", pode, motivo, MotivoLicencaVencida)
 	}
 }

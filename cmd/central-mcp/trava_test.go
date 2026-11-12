@@ -87,4 +87,18 @@ func TestMCPSoLeLicenca(t *testing.T) {
 	if r := chamar("vaga_adicionar", adicionar); strings.Contains(r, `"isError":true`) || !strings.Contains(r, "v-trava") {
 		t.Fatalf("válida = %s", r)
 	}
+
+	// Ruling A15 (falha fechada): build sem a nuvem com licenca.json na pasta: trava a escrita; ler continua.
+	conta.EnderecoNuvem, conta.ChavePublica = "", ""
+	if r := chamar("vaga_adicionar", adicionar); !strings.Contains(r, `"isError":true`) || !strings.Contains(r, "Abra o Applyer para renovar o acesso.") {
+		t.Fatalf("sem nuvem com licenca.json = %s", r)
+	}
+	if r := chamar("vagas_listar", map[string]any{}); strings.Contains(r, `"isError":true`) {
+		t.Fatalf("ler sem nuvem = %s", r)
+	}
+	// Build pela metade: erro em cada chamada.
+	conta.ChavePublica = base64.StdEncoding.EncodeToString(pub)
+	if r := chamar("vagas_listar", map[string]any{}); !strings.Contains(r, `"isError":true`) && !strings.Contains(r, `"error"`) {
+		t.Fatalf("build pela metade = %s", r)
+	}
 }

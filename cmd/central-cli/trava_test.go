@@ -81,3 +81,22 @@ func TestCLISemNuvemSemTrava(t *testing.T) {
 		t.Fatalf("sem nuvem = %v", err)
 	}
 }
+
+// Ruling A15 (falha fechada): build sem a nuvem numa instalação que já tem licenca.json: a CLI não confere e trava
+// a escrita com a frase de abrir o app; ler continua liberado. Build pela metade: erro em cada chamada.
+func TestCLISemNuvemComLicencaTrava(t *testing.T) {
+	priv := buildComNuvem(t)
+	pasta := pastaDoApp(t)
+	gravarLicencaCLI(t, pasta, priv, time.Now())
+	conta.EnderecoNuvem, conta.ChavePublica = "", "" // o Cleanup de buildComNuvem devolve
+	if _, err := cli(t, "vaga_adicionar", vagaTrava); !errors.Is(err, errRecusado) || !strings.Contains(err.Error(), "Abra o Applyer para renovar o acesso.") {
+		t.Fatalf("sem nuvem com licenca.json = %v", err)
+	}
+	if saida, err := cli(t, "vagas_listar", `{}`); err != nil {
+		t.Fatalf("ler = %q %v", saida, err)
+	}
+	conta.EnderecoNuvem = "https://nuvem.exemplo.com" // só o endereço
+	if _, err := cli(t, "vagas_listar", `{}`); err == nil || !strings.Contains(err.Error(), "build com a nuvem pela metade") {
+		t.Fatalf("build pela metade = %v", err)
+	}
+}

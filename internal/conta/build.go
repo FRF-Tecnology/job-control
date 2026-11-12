@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
@@ -24,11 +26,16 @@ const AvisoDesligada = "conta desligada: build sem nuvem configurada"
 // MotivoLicencaVencida: a CLI ou o MCP acharam licenca.json vencido ou ilegível. Eles não renovam: só o app aberto.
 const MotivoLicencaVencida = "licenca-vencida"
 
-// ChaveDoBuild: a chave pública da nuvem do build. ligada false (sem erro) quando falta o endereço ou a chave; erro
-// quando a chave não é base64 de uma chave Ed25519.
+// ChaveDoBuild: a chave pública da nuvem do build. ligada false (sem erro) quando faltam o endereço E a chave; erro
+// quando só um dos dois veio (build pela metade: nunca destravado) ou a chave não é base64 de uma chave Ed25519.
 func ChaveDoBuild() (pub ed25519.PublicKey, ligada bool, err error) {
-	if EnderecoNuvem == "" || ChavePublica == "" {
+	switch {
+	case EnderecoNuvem == "" && ChavePublica == "":
 		return nil, false, nil
+	case ChavePublica == "":
+		return nil, false, errors.New("build com a nuvem pela metade: falta ChavePublica")
+	case EnderecoNuvem == "":
+		return nil, false, errors.New("build com a nuvem pela metade: falta EnderecoNuvem")
 	}
 	b, err := base64.StdEncoding.DecodeString(ChavePublica)
 	if err != nil || len(b) != ed25519.PublicKeySize {
@@ -71,11 +78,19 @@ func TravaDoDisco(pasta string, pub ed25519.PublicKey, agora func() time.Time) f
 	}
 }
 
-// TravaDoBuild: TravaDoDisco com a chave do build e o relógio do PC. nil (sem trava) quando o build não tem a nuvem.
+// TravaDoBuild: TravaDoDisco com a chave do build e o relógio do PC. Build sem a nuvem: nil (sem trava, ruling A11),
+// a não ser que a pasta já tenha licenca.json (ruling A15, falha fechada): a instalação tem conta e este build não
+// consegue conferir, então trava com licenca-vencida.
 func TravaDoBuild(pasta string) (func() (bool, string), error) {
 	pub, ligada, err := ChaveDoBuild()
-	if err != nil || !ligada {
+	if err != nil {
 		return nil, err
+	}
+	if !ligada {
+		if _, err := os.Lstat(filepath.Join(pasta, arquivoLicencaNome)); errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return func() (bool, string) { return false, MotivoLicencaVencida }, nil
 	}
 	return TravaDoDisco(pasta, pub, time.Now), nil
 }
