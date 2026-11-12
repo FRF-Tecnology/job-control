@@ -56,7 +56,9 @@ func TestErro500NaoMostraCaminhoDaPasta(t *testing.T) {
 			t.Fatalf("%q apareceu; corpo = %s; log = %s", proibido, corpo, texto)
 		}
 	}
-	if !strings.Contains(texto, "api: erro 500 em POST "+Prefixo+"/backup (") || !strings.Contains(texto, "*fs.PathError mkdir") {
+	// MkdirAll encontra o arquivo como ENOTDIR no stat em alguns sistemas e no mkdir em outros.
+	operacao := strings.Contains(texto, "*fs.PathError mkdir") || strings.Contains(texto, "*fs.PathError stat")
+	if !strings.Contains(texto, "api: erro 500 em POST "+Prefixo+"/backup (") || !operacao {
 		t.Fatalf("o log perdeu o diagnóstico seguro: %s", texto)
 	}
 }

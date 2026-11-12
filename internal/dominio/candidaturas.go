@@ -141,7 +141,7 @@ type ErroConflito struct {
 	Estado         string
 	ImpressaoAtual string
 	Existente      string
-	Motivo         string // só no /navegador/entrar: enviando, login-aberto ou sem-navegador (jc-a2y.6.8)
+	Motivo         string // /navegador/entrar: enviando, login-aberto ou sem-navegador (jc-a2y.6.8); /app/janela: sem-bandeja
 }
 
 func (e *ErroConflito) Error() string { return e.Msg }
@@ -444,6 +444,9 @@ func CriarCandidatura(e Estado, vagaID string, conteudo Objeto, agora time.Time,
 	if FoiEnviada(vaga) {
 		return e, nil, &ErroConflito{Msg: "esta vaga já foi enviada", Existente: vagaID}
 	}
+	if err := AnuncioReservado(e, vaga); err != nil {
+		return e, nil, err
+	}
 	for _, o := range e.Candidaturas {
 		if igual(o["vagaId"], vagaID) && contem(estadosAtivos, texto(o["estado"])) {
 			return e, nil, &ErroConflito{Msg: "esta vaga já tem uma candidatura ativa", Existente: texto(o["id"])}
@@ -634,6 +637,7 @@ func CancelarCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado,
 	}
 	c.Estado, c.Aprovacao = CandCancelada, nil
 	novo, o := salvarCandidatura(e, i, c, agora)
+	limparIntencaoRadar(novo, c, false)
 	return novo, o, nil
 }
 
@@ -652,6 +656,7 @@ func ReabrirCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado, 
 	}
 	c.Estado, c.Aprovacao, c.Bloqueio, c.Resultado = CandPreparada, nil, nil, nil
 	novo, o := salvarCandidatura(e, i, c, agora)
+	limparIntencaoRadar(novo, c, false)
 	if v := vagaDe(novo, c.VagaID); v != nil && igual(v["etapa"], "bloqueada") {
 		movido, _, err := MoverVaga(novo, c.VagaID, "aplicar", Objeto{}, ctx)
 		if err != nil {
@@ -682,6 +687,7 @@ func ConcluirManual(e Estado, id string, agora time.Time, ctx Ctx) (Estado, Obje
 
 func concluirEnvio(e Estado, i int, c Candidatura, agora time.Time, ctx Ctx) (Estado, Objeto, error) {
 	novo, o := salvarCandidatura(e, i, c, agora)
+	limparIntencaoRadar(novo, c, true)
 	if v := vagaDe(novo, c.VagaID); v != nil && !FoiEnviada(v) {
 		movido, _, err := MoverVaga(novo, c.VagaID, "enviada", Objeto{"envio": Objeto{"data": ctx.Agora, "candidaturaId": c.ID}}, ctx)
 		if err != nil {

@@ -214,16 +214,19 @@ func (a anthropic) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProved
 // ---------- OpenAI Chat Completions (serve para OpenRouter e compatíveis pela URL) ----------
 // strict:false porque os contratos têm campos opcionais; quem garante o formato é a guarda.
 
-type openai struct{ cliente *http.Client }
+type chatCompletions struct {
+	cliente              *http.Client
+	nome, base, variavel string
+}
 
-func (openai) Nome() string { return "openai" }
+func (o chatCompletions) Nome() string { return o.nome }
 
-func (o openai) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
-	if err := exigirChave(p.Chave, "openai", "OPENAI_API_KEY"); err != nil {
+func (o chatCompletions) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
+	if err := exigirChave(p.Chave, o.nome, o.variavel); err != nil {
 		return RespostaProvedor{}, err
 	}
-	base := dominio.Texto(dominio.OuV(p.Opcoes.URL, "https://api.openai.com"))
-	r, err := postarJSON(ctx, o.cliente, "openai", base+"/v1/chat/completions", p.Chave,
+	base := dominio.Texto(dominio.OuV(p.Opcoes.URL, o.base))
+	r, err := postarJSON(ctx, o.cliente, o.nome, base+"/v1/chat/completions", p.Chave,
 		map[string]string{"authorization": "Bearer " + p.Chave},
 		map[string]any{
 			"model":           p.Modelo,
@@ -238,7 +241,7 @@ func (o openai) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor,
 		msg = dominio.ObjetoDe(dominio.ObjetoDe(l[0])["message"])
 	}
 	if dominio.Verdadeiro(msg["refusal"]) {
-		return RespostaProvedor{}, recusa("openai", "o modelo recusou")
+		return RespostaProvedor{}, recusa(o.nome, "o modelo recusou")
 	}
 	u := dominio.ObjetoDe(r["usage"])
 	return RespostaProvedor{Texto: dominio.Texto(msg["content"]), TokensEntrada: inteiro(u["prompt_tokens"]), TokensSaida: inteiro(u["completion_tokens"])}, nil

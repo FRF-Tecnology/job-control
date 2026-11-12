@@ -2,6 +2,7 @@
 // preparar/editar pacote, do limite diário e de "Seus dados", nos temas claro e escuro, no PC e no celular. A fila e
 // o envio vêm interceptados com dados fictícios, para cobrir os estados que o central-dev não produz.
 import AxeBuilder from '@axe-core/playwright';
+import { temaDeTeste } from './tema';
 import { expect, test, type Page } from '@playwright/test';
 import { interceptar, soltarRotas } from './dados-fila';
 
@@ -18,6 +19,7 @@ const resumo = (v: Awaited<ReturnType<AxeBuilder['analyze']>>['violations']) =>
 for (const tema of ['light', 'dark'] as const) {
   test.describe(`tema ${tema === 'light' ? 'claro' : 'escuro'}`, () => {
     test.use({ colorScheme: tema });
+    test.beforeEach(async ({ page }) => { await temaDeTeste(page, tema); });
 
     test('Fila: todos os estados, painel de envio e limites', async ({ page }) => {
       await interceptar(page);
@@ -40,9 +42,27 @@ for (const tema of ['light', 'dark'] as const) {
     });
 
     test('Perfil: Seus dados neste computador', async ({ page }) => {
-      await page.goto('/#/perfil');
+      await page.goto('/#/regras');
       await page.getByRole('region', { name: 'Seus dados neste computador' }).waitFor();
       expect(resumo((await (await axe(page)).include('.seus-dados').analyze()).violations)).toEqual([]);
+    });
+
+    // O central-dev não tem janela (disponivel false, a seção não aparece): o estado do app de PC vem interceptado.
+    test('Perfil: Janela do app, com o segundo plano ligado e o aviso de recusa', async ({ page }) => {
+      await page.route('**/api/v1/app/janela', r => r.request().method() === 'GET'
+        ? r.fulfill({ json: { disponivel: true, segundoPlano: true } })
+        : r.fulfill({ status: 409, json: { erro: 'fictício', motivo: 'sem-bandeja' } }));
+      await page.goto('/#/regras');
+      const regiao = page.getByRole('region', { name: 'Janela do app' });
+      await regiao.getByRole('checkbox', { name: 'Continuar aberto em segundo plano' }).click();
+      await regiao.getByRole('alert').waitFor();
+      expect(resumo((await (await axe(page)).include('.janela-app').analyze()).violations)).toEqual([]);
+    });
+
+    test('Perfil: fora do app de PC a seção Janela do app não aparece', async ({ page }) => {
+      await page.goto('/#/regras');
+      await page.getByRole('region', { name: 'Seus dados neste computador' }).waitFor();
+      await expect(page.getByRole('region', { name: 'Janela do app' })).toHaveCount(0);
     });
 
     test('diálogo de aprovar aberto', async ({ page }) => {

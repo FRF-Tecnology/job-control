@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/api"
@@ -30,6 +31,30 @@ func main() {
 	}
 	pasta := abertura.Caminho
 	log.Printf("partida: %s", config.OrigemPasta()) // sem o caminho (jc-a2y.57)
+
+	// O app nasce antes do banco: se já há um Applyer aberto nesta pasta de dados, esta segunda abertura só traz a
+	// janela dele de volta e sai aqui dentro (application.New), sem tocar no banco nem no envio.
+	var aberta atomic.Pointer[controleJanela]
+	apiLocal := &apiTardia{}
+	app := application.New(application.Options{
+		Name:        "Applyer",
+		Description: "Busca, triagem e acompanhamento de candidaturas",
+		Assets: application.AssetOptions{
+			Handler: rotear(apiLocal, application.AssetFileServerFS(telas)),
+		},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: idDaInstancia(pasta),
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+				if c := aberta.Load(); c != nil {
+					c.mostrar()
+				}
+			},
+		},
+	})
+
 	banco, err := armazem.Abrir(ctx, config.CaminhoBanco(pasta))
 	if err != nil {
 		falhar("banco", err)
@@ -43,14 +68,21 @@ func main() {
 	controleEnvio := envio.Ligar(ctx, banco, pasta)
 	defer controleEnvio.Parar()
 
-	// Depois de "apagar meus dados", o app fecha (o banco já foi fechado e apagado).
-	var app *application.App
+	// A janela abre no tamanho que a pessoa deixou (ou no padrão) e, se ela pediu, o app fica em segundo plano.
+	tamanho, segundoPlano := lerJanela(ctx, banco)
+	controle := abrirJanela(app, banco, tamanho, segundoPlano)
+	aberta.Store(controle)
+
 	local := api.Nova(banco, api.Opcoes{
 		PararEnvio:      controleEnvio.Parar,
 		SuspenderEnvio:  controleEnvio.Suspender,
 		FecharNavegador: controleEnvio.FecharNavegador,
-		AoApagar:        func() { app.Quit() },
-		EnvioLigado:     envio.Ligado,
+		// Depois de "apagar meus dados", o app fecha (o banco já foi fechado e apagado): nada mais é gravado.
+		AoApagar: func() {
+			controle.calar()
+			controle.sair()
+		},
+		EnvioLigado: envio.Ligado,
 		// Envio sem janela; só a tela mostra o envio ou abre o login (jc-a2y.6.7).
 		MostrarEnvio: controleEnvio.MostrarEnvio,
 		Entrar:       controleEnvio.Entrar,
@@ -61,32 +93,10 @@ func main() {
 		AvisoPasta: abertura.Aviso,
 		// Leitura de formulários (jc-a2y.7.2): nil no build padrão (a rota dá 404).
 		LerFormulario: controleEnvio.LerFormulario,
+		// Janela do app (Perfil): segundo plano e voltar ao tamanho padrão.
+		JanelaApp: controle.ganchos(),
 	})
-
-	app = application.New(application.Options{
-		Name:        "Applyer",
-		Description: "Busca, triagem e acompanhamento de candidaturas",
-		Assets: application.AssetOptions{
-			Handler: rotear(local.Handler(), application.AssetFileServerFS(telas)),
-		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
-	})
-
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:     "Applyer",
-		Width:     1280,
-		Height:    820,
-		MinWidth:  380,
-		MinHeight: 560,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		URL: "/",
-	})
+	apiLocal.definir(local.Handler())
 
 	if err := app.Run(); err != nil {
 		falhar("janela", err)

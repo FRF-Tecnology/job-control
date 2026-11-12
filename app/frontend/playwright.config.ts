@@ -6,27 +6,29 @@ import { fileURLToPath } from 'node:url';
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 
-// A jornada de "usuário novo" roda contra o servidor de desenvolvimento (API Go + telas compiladas)
-// com uma pasta de dados vazia. Antes: npm run build (gera dist/).
-// Exposta aos testes (ex.: currículo fictício na pasta de currículos); os workers herdam a variável e usam a mesma pasta.
+// Servidor compilado só para testes: API Go, SQLite real e provedor isolado.
+// A prova de conexão é emitida pelo backend. Nenhuma chamada usa a conta do computador.
 const pasta = (process.env.CENTRAL_E2E_PASTA ??= mkdtempSync(join(tmpdir(), 'central-e2e-')));
 const raiz = resolve(aqui, '../..');
 
 export default defineConfig({
   testDir: './e2e',
+  // A Fila prepara vagas ao abrir a tela. Outra aba de teste pode gravar na conta antes da jornada.
+  workers: 1,
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: { baseURL: 'http://localhost:4510', trace: 'retain-on-failure' },
   projects: [
-    { name: 'pc', use: { ...devices['Desktop Chrome'] } },
-    { name: 'celular', use: { ...devices['Pixel 7'] } },
+    { name: 'primeiro-acesso', testMatch: 'primeiro-acesso.setup.ts', use: { ...devices['Desktop Chrome'] } },
+    { name: 'pc', dependencies: ['primeiro-acesso'], use: { ...devices['Desktop Chrome'] } },
+    { name: 'celular', dependencies: ['primeiro-acesso'], use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'go run ./cmd/central-dev',
+    command: 'go test -tags e2e_radar ./internal/api -run=^TestServidorRadarPlaywright$ -count=1 -timeout=30m',
     cwd: raiz,
     url: 'http://localhost:4510/api/v1/saude',
-    env: { PORT: '4510', CENTRAL_PASTA: pasta, CENTRAL_TELAS: resolve(aqui, 'dist') },
+    env: { APPLYER_E2E_SUITE:'1', APPLYER_E2E_PROVEDOR:'controlado', APPLYER_PASTA: pasta, CENTRAL_E2E_PASTA: pasta, CENTRAL_TELAS: process.env.CENTRAL_E2E_TELAS ?? resolve(aqui, 'dist') },
     timeout: 180_000,
     reuseExistingServer: false,
   },

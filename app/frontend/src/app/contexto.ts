@@ -17,6 +17,7 @@ export interface Pergunta {
 
 export interface App {
   estado: Estado;
+  conexaoIA?: { nome: string; verificada: boolean };
   hoje: string;
   foco: string;
   rota: string;
@@ -50,7 +51,10 @@ export class ErroApi extends Error {
 
 // Chamada à API local. Erro de validação vira mensagem com a lista de erros.
 export async function chamarApi(caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) {
-  const r = await fetch(caminho, { method: metodo, headers: { ...cabecalhos, 'content-type': 'application/json' }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
+  const multipart = corpo instanceof FormData;
+  const headers = multipart ? cabecalhos : { ...cabecalhos, 'content-type': 'application/json' };
+  const body = multipart ? corpo : corpo !== undefined ? JSON.stringify(corpo) : undefined;
+  const r = await fetch(caminho, { method: metodo, headers, body });
   const dados = r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text();
   if (!r.ok) throw new ErroApi(dados?.erros?.join('; ') || dados?.erro || `erro ${r.status}`, r.status, dados);
   return dados;

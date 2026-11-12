@@ -91,6 +91,9 @@ func TestRotasDeIA(t *testing.T) {
 	if s, c := chamar("POST", "/ia/testar", nil); s != 200 || c["ok"] != true || chaveUsada != "sk-ant-chave-de-teste-1234" {
 		t.Fatalf("testar = %d %v (chave %q)", s, c, chaveUsada)
 	}
+	if _, c := chamar("GET", "/ia/config", nil); c["conexaoVerificada"] != true {
+		t.Fatal("teste real da rota não registrado")
+	}
 	chamar("POST", "/vagas", Objeto{"id": "li-1", "empresa": "Acme", "titulo": "Dev"})
 	if s, c := chamar("POST", "/ia/triar/li-1", nil); s != 200 || c["motivoPulo"] != "Outro" {
 		t.Fatalf("triar = %d %v", s, c)

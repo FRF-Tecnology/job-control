@@ -7,7 +7,21 @@ O Claude Code busca e aplica. Você decide e acompanha na tela.
 
 Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. Nada sai da máquina.
 
-## Abrir
+## Primeiro acesso no aplicativo desktop (Windows e macOS)
+
+Conecte sua IA e escolha um currículo em PDF na primeira tela. Com Claude, a confirmação depende de uma resposta da CLI autenticada ou da API. O Applyer guarda o PDF e o progresso no computador. Se fechar durante a revisão, ao voltar você verifica a conexão e pode continuar com o mesmo arquivo e os campos já salvos.
+
+Na segunda tela, revise cargo, nível, habilidades e condições. A faixa salarial mensal é opcional (BRL, USD ou EUR). **Concluir perfil** abre o Radar sem iniciar uma busca. **Salvar e buscar vagas** salva o mesmo perfil e inicia a primeira busca.
+
+No Radar, **Buscar vagas** consulta fontes conforme o perfil: [Gupy](https://portal.gupy.io/) para o Brasil, [Himalayas](https://himalayas.app/) para oportunidades internacionais remotas e [Arbeitnow](https://www.arbeitnow.com/) para vagas europeias quando o modelo inclui híbrido ou presencial. A cobertura depende dos anúncios publicados.
+
+Cada rodada avalia até oito vagas. No **Radar de vagas**, filtre por A, B ou C e selecione uma oportunidade para ler a análise. **Criar perfil** permite, por exemplo, separar as buscas de Java e de IA. Os resultados e o currículo pertencem ao perfil escolhido; a lista e o histórico reúnem as candidaturas da pessoa.
+
+**Adicionar à lista** guarda a vaga para revisar o currículo e a carta na **Lista do dia**. Para se candidatar, abra o site da empresa no navegador padrão. Voltar ao Applyer mantém a candidatura pendente: só **Já enviei** registra o envio. No **Quadro**, abra o cartão para anotar uma conversa ou mover a vaga para Entrevista, Proposta ou Conquistada.
+
+Em **Perfil e IA** você pode trocar o PDF, ajustar os filtros ou verificar a conexão. **Ferramentas** mantém os recursos anteriores, entre eles Hoje, Triagem, Fila, Funil completo, Números e Rodadas.
+
+## Abrir a Central em Node
 1. Instale o [Node.js](https://nodejs.org) 18 ou mais novo (só uma vez).
 2. Dê dois cliques em **`iniciar.bat`** (Windows) ou rode `./iniciar.sh` (Mac/Linux).
 3. O navegador abre em http://localhost:4321. Para desligar, feche a janela preta.

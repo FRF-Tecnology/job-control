@@ -16,7 +16,7 @@ import (
 const chaveRedirect = "sk-ant-api03-SENTINELAredirect-123xyz" // gitleaks:allow
 
 func TestRedirecionamentoNaoESeguido(t *testing.T) {
-	for _, prov := range []string{"anthropic", "openai", "google"} {
+	for _, prov := range []string{"anthropic", "openai", "google", "xai"} {
 		for _, status := range []int{301, 302, 303, 307, 308} {
 			for _, destinoNome := range []string{"outro-host", "mesmo-host"} {
 				t.Run(fmt.Sprint(prov, "/", status, "/", destinoNome), func(t *testing.T) {

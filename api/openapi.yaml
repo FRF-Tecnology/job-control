@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.14.0
+  version: 0.15.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -46,7 +46,182 @@ x-assistente:
   - POST /envio/plataformas/{plataforma}/pausar
 paths:
   /saude: { get: { summary: O app está de pé } }
-  /estado: { get: { summary: 'Estado inteiro (vagas, eventos, plataformas, rodadas, perfil, pedidos, emails) + hoje, versao, curriculos, primeirosPassos' } }
+  /estado: { get: { summary: 'Estado inteiro com hoje, versao, curriculos, primeirosPassos, onboardingConcluido, perfilBuscaAtivo e perfisBusca. Vagas e rodadas sem perfilBuscaId pertencem ao perfil original.' } }
+  /onboarding/rascunho:
+    get:
+      summary: Recupera a etapa, os campos editados e os metadados do PDF local do primeiro acesso.
+      responses:
+        '200':
+          description: Um rascunho novo começa na revisão 0 e na etapa 1.
+          content:
+            application/json:
+              schema: &rascunhoOnboarding
+                type: object
+                required: [revisao, etapa, dados, editados, curriculo]
+                properties:
+                  revisao: { type: integer, minimum: 0 }
+                  etapa: { type: integer, enum: [1, 2] }
+                  dados: { type: object, description: Valores parciais do formulário local. }
+                  editados: { type: array, items: { type: string } }
+                  tentativaExterna: { type: string, enum: ['', instalar-claude, login-claude] }
+                  curriculo: { type: object, nullable: true, properties: { arquivoId: { type: string }, nomeExibicao: { type: string }, tamanho: { type: integer } } }
+        '409': { description: Primeiro acesso já concluído. }
+    patch:
+      summary: Salva campos parciais sem promover o rascunho a perfil.
+      parameters: &cabecalhoRascunho
+        - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revisao]
+              additionalProperties: false
+              properties:
+                revisao: { type: integer, minimum: 0 }
+                etapa: { type: integer, enum: [1, 2] }
+                editados: { type: array, items: { type: string } }
+                dados: { type: object, description: 'Campos alterados entre cargo, niveis, modelos, foco, principal, secundaria, pular, ingles, moeda, minimo e maximo.' }
+                tentativaExterna: { type: string, enum: ['', instalar-claude, login-claude] }
+      responses:
+        '200': { description: Rascunho salvo com revisão incrementada., content: { application/json: { schema: *rascunhoOnboarding } } }
+        '403': { description: Somente a janela do app. }
+        '409': { description: Recarregue após conflito de revisão. }
+  /onboarding/curriculo:
+    put:
+      summary: Guarda a cópia local do PDF do rascunho e devolve a referência opaca.
+      parameters: *cabecalhoRascunho
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revisao, nomeArquivo, curriculoBase64]
+              properties:
+                revisao: { type: integer, minimum: 0 }
+                nomeArquivo: { type: string }
+                curriculoBase64: { type: string, format: byte }
+      responses:
+        '200': { description: 'Metadados do arquivo salvo: revisao, arquivoId, nomeExibicao e tamanho em bytes.' }
+        '400': { description: PDF ou nome inválido. O anterior continua disponível. }
+        '403': { description: Origem ou cabeçalho não permitido. }
+        '409': { description: Rascunho concluído ou revisão desatualizada. }
+        '413': { description: O PDF excede 20 MiB. }
+    delete:
+      summary: Retira o PDF do rascunho e preserva os campos editados pela pessoa.
+      parameters: *cabecalhoRascunho
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [revisao], properties: { revisao: { type: integer, minimum: 0 } } } } } }
+      responses:
+        '200': { description: Rascunho sem PDF na primeira etapa., content: { application/json: { schema: *rascunhoOnboarding } } }
+        '403': { description: Origem ou cabeçalho não permitido. }
+        '409': { description: Rascunho concluído ou revisão desatualizada. }
+  /onboarding:
+    post:
+      summary: Conclui o primeiro acesso na janela, salva o PDF local e as preferências de busca da pessoa.
+      parameters:
+        - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+        - { in: header, name: X-Applyer-Verificacao, description: Prova retornada pelo teste de IA na sessão. Uma prova vencida retorna 412., schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [perfil]
+              oneOf: [{ required: [curriculoBase64] }, { required: [arquivoId, revisao] }]
+              properties:
+                perfil: { type: object, description: 'Perfil com as preferências revisadas pela pessoa.' }
+                curriculoBase64: { type: string, format: byte, description: 'Bytes originais do PDF, até 20 MiB decodificados.' }
+                nomeArquivo: { type: string, description: Nome de apresentação local; nunca determina o caminho no disco. }
+                arquivoId: { type: string, description: Identificador opaco do PDF do rascunho. Requer prova de IA atual. }
+                revisao: { type: integer, minimum: 0 }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [perfil, curriculo]
+              properties:
+                perfil: { type: string, description: 'Objeto JSON com cargo, stacks, filtros, foco, inglês e faixaSalarial mensal opcional. A faixa contém moeda (USD, BRL, EUR) e ao menos um limite positivo min ou max. O campo anterior pretensaoUSD continua aceito.' }
+                curriculo: { type: string, format: binary, description: PDF de até 20 MiB. }
+      responses:
+        '200': { description: 'Perfil salvo e primeiro acesso concluído.' }
+        '400': { description: 'Arquivo ou perfil inválido.' }
+        '403': { description: 'Origem ou cabeçalho não permitido.' }
+        '409': { description: 'Primeiro acesso já concluído ou rascunho alterado. Uma repetição idêntica da conclusão por referência retorna 200.' }
+        '412': { description: Verifique novamente a conexão do provedor. }
+        '413': { description: 'Arquivo excede o limite.' }
+        '415': { description: 'Envie JSON ou multipart/form-data.' }
+  /onboarding/sugerir:
+    post:
+      summary: 'Extrai o texto localmente e pede sugestões ao provedor de IA escolhido. Cada sugestão contém um trecho do currículo; a pessoa revisa antes de salvar.'
+      parameters:
+        - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+        - { in: header, name: X-Applyer-Verificacao, description: Prova retornada pelo teste de IA na sessão. Uma prova vencida retorna 412., schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              oneOf: [{ required: [curriculoBase64] }, { required: [arquivoId, revisao] }]
+              properties:
+                curriculoBase64: { type: string, format: byte, description: 'PDF de até 20 MiB.' }
+                arquivoId: { type: string, description: Identificador opaco do PDF local. Requer prova de IA atual. }
+                revisao: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: 'Sugestões para revisão, possivelmente vazias.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sugestoes]
+                properties:
+                  sugestoes:
+                    type: array
+                    items:
+                      type: object
+                      required: [campo, valor, evidencia]
+                      properties:
+                        campo: { type: string, enum: [cargo, niveis, stackPrincipal, stackSecundaria, ingles] }
+                        valor: { type: string }
+                        evidencia: { type: string }
+        '400': { description: 'PDF inválido.' }
+        '403': { description: 'Origem ou cabeçalho não permitido.' }
+        '409': { description: 'Conecte a IA.' }
+        '413': { description: 'Arquivo grande demais.' }
+        '422': { description: 'Texto indisponível ou resposta da IA inválida. O perfil pode ser preenchido manualmente.' }
+        '502': { description: 'Provedor indisponível.' }
+  /busca:
+    post:
+      summary: Busca pelo cargo e critérios do perfil ativo. Avalia até dez anúncios por rodada com IA; descartes locais não consomem esse limite.
+      description: Somente anúncios recentes, compatíveis e avaliados podem aparecer como recomendados. A data de descoberta não substitui a data de publicação. A ausência de salário é neutra; a pretensão permanece um atributo do perfil.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                perfilBuscaId: { type: string, description: Identificador do perfil exibido. Uma troca de perfil durante a coleta ou a classificação retorna 409. }
+      responses:
+        '200':
+          description: 'Balanço da rodada. Uma falha parcial fica em avisos e vagas pendentes podem ser avaliadas novamente.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [encontradas, novas, grupos, puladas, pendentes, avisos]
+                properties:
+                  encontradas: { type: integer }
+                  novas: { type: integer }
+                  grupos: { type: object, additionalProperties: { type: integer } }
+                  puladas: { type: integer }
+                  pendentes: { type: integer }
+                  avisos: { type: array, items: { type: string } }
+        '400': { description: 'Falta configurar o cargo.' }
+        '403': { description: 'Somente a pessoa pode iniciar uma busca pelo app.' }
+        '409': { description: 'Busca em andamento, perfil alterado ou IA não conectada.' }
   /versao: { get: { summary: Versão dos dados (muda a cada gravação); a tela recarrega quando muda } }
   /resumo: { get: { summary: Números do dia } }
   /vagas:
@@ -59,9 +234,87 @@ paths:
   /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
+  /vagas/{id}/devolver-ao-radar:
+    post:
+      x-so-tela: true
+      summary: 'Devolve uma vaga da lista ao Radar e cancela seu pacote na mesma transação.'
+  /vagas/{id}/acompanhamento:
+    post:
+      x-so-tela: true
+      summary: 'Atualiza etapa e anotação do quadro com histórico: {etapaAntes, notasAntes, etapa, notas}. Etapas: Enviada, Entrevista, Proposta e Conquistada. Alteração concorrente retorna 409.'
+  /vagas/{id}/iniciar-manual:
+    post:
+      x-so-tela: true
+      summary: 'Reserva para a pessoa um pacote preparado ou aprovado, retirando a autorização automática na mesma transação. Se já estiver enviando, retorna 409. Sem pacote ativo, usa o currículo do perfil dono. Retorna aplicacaoManual, candidaturaManualId e urlCandidaturaManual. Repetir retoma a reserva.'
+  /vagas/{id}/confirmar-envio-manual:
+    post:
+      x-so-tela: true
+      summary: 'Registra o envio que a pessoa confirmou na plataforma externa. Atualiza a vaga, a candidatura e o histórico uma vez; exige a intenção pendente ou um recibo já concluído.'
+  /ia/detectar:
+    post:
+      x-so-tela: true
+      summary: 'Atualiza a detecção da CLI após login. Detectar um executável não confirma o provedor.'
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
   /followups: { get: { summary: Follow-ups vencidos com a mensagem sugerida } }
+  /perfis-busca:
+    post:
+      x-so-tela: true
+      summary: Cria e ativa um perfil no banco local. Usa o currículo do perfil de origem e começa com o Radar vazio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, modelo]
+              properties:
+                nome: { type: string, minLength: 1, maxLength: 120 }
+                cargo: { type: string, maxLength: 180, description: Cargo livre do perfil novo, separado do nome de exibição. }
+                modelo: { type: string, enum: [ai, java, outro], description: A interface usa outro para qualquer profissão. Os modelos anteriores continuam aceitos. }
+                perfilOrigem: { type: string, description: Identificador ativo exibido na janela. }
+      responses:
+        '201': { description: Perfil criado. O campo perfilBuscaAtivo contém o identificador persistente. }
+        '409': { description: O nome já existe ou a janela mostrava outro perfil. }
+  /perfis-busca/{id}/ativar:
+    post:
+      x-so-tela: true
+      summary: Ativa o perfil escolhido e restaura seus critérios de busca e currículo.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                perfilOrigem: { type: string }
+      responses:
+        '200': { description: Perfil ativo salvo. }
+        '404': { description: Perfil desconhecido. }
+        '409': { description: O perfil ativo mudou em outra janela. }
+  /perfil/curriculo:
+    post:
+      x-so-tela: true
+      summary: Substitui o PDF principal do perfil de busca no computador. O documento anterior continua disponível.
+      parameters:
+        - { name: perfilBuscaId, in: query, required: true, schema: { type: string } }
+        - { name: X-Applyer-Onboarding, in: header, required: true, schema: { type: string, enum: ['1'] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [curriculoBase64]
+              properties:
+                curriculoBase64: { type: string, format: byte, description: PDF de até 20 MB. }
+                nomeArquivo: { type: string, description: Nome de apresentação local. }
+      responses:
+        '200': { description: Nova referência local gravada. }
+        '400': { description: PDF inválido. }
+        '409': { description: Perfil ativo mudou ou primeiro acesso incompleto. }
+        '413': { description: Documento excede o limite de tamanho. }
   /perfil:
+    parameters: [{ name: perfilBuscaId, in: query, required: false, schema: { type: string }, description: Uma edição com identificador antigo recebe 409. }]
     get: { summary: Perfil }
     put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). respostasPadrao com resposta (fora sim/não) para pergunta de número fiscal, documento de identidade, senha ou banco dá 400, para qualquer autor (jc-a2y.7.5)' }
     patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). A recusa de respostasPadrao sensível (jc-a2y.7.5) vale para o que vem no corpo' }
@@ -142,15 +395,15 @@ paths:
               type: object
               required: [provedor]
               properties:
-                provedor: { type: string, enum: [nenhum, anthropic, openai, google, claude-cli, codex-cli, gemini-cli] }
-                modelo: { type: string, description: 'Obrigatório para openai e google (sem padrão). Só letras, números, espaço e . , _ : / \ = + @ ~ -, e não pode começar com -: o modelo vira argumento da CLI; outro caso dá 400 e nada é gravado (jc-a2y.43)' }
+                provedor: { type: string, enum: [nenhum, anthropic, openai, google, xai, claude-cli, codex-cli, gemini-cli] }
+                modelo: { type: string, description: 'Obrigatório para openai, google e xai (sem padrão). Só letras, números, espaço e . , _ : / \ = + @ ~ -, e não pode começar com -: o modelo vira argumento da CLI; outro caso dá 400 e nada é gravado (jc-a2y.43)' }
                 url: { type: string, pattern: '^https://', description: 'Endereço compatível (ex.: OpenRouter); só https' }
       responses:
         '200': { description: Conexão gravada, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigIA' } } } }
         '400': { $ref: '#/components/responses/Validacao' }
   /ia/chaves/{provedor}:
     parameters:
-      - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google] } }
+      - { name: provedor, in: path, required: true, schema: { type: string, enum: [anthropic, openai, google, xai] } }
     put:
       summary: 'Salva a chave de API no cofre do sistema, presa ao host configurado agora para o provedor (o padrão, se não houver url própria). A chave só é usada nesse host (jc-a2y.27)'
       requestBody:
@@ -172,7 +425,7 @@ paths:
         '400': { $ref: '#/components/responses/Erro' }
   /ia/testar:
     post:
-      summary: 'Triagem de uma vaga fictícia para ver se a IA responde (não grava nada além do uso)'
+      summary: 'Testa a rota padrão sem reserva com uma vaga fictícia. Mantém a verificação somente na sessão; não envia o currículo.'
       responses:
         '200':
           description: A IA respondeu dentro do contrato
@@ -183,6 +436,7 @@ paths:
                 required: [ok, ms, saida]
                 properties:
                   ok: { type: boolean, const: true }
+                  verificacao: { type: string, description: 'Revisão confirmada, usada em X-Applyer-Verificacao ao sugerir ou concluir o primeiro acesso.' }
                   ms: { type: integer, description: Tempo da chamada }
                   saida: { $ref: '#/components/schemas/Triagem' }
         '400': { $ref: '#/components/responses/ErroIAConfig' }
@@ -482,6 +736,47 @@ paths:
                 properties:
                   aviso: { type: [string, 'null'], enum: [pasta-antiga-ficou, migracao-adiada, null] }
                   migradaEm: { type: [string, 'null'] }
+  # Janela do app de PC (0.15.0). O app abre num tamanho padrão (1280 x 800, ou o que couber na tela) e lembra o
+  # tamanho que a pessoa deixar; isso não passa pela API. Pela API passam as duas escolhas da pessoa no Perfil.
+  # Fora do app de PC (central-dev, MCP, CLI) não há janela: o GET responde disponivel false e as outras dão 404.
+  /app/janela:
+    get:
+      summary: 'As escolhas da pessoa para a janela do app: {disponivel, segundoPlano}. disponivel: este processo é o app de PC e tem janela para ajustar (false no central-dev). segundoPlano: fechar a janela mantém o app aberto, com o ícone do Applyer perto do relógio (Windows) ou na barra de menus (Mac); padrão false. Só leitura: qualquer autor'
+      responses:
+        '200': { description: Estado da janela, content: { application/json: { schema: { $ref: '#/components/schemas/JanelaApp' } } } }
+    put:
+      x-so-tela: true
+      summary: 'Liga ou desliga "continuar aberto em segundo plano". Ligado: fechar a janela só a esconde, o app continua aberto e ganha um ícone (um clique abre a janela; o menu tem Abrir o Applyer e Sair); abrir o app de novo traz a mesma janela. Desligado (padrão): o ícone some e fechar a janela fecha o app. Vale na hora e fica gravado neste computador. Não muda o envio: o que o app faz em segundo plano é o que já fazia com a janela aberta'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [segundoPlano]
+              properties:
+                segundoPlano: { type: boolean }
+      responses:
+        '200': { description: Escolha gravada e aplicada, content: { application/json: { schema: { $ref: '#/components/schemas/JanelaApp' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este processo não é o app de PC (não há janela): {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'O sistema não deixou criar o ícone do Applyer: {erro, motivo: sem-bandeja}. Nada muda: o app continua fechando junto com a janela', content: { application/json: { schema: { $ref: '#/components/schemas/ErroJanelaApp' } } } }
+  /app/janela/padrao:
+    post:
+      x-so-tela: true
+      summary: 'Volta a janela ao tamanho padrão (1280 x 800, ou o que couber na tela), sai do maximizado e centraliza. O app passa a lembrar esse tamanho'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Janela no tamanho padrão, content: { application/json: { schema: { $ref: '#/components/schemas/JanelaApp' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Este processo não é o app de PC (não há janela): {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.
@@ -685,6 +980,7 @@ components:
       type: object
       required: [configurada]
       properties:
+        conexaoVerificada: { type: boolean, description: 'Verdadeiro para uma configuração testada com sucesso nesta sessão.' }
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }
@@ -714,13 +1010,14 @@ components:
       type: object
       required: [configurada, chaves, clis, gratis, uso]
       properties:
+        conexaoVerificada: { type: boolean, description: 'Verificação da configuração atual na sessão.' }
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }
         url: { type: string }
         chaves:
           type: object
-          description: 'Um campo por provedor com chave (anthropic, openai, google): final ou null'
+          description: 'Um campo por provedor com chave (anthropic, openai, google, xai): final ou null'
           additionalProperties: { type: [string, 'null'] }
         clis: { type: array, items: { $ref: '#/components/schemas/EstadoCLI' } }
         gratis:
@@ -1044,6 +1341,20 @@ components:
         erro: { type: string, description: 'Texto pronto para a tela' }
         motivo: { type: string, enum: [enviando, login-aberto, sem-navegador] }
         estado: { type: string, enum: [enviando], description: 'Só com motivo enviando' }
+    JanelaApp:
+      type: object
+      additionalProperties: false
+      required: [disponivel, segundoPlano]
+      properties:
+        disponivel: { type: boolean, description: 'Este processo é o app de PC e tem janela para ajustar' }
+        segundoPlano: { type: boolean, description: 'Fechar a janela mantém o app aberto' }
+    ErroJanelaApp:
+      type: object
+      additionalProperties: false
+      required: [erro, motivo]
+      properties:
+        erro: { type: string, description: 'Texto pronto para a tela' }
+        motivo: { type: string, enum: [sem-bandeja] }
     ErroConflitoCandidatura:
       type: object
       required: [erro]

@@ -363,6 +363,11 @@ label.campo > span { font-weight: 600; color: var(--tinta); }
 
 /* ---------- triagem (cartão que se arrasta) ---------- */
 .triagem { max-width: 640px; margin: 0 auto; }
+.busca-perfil { margin-bottom: 22px; padding: 17px; border-radius: var(--raio-m); background: var(--peca); box-shadow: inset 0 0 0 1px var(--aro); }
+.busca-perfil p { margin: 9px 0 0; }
+.balanco-grupos { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.triagem .motivo ul { margin: 6px 0 0; padding-inline-start: 21px; }
+@media (pointer: coarse) { .triagem a.fonte-busca { min-height: 44px; } }
 .progresso { height: 8px; border-radius: 99px; background: var(--linha); overflow: hidden; margin: 8px 0 24px; }
 .progresso > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #5865f2, #3fd8f5); transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform .3s var(--facil); }
 .pilha { position: relative; }
@@ -452,12 +457,15 @@ td.corta { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-sp
 fieldset { border: 0; border-radius: var(--raio); padding: 20px 22px; display: grid; gap: 14px; min-width: 0; }
 legend { font: 700 1rem var(--fonte-display); padding: 0 6px; }
 /* Seus dados neste computador (jc-a2y.49): fora do formulário do perfil, cada ação no seu bloco. */
-.seus-dados { display: grid; gap: 16px; max-width: 860px; margin-top: 48px; }
-.seus-dados h2 { margin: 0; } .seus-dados > p { margin: 0; }
+.seus-dados, .janela-app { display: grid; gap: 16px; max-width: 860px; margin-top: 48px; }
+.seus-dados h2, .janela-app h2 { margin: 0; } .seus-dados > p, .janela-app > p { margin: 0; }
 .zona { border: 1px solid transparent; border-radius: var(--raio); padding: 20px; display: grid; gap: 12px; }
 .zona h3 { margin: 0; font-size: 1rem; } .zona p, .zona ul { margin: 0; } .zona ul { padding-left: 20px; display: grid; gap: 4px; }
 .zona.perigo { border-color: color-mix(in srgb, var(--erro) 55%, transparent); }
-.seus-dados .feito { margin: 0; color: var(--verde); font-weight: 600; }
+.seus-dados .feito, .janela-app .feito { margin: 0; color: var(--verde); font-weight: 600; }
+/* Janela do app (0.15.0): a caixa de marcar com o rótulo ao lado; a linha inteira é o alvo do toque. */
+.janela-app .marcar { display: flex; gap: 10px; align-items: center; min-height: 44px; cursor: pointer; font-weight: 600; }
+.janela-app .marcar input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--destaque); }
 .seus-dados .feito.parcial { color: var(--ambar); } /* faltou algo: atenção, não sucesso */
 .feito-bloco { display: grid; gap: 8px; } .feito-bloco p, .feito-bloco ul { margin: 0; } .feito-bloco ul { padding-left: 20px; }
 
@@ -789,3 +797,11 @@ dialog form { display: grid; gap: 16px; }
 @keyframes cutucar { 50% { transform: translateX(-4px); } }
 /* No celular não há navegador flutuante: o ao vivo fica na Fila. */
 @media (max-width: 720px) { .flutuante.encaixado, .flutuante.solto, .fl-borda { display: none; } }
+.marca-applyer { width: 108px; max-width: 100%; height: 32px; object-fit: contain; }
+.marca .marca-applyer.escura {display:none}
+:root[data-tema="escuro"] .marca .marca-applyer.clara {display:none}
+:root[data-tema="escuro"] .marca .marca-applyer.escura {display:block}
+@media(prefers-color-scheme:dark){
+  :root:not([data-tema="claro"]) .marca .marca-applyer.clara {display:none}
+  :root:not([data-tema="claro"]) .marca .marca-applyer.escura {display:block}
+}

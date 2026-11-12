@@ -2,7 +2,7 @@
 // Fora da conta: links dentro de um parágrafo (exceção da WCAG para link em texto) e o "Ir para o conteúdo".
 import { expect, test } from '@playwright/test';
 
-const TELAS = ['hoje', 'triagem', 'fila', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil', 'ia'];
+const TELAS = ['radar', 'lista', 'quadro', 'perfil', 'hoje', 'triagem', 'fila', 'funil', 'vagas', 'numeros', 'plataformas', 'rodadas', 'regras', 'ia'];
 
 // Estado da IA fictício (jc-edx): o back procura as CLIs no PC, o que demora com a máquina cheia; aqui só importa o
 // tamanho dos controles. As três situações de CLI aparecem: pronta, instalada mas não pronta, e não instalada.
@@ -27,7 +27,7 @@ test('celular: controles com alvo de toque de 44 px', async ({ page }, info) => 
     // A lista de CLIs vem da resposta interceptada acima: mede quando ela aparece, com as três CLIs.
     if (rota === 'ia') {
       await expect(page.getByRole('heading', { name: 'Usar minha assinatura' })).toBeVisible();
-      for (const nome of ['Claude Code', 'Codex CLI', 'Gemini CLI']) await expect(page.getByText(nome).first()).toBeVisible();
+      for (const nome of ['Claude Code', 'Codex CLI', 'Gemini CLI']) await expect(page.locator('main').getByText(nome, {exact:true}).first()).toBeVisible();
     }
     // O seletor de foco entra com uma animação de escala (popar): mede só depois que ela acaba.
     await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
@@ -37,7 +37,7 @@ test('celular: controles com alvo de toque de 44 px', async ({ page }, info) => 
         const caixa = el.getBoundingClientRect();
         const estilo = getComputedStyle(el);
         if (!caixa.width || !caixa.height || estilo.visibility === 'hidden' || el.closest('[hidden], dialog:not([open])')) return [];
-        if (el.matches('.pular-link') || (el.tagName === 'A' && el.closest('p'))) return [];
+        if (el.matches('.skip-link') || (el.tagName === 'A' && el.closest('p'))) return [];
         if (caixa.height >= 44 - 0.5 && caixa.width >= 44 - 0.5) return [];
         const nome = (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 30);
         return [`${r}: ${el.tagName.toLowerCase()}.${[...el.classList].join('.')} "${nome}" ${Math.round(caixa.width)}x${Math.round(caixa.height)}`];
@@ -53,7 +53,7 @@ test('PC com mouse: botões compactos seguem compactos', async ({ page }, info) 
   await expect(page.locator('main#conteudo')).not.toBeEmpty();
   const altura = await page.locator('.seletor button').first().evaluate(el => el.getBoundingClientRect().height);
   expect(altura).toBeLessThan(44);
-  // O menu do topo cabe inteiro no desktop (um item novo não pode esconder o último atrás do esmaecido).
-  const menu = await page.locator('.topo-app nav').evaluate(n => ({ total: n.scrollWidth, visivel: n.clientWidth }));
-  expect(menu.total, 'menu do topo passa da largura').toBeLessThanOrEqual(menu.visivel + 1);
+  // Todos os destinos primários cabem na largura da navegação lateral do desktop.
+  const menu = await page.getByRole('navigation', { name: 'Navegação principal' }).evaluate(n => ({ total: n.scrollWidth, visivel: n.clientWidth }));
+  expect(menu.total, 'navegação lateral passa da largura').toBeLessThanOrEqual(menu.visivel + 1);
 });
