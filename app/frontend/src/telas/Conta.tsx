@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 import { TERMOS_VERSAO } from '../app/conta';
+import { Markdown } from '../app/markdown';
 import termosMd from '../../../../docs/legal/termos.md?raw';
 import privacidadeMd from '../../../../docs/legal/privacidade.md?raw';
 
@@ -24,7 +25,7 @@ export function TextosLegais() {
         <button className="botao-fantasma p" type="button" aria-expanded={aberto === 'termos'} onClick={() => alternar('termos')}>Ler os termos de uso</button>
         <button className="botao-fantasma p" type="button" aria-expanded={aberto === 'privacidade'} onClick={() => alternar('privacidade')}>Ler a política de privacidade</button>
       </div>
-      {aberto && <pre className="texto-legal" tabIndex={0}>{aberto === 'termos' ? termosMd : privacidadeMd}</pre>}
+      {aberto && <div className="texto-legal" tabIndex={0}><Markdown texto={aberto === 'termos' ? termosMd : privacidadeMd} /></div>}
     </div>
   );
 }
@@ -37,7 +38,8 @@ function Campo({ rotulo, tipo = 'text', valor, mudar, auto, entrada }: { rotulo:
   );
 }
 
-export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | Promise<void> }) {
+// googleDisponivel false (build sem o client_id do Google): sem o botão e sem a frase do Google.
+export function TelaConta({ api, aoEntrar, googleDisponivel = true }: { api: Api; aoEntrar: () => void | Promise<void>; googleDisponivel?: boolean }) {
   const [passo, setPasso] = useState<Passo>('entrar');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -246,10 +248,10 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
           <button className="botao-fantasma" type="button" onClick={() => ir('esqueci')}>Esqueci a senha</button>
         </div>
         <div className="acoes">
-          <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => google()}>Entrar com Google</button>
+          {googleDisponivel && <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => google()}>Entrar com Google</button>}
           <button className="botao-fantasma" type="button" onClick={() => ir('criar')}>Criar uma conta</button>
         </div>
-        <p className="pequeno mudo" style={{ margin: 0 }}>Ao entrar com o Google pela primeira vez, você aceita os termos de uso e a política de privacidade.</p>
+        {googleDisponivel && <p className="pequeno mudo" style={{ margin: 0 }}>Ao entrar com o Google pela primeira vez, você aceita os termos de uso e a política de privacidade.</p>}
         <TextosLegais />
       </>);
   }

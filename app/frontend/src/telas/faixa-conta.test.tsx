@@ -148,3 +148,63 @@ describe('chamarApi', () => {
     await expect(chamarApi('/api/v1/conta/sair', 'POST', {})).resolves.toBe('');
   });
 });
+
+// "Tentar de novo" (ruling A14): chama POST /conta/atualizar (pede a licença à nuvem), não só relê GET /conta.
+describe('Tentar de novo', () => {
+  function Casca({ api }: { api: (c: string, m?: string, corpo?: unknown) => Promise<any> }) {
+    const { situacao, atualizar } = useConta(api);
+    return <FaixaConta situacao={situacao} agora={AGORA} reler={atualizar} />;
+  }
+  it('pede a licença de novo e mostra a situação que voltou', async () => {
+    const api = vi.fn(async (caminho: string, metodo?: string) => {
+      if (caminho === '/api/v1/conta/atualizar' && metodo === 'POST') return sit({ teste_fim: depois(30) });
+      return sit({ motivo: 'sem-internet' });
+    });
+    render(<Casca api={api} />);
+    const botao = await screen.findByRole('button', { name: 'Tentar de novo' });
+    await act(async () => { fireEvent.click(botao); });
+    expect(api).toHaveBeenCalledWith('/api/v1/conta/atualizar', 'POST', {});
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Seu teste acaba em 0 h 30 min · Assinar'));
+  });
+});
+
+// Ao abrir, a primeira conferência com a nuvem ainda não acabou (verificando): texto neutro no lugar de "Sem conexão",
+// e a casca relê a cada 2 s até acabar; com sem internet, a cada 15 s; senão, 60 s.
+describe('Conferindo a conta ao abrir', () => {
+  it('textoFaixa: neutro enquanto verificando, sem o botão de tentar de novo', () => {
+    expect(textoFaixa(sit({ motivo: 'sem-internet', verificando: true }), AGORA)).toBe('Conferindo sua conta…');
+    render(<FaixaConta situacao={sit({ motivo: 'sem-internet', verificando: true })} agora={AGORA} reler={async () => {}} />);
+    const faixa = screen.getByRole('status');
+    expect(faixa.textContent).toBe('Conferindo sua conta…');
+    expect(faixa.className).not.toContain('travada');
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).toBeNull();
+  });
+  it('relê a cada 2 s enquanto verificando, a cada 15 s sem internet e a cada 60 s depois', async () => {
+    vi.useFakeTimers();
+    try {
+      let resposta: Situacao = sit({ motivo: 'sem-internet', verificando: true });
+      const api = vi.fn(async () => resposta);
+      function Casca() { const { situacao } = useConta(api); return <FaixaConta situacao={situacao} agora={AGORA} reler={async () => {}} />; }
+      render(<Casca />);
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(api).toHaveBeenCalledTimes(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+      expect(api).toHaveBeenCalledTimes(2);
+      resposta = sit({ motivo: 'sem-internet' });
+      await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+      expect(api).toHaveBeenCalledTimes(3);
+      expect(screen.getByRole('status').textContent).toContain('Sem conexão');
+      await act(async () => { await vi.advanceTimersByTimeAsync(14_000); });
+      expect(api).toHaveBeenCalledTimes(3);
+      resposta = sit({});
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(api).toHaveBeenCalledTimes(4);
+      await act(async () => { await vi.advanceTimersByTimeAsync(59_000); });
+      expect(api).toHaveBeenCalledTimes(4);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(api).toHaveBeenCalledTimes(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

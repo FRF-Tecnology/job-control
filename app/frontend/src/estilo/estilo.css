@@ -798,4 +798,8 @@ dialog form { display: grid; gap: 16px; }
 .faixa-conta.travada { background: var(--ambar-suave); }
 .tela-conta { display: grid; gap: 16px; max-width: 560px; }
 .textos-legais { display: grid; gap: 8px; }
-.texto-legal { margin: 0; max-height: 320px; overflow: auto; white-space: pre-wrap; font: inherit; font-size: .9rem; padding: 12px; border-radius: var(--raio-m); background: var(--ambar-suave); }
+.texto-legal { margin: 0; max-height: 320px; overflow: auto; overflow-wrap: anywhere; font-size: .9rem; padding: 12px; border-radius: var(--raio-m); background: var(--ambar-suave); }
+.texto-legal > :first-child { margin-top: 0; }
+.texto-legal h3, .texto-legal h4, .texto-legal h5 { margin: 14px 0 6px; font-size: 1rem; }
+.texto-legal p, .texto-legal ul, .texto-legal blockquote { margin: 0 0 8px; }
+.texto-legal blockquote { padding-left: 10px; border-left: 3px solid currentColor; }

@@ -57,7 +57,10 @@ export function CaixaPedido({ sugestoes, iaConectada, aoCriar }: { sugestoes: st
     <>
       <form className="caixa-pedido" role="search" onSubmit={ev => { ev.preventDefault(); enviar(texto); }}>
         <span className="caixa-ic" aria-hidden="true"><Icone d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" /></span>
-        <input id="pedido" ref={entrada} type="text" autoComplete="off" placeholder={sugestoes[0] ?? 'Peça qualquer coisa'} aria-label="O que vamos fazer hoje?" value={texto} onChange={e => setTexto(e.target.value)} />
+        {/* Enter tratado aqui: com a trava, o botão de enviar fica desabilitado e o navegador não envia o formulário
+            sozinho; os atalhos para as telas têm de continuar valendo (só o pedido de escrita trava). */}
+        <input id="pedido" ref={entrada} type="text" autoComplete="off" placeholder={sugestoes[0] ?? 'Peça qualquer coisa'} aria-label="O que vamos fazer hoje?" value={texto} onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); enviar(texto); } }} />
         <button type="submit" aria-label="Enviar pedido" {...trava()}><Icone d="M12 19V5M5 12l7-7 7 7" /></button>
       </form>
       <div className="sugestoes" aria-label="Sugestões">
@@ -206,7 +209,7 @@ export function TelaHoje() {
       <section className="ola" aria-labelledby="ola-titulo">
         <div className="ola-topo">
           <div className="seletor" role="group" aria-label="Foco da busca">
-            {FOCOS.map(([id, rotulo]) => <button key={id} type="button" {...trava()} aria-pressed={String(foco === id) as 'true' | 'false'} onClick={() => app.mudarFoco(id)}>{rotulo}</button>)}
+            {FOCOS.map(([id, rotulo]) => <button key={id} type="button" aria-pressed={String(foco === id) as 'true' | 'false'} onClick={() => app.mudarFoco(id)}>{rotulo}</button>)}
           </div>
           <span className="chip nota-cadeado"><Icone><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></Icone>Nada sai sem você aprovar</span>
         </div>

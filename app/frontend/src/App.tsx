@@ -20,7 +20,7 @@ import { TelaPerfil } from './telas/Perfil';
 import { TelaConectarIA } from './telas/ConectarIA';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
 import { foiEnviada } from './dominio/modelo';
-import { podeAgir as podeAgirCom, useConta } from './app/conta';
+import { podeAgir as podeAgirCom, useConta, useFoco } from './app/conta';
 import { FaixaConta } from './telas/FaixaConta';
 import { TelaConta } from './telas/Conta';
 import { TelaAssinatura } from './telas/Assinatura';
@@ -111,7 +111,7 @@ export default function App() {
   const sujo = useRef(false);
   // Conta (Task 7): GET /conta ao abrir, a cada 60 s e depois de um 402. undefined: ainda não sabe (nada aparece).
   // ativa false (build sem a nuvem, ruling A11): sem porta, sem faixa e sem trava, como antes.
-  const { situacao: conta, reler: releConta } = useConta(chamarApi);
+  const { situacao: conta, reler: releConta, atualizar: atualizarConta } = useConta(chamarApi);
   const contaAtiva = !!conta?.ativa;
   const liberado = podeAgirCom(conta);
   const telas = useMemo(() => TELAS.filter(t => !t.soConta || contaAtiva), [contaAtiva]);
@@ -236,6 +236,18 @@ export default function App() {
     };
   }, [carregar]);
 
+  // Foco da busca (ruling A16): com a trava ligada, é só um filtro na tela (sem PATCH); liberado, salva no perfil.
+  const salvarFoco = useCallback(async (foco: string) => {
+    setEstado((e: Estado) => (e ? { ...e, perfil: { ...e.perfil, foco } } : e));
+    try {
+      await chamarApi('/api/v1/perfil', 'PATCH', { foco });
+      await carregar(true);
+    } catch (e) {
+      aviso((e as Error).message, true);
+    }
+  }, [carregar, aviso]);
+  const { foco, mudarFoco } = useFoco(estado?.perfil?.foco ?? 'ambos', liberado, salvarFoco);
+
   const app: AppApi | null = useMemo(() => {
     if (!estado) return null;
     const api = (caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) => chamarApi(caminho, metodo, corpo, cabecalhos);
@@ -253,16 +265,12 @@ export default function App() {
     return {
       estado,
       hoje: estado.hoje,
-      foco: estado.perfil?.foco ?? 'ambos',
+      foco,
       rota: tela.rota,
       vaga,
       api,
       agir,
-      async mudarFoco(foco) {
-        if (foco === (estado.perfil?.foco ?? 'ambos')) return;
-        setEstado((e: Estado) => ({ ...e, perfil: { ...e.perfil, foco } }));
-        await agir(() => api('/api/v1/perfil', 'PATCH', { foco }));
-      },
+      mudarFoco,
       mover: (id, etapa, extras = {}, mensagem) => agir(() => api(`/api/v1/vagas/${encode(id)}/mover`, 'POST', { etapa, ...extras }), mensagem),
       abrirVaga: id => { location.hash = `#/${tela.rota}/${encode(id)}`; },
       navegar: rota => { location.hash = `#/${rota}`; },
@@ -274,7 +282,7 @@ export default function App() {
       conta,
       releConta,
     };
-  }, [estado, tela.rota, vaga, aviso, perguntar, carregar, liberado, conta, releConta]);
+  }, [estado, tela.rota, vaga, aviso, perguntar, carregar, liberado, conta, releConta, foco, mudarFoco]);
 
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
@@ -348,10 +356,10 @@ export default function App() {
         {falha ? (
           <div className="convite"><div><strong>{falha.titulo}</strong><p>{falha.texto}</p></div></div>
         ) : conta === undefined ? null : porta ? (
-          <TelaConta api={chamarApi} aoEntrar={entrou} />
+          <TelaConta api={chamarApi} aoEntrar={entrou} googleDisponivel={conta?.google_disponivel === true} />
         ) : app && (
           <Contexto.Provider value={app}>
-            {contaAtiva && <FaixaConta situacao={conta} reler={releConta} />}
+            {contaAtiva && <FaixaConta situacao={conta} reler={atualizarConta} />}
             <Protecao chave={tela.rota}>
               {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
               <Tela key={tela.rota === 'perfil' ? `perfil-${estado.versao}` : tela.rota} />

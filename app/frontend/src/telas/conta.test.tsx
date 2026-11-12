@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, ErroApi, type App } from '../app/contexto';
 import { TERMOS_VERSAO } from '../app/conta';
-import { SecaoConta, TelaConta } from './Conta';
+import { SecaoConta, TelaConta, TextosLegais } from './Conta';
 
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -271,5 +271,35 @@ describe('Rodada de correções 1', () => {
     await clicar('Aceito os novos termos');
     expect(chamadas[1]).toEqual({ rota: 'POST /api/v1/conta/criar', corpo: { email: 'ana@exemplo.com', senha: 'senha-forte-1', termos: '1-novo' } });
     expect(screen.getByLabelText('Código de confirmação')).toBeTruthy();
+  });
+});
+
+// Build sem o client_id do Google (google_disponivel false): o botão e a frase do Google somem.
+describe('Google indisponível no build', () => {
+  it('sem google_disponivel, não há "Entrar com Google"', () => {
+    render(<TelaConta api={vi.fn()} aoEntrar={() => {}} googleDisponivel={false} />);
+    expect(screen.queryByRole('button', { name: 'Entrar com Google' })).toBeNull();
+    expect(screen.queryByText(/Ao entrar com o Google/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy();
+  });
+  it('com google_disponivel, o botão aparece', () => {
+    render(<TelaConta api={vi.fn()} aoEntrar={() => {}} googleDisponivel />);
+    expect(screen.getByRole('button', { name: 'Entrar com Google' })).toBeTruthy();
+  });
+});
+
+// Termos e política: o markdown vira títulos, parágrafos, listas e negrito (sem # nem ** cru, sem HTML injetado).
+describe('Textos legais', () => {
+  it('não mostra marcas de markdown', async () => {
+    render(<TextosLegais />);
+    for (const nome of ['Ler os termos de uso', 'Ler a política de privacidade']) {
+      await clicar(nome);
+      const texto = document.querySelector('.texto-legal') as HTMLElement;
+      expect(texto.textContent).not.toMatch(/(^|\n)\s*#|\*\*|^>/m);
+      expect(texto.querySelector('h1, h2, h3')).toBeTruthy();
+      expect(texto.querySelector('strong')).toBeTruthy();
+      expect(texto.querySelector('li')).toBeTruthy();
+      await clicar(nome);
+    }
   });
 });

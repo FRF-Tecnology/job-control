@@ -97,7 +97,7 @@ export function TelaTriagem() {
         <div className="convite">
           <div><strong>Tudo decidido</strong><p style={{ margin: '4px 0 0' }}>{texto}</p></div>
           {puladasNestaSessao.size ? <button className="botao-fantasma" type="button" onClick={() => { puladasNestaSessao = new Set(); redesenhar(n => n + 1); }}>Rever as adiadas</button>
-            : foraDoFoco ? <button className="botao" type="button" {...trava()} onClick={() => app.mudarFoco('ambos')}>Ver todas</button>
+            : foraDoFoco ? <button className="botao" type="button" onClick={() => app.mudarFoco('ambos')}>Ver todas</button>
               : <a className="botao" href="#/quadro">Ver o quadro</a>}
         </div>
       </div>
