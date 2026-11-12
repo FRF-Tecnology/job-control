@@ -1,19 +1,18 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="escuro">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Applyer — organize vagas e revise suas candidaturas</title>
-<meta name="description" content="Organize vagas, revise candidaturas com a sua IA e acompanhe cada etapa no computador. Experimente a demonstração do Applyer e conheça os planos.">
+<title>Applyer — vagas de emprego nacionais e internacionais com um clique</title>
+<meta name="description" content="O Applyer prepara as respostas com seu currículo. Você revisa as vagas e aprova o lote. Ele preenche os formulários e envia suas candidaturas nas plataformas compatíveis.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<meta name="theme-color" content="#EEF2FB" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0C0E2C" media="(prefers-color-scheme: dark)">
-<meta property="og:title" content="Applyer — organize vagas e revise suas candidaturas">
-<meta property="og:description" content="Organize vagas, revise candidaturas com a sua IA e acompanhe cada etapa no computador. Experimente a demonstração do Applyer e conheça os planos.">
+<meta name="theme-color" content="#0C0E2C">
+<meta property="og:title" content="Applyer — vagas de emprego nacionais e internacionais com um clique">
+<meta property="og:description" content="O Applyer prepara as respostas com seu currículo. Você revisa as vagas e aprova o lote. Ele preenche os formulários e envia suas candidaturas nas plataformas compatíveis.">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Applyer">
-<link rel="icon" type="image/svg+xml" href="icone.svg">
+<link rel="icon" type="image/svg+xml" href="icone.svg?v=assinatura">
 <link rel="stylesheet" href="estilo.css">
 <script src="tema.js"></script>
 </head>
@@ -21,29 +20,63 @@
 <a class="pular-conteudo" href="#conteudo-principal">Pular para o conteúdo</a>
 <div class="lp" id="lp">
 <div class="fundo" aria-hidden="true"></div>
-<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5865F2" /><stop offset="1" stop-color="#2FBF8A" /></linearGradient><linearGradient id="lgCasco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" /><stop offset="1" stop-color="#D5DBF2" /></linearGradient><linearGradient id="lgVisor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3C40A8" /><stop offset="1" stop-color="#14163F" /></linearGradient><linearGradient id="lgOrelha" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B6F06A" /><stop offset="1" stop-color="#2FB86A" /></linearGradient><linearGradient id="lgFogo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A8F4FF" /><stop offset="1" stop-color="#3FD8F5" stop-opacity="0" /></linearGradient></defs></svg>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5865F2" /><stop offset="1" stop-color="#2FBF8A" /></linearGradient></defs></svg>
 
 <div class="conteudo">
-<header class="vidro topo">
-<a class="marca" href="#inicio"><svg viewBox="0 0 120 120" width="36" height="36" aria-hidden="true"><rect width="120" height="120" rx="27" fill="url(#lgA)" /><g transform="rotate(12 60 60)"><path d="M60 20 L95 94 L60 77 Z" fill="#FFFFFF" fill-opacity="0.7" /><path d="M60 20 L25 94 L60 77 Z" fill="#FFFFFF" /></g></svg>Applyer</a>
-<nav class="links" aria-label="Seções"><span class="links-secoes"><a class="lk" href="#app">O app</a><a class="lk" href="#como">Como funciona</a><a class="lk" href="#ia">Sua IA</a><a class="lk" href="#preco">Preço</a></span><a class="tecla tecla-p" href="#baixar">Plataformas<span class="kbd"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3" /></svg></span></a><button class="tema-btn somente-js" type="button" data-tema aria-label="Tema escuro" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3a8 8 0 0 0 11 12A9 9 0 1 1 9 3zm8 0v4m-2-2h4" /></svg></button></nav>
+<header class="topo">
+<span class="vidro topo-fundo" aria-hidden="true"></span>
+<a class="marca" href="#inicio" aria-label="Applyer. — início">
+  <img class="marca-clara" src="marcas/applyer.svg" width="536" height="116" alt="">
+  <img class="marca-inversa" src="marcas/applyer-inversa.svg" width="536" height="116" alt="">
+</a>
+<nav class="links" aria-label="Seções">
+  <div class="links-secoes">
+    <a class="lk" href="#app">O app</a>
+    <details class="nav-explorar">
+      <summary>Como funciona<svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div class="nav-painel">
+        <a href="#como"><img src="artes/ritmo.svg" alt="" width="44" height="44"><span><b>Um dia com o Applyer</b><small>Da busca ao envio das candidaturas</small></span></a>
+        <a href="#seguranca"><img src="artes/credencial-privada.svg" alt="" width="44" height="44"><span><b>Segurança</b><small>O que fica sob seu controle</small></span></a>
+        <a href="#comparacao"><img src="artes/curriculo-verificado.svg" alt="" width="44" height="44"><span><b>Compare as etapas</b><small>Busca manual e busca com o Applyer</small></span></a>
+      </div>
+    </details>
+    <a class="lk" href="#ia">Sua IA</a><a class="lk" href="#preco">Preço</a>
+  </div>
+  <a class="tecla tecla-p" href="#baixar">Plataformas<span class="kbd"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3"/></svg></span></a>
+  <button class="tema-btn somente-js" type="button" data-tema aria-label="Tema escuro" aria-pressed="true">
+    <svg class="tema-paisagem" width="50" height="28" viewBox="0 0 50 28" aria-hidden="true">
+      <rect class="tema-ceu" width="50" height="28" rx="14"/>
+      <g clip-path="url(#tema-recorte)">
+        <g class="tema-sol"><circle cx="13" cy="11" r="6" fill="#FFD681"/></g>
+        <g class="tema-lua" fill="#F2F0FE"><path d="M40 4a6 6 0 1 0 4 10A7 7 0 0 1 40 4z"/><circle cx="12" cy="7" r="1.1"/><circle cx="24" cy="11" r=".8"/><circle cx="29" cy="5" r=".8"/></g>
+        <path class="tema-mar" d="M0 19q8-4 17-1t20 0q6-2 13-1v12H0z"/>
+        <path class="tema-praia" d="M-1 27q12-9 27-5t27 0v8H0z"/>
+      </g>
+      <defs><clipPath id="tema-recorte"><rect width="50" height="28" rx="14"/></clipPath></defs>
+    </svg>
+  </button>
+</nav>
 </header>
 <main id="conteudo-principal" tabindex="-1">
 
 <section class="heroi" id="inicio">
 <div class="plataformas surge">
-<span>Em breve para <img src="marcas/mac.svg" alt=""> macOS e <img src="marcas/win.svg" alt=""> Windows</span><i></i>
+<span>Disponível para <img src="marcas/mac.svg" alt=""> macOS e <img src="marcas/win.svg" alt=""> Windows</span><i></i>
 <span><img class="arte-local" src="marcas/local.svg" alt="">Histórico no computador</span></div>
-<h1 class="h1 surge">Escolha suas vagas. <span class="grad">Revise tudo antes de enviar.</span></h1>
-<p class="lead surge">Reúna vagas da sua área, prepare respostas a partir do currículo e acompanhe cada candidatura em um só lugar, no seu computador.</p>
+<h1 class="h1 surge">Vagas de emprego nacionais e internacionais <span class="grad">com um <span class="fecho-clique">clique.<svg class="sinal-clique" viewBox="-3 2 100 100" aria-hidden="true" focusable="false">
+  <path fill="var(--ficha-verso)" d="M6 26.8q0-3.2 3.2-4.2L51 10q3.4-1 6.2.9l5.6 3.9-45.2 13.7q-3.1 1-3.1 4.1v43L9 77.3q-3 .9-3-2.3z"/>
+  <path fill="var(--ficha-frente)" d="M21 34.4q0-3.2 3.2-4.2L65.8 17.7l21.3 14.1v8L53.9 66.5 42 57.8l-6.1 8.1L54.2 79l32.9-26.5v21.2q0 3.2-3.2 4.2L24.2 96q-3.2 1-3.2-2.3z"/>
+  <path fill="var(--ficha-dobra)" d="m65.8 17.7 21.3 14.1-17.8 5.4q-3.5 1.1-3.5-2.5z"/>
+</svg></span></span></h1>
+<p class="lead surge">Escolha as vagas e revise o lote. O Applyer usa seu currículo para preencher os formulários e envia as candidaturas quando você aprova.</p>
 <div id="espera" class="cta surge" style="scroll-margin-top: 120px">
 <a class="btn-play" href="#app"><span class="play-anel"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3" stroke="white" stroke-width="1.5" fill="none"/><path fill="white" d="m10 8 6 4-6 4z"/></svg></span>Experimentar a demonstração</a>
 <div class="bs somente-js" data-bs>
 <button class="tecla bs-main" type="button" data-bs-principal disabled><img class="marca-so" data-bs-icone src="marcas/win.svg" alt=""><span data-bs-texto>Baixar para Windows</span></button>
 <button class="tecla bs-seta" type="button" data-bs-seta aria-controls="plataformas-1" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="m5 9 7 6 7-6" /></svg></button>
 <div class="vidro bs-menu" data-bs-menu id="plataformas-1" role="group" aria-label="Plataformas" hidden>
-<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">macOS<small>Em lançamento</small></button>
-<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><img class="marca-so" src="marcas/win.svg" alt="">Windows<small>Em lançamento</small></button>
+<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">macOS<small>Disponível</small></button>
+<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><img class="marca-so" src="marcas/win.svg" alt="">Windows<small>Disponível</small></button>
 <button class="bs-item" type="button" data-plat="linux" aria-pressed="false"><img class="marca-so" src="marcas/linux.svg" alt="">Linux<small class="breve">Em breve</small></button>
 <span class="bs-grupo">Apps para celular</span>
 <button class="bs-item" type="button" data-plat="ios" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">iPhone<small class="breve">Em breve</small></button>
@@ -56,7 +89,7 @@
 <span class="ia-nome"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span>Claude</span>
 <span class="ia-nome"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span>ChatGPT</span>
 <span class="ia-nome"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span>Gemini</span>
-<span class="ia-nome"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span>Grok (previsto)</span>
+<span class="ia-nome"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span>Grok</span>
 </div>
 </section>
 
@@ -72,7 +105,7 @@
 <button class="aba" type="button" data-aba="lista" aria-pressed="false">Lista do dia<span class="n" data-liga="nSel">4</span></button>
 <button class="aba" type="button" data-aba="aovivo" aria-pressed="false">Ao vivo</button>
 <button class="aba" type="button" data-aba="quadro" aria-pressed="false">Quadro</button>
-<div class="lado-ia"><span class="logo-slot"><img data-prov-icone src="marcas/claude.svg" alt=""></span><div><b data-liga="prov.nome">Claude</b><span data-liga="prov.curto">Claude Code</span></div></div>
+<div class="lado-ia"><span class="logo-slot"><img data-prov-icone src="marcas/claude.svg" alt=""></span><div><b data-liga="prov.nome">Claude</b><span data-liga="prov.curto">Assinatura via Claude Code</span></div></div>
 </nav>
 
 <div class="app-tela" data-tela="hoje">
@@ -144,13 +177,24 @@
 </div>
 
 <div class="app-tela" data-tela="quadro" hidden>
-<span class="t-sobre">31 enviadas antes · 5 em processo</span>
+<span class="t-sobre">Processos seletivos de exemplo</span>
 <h2 class="t-tit">Quadro</h2>
+<details class="peca quadro-historico">
+  <summary>
+    <span class="quadro-nota"><small>Nota da candidatura · Sable Robotics</small><strong>“Vaga conquistada!”</strong></span>
+    <span class="quadro-ver">Histórico <svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 9 7 6 7-6"/></svg></span>
+  </summary>
+  <ol aria-label="Histórico da candidatura a Growth Marketing">
+    <li><time datetime="2026-10-26">26 out.</time><span>Enviei meu currículo para a vaga de Growth Marketing.</span></li>
+    <li><time datetime="2026-10-29">29 out.</time><span>Entreguei o teste que a equipe pediu.</span></li>
+    <li><time datetime="2026-11-04">4 nov.</time><span>Na entrevista, apresentei o teste para a equipe.</span></li>
+    <li><time datetime="2026-11-10">10 nov.</time><span>Aceitei a proposta. Começo na segunda!</span></li>
+  </ol>
+</details>
 <div class="kanban" role="region" aria-label="Etapas do quadro de candidaturas" tabindex="0">
 <div class="col"><b class="cn">Enviada</b><div class="cart"><b>Ridgeway Labs</b><span>Analista de Mídia</span><em>Enviada em 09/11</em></div><div class="cart"><b>Lattice Mobility</b><span>Especialista em SEO</span><em>Enviada em 06/11</em></div></div>
-<div class="col"><b class="cn">Teste</b><div class="cart"><b>Saffron Commerce</b><span>Analista de Marketing</span><em>Case até sex, 13/11</em></div></div>
-<div class="col"><b class="cn">Entrevista</b><div class="cart"><b>Orbit Health</b><span>Coordenador de Marketing</span><em>Qui, 12/11 · 14h</em></div><div class="cart"><b>Arbor Learning</b><span>Analista de CRM</span><em>Seg, 16/11 · 11h</em></div></div>
-<div class="col"><b class="cn">Proposta</b><div class="cart"><b>Sable Robotics</b><span>Growth Marketing</span><em>Responder até 20/11</em></div></div>
+<div class="col"><b class="cn">Em processo</b><div class="cart"><b>Saffron Commerce</b><span>Analista de Marketing</span><em>Teste até sex, 13/11</em></div><div class="cart"><b>Orbit Health</b><span>Coordenador de Marketing</span><em>Entrevista · qui, 12/11, 14h</em></div><div class="cart"><b>Arbor Learning</b><span>Analista de CRM</span><em>Entrevista · seg, 16/11, 11h</em></div></div>
+<div class="col"><b class="cn">Oferta</b><div class="cart"><b>Sable Robotics</b><span>Growth Marketing</span><em>Proposta aceita em 10/11</em></div></div>
 </div>
 </div>
 </div>
@@ -177,10 +221,10 @@
 <span class="fita-rot">Formas de conectar a sua IA</span>
 <div class="fita">
 <div class="fita-trilho">
-<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span><div><b>Claude</b><span>Claude Code ou chave</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span><div><b>ChatGPT</b><span>Chave da OpenAI</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span><div><b>Gemini</b><span>Chave do Google</span></div></div>
-<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span><div><b>Grok</b><span>Integração prevista</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span><div><b>Claude</b><span>Assinatura via Claude Code ou API</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span><div><b>ChatGPT</b><span>API · assinatura via Codex prevista</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span><div><b>Gemini</b><span>API · assinatura Google AI prevista</span></div></div>
+<div class="vidro fita-item"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span><div><b>Grok</b><span>API · login da conta Grok previsto</span></div></div>
 <div class="vidro fita-item"><span class="logo-slot"><img src="marcas/openrouter.svg" alt=""></span><div><b>OpenRouter</b><span>Uma chave, vários modelos</span></div></div>
 <div class="vidro fita-item"><span class="logo-slot"><img src="marcas/local.svg" alt=""></span><div><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></div></div>
 </div>
@@ -188,33 +232,143 @@
 </section>
 
 <section class="secao" id="como">
-<div class="secao-cab revela"><span class="eyebrow">Como funciona</span><h2 class="h2">Um dia com o Applyer.</h2><p class="lead">Veja um exemplo de rotina, da escolha das vagas ao acompanhamento das respostas.</p></div>
-<div class="dia">
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">02:00</span><span class="quem app">Applyer</span></div><h3>Encontre vagas da sua área</h3><p>Reúna oportunidades e filtre por área, local e faixa salarial. Na demonstração, há vagas nacionais e internacionais.</p></article>
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">07:30</span><span class="quem app">Applyer</span></div><h3>Prepara cada pacote</h3><p>Currículo ajustado para a vaga, carta curta e as respostas do formulário, em português ou inglês, tudo a partir do que está no seu currículo. Nunca inventa.</p></article>
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">08:02</span><span class="quem voce">Você</span></div><h3>Triagem em segundos</h3><p>Cartões com salário, modelo de contratação, onde é o trabalho e por que a vaga combina com você. Aplicar ou pular.</p></article>
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">09:14</span><span class="quem voce">Você</span></div><h3>Um gesto para aprovar</h3><p>Revise o que quiser e aprove o lote do dia. A aprovação vale só para hoje.</p>
-<button class="deslize somente-js" type="button" data-deslize aria-pressed="false"><span class="deslize-txt"><i data-deslize-espera>Simular aprovação do lote</i><span data-deslize-feito hidden>Lote aprovado na demonstração</span></span><span class="knob"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path data-deslize-icone d="M3 13h15M13 7l6 6-6 5" /></svg></span></button>
+<div class="secao-cab revela"><span class="eyebrow">Como funciona</span><h2 class="h2">Um dia com o Applyer.</h2><p class="lead">Veja um exemplo de rotina, da escolha das vagas ao acompanhamento das respostas.</p>
+<button class="rotina-pausa somente-js" type="button" data-pausar-rotina aria-controls="rotina-cartoes">Pausar animações</button></div>
+<svg class="rotina-moldes" width="0" height="0" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="rotina-folha" x2=".8" y2="1"><stop stop-color="#fffef4"/><stop offset="1" stop-color="#e4e6f8"/></linearGradient>
+  <linearGradient id="rotina-indigo" x2=".85" y2="1"><stop stop-color="#9091ed"/><stop offset="1" stop-color="#5359b9"/></linearGradient>
+  <linearGradient id="rotina-vidro" x2=".8" y2="1"><stop stop-color="#ecfdff"/><stop offset="1" stop-color="#a9deed"/></linearGradient>
+  <g id="rotina-estrela"><path d="m0-3 .8 2.2L3 0 .8.8 0 3-.8.8-3 0l2.2-.8z" fill="#fff4ce"/></g>
+  <g id="rotina-paisagem">
+    <path fill="var(--ceu)" d="M0 0h320v148H0z"/>
+    <g style="translate:var(--astro-x,0px) var(--astro-y,0px);transition:translate var(--tempo-ceu,0s) ease-in-out">
+    <circle cx="244" cy="36" r="39" fill="#fff" opacity=".06"/><circle cx="244" cy="36" r="29" fill="#fff" opacity=".09"/>
+    <circle cx="244" cy="36" r="17" fill="var(--astro)"/><circle cx="252" cy="28" r="16" fill="var(--ceu)" opacity="var(--fase,0)"/>
+    </g>
+    <g style="translate:var(--estrelas-x,0px) var(--estrelas-y,0px);transition:translate var(--tempo-ceu,0s) ease-in-out" opacity="var(--estrelas,0)"><use href="#rotina-estrela" x="24" y="25"/><use href="#rotina-estrela" x="76" y="38"/><use href="#rotina-estrela" x="193" y="20"/><use href="#rotina-estrela" x="274" y="57"/><use href="#rotina-estrela" x="304" y="20"/><circle cx="49" cy="43" r="1" fill="#fff"/><circle cx="206" cy="43" r="1" fill="#fff"/></g>
+    <g fill="var(--nuvem)" opacity=".78"><path d="M-8 55c6-6 12-7 20-5 6-10 19-9 24 1 6-3 13-2 19 4zM64 26c4-5 8-6 13-4 4-6 10-6 14 1 4-2 9 0 12 3zM266 46c4-5 10-5 15-3 5-8 17-8 21 1 7-3 14-1 19 3z"/></g>
+    <path d="M0 87q23-10 40-11c16-2 21-13 36-12 17 1 26 11 44 12 23 1 44-11 62-8s34 12 51 8 38-26 54-23 22 11 33 10v50H0z" fill="var(--longe)"/>
+    <path d="M0 89q30-7 51 1c20 9 49-9 72-7s39 10 65 5 42-3 72-10 46-6 60-3v36H0z" fill="var(--ilha)"/>
+    <path d="M0 93q73-4 142 0t178-1v56H0z" fill="var(--mar)"/>
+    <g stroke="var(--espuma)" stroke-linecap="round" opacity=".76"><path d="M10 106h18m5 0h9m23-6h15m153 10h31m5 0h10m9-12h16m-63 38h22M49 124h22m5 0h10M2 140h24m157-21h17" fill="none"/></g>
+    <path d="M0 132c43 7 65-8 95-6 26 2 41 11 78 9s65-15 94-12 40 11 53 10v15H0z" fill="var(--praia)"/>
+    <path d="M-5 133c46 8 69-8 100-6 25 2 41 12 78 10s65-16 94-13 40 11 58 10" fill="none" stroke="var(--espuma)" stroke-width="2" opacity=".8"/>
+  </g>
+</defs></svg>
+<div class="dia" id="rotina-cartoes">
+<article class="vidro hora hora-busca revela">
+<div class="hora-cena" role="img" tabindex="0" aria-label="Telescópio à beira-mar, sob a lua e as estrelas."><svg aria-hidden="true" viewBox="0 0 320 148" focusable="false" preserveAspectRatio="xMidYMid slice">
+  <use href="#rotina-paisagem"/><use class="rotina-noite" href="#rotina-paisagem"/>
+  <g class="rotina-objeto"><g stroke="#333557" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="145" cy="133" rx="57" ry="4" fill="#172945" opacity=".2" stroke="none"/>
+  <path fill="none" stroke="#262f50" stroke-width="7" d="m143 86-30 44m30-44 30 44m-30-44v44"/>
+  <circle cx="143" cy="84" r="8" fill="#eda95e"/>
+  <g class="rotina-peca telescopio-eixo"><g transform="rotate(-21 144 67)">
+    <g class="rotina-peca telescopio-ocular"><path d="M74 62h28v12H74z" fill="#8b8ec6"/><path d="M68 59h8v18h-8z" fill="#515581"/></g>
+    <path d="M96 58l65-5v26l-65-3z" fill="#c2c5fb"/><path d="m113 58 7-1v19h-7zm29-3 8-1v24h-8z" fill="#f0b26b"/>
+    <path d="M150 55h31v22h-31z" fill="#aab4d7"/><path d="M168 56v19" stroke="#828eb5"/>
+    <g class="rotina-peca telescopio-lente"><path d="m157 51 26-4v38l-26-4z" fill="url(#rotina-indigo)"/><ellipse cx="184" cy="66" rx="7" ry="19" fill="#aae6e3"/>
+    <path d="m179 59 4-4m-3 15 6-7" stroke="#fff" opacity=".85"/></g>
+  </g></g>
+  <g class="rotina-peca telescopio-brilho" fill="#fff4bb" stroke="#505590" stroke-width="1.5"><path d="m211 43 2-6 2 6 6 2-6 2-2 6-2-6-6-2z"/><circle cx="230" cy="61" r="3"/></g>
+</g></g>
+</svg></div>
+<div class="hora-topo"><span class="relogio">02:00</span><span class="quem app">Applyer</span></div><h3>Encontre vagas da sua área</h3><p>Reúna oportunidades e filtre por área, local e faixa salarial. Na demonstração, há vagas nacionais e internacionais.</p></article>
+<article class="vidro hora hora-preparo revela">
+<div class="hora-cena" role="img" tabindex="0" aria-label="Currículo, folha de apoio e carta de apresentação."><svg aria-hidden="true" viewBox="0 0 320 148" focusable="false" preserveAspectRatio="xMidYMid slice">
+  <use href="#rotina-paisagem"/><use class="rotina-noite" href="#rotina-paisagem"/>
+  <g class="rotina-objeto"><g stroke="#333557" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="155" cy="133" rx="64" ry="4" fill="#3a3258" opacity=".17" stroke="none"/>
+  <g class="rotina-peca pacote-folha"><g transform="rotate(-11 130 85)"><rect x="96" y="48" width="60" height="76" rx="5" fill="#a9ace6"/><path d="M105 66h36m-36 10h30" stroke="#68689d"/></g></g>
+  <g class="rotina-peca pacote-curriculo"><path d="M128 32h49l16 16v76a4 4 0 0 1-4 4h-61a4 4 0 0 1-4-4V36a4 4 0 0 1 4-4z" fill="url(#rotina-folha)"/><path d="M177 32v16h16" fill="#c1bfee"/>
+  <circle cx="141" cy="55" r="6" fill="#eead86"/><path d="M132 70c1-10 17-10 19 0z" fill="#8e91d6"/><path d="M158 58h12m-12 7h18m-42 17h43m-43 8h34m-34 9h21" stroke="#8288aa" stroke-width="3"/></g>
+  <g class="rotina-peca pacote-carta"><g transform="rotate(8 190 109)"><rect x="163" y="93" width="54" height="32" rx="5" fill="#fbd691"/><path class="rotina-aba-carta" d="m165 96 24 16 25-16" fill="#f1bd71" stroke="#aa7459" stroke-width="2"/>
+    <g class="rotina-bilhete"><rect x="169" y="96" width="41" height="22" rx="2" fill="#fff9d9" stroke-width="1.4"/><path d="M174 102h24m-24 5h16" stroke="#9694ab" stroke-width="1.5"/></g>
+    <path d="m164 97 25 15 26-15v24q0 3-3 3h-45q-3 0-3-3z" fill="#fbd691" stroke="#aa7459" stroke-width="1.7"/><path d="m166 122 16-13m30 13-15-13" fill="none" stroke="#aa7459" stroke-width="1.8"/></g></g>
+</g></g>
+</svg></div>
+<div class="hora-topo"><span class="relogio">07:30</span><span class="quem app">Applyer</span></div><h3>Prepara cada pacote</h3><p>Currículo ajustado para a vaga, carta curta e as respostas do formulário, em português ou inglês, tudo a partir do que está no seu currículo. Nunca inventa.</p></article>
+<article class="vidro hora hora-triagem revela">
+<div class="hora-cena" role="img" tabindex="0" aria-label="Cartões de vagas com uma oportunidade selecionada."><svg aria-hidden="true" viewBox="0 0 320 148" focusable="false" preserveAspectRatio="xMidYMid slice">
+  <use href="#rotina-paisagem"/><use class="rotina-noite" href="#rotina-paisagem"/>
+  <g class="rotina-objeto"><g stroke="#333557" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="153" cy="134" rx="63" ry="4" fill="#434267" opacity=".17" stroke="none"/>
+  <g class="rotina-peca triagem-esquerda"><g transform="rotate(-14 122 87)"><rect x="91" y="50" width="66" height="74" rx="7" fill="#a6caec"/><path d="M102 64h20m-20 10h32" stroke="#658cb7"/></g></g>
+  <g class="rotina-peca triagem-direita"><g transform="rotate(11 175 80)"><rect x="145" y="42" width="63" height="79" rx="8" fill="#b8b3ea"/><path d="M155 56h28" stroke="#7977aa"/></g></g>
+  <g class="rotina-peca triagem-frente"><g transform="rotate(-3 149 76)"><rect x="117" y="30" width="70" height="92" rx="8" fill="url(#rotina-folha)"/><rect x="126" y="40" width="22" height="21" rx="5" fill="#b1d4ef"/>
+  <path d="m131 54 6-7 6 7z" fill="#535a9a" stroke="none"/><path d="M155 47h22m-22 7h14m-40 19h45m-45 8h32" stroke="#787f9a" stroke-width="3"/><rect x="128" y="94" width="34" height="11" rx="5" fill="#b3daca" stroke="none"/></g></g>
+  <g class="rotina-peca triagem-escolha"><circle cx="188" cy="111" r="15" fill="#99e2bf"/><path d="m181 111 5 5 8-11" fill="none"/></g>
+</g></g>
+</svg></div>
+<div class="hora-topo"><span class="relogio">08:02</span><span class="quem voce">Você</span></div><h3>Triagem em segundos</h3><p>Cartões com salário, modelo de contratação, onde é o trabalho e por que a vaga combina com você. Aplicar ou pular.</p></article>
+<article class="vidro hora hora-aprovar revela">
+<div class="hora-cena" role="img" tabindex="0" aria-label="Lista de verificação e selo de revisão."><svg aria-hidden="true" viewBox="0 0 320 148" focusable="false" preserveAspectRatio="xMidYMid slice">
+  <use href="#rotina-paisagem"/><use class="rotina-noite" href="#rotina-paisagem"/>
+  <g class="rotina-objeto"><g stroke="#333557" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="151" cy="133" rx="58" ry="4" fill="#254957" opacity=".17" stroke="none"/>
+  <g class="rotina-peca revisao-prancheta"><g transform="rotate(-6 148 78)"><rect x="107" y="33" width="76" height="95" rx="8" fill="url(#rotina-indigo)"/>
+  <rect x="113" y="40" width="64" height="81" rx="4" fill="url(#rotina-folha)"/><path d="M131 32h8a6 6 0 0 1 12 0h9v11h-29z" fill="#ffd997"/>
+  <g stroke="#697b91" stroke-width="2"><rect x="123" y="56" width="9" height="9" rx="2" fill="#b5e7d3"/><rect x="123" y="74" width="9" height="9" rx="2" fill="#b5e7d3"/><rect x="123" y="92" width="9" height="9" rx="2" fill="#b5e7d3"/><path d="M140 61h25m-25 18h20m-20 18h24"/></g>
+  <g fill="none" stroke="#347159" stroke-width="2.3"><path class="revisao-marca" pathLength="1" d="m124 59 3 3 5-6"/><path class="revisao-marca" pathLength="1" d="m124 77 3 3 5-6"/><path class="revisao-marca" pathLength="1" d="m124 95 3 3 5-6"/></g></g></g>
+  <g class="rotina-peca revisao-carimbo"><g class="rotina-selo"><path d="m184 88 7 4 8 1 1 8 4 7-4 7-1 8-8 1-7 4-7-4-8-1-1-8-4-7 4-7 1-8 8-1z" fill="var(--selo,#edbe75)"/><path d="m175 107 6 6 12-14" fill="none" stroke-width="3.6"/></g></g>
+</g></g>
+</svg></div>
+<div class="hora-topo"><span class="relogio">09:14</span><span class="quem voce">Você</span></div><h3>Um gesto para aprovar</h3><p>Revise o que quiser e aprove o lote do dia. A aprovação vale só para hoje.</p>
+<div class="deslize-demo somente-js">
+  <div class="deslize" data-deslize>
+    <input class="deslize-valor" type="range" min="0" max="100" step="10" value="0" aria-label="Simular aprovação do lote" aria-describedby="deslize-ajuda" aria-valuetext="0%">
+    <span class="deslize-guia" aria-hidden="true"><span class="deslize-carro"><span class="knob"><svg class="ic" viewBox="0 0 24 24"><path data-deslize-icone d="M3 13h15M13 7l6 6-6 5"/></svg></span></span></span>
+    <span class="deslize-txt deslize-convite" aria-hidden="true">Arraste além da metade</span>
+    <span class="deslize-txt deslize-status" role="status"></span>
+  </div>
+  <div class="deslize-rodape"><span id="deslize-ajuda">No teclado, passe de 50% com as setas ou use End.</span><button type="button" data-deslize-reiniciar hidden>Reiniciar</button></div>
+</div>
 </article>
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">09:15</span><span class="quem app">Applyer</span></div><h3>Envia, e você assiste</h3><p>Uma vaga por vez, em ritmo humano, no navegador embutido. Minimize e ele fica no canto. Login e captcha ficam com você.</p></article>
-<article class="vidro hora revela"><div class="hora-topo"><span class="relogio">depois</span><span class="quem voce">Você</span></div><h3>Acompanhe as respostas</h3><p>Atualize o Quadro quando receber uma resposta. Assim você vê quais vagas estão em teste, entrevista ou proposta.</p></article>
+<article class="vidro hora hora-envio revela">
+<div class="hora-cena" role="img" tabindex="0" aria-label="Navegador com o formulário da candidatura."><svg aria-hidden="true" viewBox="0 0 320 148" focusable="false" preserveAspectRatio="xMidYMid slice">
+  <use href="#rotina-paisagem"/><use class="rotina-noite" href="#rotina-paisagem"/>
+  <g class="rotina-objeto"><g stroke="#333557" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="151" cy="133" rx="76" ry="4" fill="#1b4b6b" opacity=".18" stroke="none"/>
+  <rect x="96" y="41" width="107" height="76" rx="7" fill="#686ba8"/><rect x="101" y="47" width="97" height="63" rx="3" fill="url(#rotina-vidro)"/>
+  <path d="M102 59h94" stroke="#7193ac"/><g fill="#677aa1" stroke="none"><circle cx="109" cy="53" r="2"/><circle cx="115" cy="53" r="2"/><circle cx="121" cy="53" r="2"/></g>
+  <rect x="112" y="68" width="23" height="28" rx="3" fill="#aca9e4"/><path class="envio-linhas" d="M143 72h39m-39 8h31m-31 8h20" stroke="#8193a8" stroke-width="3"/>
+  <rect x="143" y="95" width="40" height="7" rx="3" fill="#d0e2e9" stroke="none"/><rect class="envio-barra" x="143" y="95" width="40" height="7" rx="3" fill="#529e91" stroke="none"/>
+  <path d="m96 116 107 0 16 10c1 2-1 4-5 4H86c-5 0-6-3-3-5z" fill="url(#rotina-indigo)"/><path d="M134 120h31l3 3h-38z" fill="#c9d3eb" stroke="none"/>
+  <path class="rotina-peca envio-ponteiro" d="m181 87 3 24 6-7 6 8 5-4-7-8 9-3z" fill="#fff1b8" stroke-width="2.4"/>
+</g></g>
+</svg></div>
+<div class="hora-topo"><span class="relogio">09:15</span><span class="quem app">Applyer</span></div><h3>Envia, e você assiste</h3><p>Uma vaga por vez, em ritmo humano, no navegador embutido. Minimize e ele fica no canto. Login e captcha ficam com você.</p></article>
+<article class="vidro hora hora-quadro revela">
+<div class="hora-cena" role="img" tabindex="0" aria-label="Quadro com as etapas da candidatura e uma mensagem recebida."><svg aria-hidden="true" viewBox="0 0 320 148" focusable="false" preserveAspectRatio="xMidYMid slice">
+  <use href="#rotina-paisagem"/><use class="rotina-noite" href="#rotina-paisagem"/>
+  <g class="rotina-objeto"><g stroke="#333557" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="151" cy="133" rx="67" ry="4" fill="#4e376b" opacity=".19" stroke="none"/>
+  <g transform="rotate(-3 146 80)"><rect x="95" y="37" width="107" height="84" rx="7" fill="#c3bce9"/><rect x="100" y="43" width="97" height="73" rx="4" fill="url(#rotina-folha)"/>
+  <path d="M106 54h26m6 0h23m6 0h22" stroke="#8085a4" stroke-width="3"/>
+  <rect x="106" y="63" width="25" height="16" rx="3" fill="#b7d8ec" stroke-width="1.6"/><rect class="rotina-peca quadro-ficha" x="106" y="85" width="25" height="19" rx="3" fill="#c9c4ef" stroke-width="1.6"/>
+  <rect x="138" y="63" width="24" height="22" rx="3" fill="#f2c19b" stroke-width="1.6"/><rect x="170" y="63" width="20" height="14" rx="3" fill="#afdbc6" stroke-width="1.6"/></g>
+  <g class="rotina-peca quadro-mensagem"><g transform="rotate(7 188 107)"><rect x="166" y="95" width="46" height="29" rx="4" fill="#f9da93"/><path d="m168 98 21 14 20-14" fill="none" stroke="#a47057" stroke-width="2"/><circle class="quadro-aviso" cx="210" cy="95" r="7" fill="#f39576"/></g></g>
+</g></g>
+</svg></div>
+<div class="hora-topo"><span class="relogio">depois</span><span class="quem voce">Você</span></div><h3>Acompanhe o processo seletivo</h3><p>Anote a data do teste, o que ficou combinado na entrevista e o prazo para responder à proposta. O histórico fica junto da vaga.</p></article>
 </div>
 </section>
 
 <section class="secao" id="ia">
-<div class="secao-cab revela"><span class="eyebrow">Sua IA</span><h2 class="h2">Escolha a IA para preparar sua candidatura.</h2><p class="lead">Selecione um provedor para ver as formas de conexão previstas no app. O histórico das vagas fica no computador.</p></div>
+<div class="secao-cab revela"><span class="eyebrow">Sua IA</span><h2 class="h2">Escolha a IA para preparar sua candidatura.</h2><p class="lead">Use sua assinatura do Claude pelo Claude Code ou conecte uma chave de API. Selecione sua IA para ver os métodos disponíveis e os próximos logins previstos.</p></div>
 <div class="ia revela">
 <div class="provs somente-js" role="group" aria-label="Escolha uma IA">
-<button class="prov on" type="button" data-prov="claude" aria-pressed="true"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span><span class="prov-texto"><b>Claude</b><span>Claude Code ou chave</span></span></button>
-<button class="prov" type="button" data-prov="chatgpt" aria-pressed="false"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span><span class="prov-texto"><b>ChatGPT</b><span>Chave da OpenAI</span></span></button>
-<button class="prov" type="button" data-prov="gemini" aria-pressed="false"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span><span class="prov-texto"><b>Gemini</b><span>Chave do Google</span></span></button>
-<button class="prov" type="button" data-prov="grok" aria-pressed="false"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span><span class="prov-texto"><b>Grok</b><span>Integração prevista</span></span></button>
+<button class="prov on" type="button" data-prov="claude" aria-pressed="true"><span class="logo-slot"><img src="marcas/claude.svg" alt=""></span><span class="prov-texto"><b>Claude</b><span>Assinatura via Claude Code ou API</span></span></button>
+<button class="prov" type="button" data-prov="chatgpt" aria-pressed="false"><span class="logo-slot"><img src="marcas/chatgpt.svg" alt=""></span><span class="prov-texto"><b>ChatGPT</b><span>API · assinatura via Codex prevista</span></span></button>
+<button class="prov" type="button" data-prov="gemini" aria-pressed="false"><span class="logo-slot"><img src="marcas/gemini.svg" alt=""></span><span class="prov-texto"><b>Gemini</b><span>API · assinatura Google AI prevista</span></span></button>
+<button class="prov" type="button" data-prov="grok" aria-pressed="false"><span class="logo-slot"><img src="marcas/grok.svg" alt=""></span><span class="prov-texto"><b>Grok</b><span>API · login da conta Grok previsto</span></span></button>
 <button class="prov" type="button" data-prov="openrouter" aria-pressed="false"><span class="logo-slot"><img src="marcas/openrouter.svg" alt=""></span><span class="prov-texto"><b>OpenRouter</b><span>Uma chave, vários modelos</span></span></button>
 <button class="prov" type="button" data-prov="local" aria-pressed="false"><span class="logo-slot"><img src="marcas/local.svg" alt=""></span><span class="prov-texto"><b>No seu computador</b><span>Ollama, LM Studio · em breve</span></span></button>
 </div>
 <div class="vidro painel" aria-live="polite">
 <div class="painel-cab"><span class="logo-slot"><img data-prov-icone src="marcas/claude.svg" alt=""></span><div><b style="font-size: 22px; letter-spacing: -0.02em" data-liga="prov.nome">Claude</b><span data-liga="prov.empresa">Anthropic</span></div><span class="estado ok" data-prov-estado><span class="ponto" style="background: currentColor"></span><span data-liga="prov.estado">No app</span></span></div>
-<p class="t-sub" data-liga="prov.detalhe">Use o Claude Code já conectado no computador ou configure uma chave da Anthropic no app.</p>
+<p class="t-sub" data-liga="prov.detalhe">Entre no Claude Code com a conta da sua assinatura. O Applyer usa essa sessão no computador. Se preferir, conecte a API.</p>
 <div class="metodos" data-metodos></div>
 <div class="troca"><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 3 5 4-5 4m4-4H8l-3 3m5 11-5-4 5-4m-4 4h10l3-3" /></svg>Trocou de IA? As vagas, o histórico e o seu perfil continuam iguais.</div>
 </div>
@@ -233,7 +387,7 @@
 </div>
 </section>
 
-<section class="secao">
+<section class="secao" id="comparacao">
 <div class="secao-cab revela"><span class="eyebrow">Comparação</span><h2 class="h2">Da busca ao acompanhamento da vaga.</h2></div>
 <div class="vidro tabela-caixa revela" tabindex="0" role="region" aria-label="Comparação de formas de organizar a busca de emprego">
 <table>
@@ -267,12 +421,12 @@
 </section>
 
 <section class="secao" id="baixar">
-<div class="secao-cab revela"><span class="eyebrow">Baixar</span><h2 class="h2">Escolha sua plataforma.</h2><p class="lead">O lançamento começa no macOS e no Windows. Os instaladores e os avisos de lançamento ainda estão em preparação.</p></div>
+<div class="secao-cab revela"><span class="eyebrow">Baixar</span><h2 class="h2">Escolha sua plataforma.</h2><p class="lead">Disponível para macOS e Windows. Os links de download serão publicados aqui. Linux e os apps móveis vêm depois.</p></div>
 <div class="baixe">
 <article class="so revela" data-so="mac" style="background: #D7C4FF">
 <span class="so-sombra" aria-hidden="true"><img src="marcas/mac.svg" alt=""></span>
 <span class="so-ic" aria-hidden="true"><img src="marcas/mac.svg" alt=""></span>
-<span class="so-status">Em lançamento</span>
+<span class="so-status">Disponível</span>
 <h3>macOS</h3>
 <p>O app completo no seu Mac: busca, Lista do dia, envio com navegador embutido e Quadro.</p>
 <button class="so-acao" type="button" disabled data-baixar="mac"><span data-so-texto>Baixar para macOS</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3" /></svg></button>
@@ -280,7 +434,7 @@
 <article class="so revela" data-so="win" style="background: #9FE3BC">
 <span class="so-sombra" aria-hidden="true"><img src="marcas/win.svg" alt=""></span>
 <span class="so-ic" aria-hidden="true"><img src="marcas/win.svg" alt=""></span>
-<span class="so-status">Em lançamento</span>
+<span class="so-status">Disponível</span>
 <h3>Windows</h3>
 <p>O mesmo app no seu PC, com os seus dados guardados numa pasta do computador.</p>
 <button class="so-acao" type="button" disabled data-baixar="win"><span data-so-texto>Baixar para Windows</span><svg class="ic ic-p" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.2"><path data-so-icone d="M12 3v12m-4-4 4 4 4-4M4 15v3l2 2h12l2-2v-3" /></svg></button>
@@ -316,7 +470,7 @@
 <div class="secao-cab revela"><span class="eyebrow">Perguntas</span><h2 class="h2">Dúvidas sobre o Applyer.</h2></div>
 <div class="faq">
 <details class="vidro faq-item revela" id="faq-r0" open><summary class="faq-p">Quais IAs funcionam?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
-<p class="faq-r">O app oferece Claude Code ou chave da Anthropic e conexões por chave para outros provedores. Consulte as opções na seção Sua IA. Modelos locais estão previstos.</p></details>
+<p class="faq-r">Você já pode usar sua assinatura do Claude pelo Claude Code. ChatGPT, Gemini e Grok têm conexão por API; o uso da conta ou assinatura desses provedores está previsto. OpenRouter usa uma chave para vários modelos. Modelos locais também estão previstos.</p></details>
 <details class="vidro faq-item revela" id="faq-r1"><summary class="faq-p">O LinkedIn pode bloquear minha conta?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
 <p class="faq-r">Sim. A plataforma pode restringir sua conta. No Applyer você revisa os envios e pode pausar essa plataforma.</p></details>
 <details class="vidro faq-item revela" id="faq-r2"><summary class="faq-p">Preciso deixar o computador ligado?<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></summary>
@@ -330,30 +484,205 @@
 </div>
 </section>
 
-<section class="vidro final revela">
-<svg class="robo" viewBox="0 0 140 160" width="110" height="126" aria-hidden="true"><g class="r-flutua"><path class="r-fogo" d="M52 110 Q70 152 88 110 Z" fill="url(#lgFogo)" /><path d="M22 52 L28 14 Q31 7 37 13 L56 36 Z" fill="url(#lgOrelha)" /><path d="M118 52 L112 14 Q109 7 103 13 L84 36 Z" fill="url(#lgOrelha)" /><rect x="16" y="26" width="108" height="88" rx="40" fill="url(#lgCasco)" /><rect x="23" y="39" width="94" height="60" rx="27" fill="#A9B4FF" /><rect x="27" y="43" width="86" height="52" rx="23" fill="url(#lgVisor)" /><g class="r-olhos"><path d="M48 72 Q54 62 60 72" stroke="#5CF0FF" stroke-width="5" stroke-linecap="round" fill="none" /><path d="M80 72 Q86 62 92 72" stroke="#5CF0FF" stroke-width="5" stroke-linecap="round" fill="none" /></g></g></svg>
-<h2 class="h2">Veja quais vagas você aprovaria.</h2>
-<p class="lead">Abra a demonstração e monte uma lista com as vagas que fazem sentido para você.</p>
-<div class="bs somente-js" data-bs>
+<section class="final revela" id="proxima-fase" aria-labelledby="final-titulo">
+  <div class="final-mundo">
+    <svg class="final-cenario" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" fill="none" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="cta-ilhas-ceu" x1="300" y1="35" x2="300" y2="310" gradientUnits="userSpaceOnUse">
+      <stop stop-color="var(--cena-ceu,#252e59)"/><stop offset="1" stop-color="var(--cena-horizonte,#65699e)"/>
+    </linearGradient>
+    <linearGradient id="cta-ilhas-mar" x1="286" y1="209" x2="314" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="var(--cena-mar,#4b7491)"/><stop offset="1" stop-color="var(--cena-mar-fundo,#334b72)"/>
+    </linearGradient>
+    <linearGradient id="cta-ilhas-papel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff8df"/><stop offset="1" stop-color="#e0e2f8"/>
+    </linearGradient>
+    <radialGradient id="cta-ilhas-aura">
+      <stop stop-color="#b3baff" stop-opacity=".32"/><stop offset="1" stop-color="#a1b7ff" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="cta-ilhas-contorno">
+      <path d="M74 232c-15-67 11-126 63-163C195 27 291 24 373 41c100 20 162 79 166 164 4 78-58 123-156 137-120 17-285-14-309-110Z"/>
+    </clipPath>
+    <g id="cta-ilhas-estrela">
+      <path d="m0-5 1.4 3.6L5 0 1.4 1.4 0 5-1.4 1.4-5 0l3.6-1.4Z" fill="#ffedba"/>
+    </g>
+    <g id="cta-ilhas-pedra" stroke="var(--cena-traco,#333557)" stroke-width="1.5" stroke-linejoin="round">
+      <path d="m-9-1 8-5 10 3-1 5-8 4-10-3Z" fill="#b9afd2"/>
+      <path d="m-9-1 8-4 10 2-8 4Z" fill="#e8d4ce"/>
+    </g>
+    <g id="cta-ilhas-arvore" stroke="var(--cena-traco,#333557)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0-5V9" stroke="#696186" stroke-width="3"/>
+      <path d="m0-46 13 22h-6l12 21q-19 10-38 0l12-21h-6Z" fill="#96cbb9"/>
+      <path d="M0-39v32m-9-8L0-7l9-8m-14-12 5 6 6-5" stroke="#65a292" stroke-width="1.5"/>
+    </g>
+  </defs>
+
+  <path d="M74 232c-15-67 11-126 63-163C195 27 291 24 373 41c100 20 162 79 166 164 4 78-58 123-156 137-120 17-285-14-309-110Z" fill="url(#cta-ilhas-ceu)"/>
+  <ellipse cx="306" cy="211" rx="154" ry="143" fill="url(#cta-ilhas-aura)"/>
+
+  <g class="cenario-lua">
+    <circle cx="453" cy="98" r="48" fill="#fff5d9" opacity=".045"/>
+    <circle cx="453" cy="98" r="37" fill="#fff5d9" opacity=".06"/>
+    <path d="M466 70a30 30 0 1 0 15 47 27 27 0 0 1-15-47Z" fill="#ffe7ac"/>
+    <path d="M437 117a26 26 0 0 0 16 6" stroke="#fff5d3" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+  </g>
+  <g class="cenario-estrelas">
+    <use href="#cta-ilhas-estrela" x="167" y="90"/><use href="#cta-ilhas-estrela" x="354" y="83"/>
+    <use href="#cta-ilhas-estrela" x="502" y="161"/><use href="#cta-ilhas-estrela" x="252" y="63"/>
+    <use href="#cta-ilhas-estrela" x="114" y="153"/><use href="#cta-ilhas-estrela" x="393" y="149"/>
+    <path d="m196 137 24-18 30 9 17-25" stroke="#b8c5e7" stroke-opacity=".27" stroke-width="1.2"/>
+    <g fill="#e7ecff"><circle cx="196" cy="137" r="2"/><circle cx="220" cy="119" r="2.3"/><circle cx="250" cy="128" r="1.8"/><circle cx="267" cy="103" r="2.3"/><circle cx="318" cy="60" r="1.4"/><circle cx="391" cy="111" r="1.6"/><circle cx="144" cy="115" r="1.3"/><circle cx="493" cy="130" r="1.2"/><circle cx="304" cy="98" r="1.4"/></g>
+  </g>
+  <g class="cenario-nuvens" fill="#a5aacf" opacity=".19">
+    <path d="M100 124c7-7 16-7 22-4 5-12 24-13 31 1 9-4 21-2 26 6h-79Z"/>
+    <path d="M326 120c5-6 11-8 17-5 4-9 17-9 22 0 8-3 17-1 22 5Z"/>
+    <path d="M417 173c6-7 15-7 21-4 5-10 20-10 26 1 8-3 18-1 23 6h-70Z"/>
+  </g>
+
+  <g class="cenario-colinas" clip-path="url(#cta-ilhas-contorno)">
+    <path d="M70 218c27-5 42-31 67-27s34-37 60-30 40 39 68 34 35-17 60-11 42 36 73 26 43-47 69-41 41 37 69 42l6 45H64Z" fill="#5c6391"/>
+    <path d="M75 222c25-4 40-17 61-12s48-8 69-8 46 25 78 16 39-9 64-2 47 18 78 5 39-21 64-17 35 16 53 17v40H67Z" fill="#7088a3" opacity=".68"/>
+  </g>
+  <path d="M43 310c16-51 79-76 169-83 105-8 221-8 283 27 50 27 76 80 66 121-13 52-91 82-203 91-126 10-271-7-307-57-18-25-19-66-8-99Z" fill="url(#cta-ilhas-mar)"/>
+
+  <g class="cenario-agua" stroke="#a7d7da" stroke-width="2" stroke-linecap="round" opacity=".6">
+    <path d="M58 313h27m-15 8h12m-19 68h29m-11 8h15m61 37h43m-22 8h14M370 441h42m-26 8h17M513 318h31m-11 9h13M423 282h13m-195-41h18m91 18h21M88 349h23m-5 7h8"/>
+    <path d="M220 410q75 13 130-1m-103 14q38 6 61 1M488 293q28 2 38-5M87 290q24 6 49 1" opacity=".6"/>
+  </g>
+  <g class="cenario-reflexos" fill="#b2ddda" opacity=".12">
+    <ellipse cx="300" cy="376" rx="119" ry="15"/><ellipse cx="120" cy="287" rx="56" ry="7"/>
+    <ellipse cx="471" cy="280" rx="52" ry="7"/><ellipse cx="466" cy="430" rx="54" ry="8"/>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-curriculo" stroke="var(--cena-traco,#333557)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m70 253 11 28 29 10 40-8 20-30-35-15Z" fill="#9187bb"/>
+    <path d="m101 265 9 26 16-8 9-26m-53 13 19-5m48 18-9-17" fill="#b3a5d1" stroke="#6e6b98" stroke-width="1.8"/>
+    <path d="M70 253c0-14 23-25 52-25s48 11 48 25-21 23-49 23-51-10-51-23Z" fill="var(--cena-areia,#efd0ac)"/>
+    <path d="M81 249c7-11 23-15 39-15 22 0 39 6 39 15s-15 17-37 17c-20 0-41-6-41-17Z" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.5"/>
+    <use href="#cta-ilhas-arvore" transform="translate(145 244) scale(.55)"/>
+    <path d="m77 259 10 3m55 5 10-3" stroke="#fff0d5" stroke-width="2"/>
+    <g class="cenario-curriculo"><g transform="rotate(-9 111 216)">
+      <path d="M90 182h31l12 12v49q0 4-4 4H90q-4 0-4-4v-57q0-4 4-4Z" fill="url(#cta-ilhas-papel)"/>
+      <path d="M121 182v12h12" fill="#c7c5ed"/>
+      <circle cx="100" cy="201" r="5" fill="#edb697" stroke-width="1.5"/>
+      <path d="M93 213q0-10 7-10t8 10" fill="#9fa3dd" stroke-width="1.5"/>
+      <path d="M115 202h8m-8 6h6m-26 16h26m-26 8h19" stroke="#8b8aa9" stroke-width="2.6"/>
+    </g></g>
+  </g>
+
+  <g class="cenario-trilha">
+    <use href="#cta-ilhas-pedra" x="176" y="274"/><use href="#cta-ilhas-pedra" x="195" y="283"/>
+    <use href="#cta-ilhas-pedra" x="216" y="290"/><use href="#cta-ilhas-pedra" x="413" y="285"/>
+    <use href="#cta-ilhas-pedra" x="432" y="274"/>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-mensagem" stroke="var(--cena-traco,#333557)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m421 251 11 24 31 12 32-10 18-26-47-16Z" fill="#8883b4"/>
+    <path d="m455 262 8 25 15-11 5-18m-51 17 17-14" fill="#b6a6ce" stroke="#716b99" stroke-width="1.8"/>
+    <ellipse cx="467" cy="251" rx="46" ry="20" fill="var(--cena-areia,#efd0ac)"/>
+    <path d="M433 247c4-8 18-11 33-11s32 5 32 12-13 13-31 13-34-7-34-14Z" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.4"/>
+    <use href="#cta-ilhas-arvore" transform="translate(492 242) scale(.52)"/>
+    <g class="cenario-envelope"><g transform="rotate(8 460 222)">
+      <rect x="432" y="202" width="57" height="38" rx="5" fill="#f9d695"/>
+      <path d="m434 206 26 18 27-18m-51 31 17-17m32 17-18-17" stroke="#a77b67" stroke-width="2"/>
+      <circle cx="488" cy="202" r="6" fill="#b0e4c6" stroke-width="1.7"/>
+    </g></g>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-central" stroke="var(--cena-traco,#333557)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m191 315 14 34 29 23 49 15 62-6 39-19 28-39-21-31-113-11Z" fill="#8d81b5"/>
+    <path d="m218 330 16 42 28-9 21 24 19-24 12-35m32 2-1 51 26-25 13 6 12-35" fill="#ad9fc9" stroke="#756b9b" stroke-width="2"/>
+    <path d="m253 338 9 25 18-8m42-10 23 18m-140-14 29-12" stroke="#c7b3d6" stroke-width="2" opacity=".7"/>
+    <path d="M191 314c-2-25 39-49 104-49 59 0 111 16 117 42 7 30-44 51-107 51-58 0-111-18-114-44Z" fill="var(--cena-areia,#efd0ac)"/>
+    <path d="M208 307c1-19 40-34 87-34 49 0 91 15 96 33 5 19-32 35-83 36-53 0-101-15-100-35Z" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.8"/>
+    <path d="M203 318q15 17 48 22m84 8q41-6 55-18" stroke="#fff1d3" stroke-width="3"/>
+    <path d="m234 312 4-8 3 9m-14-2 2-5m120 21 4-8 3 8m-48-51 3-7 3 7" stroke="#659d8d" stroke-width="2"/>
+    <use href="#cta-ilhas-arvore" transform="translate(365 293) scale(.85)"/>
+    <use href="#cta-ilhas-arvore" transform="translate(383 308) scale(.64)"/>
+    <use href="#cta-ilhas-arvore" transform="translate(226 295) scale(.61)"/>
+    <g class="cenario-pedestal">
+      <ellipse cx="296" cy="318" rx="39" ry="10" fill="#436d70" stroke="none" opacity=".22"/>
+      <path d="m267 290 5 24 26 10 26-11 4-23-31-12Z" fill="#b0a5d1"/>
+      <path d="m298 300 0 24 26-11 4-23Z" fill="#8f88ba" stroke-width="2"/>
+      <path d="m267 290 30-12 31 12-30 13Z" fill="#e1d8ec" stroke-width="2.2"/>
+      <path d="m276 291 21-8 22 8-21 8Z" fill="#bbbef1" stroke="none"/>
+      <path d="m279 307 9 4" stroke="#e9e0f5" stroke-width="2"/>
+    </g>
+  </g>
+
+  <g class="cenario-trilha cenario-ponte" stroke="var(--cena-traco,#333557)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M384 342q29 4 53 32l-10 7q-22-26-53-31Z" fill="#c4a58f"/>
+    <path d="m384 344-6 7m15-4-7 7m15-3-8 7m16-2-8 7m17-1-10 6m18 1-10 6" stroke="#8b7277"/>
+    <path d="M379 341v-14m55 49v-14m-55-33q28 0 55 34" fill="none" stroke="#d9c6a4" stroke-width="2.6"/>
+  </g>
+
+  <g class="cenario-ilha cenario-ilha-aprovada" stroke="var(--cena-traco,#333557)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m416 393 12 27 27 15 32-7 30-36-39-21Z" fill="#8a80b5"/>
+    <path d="m442 402 13 33 16-15 16 8 9-28" fill="#b4a4cf" stroke="#756b9a" stroke-width="1.8"/>
+    <ellipse cx="466" cy="392" rx="51" ry="22" fill="var(--cena-areia,#efd0ac)"/>
+    <ellipse cx="466" cy="387" rx="36" ry="14" fill="var(--cena-grama,#9bcdb5)" stroke="#79ab9d" stroke-width="1.5"/>
+    <path d="m463 369-3 21m13-17 3 16" stroke="#79749c" stroke-width="4"/>
+    <g class="cenario-check">
+      <path d="m467 336 10 5 10 2 2 10 5 9-5 9-2 10-10 2-10 5-9-5-11-2-1-10-5-9 5-9 1-10 11-2Z" fill="#c9bdf0"/>
+      <circle cx="467" cy="362" r="17" fill="#b3e3c7" stroke="#747396" stroke-width="1.8"/>
+      <path d="m458 361 6 7 12-15" stroke="#365e59" stroke-width="4"/>
+    </g>
+    <path d="m494 392 4-7 3 6m-65 3 3-7 2 7" stroke="#6da08e" stroke-width="2"/>
+  </g>
+
+  <g class="cenario-marca">
+    <ellipse class="cenario-marca-sombra" cx="297" cy="291" rx="29" ry="7" fill="#535a9e" opacity=".22"/>
+    <g class="cenario-marca-flutua"><g transform="translate(237 157) scale(1.4)">
+      <g transform="translate(-3 -1) scale(1.04)">
+        <path fill="#747EE5" d="M6 26.8q0-3.2 3.2-4.2L51 10q3.4-1 6.2.9l5.6 3.9-45.2 13.7q-3.1 1-3.1 4.1v43L9 77.3q-3 .9-3-2.3z"/>
+        <path fill="#AFB6FF" d="M21 34.4q0-3.2 3.2-4.2L65.8 17.7l21.3 14.1v8L53.9 66.5 42 57.8l-6.1 8.1L54.2 79l32.9-26.5v21.2q0 3.2-3.2 4.2L24.2 96q-3.2 1-3.2-2.3z"/>
+        <path fill="#6670DB" d="m65.8 17.7 21.3 14.1-17.8 5.4q-3.5 1.1-3.5-2.5z"/>
+      </g>
+    </g></g>
+    <g stroke="#d7dbff" stroke-width="1.5" stroke-linecap="round" opacity=".7">
+      <path d="m234 215-7-3m120 32 8 1m-24-88 3-6"/>
+    </g>
+  </g>
+</svg>
+    <nav class="final-destinos somente-js" aria-label="Ilhas da demonstração">
+      <button type="button" class="final-ilha ilha-triagem" data-ir="triagem" aria-label="Abrir Triagem na demonstração"><span>Triagem</span></button>
+      <button type="button" class="final-ilha ilha-lista" data-ir="lista" aria-label="Abrir Lista do dia na demonstração"><span>Lista do dia</span></button>
+      <button type="button" class="final-ilha ilha-quadro" data-ir="quadro" aria-label="Abrir Quadro na demonstração"><span>Quadro</span></button>
+    </nav>
+  </div>
+  <button class="final-pausa somente-js" type="button" data-pausar-final aria-label="Pausar animação do cenário" title="Pausar animação do cenário">
+    <svg class="ic final-pausa-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
+    <svg class="ic final-retoma-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+  </button>
+  <div class="final-conteudo">
+    <h2 class="h2" id="final-titulo">E quando o <span class="grad">“sim” chegar?</span></h2>
+    <p class="lead">Registre testes, entrevistas e propostas no Quadro. Quando a vaga for sua, escreva “Vaga conquistada!” no histórico.</p>
+    <div class="final-acoes">
+      <a class="tecla tecla-p final-demo" href="#app" data-ir="quadro">Acompanhar uma vaga<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
+      <div class="bs somente-js" data-bs>
 <button class="tecla bs-main" type="button" data-bs-principal disabled><img class="marca-so" data-bs-icone src="marcas/win.svg" alt=""><span data-bs-texto>Baixar para Windows</span></button>
 <button class="tecla bs-seta" type="button" data-bs-seta aria-controls="plataformas-2" aria-expanded="false" aria-label="Escolher outra plataforma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.4"><path d="m5 9 7 6 7-6" /></svg></button>
 <div class="vidro bs-menu cima" data-bs-menu id="plataformas-2" role="group" aria-label="Plataformas" hidden>
-<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">macOS<small>Em lançamento</small></button>
-<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><img class="marca-so" src="marcas/win.svg" alt="">Windows<small>Em lançamento</small></button>
+<button class="bs-item" type="button" data-plat="mac" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">macOS<small>Disponível</small></button>
+<button class="bs-item" type="button" data-plat="win" aria-pressed="false"><img class="marca-so" src="marcas/win.svg" alt="">Windows<small>Disponível</small></button>
 <button class="bs-item" type="button" data-plat="linux" aria-pressed="false"><img class="marca-so" src="marcas/linux.svg" alt="">Linux<small class="breve">Em breve</small></button>
 <span class="bs-grupo">Apps para celular</span>
 <button class="bs-item" type="button" data-plat="ios" aria-pressed="false"><img class="marca-so" src="marcas/mac.svg" alt="">iPhone<small class="breve">Em breve</small></button>
 <button class="bs-item" type="button" data-plat="android" aria-pressed="false"><img class="marca-so" src="marcas/android.svg" alt="">Android<small class="breve">Em breve</small></button>
 </div>
 </div>
-<a class="btn-vidro" href="#app">Explorar a demonstração</a>
-<span class="bs-nota">Instaladores para macOS e Windows em preparação.</span>
+    </div>
+    <p class="bs-nota">Os links de download para macOS e Windows serão publicados aqui.</p>
+  </div>
 </section>
 
 </main>
 <footer class="rodape">
 <div class="rod-marca">
-<a class="marca" href="#inicio" style="font-size: 18px"><svg viewBox="0 0 120 120" width="28" height="28" aria-hidden="true"><rect width="120" height="120" rx="27" fill="url(#lgA)" /><g transform="rotate(12 60 60)"><path d="M60 20 L95 94 L60 77 Z" fill="#FFFFFF" fill-opacity="0.7" /><path d="M60 20 L25 94 L60 77 Z" fill="#FFFFFF" /></g></svg>Applyer</a>
+<a class="marca" href="#inicio" aria-label="Applyer. — início">
+  <img class="marca-clara" src="marcas/applyer.svg" width="536" height="116" alt="">
+  <img class="marca-inversa" src="marcas/applyer-inversa.svg" width="536" height="116" alt="">
+</a>
 <span>Seu copiloto para conseguir a próxima vaga. Roda no seu computador, com a sua IA.</span>
 </div>
 <div class="rod-cols">

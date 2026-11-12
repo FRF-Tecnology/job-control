@@ -9,11 +9,17 @@ Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. 
 
 ## Primeiro acesso no aplicativo desktop (Windows e macOS)
 
-No Applyer, anexe seu currículo em PDF e informe o cargo, os níveis aceitos, as duas stacks, as exclusões, o mercado, os modelos de trabalho, o inglês e a pretensão mensal em USD. A última etapa permite revisar e salvar. O PDF fica na pasta de currículos do app e o perfil no banco local. Instalações que já têm dados continuam abrindo normalmente.
+Conecte sua IA e escolha um currículo em PDF na primeira tela. Com Claude, a confirmação depende de uma resposta da CLI autenticada ou da API. O Applyer guarda o PDF e o progresso no computador. Se fechar durante a revisão, ao voltar você verifica a conexão e pode continuar com o mesmo arquivo e os campos já salvos.
 
-Com uma IA conectada, **Salvar e buscar vagas** abre a Triagem. Para outra rodada, use **Buscar vagas com meu perfil** em Hoje ou Triagem. O app consulta a Gupy para o Brasil, a Himalayas para oportunidades internacionais remotas e a Arbeitnow para vagas europeias quando os modelos selecionados incluem trabalho híbrido ou presencial. A cobertura depende dos anúncios dessas fontes. [Gupy](https://portal.gupy.io/) · [Himalayas](https://himalayas.app/) · [Arbeitnow](https://www.arbeitnow.com/)
+Na segunda tela, revise cargo, nível, habilidades e condições. A faixa salarial mensal é opcional (BRL, USD ou EUR). **Concluir perfil** abre o Radar sem iniciar uma busca. **Salvar e buscar vagas** salva o mesmo perfil e inicia a primeira busca.
 
-Cada rodada processa até oito vagas. As exclusões explícitas ficam registradas com motivo. A IA compara anúncio e critérios profissionais e a Triagem apresenta A, B e C em ordem de prioridade. Uma avaliação interrompida fica pendente para outra rodada. Para modificar as preferências, abra **Perfil**.
+No Radar, **Buscar vagas** consulta fontes conforme o perfil: [Gupy](https://portal.gupy.io/) para o Brasil, [Himalayas](https://himalayas.app/) para oportunidades internacionais remotas e [Arbeitnow](https://www.arbeitnow.com/) para vagas europeias quando o modelo inclui híbrido ou presencial. A cobertura depende dos anúncios publicados.
+
+Cada rodada avalia até oito vagas. No **Radar de vagas**, filtre por A, B ou C e selecione uma oportunidade para ler a análise. **Criar perfil** permite, por exemplo, separar as buscas de Java e de IA. Os resultados e o currículo pertencem ao perfil escolhido; a lista e o histórico reúnem as candidaturas da pessoa.
+
+**Adicionar à lista** guarda a vaga para revisar o currículo e a carta na **Lista do dia**. Para se candidatar, abra o site da empresa no navegador padrão. Voltar ao Applyer mantém a candidatura pendente: só **Já enviei** registra o envio. No **Quadro**, abra o cartão para anotar uma conversa ou mover a vaga para Entrevista, Proposta ou Conquistada.
+
+Em **Perfil e IA** você pode trocar o PDF, ajustar os filtros ou verificar a conexão. **Ferramentas** mantém os recursos anteriores, entre eles Hoje, Triagem, Fila, Funil completo, Números e Rodadas.
 
 ## Abrir a Central em Node
 1. Instale o [Node.js](https://nodejs.org) 18 ou mais novo (só uma vez).

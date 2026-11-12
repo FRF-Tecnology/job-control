@@ -2,6 +2,7 @@
 // então a candidatura de formulário vem interceptada, e o PUT /conteudo também (este teste não grava nada). Confere:
 // axe nos dois temas, 375 px sem rolagem lateral e alvos de 44 px, o corpo do responder e o aprovar travado.
 import AxeBuilder from '@axe-core/playwright';
+import { temaDeTeste } from './tema';
 import { expect, test, type Page } from '@playwright/test';
 import { alterarEstado, soltarRotas } from './dados-fila';
 
@@ -31,7 +32,7 @@ async function preparar(page: Page) {
 
 for (const tema of ['light', 'dark'] as const) {
   test(`formulário lido com pendentes (${tema === 'light' ? 'claro' : 'escuro'}): axe limpo, cabe na tela, aprovar travado`, async ({ page }, info) => {
-    await page.emulateMedia({ colorScheme: tema });
+    await temaDeTeste(page, tema);
     await preparar(page);
     const c = page.getByTestId('cand-form');
     await expect(c.getByText('O link trazia respostas pré-preenchidas; o app ignorou.')).toBeVisible();

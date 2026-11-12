@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -135,6 +136,11 @@ func respostaIA(err error) (Resposta, error) {
 
 func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, bool, error) {
 	switch {
+	case m == "POST" && p == "/ia/detectar":
+		a.provaIA.invalidar()
+		a.esquecerCLIsDetectadas()
+		r, err := a.estadoIA(ctx)
+		return r, true, err
 	case m == "GET" && p == "/ia":
 		r, err := a.estadoIA(ctx)
 		return r, true, err
@@ -149,7 +155,7 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 			res, err := ok(Objeto{"configurada": false})
 			return res, true, err
 		}
-		res, err := ok(Objeto{"configurada": true, "provedor": r.Provedor, "modelo": r.Modelo})
+		res, err := ok(Objeto{"configurada": true, "provedor": r.Provedor, "modelo": r.Modelo, "conexaoVerificada": a.provaIA.valida()})
 		return res, true, err
 
 	case m == "PUT" && p == "/ia/config":
@@ -160,6 +166,7 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 	case reIAChave.MatchString(p) && (m == "PUT" || m == "DELETE"):
 		a.credenciaisIA.Lock()
 		defer a.credenciaisIA.Unlock()
+		defer a.provaIA.invalidar()
 		prov := reIAChave.FindStringSubmatch(p)[1]
 		if !contem(comChave, prov) {
 			return Resposta{}, true, falha(400, "este provedor não usa chave de API")
@@ -206,12 +213,20 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 		return r, true, err
 
 	case m == "POST" && p == "/ia/testar":
+		geracao := a.provaIA.invalidar()
 		a.esquecerCLIsDetectadas()
 		x, err := a.novaIA(ctx)
 		if err != nil {
 			return Resposta{}, true, err
 		}
 		inicio := time.Now()
+		padrao, tem := x.Config.Rotas["padrao"]
+		// Somente a rota escolhida pode confirmar seu próprio selo. Não altere a
+		// configuração compartilhada com a conferência da chave em novaIA.
+		if tem {
+			padrao.Reserva = nil
+			x.Config.Rotas = map[string]ia.Rota{"padrao": padrao}
+		}
 		saida, err := x.Executar(ctx, "triarVaga", Objeto{
 			"vaga":   Objeto{"id": "teste", "empresa": "Empresa Exemplo", "titulo": "Vaga de teste", "notas": "Vaga fictícia para testar a conexão."},
 			"perfil": Objeto{"cargo": "Desenvolvimento de software"},
@@ -220,7 +235,10 @@ func (a *API) rotasIA(ctx context.Context, m, p string, c Objeto) (Resposta, boo
 			r, err := respostaIA(err)
 			return r, true, err
 		}
-		r, err := ok(Objeto{"ok": true, "ms": time.Since(inicio).Milliseconds(), "saida": saida})
+		if !a.provaIA.confirmar(geracao) {
+			return Resposta{}, true, falha(409, "a conexão mudou durante o teste; verifique novamente")
+		}
+		r, err := ok(Objeto{"ok": true, "verificacao": fmt.Sprint(geracao | 1), "ms": time.Since(inicio).Milliseconds(), "saida": saida})
 		return r, true, err
 
 	case m == "POST" && reIAVaga.MatchString(p):
@@ -286,6 +304,7 @@ func trimEspacos(s string) string {
 func (a *API) configurarIA(ctx context.Context, c Objeto) (Resposta, error) {
 	a.credenciaisIA.Lock()
 	defer a.credenciaisIA.Unlock()
+	defer a.provaIA.invalidar()
 	prov, _ := c["provedor"].(string)
 	if prov == "nenhum" {
 		if err := a.arm.GravarMeta(ctx, chaveConfig, ia.Config{}); err != nil {
@@ -399,7 +418,7 @@ func (a *API) estadoIA(ctx context.Context) (Resposta, error) {
 	if err != nil {
 		return Resposta{}, err
 	}
-	corpo := Objeto{"configurada": false, "chaves": chaves, "clis": a.clisDetectadas(ctx), "gratis": Objeto{"disponivel": false}}
+	corpo := Objeto{"configurada": false, "conexaoVerificada": a.provaIA.valida(), "chaves": chaves, "clis": a.clisDetectadas(ctx), "gratis": Objeto{"disponivel": false}}
 	if r, okR := cfg.Rotas["padrao"]; okR {
 		corpo["configurada"], corpo["provedor"], corpo["modelo"] = true, r.Provedor, r.Modelo
 		if o, tem := cfg.Provedores[r.Provedor]; tem && o.URL != "" {

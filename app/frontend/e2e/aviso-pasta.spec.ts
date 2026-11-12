@@ -1,6 +1,7 @@
 // Aviso da pasta de dados na Hoje (jc-mub). No central-dev a rota real responde aviso null (o aviso vem do app), então
 // os dois avisos vêm interceptados; a rota real confere que nada aparece. Axe nos dois temas e "Entendi".
 import AxeBuilder from '@axe-core/playwright';
+import { temaDeTeste } from './tema';
 import { expect, test } from '@playwright/test';
 
 test('rota real (central-dev): aviso null, nada aparece', async ({ page }) => {
@@ -16,7 +17,7 @@ test('rota real (central-dev): aviso null, nada aparece', async ({ page }) => {
 for (const [aviso, titulo] of [['pasta-antiga-ficou', 'A pasta antiga continua no computador'], ['migracao-adiada', 'A pasta de dados ainda não mudou de nome']] as const) {
   for (const tema of ['light', 'dark'] as const) {
     test(`${aviso} (${tema === 'light' ? 'claro' : 'escuro'}): aparece com frase fixa, axe limpo e "Entendi" esconde`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme: tema });
+      await temaDeTeste(page, tema);
       await page.route('**/api/v1/dados/pasta', r => r.fulfill({ json: { aviso, migradaEm: null } }));
       await page.goto('/#/hoje');
       const titulo_ = page.getByText(titulo);

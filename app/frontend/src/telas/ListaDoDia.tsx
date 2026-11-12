@@ -45,9 +45,9 @@ function verPacote(id: string) {
   (pacote?.querySelector<HTMLElement>('summary') ?? cartao).focus();
 }
 
-export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma, onFeito }: {
+export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma, onFeito, onRevisar }: {
   candidaturas: Cand[]; calculadas: Record<string, string>; limites: Record<string, Limite>;
-  nome: (c: Cand) => string; plataforma: (p: string) => string; onFeito: () => void;
+  nome: (c: Cand) => string; plataforma: (p: string) => string; onFeito: () => void; onRevisar?: (id: string) => void;
 }) {
   const app = useApp();
   const [escolha, setEscolha] = useState<Record<string, boolean>>({}); // o que a pessoa marcou ou desmarcou
@@ -80,7 +80,8 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
     if (!lista.length) return;
     const ok = await app.perguntar({
       titulo: lista.length === 1 ? 'Aprovar 1 candidatura hoje?' : `Aprovar ${lista.length} candidaturas hoje?`,
-      texto: 'Cada uma é enviada uma vez, hoje, pelo app, com o pacote que você revisou. Editar um pacote depois desfaz só a aprovação dele.',
+      texto: onRevisar ? 'Você autoriza um envio por vaga hoje. Se o envio automático estiver ativo, o app poderá iniciar. Para candidatar-se pelo navegador, use “Aplicar na próxima vaga”.'
+        : 'Cada uma é enviada uma vez, hoje, pelo app, com o pacote que você revisou. Editar um pacote depois desfaz só a aprovação dele.',
       itens: lista.map(x => nome(x.c)),
       confirmar: 'Aprovar a lista',
     });
@@ -90,7 +91,8 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
       const r: { aprovadas?: string[]; recusadas?: { id: string; motivo?: string }[] } =
         await app.api('/api/v1/candidaturas/aprovar-lote', 'POST', { itens: lista.map(x => ({ id: x.c.id, impressao: x.impressao })) });
       const n = r.aprovadas?.length ?? 0;
-      app.aviso(n === 1 ? '1 candidatura aprovada. O app envia hoje, uma vez.' : `${n} candidaturas aprovadas. O app envia hoje, uma vez cada.`);
+      app.aviso(onRevisar ? `${n} ${n === 1 ? 'pacote aprovado' : 'pacotes aprovados'}.`
+        : n === 1 ? '1 candidatura aprovada. O app envia hoje, uma vez.' : `${n} candidaturas aprovadas. O app envia hoje, uma vez cada.`);
       for (const x of r.recusadas ?? []) {
         const c = lista.find(i => i.c.id === x.id)?.c;
         app.aviso(`${c ? nome(c) : 'Uma candidatura'} ficou de fora: ${MOTIVO[x.motivo ?? ''] ?? MOTIVO['impressao-mudou']}.`, true);
@@ -131,7 +133,7 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
                   {precisaRever(c) && <span className="pequeno rever">Tem mensagem ou resposta que não veio do perfil: revise antes de aprovar.</span>}
                 </span>
               </label>
-              <button className="botao-fantasma p" type="button" aria-label={`Ver o pacote de ${nome(c)}`} onClick={() => verPacote(c.id)}>Ver pacote</button>
+              <button className="botao-fantasma p" type="button" aria-label={`Ver o pacote de ${nome(c)}`} onClick={() => (onRevisar ?? verPacote)(c.id)}>Ver pacote</button>
             </li>
           ))}
         </ul>

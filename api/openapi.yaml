@@ -46,11 +46,29 @@ x-assistente:
   - POST /envio/plataformas/{plataforma}/pausar
 paths:
   /saude: { get: { summary: O app está de pé } }
-  /estado: { get: { summary: 'Estado inteiro + hoje, versao, curriculos, primeirosPassos e onboardingConcluido (booleano)' } }
-  /onboarding:
-    post:
-      summary: Conclui o primeiro acesso na janela, salva o PDF local e as preferências de busca da pessoa.
-      parameters:
+  /estado: { get: { summary: 'Estado inteiro com hoje, versao, curriculos, primeirosPassos, onboardingConcluido, perfilBuscaAtivo e perfisBusca. Vagas e rodadas sem perfilBuscaId pertencem ao perfil original.' } }
+  /onboarding/rascunho:
+    get:
+      summary: Recupera a etapa, os campos editados e os metadados do PDF local do primeiro acesso.
+      responses:
+        '200':
+          description: Um rascunho novo começa na revisão 0 e na etapa 1.
+          content:
+            application/json:
+              schema: &rascunhoOnboarding
+                type: object
+                required: [revisao, etapa, dados, editados, curriculo]
+                properties:
+                  revisao: { type: integer, minimum: 0 }
+                  etapa: { type: integer, enum: [1, 2] }
+                  dados: { type: object, description: Valores parciais do formulário local. }
+                  editados: { type: array, items: { type: string } }
+                  tentativaExterna: { type: string, enum: ['', instalar-claude, login-claude] }
+                  curriculo: { type: object, nullable: true, properties: { arquivoId: { type: string }, nomeExibicao: { type: string }, tamanho: { type: integer } } }
+        '409': { description: Primeiro acesso já concluído. }
+    patch:
+      summary: Salva campos parciais sem promover o rascunho a perfil.
+      parameters: &cabecalhoRascunho
         - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
       requestBody:
         required: true
@@ -58,10 +76,67 @@ paths:
           application/json:
             schema:
               type: object
-              required: [perfil, curriculoBase64]
+              required: [revisao]
+              additionalProperties: false
+              properties:
+                revisao: { type: integer, minimum: 0 }
+                etapa: { type: integer, enum: [1, 2] }
+                editados: { type: array, items: { type: string } }
+                dados: { type: object, description: 'Campos alterados entre cargo, niveis, modelos, foco, principal, secundaria, pular, ingles, moeda, minimo e maximo.' }
+                tentativaExterna: { type: string, enum: ['', instalar-claude, login-claude] }
+      responses:
+        '200': { description: Rascunho salvo com revisão incrementada., content: { application/json: { schema: *rascunhoOnboarding } } }
+        '403': { description: Somente a janela do app. }
+        '409': { description: Recarregue após conflito de revisão. }
+  /onboarding/curriculo:
+    put:
+      summary: Guarda a cópia local do PDF do rascunho e devolve a referência opaca.
+      parameters: *cabecalhoRascunho
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revisao, nomeArquivo, curriculoBase64]
+              properties:
+                revisao: { type: integer, minimum: 0 }
+                nomeArquivo: { type: string }
+                curriculoBase64: { type: string, format: byte }
+      responses:
+        '200': { description: 'Metadados do arquivo salvo: revisao, arquivoId, nomeExibicao e tamanho em bytes.' }
+        '400': { description: PDF ou nome inválido. O anterior continua disponível. }
+        '403': { description: Origem ou cabeçalho não permitido. }
+        '409': { description: Rascunho concluído ou revisão desatualizada. }
+        '413': { description: O PDF excede 20 MiB. }
+    delete:
+      summary: Retira o PDF do rascunho e preserva os campos editados pela pessoa.
+      parameters: *cabecalhoRascunho
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [revisao], properties: { revisao: { type: integer, minimum: 0 } } } } } }
+      responses:
+        '200': { description: Rascunho sem PDF na primeira etapa., content: { application/json: { schema: *rascunhoOnboarding } } }
+        '403': { description: Origem ou cabeçalho não permitido. }
+        '409': { description: Rascunho concluído ou revisão desatualizada. }
+  /onboarding:
+    post:
+      summary: Conclui o primeiro acesso na janela, salva o PDF local e as preferências de busca da pessoa.
+      parameters:
+        - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+        - { in: header, name: X-Applyer-Verificacao, description: Prova retornada pelo teste de IA na sessão. Uma prova vencida retorna 412., schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [perfil]
+              oneOf: [{ required: [curriculoBase64] }, { required: [arquivoId, revisao] }]
               properties:
                 perfil: { type: object, description: 'Perfil com as preferências revisadas pela pessoa.' }
                 curriculoBase64: { type: string, format: byte, description: 'Bytes originais do PDF, até 20 MiB decodificados.' }
+                nomeArquivo: { type: string, description: Nome de apresentação local; nunca determina o caminho no disco. }
+                arquivoId: { type: string, description: Identificador opaco do PDF do rascunho. Requer prova de IA atual. }
+                revisao: { type: integer, minimum: 0 }
           multipart/form-data:
             schema:
               type: object
@@ -73,7 +148,8 @@ paths:
         '200': { description: 'Perfil salvo e primeiro acesso concluído.' }
         '400': { description: 'Arquivo ou perfil inválido.' }
         '403': { description: 'Origem ou cabeçalho não permitido.' }
-        '409': { description: 'Primeiro acesso já concluído.' }
+        '409': { description: 'Primeiro acesso já concluído ou rascunho alterado. Uma repetição idêntica da conclusão por referência retorna 200.' }
+        '412': { description: Verifique novamente a conexão do provedor. }
         '413': { description: 'Arquivo excede o limite.' }
         '415': { description: 'Envie JSON ou multipart/form-data.' }
   /onboarding/sugerir:
@@ -81,15 +157,18 @@ paths:
       summary: 'Extrai o texto localmente e pede sugestões ao provedor de IA escolhido. Cada sugestão contém um trecho do currículo; a pessoa revisa antes de salvar.'
       parameters:
         - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+        - { in: header, name: X-Applyer-Verificacao, description: Prova retornada pelo teste de IA na sessão. Uma prova vencida retorna 412., schema: { type: string } }
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [curriculoBase64]
+              oneOf: [{ required: [curriculoBase64] }, { required: [arquivoId, revisao] }]
               properties:
                 curriculoBase64: { type: string, format: byte, description: 'PDF de até 20 MiB.' }
+                arquivoId: { type: string, description: Identificador opaco do PDF local. Requer prova de IA atual. }
+                revisao: { type: integer, minimum: 0 }
       responses:
         '200':
           description: 'Sugestões para revisão, possivelmente vazias.'
@@ -116,7 +195,15 @@ paths:
         '502': { description: 'Provedor indisponível.' }
   /busca:
     post:
-      summary: Consulta as fontes públicas com o perfil salvo e tria até oito vagas por rodada com a IA conectada.
+      summary: Busca pelo cargo e critérios do perfil ativo. Avalia até dez anúncios por rodada com IA; descartes locais não consomem esse limite.
+      description: Somente anúncios recentes, compatíveis e avaliados podem aparecer como recomendados. A data de descoberta não substitui a data de publicação. A ausência de salário é neutra; a pretensão permanece um atributo do perfil.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                perfilBuscaId: { type: string, description: Identificador do perfil exibido. Uma troca de perfil durante a coleta ou a classificação retorna 409. }
       responses:
         '200':
           description: 'Balanço da rodada. Uma falha parcial fica em avisos e vagas pendentes podem ser avaliadas novamente.'
@@ -147,9 +234,87 @@ paths:
   /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
+  /vagas/{id}/devolver-ao-radar:
+    post:
+      x-so-tela: true
+      summary: 'Devolve uma vaga da lista ao Radar e cancela seu pacote na mesma transação.'
+  /vagas/{id}/acompanhamento:
+    post:
+      x-so-tela: true
+      summary: 'Atualiza etapa e anotação do quadro com histórico: {etapaAntes, notasAntes, etapa, notas}. Etapas: Enviada, Entrevista, Proposta e Conquistada. Alteração concorrente retorna 409.'
+  /vagas/{id}/iniciar-manual:
+    post:
+      x-so-tela: true
+      summary: 'Reserva para a pessoa um pacote preparado ou aprovado, retirando a autorização automática na mesma transação. Se já estiver enviando, retorna 409. Sem pacote ativo, usa o currículo do perfil dono. Retorna aplicacaoManual, candidaturaManualId e urlCandidaturaManual. Repetir retoma a reserva.'
+  /vagas/{id}/confirmar-envio-manual:
+    post:
+      x-so-tela: true
+      summary: 'Registra o envio que a pessoa confirmou na plataforma externa. Atualiza a vaga, a candidatura e o histórico uma vez; exige a intenção pendente ou um recibo já concluído.'
+  /ia/detectar:
+    post:
+      x-so-tela: true
+      summary: 'Atualiza a detecção da CLI após login. Detectar um executável não confirma o provedor.'
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
   /followups: { get: { summary: Follow-ups vencidos com a mensagem sugerida } }
+  /perfis-busca:
+    post:
+      x-so-tela: true
+      summary: Cria e ativa um perfil no banco local. Usa o currículo do perfil de origem e começa com o Radar vazio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, modelo]
+              properties:
+                nome: { type: string, minLength: 1, maxLength: 120 }
+                cargo: { type: string, maxLength: 180, description: Cargo livre do perfil novo, separado do nome de exibição. }
+                modelo: { type: string, enum: [ai, java, outro], description: A interface usa outro para qualquer profissão. Os modelos anteriores continuam aceitos. }
+                perfilOrigem: { type: string, description: Identificador ativo exibido na janela. }
+      responses:
+        '201': { description: Perfil criado. O campo perfilBuscaAtivo contém o identificador persistente. }
+        '409': { description: O nome já existe ou a janela mostrava outro perfil. }
+  /perfis-busca/{id}/ativar:
+    post:
+      x-so-tela: true
+      summary: Ativa o perfil escolhido e restaura seus critérios de busca e currículo.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                perfilOrigem: { type: string }
+      responses:
+        '200': { description: Perfil ativo salvo. }
+        '404': { description: Perfil desconhecido. }
+        '409': { description: O perfil ativo mudou em outra janela. }
+  /perfil/curriculo:
+    post:
+      x-so-tela: true
+      summary: Substitui o PDF principal do perfil de busca no computador. O documento anterior continua disponível.
+      parameters:
+        - { name: perfilBuscaId, in: query, required: true, schema: { type: string } }
+        - { name: X-Applyer-Onboarding, in: header, required: true, schema: { type: string, enum: ['1'] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [curriculoBase64]
+              properties:
+                curriculoBase64: { type: string, format: byte, description: PDF de até 20 MB. }
+                nomeArquivo: { type: string, description: Nome de apresentação local. }
+      responses:
+        '200': { description: Nova referência local gravada. }
+        '400': { description: PDF inválido. }
+        '409': { description: Perfil ativo mudou ou primeiro acesso incompleto. }
+        '413': { description: Documento excede o limite de tamanho. }
   /perfil:
+    parameters: [{ name: perfilBuscaId, in: query, required: false, schema: { type: string }, description: Uma edição com identificador antigo recebe 409. }]
     get: { summary: Perfil }
     put: { summary: 'Troca o perfil inteiro. Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). respostasPadrao com resposta (fora sim/não) para pergunta de número fiscal, documento de identidade, senha ou banco dá 400, para qualquer autor (jc-a2y.7.5)' }
     patch: { summary: 'Muda só os campos enviados (filtros e respostasPadrao mesclados). Só a pessoa liga modo direto; o assistente recebe 400 (jc-a2y.28). A recusa de respostasPadrao sensível (jc-a2y.7.5) vale para o que vem no corpo' }
@@ -260,7 +425,7 @@ paths:
         '400': { $ref: '#/components/responses/Erro' }
   /ia/testar:
     post:
-      summary: 'Triagem de uma vaga fictícia para ver se a IA responde (não grava nada além do uso)'
+      summary: 'Testa a rota padrão sem reserva com uma vaga fictícia. Mantém a verificação somente na sessão; não envia o currículo.'
       responses:
         '200':
           description: A IA respondeu dentro do contrato
@@ -271,6 +436,7 @@ paths:
                 required: [ok, ms, saida]
                 properties:
                   ok: { type: boolean, const: true }
+                  verificacao: { type: string, description: 'Revisão confirmada, usada em X-Applyer-Verificacao ao sugerir ou concluir o primeiro acesso.' }
                   ms: { type: integer, description: Tempo da chamada }
                   saida: { $ref: '#/components/schemas/Triagem' }
         '400': { $ref: '#/components/responses/ErroIAConfig' }
@@ -814,6 +980,7 @@ components:
       type: object
       required: [configurada]
       properties:
+        conexaoVerificada: { type: boolean, description: 'Verdadeiro para uma configuração testada com sucesso nesta sessão.' }
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }
@@ -843,6 +1010,7 @@ components:
       type: object
       required: [configurada, chaves, clis, gratis, uso]
       properties:
+        conexaoVerificada: { type: boolean, description: 'Verificação da configuração atual na sessão.' }
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }
