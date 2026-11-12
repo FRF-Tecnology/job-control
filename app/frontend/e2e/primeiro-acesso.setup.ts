@@ -127,15 +127,52 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   await ficha.getByRole('button', { name: 'Aplicar na vaga' }).click();
   await expect(ficha.getByText('Aguardando você', { exact: true })).toBeVisible();
   const anuncio = 'https://vaga.example.invalid/radar-qa-react';
-  // A nova guia recebe somente o anúncio da fixture, sem formulário nem envio a terceiros.
+  const nomeTeste = 'Pessoa de Teste';
+  let recebimentos = 0;
+  // A empresa fictícia vive no interceptador. O Chromium abre a vaga e submete o formulário
+  // multipart como faria no site de uma empresa, mas os bytes só chegam a este teste.
   await context.route(anuncio, r => {
     expect(r.request().method()).toBe('GET');
-    return r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<h1>Vaga de teste do Applyer</h1>' });
+    return r.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html>
+      <html lang="pt-BR"><meta charset="utf-8"><title>Candidatura de teste</title>
+      <h1>Vaga de teste do Applyer</h1><p>Oficina de Software Fictícia</p>
+      <form method="post" action="/recibo" enctype="multipart/form-data">
+        <p><label>Nome <input name="nome" required></label></p>
+        <p><label>Currículo <input type="file" name="curriculo" accept="application/pdf" required></label></p>
+        <button>Enviar candidatura de teste</button>
+      </form></html>` });
+  });
+  await context.route('https://vaga.example.invalid/recibo', async r => {
+    const pedido = r.request();
+    expect(pedido.method()).toBe('POST');
+    const corpo = pedido.postDataBuffer();
+    if (!corpo) throw new Error('O formulário chegou sem conteúdo.');
+    const formulario = await new Response(new Uint8Array(corpo), { headers: {
+      'Content-Type': pedido.headers()['content-type'],
+    } }).formData();
+    expect(formulario.get('nome')).toBe(nomeTeste);
+    const arquivo = formulario.get('curriculo');
+    if (!(arquivo instanceof File)) throw new Error('O formulário não recebeu o currículo.');
+    expect(arquivo.name).toBe('curriculo-teste.pdf');
+    expect(arquivo.type).toBe('application/pdf');
+    expect(Buffer.from(await arquivo.arrayBuffer()).equals(pdf), 'PDF recebido idêntico ao anexado').toBe(true);
+    recebimentos++;
+    await r.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html>
+      <html lang="pt-BR"><meta charset="utf-8"><title>Recibo de teste</title>
+      <h1>Candidatura de teste recebida</h1><p>Oficina de Software Fictícia</p>
+      <p>Protocolo QA-001</p><p>Nome: Pessoa de Teste</p><p>Currículo: curriculo-teste.pdf</p></html>` });
   });
   const externa = context.waitForEvent('page');
   await ficha.getByRole('link', { name: 'Abrir candidatura no navegador' }).click();
   const paginaVaga = await externa;
   await expect(paginaVaga.getByRole('heading', { name: 'Vaga de teste do Applyer' })).toBeVisible();
+  await paginaVaga.getByLabel('Nome').fill(nomeTeste);
+  await paginaVaga.getByLabel('Currículo').setInputFiles({ name: 'curriculo-teste.pdf', mimeType: 'application/pdf', buffer: pdf });
+  await paginaVaga.getByRole('button', { name: 'Enviar candidatura de teste' }).click();
+  await expect(paginaVaga.getByRole('heading', { name: 'Candidatura de teste recebida' })).toBeVisible();
+  await expect(paginaVaga.getByText('Protocolo QA-001')).toBeVisible();
+  expect(recebimentos).toBe(1);
+  await captura(paginaVaga, info, 'recibo-candidatura');
   await paginaVaga.close();
   await page.reload();
   await expect(ficha.getByText('Aguardando você', { exact: true })).toBeVisible();
@@ -153,6 +190,7 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   await writeFile(resultadoPath, JSON.stringify({
     provedor: info.project.name, chamadas: ia.uso.chamadas, sugestoes: sugestoes.length,
     vaga: 'sintética', grupo: aposBusca.vagas[0].aderencia, confirmacao: 'manual', anuncio: 'guia headless controlada',
+    formulario: { recebimentos, protocolo: 'QA-001', pdfConferido: true, bytesPDF: pdf.length, metodo: 'POST multipart/form-data' },
   }, null, 2));
   await info.attach('resultado', { contentType: 'application/json', path: resultadoPath });
 });
