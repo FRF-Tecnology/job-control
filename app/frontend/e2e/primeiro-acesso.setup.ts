@@ -59,13 +59,14 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   expect(sugestoes.length).toBeGreaterThan(0);
   await expect(page.getByRole('heading', { name: /Que vagas você procura/i })).toBeVisible();
   const campoCargo = page.getByLabel('Cargo ou área de interesse');
-  const stack = page.getByLabel(/Stack principal/);
+  const stack = page.getByLabel(/Competências principais/);
   await expect(stack).toHaveValue(/React|Java/i);
   await campoCargo.fill('Desenvolvimento de software');
   await stack.fill('React, Java');
   await page.getByLabel('Pleno', { exact: true }).check();
   await page.getByLabel('Os dois', { exact: true }).check();
   await page.getByLabel('Remoto', { exact: true }).check();
+  await page.getByLabel('País de trabalho').selectOption('BR');
   await page.getByLabel('Seu nível de inglês').selectOption('Avançado');
   await page.getByLabel('Moeda').selectOption('USD');
   await page.getByLabel('Mínimo').fill('4000');
@@ -92,7 +93,7 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   expect(salvo.vagas).toHaveLength(0);
   expect(salvo.perfil).toMatchObject({
     cargo: 'Desenvolvimento de software', stackPrincipal: ['React', 'Java'], filtros: { niveis: ['Pleno'], modelo: ['Remoto'] },
-    foco: 'ambos', ingles: 'Avançado', faixaSalarial: { moeda: 'USD', min: 4000, max: 6000 },
+    foco: 'ambos', paisTrabalho:'BR', ingles: 'Avançado', faixaSalarial: { moeda: 'USD', min: 4000, max: 6000 },
   });
   expect(salvo.curriculos).toHaveLength(1);
   expect(await readFile(join(process.env.CENTRAL_E2E_PASTA!, salvo.perfil.curriculos.PT))).toEqual(pdf);
@@ -110,16 +111,15 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   expect(buscas).toBe(1);
   const aposBusca = await estado();
   expect(aposBusca.vagas).toHaveLength(1);
-  expect(aposBusca.vagas[0].aderencia).toMatch(/^[ABC]$/);
+  expect(aposBusca.vagas[0]).toMatchObject({aderencia:'A',radarVersao:1,radarClasse:'forte'});
   expect(aposBusca.vagas[0].etapa).toBe('descoberta');
   const ficha = page.getByRole('article', { name: 'Desenvolvimento de software com React' });
   const listaRadar = page.getByRole('list', { name: 'Vagas para revisão' });
   const linha = listaRadar.getByRole('button', { name: /Desenvolvimento de software com React/ });
   await expect(linha).toHaveAttribute('aria-current', 'true');
-  const outraNota = aposBusca.vagas[0].aderencia === 'B' ? 'A' : 'B';
-  await page.getByRole('button', { name: 'Nota ' + outraNota, exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Nenhuma vaga com nota ' + outraNota })).toBeVisible();
-  await page.getByRole('button', { name: 'Ver todas as vagas' }).click();
+  await page.getByRole('button', { name: 'A conferir', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nenhuma vaga a conferir' })).toBeVisible();
+  await page.getByRole('button', { name: 'Recomendadas', exact: true }).click();
   await expect(ficha).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);

@@ -161,7 +161,7 @@ func listaOnboarding(x any, obrigatoria bool) bool {
 }
 
 func validarOnboarding(p Objeto) error {
-	if err := soCampos(p, "cargo", "stackPrincipal", "stackSecundaria", "filtros", "foco", "ingles", "pretensaoUSD", "faixaSalarial"); err != nil {
+	if err := soCampos(p, "cargo", "stackPrincipal", "stackSecundaria", "filtros", "foco", "ingles", "pretensaoUSD", "faixaSalarial", "paisTrabalho", "cidadeTrabalho"); err != nil {
 		return err
 	}
 	if err := exigirPerfilOk(p); err != nil {

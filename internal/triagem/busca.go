@@ -124,7 +124,7 @@ func numeroPositivo(v any) float64 {
 	return n
 }
 
-func filtros(perfil, vaga dominio.Objeto) Resultado {
+func filtrosDoAlvo(perfil, vaga dominio.Objeto) Resultado {
 	f := dominio.ObjetoDe(perfil["filtros"])
 	regras := lista(f["pularSe"])
 	var conferir []string
@@ -175,7 +175,16 @@ func filtros(perfil, vaga dominio.Objeto) Resultado {
 	if motivo := exclusaoPersonalizada(regras, vaga); motivo != "" {
 		return pular(motivo, "Outro")
 	}
+	return Resultado{Conferir: conferir}
+}
 
+func filtros(perfil, vaga dominio.Objeto) Resultado {
+	r := filtrosDoAlvo(perfil, vaga)
+	if r.Estado == "pulada" {
+		return r
+	}
+	conferir := r.Conferir
+	regras := lista(dominio.ObjetoDe(perfil["filtros"])["pularSe"])
 	salario := compararSalario(perfil, vaga, regras)
 	if salario.Estado == "pulada" {
 		return salario
@@ -324,6 +333,10 @@ func entrada(perfil, vaga dominio.Objeto, conferir []string) dominio.Objeto {
 // no provedor configurado, com validação do esquema e da guarda usuais.
 func Avaliar(ctx context.Context, motor *ia.IA, perfil, vaga dominio.Objeto) (Resultado, error) {
 	r := filtros(perfil, vaga)
+	return avaliarComIA(ctx, motor, r, entrada(perfil, vaga, r.Conferir))
+}
+
+func avaliarComIA(ctx context.Context, motor *ia.IA, r Resultado, dados dominio.Objeto) (Resultado, error) {
 	if r.Estado == "pulada" {
 		return r, nil
 	}
@@ -335,7 +348,6 @@ func Avaliar(ctx context.Context, motor *ia.IA, perfil, vaga dominio.Objeto) (Re
 	if motor == nil {
 		return r, &ia.ErroIA{Tipo: "config", Mensagem: "nenhuma IA conectada: escolha uma em Conectar IA"}
 	}
-	dados := entrada(perfil, vaga, r.Conferir)
 	if dominio.ContemDocumentoEm(dados) {
 		return r, &ia.ErroIA{Tipo: "regra", Mensagem: "a vaga ou o perfil contém documento pessoal"}
 	}

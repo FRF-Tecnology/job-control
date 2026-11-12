@@ -73,6 +73,10 @@ describe('Primeiro acesso', () => {
     await escolher('Curriculo original.pdf'); await conectar(); await revisar();
     await screen.findByRole('heading', {name: 'Que vagas você procura?'});
     editar('Cargo ou área de interesse','Java remoto');
+    editar('País de trabalho','PT');
+    expect(screen.queryByLabelText('Cidade de trabalho')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Híbrido'));
+    editar('Cidade de trabalho','Porto');
     await waitFor(() => expect(rascunho.dados.cargo).toBe('Java remoto'));
     expect(rascunho.etapa).toBe(2);
     cleanup(); montar(perfil, undefined, undefined, rascunho);
@@ -80,6 +84,8 @@ describe('Primeiro acesso', () => {
     expect(screen.queryByText('Claude conectado')).toBeNull();
     await conectar();
     expect(await screen.findByDisplayValue('Java remoto')).toBeTruthy();
+    expect(screen.getByLabelText('País de trabalho')).toHaveProperty('value','PT');
+    expect(screen.getByLabelText('Cidade de trabalho')).toHaveProperty('value','Porto');
   });
   it('conserva o PDF anterior quando falta espaço e permite repetir a troca', async () => {
     const { api } = montar();
@@ -139,12 +145,12 @@ describe('Primeiro acesso', () => {
     const { concluir, sugerir } = montar(perfil, undefined, salvar);
     await conectar(); await escolher('MeuCV.pdf');
     await revisar();
-    editar('Cargo ou área de interesse', 'Analista de pesquisa'); editar(/Stack secundária/, 'Figma; SQL, Figma');
+    editar('Cargo ou área de interesse', 'Analista de pesquisa'); editar(/Competências complementares/, 'Figma; SQL, Figma');
     fireEvent.click(screen.getByRole('radio', { name: 'Nacional' }));
     expect((screen.getByLabelText('Mínimo') as HTMLInputElement).value).toBe('3200');
     editar('Moeda', moeda); editar('Mínimo', '4000'); editar('Máximo', '3000'); clicar('Concluir perfil');
     expect(screen.getByRole('alert').textContent).toMatch(/maior ou igual/);
-    editar('Máximo', '6000');
+    editar('Máximo', '6000'); editar('País de trabalho','BR');
     clicar('Concluir perfil'); await screen.findByText('PDF recusado');
     expect(concluir).not.toHaveBeenCalled();
     clicar('Concluir perfil'); await waitFor(() => expect(concluir).toHaveBeenCalledWith(false));
@@ -154,7 +160,7 @@ describe('Primeiro acesso', () => {
     expect(corpo.arquivoId).toMatch(/^cv-/);
     expect(corpo.curriculoBase64).toBeUndefined();
     expect(corpo.perfil).toEqual({
-      cargo: 'Analista de pesquisa', stackPrincipal: ['Pesquisa'], stackSecundaria: ['Figma', 'SQL'],
+      cargo: 'Analista de pesquisa', paisTrabalho:'BR', stackPrincipal: ['Pesquisa'], stackSecundaria: ['Figma', 'SQL'],
       filtros: perfil.filtros, foco: 'nacional', ingles: 'Avançado', faixaSalarial: { min: 4000, max: 6000, moeda },
     });
   });
@@ -199,6 +205,15 @@ describe('Primeiro acesso', () => {
     await screen.findByText('O PDF não contém texto selecionável.');
     await revisar();
     expect(screen.getByRole('heading', { name: 'Que vagas você procura?' })).toBeTruthy();
+  });
+  it('permite trocar um cargo igual ao nome por uma sugestão do currículo',async()=>{
+    montar({...perfil,nome:'Ana Silva',cargo:'ANA SILVA'},vi.fn().mockResolvedValue({sugestoes:[
+      {campo:'cargo',valor:'UX Designer',evidencia:'UX Designer na equipe de pesquisa'}]}));
+    await conectar();await escolher('Perfil.pdf');clicar('Preencher com IA');
+    await screen.findByText(/cargo.*seu nome/i);
+    clicar('UX Designer');
+    expect(screen.getByLabelText('Cargo ou área de interesse')).toHaveProperty('value','UX Designer');
+    expect(screen.queryByText(/cargo.*seu nome/i)).toBeNull();
   });
 
   it('retira a faixa salarial anterior quando a pessoa deixa os dois limites em branco', async () => {

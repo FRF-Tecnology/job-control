@@ -85,7 +85,7 @@ export function BuscaDoPerfil() {
       </button>
       <a className="botao-fantasma" href="#/perfil">Editar perfil</a>
     </div>
-    <p className="pequeno mudo">A IA avalia até oito vagas por busca, em grupos de afinidade com seu perfil.</p>
+    <p className="pequeno mudo">A IA avalia até dez vagas por rodada. Você pode retomar as avaliações pendentes.</p>
     <div role="status">
       {ocupado && <p>Consultando as fontes e classificando as vagas. Você pode continuar usando o app.</p>}
       {erro && <p>{erro}</p>}

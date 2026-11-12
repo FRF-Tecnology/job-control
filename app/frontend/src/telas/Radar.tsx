@@ -3,6 +3,7 @@ import { useApp } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { LinkExterno } from '../componentes';
 import { foiEnviada } from '../dominio/modelo';
+import { aceitaTrabalhoLocal, cargoIgualAoNome, nomeDoPais } from '../dominio/localDeTrabalho';
 import { dataCurta, encode, plural, safeHref } from '../util';
 import { BalancoDaBusca, useBuscaDoPerfil } from './BuscaDoPerfil';
 import { SeletorPerfil } from './SeletorPerfil';
@@ -13,19 +14,44 @@ import '../estilo/radar.css';
 type Vaga = {
   id: string; anuncioId?: string; perfilBuscaId?: string; titulo: string; empresa: string; etapa: string; link?: string;
   local?: string; modelo?: string; nivel?: string; contrato?: string; descricao?: string; categorias?: string[]; stack?: string[];
-  periodoSalario?: string; moeda?: string; salarioMin?: number; salarioMax?: number; salarioUSDMin?: number; salarioUSDMax?: number;
+  periodoSalario?: string; moeda?: string; salarioMin?: number; salarioMax?: number; salario?: string;
+  salarioUSDMensal?: number; salarioUSDMin?: number; salarioUSDMax?: number;
   aderencia?: string; motivoClaude?: string; triagemMotivoPulo?: string; triagemDecisao?: string; triagemConferir?: string[];
   triagemBusca?: string; fonteBusca?: string; fonteURL?: string; descobertaEm?: string;
+  radarVersao?: number; radarClasse?: string; radarMotivo?: string; publicadaEm?: string; expiraEm?: string; aberta?: boolean;
+  eventoPuloBusca?: string;
   aplicacaoManual?: boolean; urlCandidaturaManual?: string; envio?: { data?: string };
 };
 const notas = ['A', 'B', 'C'] as const;
 type Nota = typeof notas[number];
-type Filtro = 'Todas' | Nota;
+const filtros = ['Recomendadas', 'A conferir', 'Histórico'] as const;
+type Filtro = typeof filtros[number];
 const afinidade: Record<Nota, string> = { A: 'Alta compatibilidade', B: 'Compatibilidade média', C: 'Baixa compatibilidade' };
 const mercados: Record<string, string> = { nacional: 'Brasil', internacional: 'Exterior', ambos: 'Brasil e exterior' };
 const temNota = (nota?: string): nota is Nota => notas.includes(nota as Nota);
 const ordem = (v: Vaga) => temNota(v.aderencia) ? notas.indexOf(v.aderencia) : notas.length;
 const pequena = () => window.matchMedia?.('(max-width: 760px)').matches ?? false;
+
+function dataDoAnuncio(data: string | undefined, fimDoDia = false) {
+  if (!data) return NaN;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return Date.parse(data + (fimDoDia ? 'T23:59:59.999' : 'T00:00:00'));
+  return Date.parse(data);
+}
+
+function categoria(v: Vaga, agora: Date): Filtro {
+  const prazo = dataDoAnuncio(v.expiraEm, true);
+  const publicada = dataDoAnuncio(v.publicadaEm);
+  const limite = new Date(agora);
+  limite.setDate(limite.getDate() - 30);
+  if (v.publicadaEm?.length === 10) limite.setHours(0,0,0,0);
+  if (v.etapa === 'pulada' || v.aberta === false || prazo <= agora.getTime() || publicada < limite.getTime() ||
+      v.triagemDecisao === 'pular' || v.aderencia === 'C' || v.radarClasse === 'excluir') return 'Histórico';
+  if (v.triagemBusca === 'pendente') return 'A conferir';
+  if (v.radarVersao !== 1) return 'Histórico';
+  if (v.aderencia === 'A' && v.radarClasse === 'forte' && Number.isFinite(publicada) && publicada <= agora.getTime() &&
+      (!v.expiraEm || Number.isFinite(prazo))) return 'Recomendadas';
+  return 'A conferir';
+}
 
 export function vagasDisponiveisNoRadar(vagas: Vaga[], perfil = 'original') {
   const anunciosEmAndamento = new Set(vagas.filter(v => !['descoberta', 'pulada'].includes(v.etapa)).map(v => v.anuncioId ?? v.id));
@@ -33,25 +59,30 @@ export function vagasDisponiveisNoRadar(vagas: Vaga[], perfil = 'original') {
   for (const v of vagas) {
     if ((v.perfilBuscaId ?? 'original') !== perfil) continue;
     const manual = v.aplicacaoManual && v.etapa === 'aplicar';
-    if (manual || (v.etapa === 'descoberta' && !anunciosEmAndamento.has(v.anuncioId ?? v.id))) unicas.set(v.id, v);
+    const historica = v.etapa === 'pulada' && (v.triagemBusca === 'expirada' || v.eventoPuloBusca || v.triagemDecisao === 'pular');
+    if (manual || ((v.etapa === 'descoberta' || historica) && !anunciosEmAndamento.has(v.anuncioId ?? v.id))) unicas.set(v.id, v);
   }
-  return [...unicas.values()].sort((a, b) => ordem(a) - ordem(b) || (b.descobertaEm ?? '').localeCompare(a.descobertaEm ?? ''));
+  return [...unicas.values()].sort((a, b) => ordem(a) - ordem(b) || (dataDoAnuncio(b.publicadaEm) || 0) - (dataDoAnuncio(a.publicadaEm) || 0));
 }
 
-function salario(v: Vaga): [string, string] {
-  let rotulo = 'Salário mensal';
-  let { salarioMin: min, salarioMax: max, moeda } = v;
-  if (v.salarioUSDMin != null || v.salarioUSDMax != null) {
-    min = v.salarioUSDMin; max = v.salarioUSDMax; moeda = 'USD';
-  } else if (min != null || max != null) {
-    const periodos: Record<string, string> = { hourly: 'Salário por hora', weekly: 'Salário semanal', monthly: 'Salário mensal', annual: 'Salário anual', yearly: 'Salário anual' };
-    rotulo = periodos[(v.periodoSalario ?? '').toLowerCase()] ?? 'Salário';
+type Faixa = { min?: number; max?: number; moeda?: string; periodo?: string };
+function salario(v: Vaga, pretensao: Faixa): [string, string] {
+  let oferta: Faixa | undefined;
+  if (v.salarioMin != null || v.salarioMax != null) {
+    oferta = { min:v.salarioMin, max:v.salarioMax, moeda:v.moeda, periodo:v.periodoSalario };
+  } else if (typeof v.salario === 'string' && /\d/.test(v.salario)) {
+    return ['Salário da vaga', v.salario.trim()];
+  } else if ((!v.moeda || v.moeda.toUpperCase()==='USD') && [v.salarioUSDMensal,v.salarioUSDMin,v.salarioUSDMax].some(n=>n!=null && n>0)) {
+    oferta = { min:v.salarioUSDMensal || v.salarioUSDMin, max:v.salarioUSDMensal || v.salarioUSDMax, moeda:'USD', periodo:'monthly' };
   }
+  const {min,max,moeda,periodo} = oferta ?? { ...pretensao, periodo: pretensao.periodo || 'monthly' };
+  if (min == null && max == null) return ['Salário não informado', ''];
+  const periodos: Record<string,string> = {hourly:'por hora', daily:'por dia', weekly:'por semana', monthly:'por mês', annual:'por ano', yearly:'por ano'};
   const simbolos: Record<string, string> = { BRL: 'R$', USD: 'US$', EUR: '€' };
   const formatar = (n: number) => [simbolos[moeda ?? ''] ?? moeda, n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })].filter(Boolean).join(' ');
-  const faixa = min != null && max != null ? `${formatar(min)} – ${formatar(max)}`
+  const faixa = min != null && min===max ? formatar(min) : min != null && max != null ? `${formatar(min)} a ${formatar(max)}`
     : min != null ? `A partir de ${formatar(min)}` : max != null ? `Até ${formatar(max)}` : '';
-  return [rotulo, faixa || 'Não informado'];
+  return [oferta ? 'Salário da vaga' : 'Sua pretensão', [faixa, periodos[periodo?.toLowerCase() ?? ''] || periodo].filter(Boolean).join(' ')];
 }
 
 function Fato({ icone, rotulo, valor }: { icone: string; rotulo: string; valor?: string }) {
@@ -81,11 +112,11 @@ function CandidaturaExterna({ vaga, ocupada, gravar }: {
   </div>;
 }
 
-function VagaDoRadar({ vaga, voltar, revisar, ocupada, gravar, desfazer }: {
+function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfazer }: {
   vaga: Vaga; voltar: () => void; revisar: (etapa: 'aplicar' | 'pulada') => void;
-  ocupada: boolean; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void; desfazer: ReactNode;
+  ocupada: boolean; pretensao: Faixa; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void; desfazer: ReactNode;
 }) {
-  const [rotuloSalario, valorSalario] = salario(vaga);
+  const [rotuloSalario, valorSalario] = salario(vaga, pretensao);
   const grupo = temNota(vaga.aderencia) ? vaga.aderencia : null;
   const tags = [...new Set([...(vaga.categorias ?? []), ...(vaga.stack ?? []), vaga.nivel, vaga.contrato].filter(Boolean))];
   return <article className="rd-detail" id="rd-detail" aria-labelledby="rd-job-heading" onKeyDown={e => {
@@ -99,16 +130,18 @@ function VagaDoRadar({ vaga, voltar, revisar, ocupada, gravar, desfazer }: {
     <dl className="rd-facts">
       <Fato icone="pin" rotulo="Localização" valor={vaga.local} />
       <Fato icone="briefcase" rotulo="Modalidade" valor={vaga.modelo} />
-      <Fato icone="wallet" rotulo={rotuloSalario} valor={valorSalario} />
+      {valorSalario ? <Fato icone="wallet" rotulo={rotuloSalario} valor={valorSalario} />
+        : <div className="rd-fact"><dt><IconeUI nome="wallet" tamanho={15} />Salário</dt><dd>{rotuloSalario}</dd></div>}
     </dl>
     {vaga.etapa === 'descoberta' && <div className="rd-actions">
       <button className="btn primary" type="button" disabled={ocupada} onClick={() => revisar('aplicar')}><IconeUI nome="plus" tamanho={17} />Adicionar à lista</button>
       <button className="btn quiet rd-skip" type="button" disabled={ocupada} onClick={() => revisar('pulada')}>Pular<IconeUI nome="chevron-right" tamanho={15} /></button>
     </div>}
     <div className="rd-analysis">
-      <div className="rd-analysis-head"><span className="rd-analysis-name"><IconeUI nome="sparkles" tamanho={16} />Análise da IA</span>
+      <div className="rd-analysis-head"><span className="rd-analysis-name"><IconeUI nome="sparkles" tamanho={16} />Compatibilidade com seu perfil</span>
         {grupo && <span className={`rd-grade-label rd-grade-${grupo}`}>Nota {grupo}</span>}</div>
-      <p>{vaga.motivoClaude || (vaga.triagemBusca === 'pendente' ? 'Avaliação pendente' : 'Nenhuma análise registrada.')}</p>
+      <p>{vaga.radarMotivo || vaga.motivoClaude || (vaga.triagemBusca === 'pendente' ? 'Avaliação pendente' : 'Nenhuma análise registrada.')}</p>
+      {vaga.radarMotivo && vaga.motivoClaude && vaga.motivoClaude !== vaga.radarMotivo && <p>{vaga.motivoClaude}</p>}
       {vaga.triagemDecisao === 'pular' && vaga.triagemMotivoPulo && <p><strong>A IA sugere pular</strong> · {vaga.triagemMotivoPulo}</p>}
       {!!vaga.triagemConferir?.length && <div className="rd-conferir"><strong>Pontos a conferir</strong><ul>{vaga.triagemConferir.map((p, i) => <li key={i}>{p}</li>)}</ul></div>}
     </div>
@@ -116,23 +149,23 @@ function VagaDoRadar({ vaga, voltar, revisar, ocupada, gravar, desfazer }: {
     {!!tags.length && <ul className="rd-tags" aria-label="Competências e requisitos">{tags.map(tag => <li key={tag}>{tag}</li>)}</ul>}
     <div className="rd-externa">
       {vaga.fonteBusca && <LinkExterno url={vaga.fonteURL} semLink={<span>Fonte: {vaga.fonteBusca}</span>}>Fonte: {vaga.fonteBusca}</LinkExterno>}
-      {vaga.descobertaEm && <span>Encontrada em {dataCurta(vaga.descobertaEm)}</span>}
+      <span>{Number.isFinite(dataDoAnuncio(vaga.publicadaEm)) ? `Publicada em ${dataCurta(vaga.publicadaEm!.slice(0,10))} ${vaga.publicadaEm!.slice(0,4)}` : 'Data de publicação não informada'}</span>
       <CandidaturaExterna vaga={vaga} ocupada={ocupada} gravar={gravar} />
     </div>
     {desfazer}
   </article>;
 }
 
-function EstadoRadar({ titulo, icone = 'search', mensagem, children }: { titulo: string; icone?: string; mensagem: string; children: ReactNode }) {
+function EstadoRadar({ titulo, icone = 'search', mensagem, children }: { titulo: string; icone?: string; mensagem: string; children?: ReactNode }) {
   return <div className="rd-empty"><span className="rd-empty-icon"><IconeUI nome={icone} tamanho={24} /></span>
-    <h3 tabIndex={-1}>{titulo}</h3><p>{mensagem}</p><div className="rd-empty-actions">{children}</div></div>;
+    <h3 tabIndex={-1}>{titulo}</h3><p>{mensagem}</p>{children && <div className="rd-empty-actions">{children}</div>}</div>;
 }
 
 function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const app = useApp();
   const { estado } = app;
   const { ocupado: buscando, balanco, erro, buscar, pendentes } = useBuscaDoPerfil(true);
-  const [filtro, filtrar] = useState<Filtro>('Todas');
+  const [filtro, filtrar] = useState<Filtro>('Recomendadas');
   const [selecao, selecionar] = useState<string | null>(null);
   const [confirmada, lembrarConfirmacao] = useState<string | null>(null);
   const [detalheMovel, mostrarDetalhe] = useState(false);
@@ -143,11 +176,19 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const regiao = useRef<HTMLElement>(null);
   const focoPendente = useRef<'detalhe' | 'linha' | null>(null);
   const perfil = estado.perfil ?? {};
-  const resumo = [perfil.filtros?.modelo?.join(', '), mercados[perfil.foco]].filter(Boolean).join(' · ');
+  const local = aceitaTrabalhoLocal(perfil.filtros?.modelo);
+  const pais = nomeDoPais(perfil.paisTrabalho);
+  const cargoInvalido = cargoIgualAoNome(perfil.cargo,perfil.nome);
+  const resumo = [!cargoInvalido && perfil.cargo, perfil.filtros?.modelo?.join(', '), [local && perfil.cidadeTrabalho,pais].filter(Boolean).join(', '), mercados[perfil.foco]].filter(Boolean).join(' · ');
+  const ajuste = cargoInvalido ? 'O cargo coincide com seu nome. Informe a função que deseja buscar.'
+    : !pais ? 'Informe de qual país você vai trabalhar.' : local && !perfil.cidadeTrabalho ? 'Informe a cidade para vagas presenciais ou híbridas.' : '';
+  const pretensao = perfil.faixaSalarial ?? {min: perfil.pretensaoUSD || undefined, moeda:'USD'};
   const vagas = (estado.vagas ?? []) as Vaga[];
   const todas = vagas.filter(v => (v.perfilBuscaId ?? 'original') === idPerfil);
   const disponiveis = vagasDisponiveisNoRadar(vagas, idPerfil);
-  const visiveis = disponiveis.filter(v => filtro === 'Todas' || v.aderencia === filtro);
+  const agora = new Date();
+  const candidatas = disponiveis.filter(v => categoria(v, agora) === filtro);
+  const visiveis = filtro === 'Recomendadas' ? candidatas.slice(0,10) : candidatas;
   const atual = visiveis.find(v => v.id === selecao) ?? visiveis[0];
   const recibo = todas.find(v => v.id === confirmada && (foiEnviada(v) || v.etapa === 'enviada'));
   const puladas = todas.filter(v => v.etapa === 'pulada' && v.triagemBusca !== 'expirada');
@@ -202,7 +243,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
       for (const v of vagas) {
         if (!await app.mover(v.id, 'descoberta')) return;
       }
-      lembrarPulo(null); filtrar('Todas'); selecionar(vagas[0]?.id ?? null);
+      lembrarPulo(null); filtrar(categoria({...vagas[0], etapa:'descoberta'}, new Date())); selecionar(vagas[0]?.id ?? null);
       focoPendente.current = pequena() && detalheMovel ? 'detalhe' : 'linha';
     });
   }
@@ -226,6 +267,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
         <div className="hero-kicker"><span className="cross-star" aria-hidden="true">✦</span> DESCOBERTA</div>
         <h1 id="hero-title">Radar de vagas<span aria-hidden="true">.</span></h1>
         <div className="hero-profile"><SeletorPerfil /><p>{resumo || 'Defina seu perfil para encontrar oportunidades.'}</p></div>
+        {ajuste && <p>{ajuste}</p>}
         <div className="hero-buttons">
           <button type="button" className="btn primary" disabled={buscando} aria-busy={buscando} onClick={buscar}><IconeUI nome="radar" tamanho={17} />
             {buscando ? 'Buscando…' : pendentes ? 'Retomar avaliação das vagas' : 'Buscar vagas'}</button>
@@ -236,8 +278,8 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
     <section className="rd-results" aria-labelledby="rd-title" ref={regiao}>
       <div className="rd-toolbar"><div className="rd-heading"><h2 id="rd-title" tabIndex={-1}>Vagas encontradas</h2>
         {!buscando && <span className="rd-count" aria-label={plural(visiveis.length, 'vaga disponível', 'vagas disponíveis')}>{visiveis.length}</span>}</div>
-        {!buscando && disponiveis.length > 0 && <div className="rd-filters" role="group" aria-label="Filtrar vagas pela nota de compatibilidade">
-          {(['Todas', ...notas] as const).map(nota => <button key={nota} type="button" aria-pressed={filtro === nota} aria-label={nota === 'Todas' ? 'Todas as notas' : `Nota ${nota}`} onClick={() => mudarFiltro(nota)}>{nota}</button>)}
+        {!buscando && <div className="rd-filters" role="group" aria-label="Filtrar vagas por compatibilidade">
+          {filtros.map(nome => <button key={nome} type="button" aria-pressed={filtro === nome} onClick={() => mudarFiltro(nome)}>{nome}</button>)}
         </div>}
       </div>
       {buscando ? <div className="rd-loading" aria-busy="true"><p role="status">Buscando vagas para o seu perfil…</p>
@@ -263,21 +305,23 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
               </span>
             </button></li>)}
           </ul>
-          <VagaDoRadar key={atual.id} vaga={atual} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer} />
-        </div> : disponiveis.length ? <EstadoRadar titulo={`Nenhuma vaga com nota ${filtro}`} mensagem="Veja as vagas disponíveis nas outras notas.">
-          <button className="btn secondary" type="button" onClick={() => mudarFiltro('Todas')}>Ver todas as vagas</button>
-        </EstadoRadar> : todas.length ? <>
+          <VagaDoRadar key={atual.id} vaga={atual} pretensao={pretensao} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer} />
+        </div> : disponiveis.length || filtro !== 'Recomendadas' ? <>
+          <EstadoRadar titulo={filtro === 'Recomendadas' ? 'Nenhuma recomendação confirmada' : filtro === 'A conferir' ? 'Nenhuma vaga a conferir' : 'Nenhuma vaga no histórico'}
+            mensagem={filtro === 'Recomendadas' ? 'Veja se há vagas a conferir ou anúncios no histórico.' : 'As vagas desta categoria aparecerão aqui.'}/>
+          {desfazer}
+        </> : todas.length ? <>
           <EstadoRadar icone="check" titulo="Você revisou todas as vagas" mensagem="Acompanhe na lista as vagas que você escolheu.">
             <a className="btn primary" href="#/lista">Ver lista</a>
             {puladas.length > 0 && <button type="button" className="btn secondary" disabled={ocupada} onClick={() => recuperar(puladas)}>Rever vagas puladas</button>}
           </EstadoRadar>{desfazer}
-        </> : !falhaBusca && <EstadoRadar titulo="Nenhuma vaga encontrada" mensagem="Ajuste suas preferências para ampliar a busca.">
+        </> : !falhaBusca && <EstadoRadar titulo={balanco ? 'Nenhuma vaga compatível nesta busca' : 'Nenhuma vaga encontrada'} mensagem="Ajuste suas preferências para ampliar a busca.">
           <a className="btn secondary" href="#/perfil">Ajustar preferências</a>
         </EstadoRadar>}
         {erroAcao && <p className="rd-erro" role="alert">{erroAcao}</p>}
         {Boolean(pendentes) && !falhaBusca && <p className="rd-conexao"><a href="#/ia">Ver conexão da IA</a></p>}
         {balanco && !erroFontes ? <details className="rd-balanco" open={balanco.avisos.length > 0 || undefined}>
-          <summary>Resultado da busca</summary><BalancoDaBusca balanco={balanco} />
+          <summary>{balanco.avisos.length || balanco.pendentes ? 'Busca parcial' : 'Resultado da busca'}</summary><BalancoDaBusca balanco={balanco} />
         </details> : ultima && !falhaBusca && <details className="rd-balanco">
           <summary>Última busca</summary><p>{plural(ultima.encontradas, 'vaga encontrada', 'vagas encontradas')}. {ultima.resumo}</p>
         </details>}

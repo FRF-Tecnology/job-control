@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/busca"
@@ -100,7 +101,8 @@ func TestPrimeiroAcessoBuscaTriagemRetomada(t *testing.T) {
 	}
 	arm, a := abrir()
 	rr := httptest.NewRecorder()
-	a.Handler().ServeHTTP(rr, pedidoOnboarding(t, perfilInicialJSON, "curriculo.pdf", []byte("%PDF-1.4\nCurrículo fictício\n%%EOF\n")))
+	perfilComLocal := strings.Replace(perfilInicialJSON, `"cargo":"Designer"`, `"cargo":"Designer","paisTrabalho":"BR"`, 1)
+	a.Handler().ServeHTTP(rr, pedidoOnboarding(t, perfilComLocal, "curriculo.pdf", []byte("%PDF-1.4\nCurrículo fictício\n%%EOF\n")))
 	if rr.Code != 200 {
 		t.Fatalf("onboarding: %d %s", rr.Code, rr.Body.String())
 	}
@@ -120,7 +122,7 @@ func TestPrimeiroAcessoBuscaTriagemRetomada(t *testing.T) {
 			if i == 3 {
 				nivel = "Sênior"
 			}
-			vagas = append(vagas, Objeto{"id": empresa, "empresa": empresa, "titulo": "Design de produto", "nivel": nivel, "modelo": "Remoto", "mercado": "nacional", "descricao": "Design de produto com Figma.", "categorias": []string{"Produto"}})
+			vagas = append(vagas, Objeto{"id": empresa, "empresa": empresa, "titulo": "Designer de produto", "nivel": nivel, "modelo": "Remoto", "mercado": "nacional", "descricao": "Projetar interfaces e protótipos usando Figma.", "categorias": []string{"Produto"}, "publicadaEm": time.Now().UTC().Add(-24 * time.Hour).Truncate(24 * time.Hour).Format(time.RFC3339), "paisesElegiveis": []string{"BR"}})
 		}
 		return busca.Coleta{Vagas: vagas}
 	}
@@ -131,7 +133,7 @@ func TestPrimeiroAcessoBuscaTriagemRetomada(t *testing.T) {
 		}
 		return r.Corpo.(balancoBusca)
 	}
-	if r := rodar(); r.Novas != 4 || r.Pendentes != 4 {
+	if r := rodar(); r.Novas != 4 || r.Pendentes != 3 || r.Puladas != 1 {
 		t.Fatalf("rodada com falha: %+v", r)
 	}
 	e, err := arm.Carregar(ctx)
@@ -145,7 +147,7 @@ func TestPrimeiroAcessoBuscaTriagemRetomada(t *testing.T) {
 	}
 	provedor.falhar = false
 	r := rodar()
-	if r.Novas != 0 || r.Grupos["A"] != 1 || r.Grupos["B"] != 1 || r.Grupos["C"] != 1 || r.Puladas != 1 || r.Pendentes != 0 {
+	if r.Novas != 0 || r.Grupos["A"] != 1 || r.Grupos["B"] != 1 || r.Grupos["C"] != 1 || r.Puladas != 0 || r.Pendentes != 0 {
 		t.Fatalf("retomada: %+v", r)
 	}
 	antes := provedor.chamadas

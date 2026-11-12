@@ -2,16 +2,13 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useApp } from '../app/contexto';
 import '../estilo/seletor-perfil.css';
 
-const modelos = { ai: 'AI Engineer', java: 'Java Engineer', outro: '' };
-type Modelo = keyof typeof modelos;
-
 export function SeletorPerfil() {
   const { estado, api, recarregar, perguntar } = useApp();
   const ativo = estado.perfilBuscaAtivo ?? 'original';
   const perfis = estado.perfisBusca ?? [{ id: ativo, nome: estado.perfil?.cargo && estado.perfil.cargo !== estado.perfil.nome ? estado.perfil.cargo : 'Perfil principal' }];
   const [criando, abrir] = useState(false);
-  const [modelo, definirModelo] = useState<Modelo>('ai');
-  const [nome, definirNome] = useState(modelos.ai);
+  const [cargo, definirCargo] = useState('');
+  const [nome, definirNome] = useState('');
   const [ocupado, ocupar] = useState(false);
   const [erro, falhar] = useState('');
   const enviando = useRef(false);
@@ -58,22 +55,20 @@ export function SeletorPerfil() {
     </label>
     <button type="button" className="criar-perfil" aria-haspopup="dialog" disabled={ocupado} onClick={async () => {
       if (!(await confirmarTroca())) return;
-      definirModelo('ai'); definirNome(modelos.ai); falhar(''); abrir(true);
+      definirCargo(''); definirNome(''); falhar(''); abrir(true);
     }}><span aria-hidden="true">＋</span> Criar perfil</button>
     {erro && !criando && <p role="alert">{erro}</p>}
     {criando && <dialog ref={dialogo} className="dialogo-perfil" aria-labelledby={titulo} onCancel={e => { e.preventDefault(); cancelar(); }}>
-      <form onSubmit={e => { e.preventDefault(); const valor = nome.trim();
-        if (!valor) { falhar('Digite o nome do perfil.'); return; }
-        void salvar('/api/v1/perfis-busca', { modelo, nome: valor });
+      <form onSubmit={e => { e.preventDefault();
+        if (!cargo.trim() || !nome.trim()) { falhar('Informe o cargo e o nome do perfil.'); return; }
+        void salvar('/api/v1/perfis-busca', { modelo:'outro', cargo:cargo.trim(), nome:nome.trim() });
       }}>
         <h2 id={titulo}>Criar perfil de busca</h2>
-        <label>Cargo de interesse<select autoFocus value={modelo} disabled={ocupado} onChange={e => {
-          const proximo = e.target.value as Modelo;
-          if (!nome.trim() || nome === modelos[modelo]) definirNome(modelos[proximo]);
-          definirModelo(proximo); falhar('');
-        }}><option value="ai">AI Engineer</option><option value="java">Java Engineer</option><option value="outro">Outro cargo</option></select></label>
+        <label>Cargo de interesse<input autoFocus required maxLength={120} value={cargo} disabled={ocupado} onChange={e => {
+          if (!nome.trim() || nome === cargo) definirNome(e.target.value);
+          definirCargo(e.target.value); falhar('');
+        }} /></label>
         <label>Nome do perfil<input required maxLength={120} value={nome} disabled={ocupado} onChange={e => { definirNome(e.target.value); falhar(''); }} /></label>
-        <p>{modelo === 'outro' ? 'Use o cargo desejado como nome. Depois, ajuste os filtros.' : 'Você pode ajustar os filtros depois.'}</p>
         {erro && <p role="alert">{erro}</p>}
         <div><button className="botao-fantasma" type="button" disabled={ocupado} onClick={cancelar}>Cancelar</button>
           <button type="submit" className="botao" disabled={ocupado}>{ocupado ? 'Criando…' : 'Criar perfil'}</button></div>

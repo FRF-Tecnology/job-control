@@ -55,6 +55,7 @@ func TestServidorRadarPlaywright(t *testing.T) {
 			"id": "radar-qa-react", "empresa": "Oficina de Software Fictícia", "titulo": "Desenvolvimento de software com React",
 			"descricao": "Desenvolvimento de software com React e Java para pessoa de nível Pleno. Trabalho remoto no Brasil.",
 			"nivel":     "Pleno", "modelo": "Remoto", "mercado": "nacional", "plataforma": "externo",
+			"publicadaEm": time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339), "paisesElegiveis": []string{"BR"}, "local": "Brasil",
 			"salarioMin": 4200, "salarioMax": 5500, "periodoSalario": "monthly", "moeda": "USD",
 			"fonteBusca": "Fonte de teste", "link": "https://vaga.example.invalid/radar-qa-react",
 		}}}

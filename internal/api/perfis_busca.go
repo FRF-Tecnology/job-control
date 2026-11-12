@@ -42,7 +42,7 @@ func (a *API) perfisBusca(ctx context.Context, metodo, caminho, autor string, co
 		if criar {
 			nome, _ := corpo["nome"].(string)
 			modelo, _ := corpo["modelo"].(string)
-			return dominio.CriarPerfilBusca(e, id, nome, modelo)
+			return dominio.CriarPerfilComCargo(e, id, nome, modelo, dominio.Texto(corpo["cargo"]))
 		}
 		return dominio.AtivarPerfilBusca(e, id)
 	})

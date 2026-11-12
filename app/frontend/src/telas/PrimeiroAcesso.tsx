@@ -3,6 +3,7 @@ import { ErroApi, useApp } from '../app/contexto';
 import { useRascunhoOnboarding, type PDFSalvo, type TentativaExterna } from '../app/rascunhoOnboarding';
 import { Icone } from '../componentes';
 import { NOMES_FOCO } from '../dominio/modelo';
+import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
 import paisagem from '../arte/primeiro-acesso/paisagem.svg';
 import marca from '../arte/primeiro-acesso/applyer.svg';
@@ -17,7 +18,7 @@ const MODELOS = ['Remoto', 'Híbrido', 'Presencial'];
 const INGLES = ['Não falo inglês', 'Básico', 'Intermediário', 'Avançado', 'Fluente'];
 const TAMANHO_PDF = 20 * 1024 * 1024;
 const MOEDAS = { USD: 'Dólar americano', BRL: 'Real brasileiro', EUR: 'Euro' };
-const NOMES_SUGESTAO = { cargo: 'Cargo', niveis: 'Nível', stackPrincipal: 'Stack principal', stackSecundaria: 'Stack secundária', ingles: 'Inglês' };
+const NOMES_SUGESTAO = { cargo: 'Cargo', niveis: 'Nível', stackPrincipal: 'Competências principais', stackSecundaria: 'Competências complementares', ingles: 'Inglês' };
 type Sugestao = { campo: keyof typeof NOMES_SUGESTAO; valor: string; evidencia: string };
 const lista = (v: unknown): string[] => Array.isArray(v) ? v.filter((item): item is string => typeof item === 'string' && item.trim() !== '') : [];
 const termos = (texto: string) => [...new Set(texto.split(/[,;\n]/).map(t => t.trim()).filter(Boolean))];
@@ -26,6 +27,7 @@ function perfilInicial(perfil: any = {}) {
   const faixa = perfil.faixaSalarial ?? { min: perfil.pretensaoUSD, moeda: 'USD' };
   return {
     cargo: perfil.cargo ?? '', niveis: lista(perfil.filtros?.niveis), modelos: lista(perfil.filtros?.modelo),
+    paisTrabalho: String(perfil.paisTrabalho ?? ''), cidadeTrabalho: String(perfil.cidadeTrabalho ?? ''),
     foco: (Object.prototype.hasOwnProperty.call(NOMES_FOCO, perfil.foco) ? perfil.foco : '') as keyof typeof NOMES_FOCO | '',
     principal: lista(perfil.stackPrincipal).join(', '), secundaria: lista(perfil.stackSecundaria).join(', '),
     pular: lista(perfil.filtros?.pularSe).join(', '), ingles: perfil.ingles ?? '',
@@ -222,6 +224,8 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
     }
     const perfil = {
       cargo: dados.cargo.trim(), stackPrincipal: termos(dados.principal), stackSecundaria: termos(dados.secundaria),
+      ...(dados.paisTrabalho && {paisTrabalho:dados.paisTrabalho}),
+      ...(dados.cidadeTrabalho.trim() && {cidadeTrabalho:dados.cidadeTrabalho.trim()}),
       filtros: { niveis: dados.niveis, modelo: dados.modelos, pularSe: termos(dados.pular) }, foco: dados.foco, ingles: dados.ingles,
       faixaSalarial: dados.minimo || dados.maximo ? {
         moeda: dados.moeda, ...(dados.minimo ? { min: Number(dados.minimo) } : {}), ...(dados.maximo ? { max: Number(dados.maximo) } : {}),
@@ -324,11 +328,16 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
             <fieldset className="pa-grupo-campos" disabled={salvando}>
               <legend>Perfil profissional</legend>
               <div className="pa-campos">
-                <label>Cargo ou área de interesse<input id="pa-cargo" maxLength={120} value={dados.cargo} placeholder="Ex.: desenvolvimento de software" onChange={e => campo('cargo', e.target.value)} /></label>
+                <label>Cargo ou área de interesse<input id="pa-cargo" maxLength={120} value={dados.cargo} onChange={e => campo('cargo', e.target.value)} /></label>
+                {cargoIgualAoNome(dados.cargo, app.estado.perfil?.nome) && <div className="pa-nota">
+                  <p>O cargo coincide com seu nome. Informe a função que deseja buscar.</p>
+                  {sugestoes?.filter(s => s.campo === 'cargo' && !cargoIgualAoNome(s.valor, dados.cargo)).map(s =>
+                    <button key={s.valor} type="button" className="pa-link" onClick={() => campo('cargo',s.valor)}>{s.valor}</button>)}
+                </div>}
                 <Opcoes nome="niveis" titulo="Níveis aceitos" itens={NIVEIS} ativos={dados.niveis} mudar={v => campo('niveis', v)} />
                 <div className="pa-dupla">
-                  <label>Stack principal<small>Ferramentas ou habilidades centrais</small><input id="pa-principal-stack" maxLength={350} value={dados.principal} placeholder="Ex.: Java, Spring Boot" onChange={e => campo('principal', e.target.value)} /></label>
-                  <label>Stack secundária<small>Complementares · opcional</small><input maxLength={350} value={dados.secundaria} placeholder="Ex.: React, SQL" onChange={e => campo('secundaria', e.target.value)} /></label>
+                  <label>Competências principais<small>Habilidades ou ferramentas que usa na função</small><input id="pa-principal-stack" maxLength={350} value={dados.principal} onChange={e => campo('principal', e.target.value)} /></label>
+                  <label>Competências complementares<small>Opcional</small><input maxLength={350} value={dados.secundaria} onChange={e => campo('secundaria', e.target.value)} /></label>
                 </div>
                 <label>Seu nível de inglês<select id="pa-ingles" value={dados.ingles} onChange={e => campo('ingles', e.target.value)}>
                   <option value="">Selecione um nível</option>{[...new Set([...INGLES, dados.ingles])].filter(Boolean).map(v => <option key={v}>{v}</option>)}</select></label>
@@ -340,6 +349,11 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
                 <fieldset><legend>Mercado de vagas</legend><div className="pa-opcoes">{(Object.entries(NOMES_FOCO) as [keyof typeof NOMES_FOCO, string][]).map(([key, nome], i) =>
                   <label key={key}><input id={i === 0 ? 'pa-mercado' : undefined} type="radio" name="mercado" checked={dados.foco === key} onChange={() => campo('foco', key)} /><span>{nome}</span></label>)}</div></fieldset>
                 <Opcoes nome="modelos" titulo="Modelos de trabalho aceitos" itens={MODELOS} ativos={dados.modelos} mudar={v => campo('modelos', v)} />
+                <label>País de trabalho<select value={dados.paisTrabalho} onChange={e => campo('paisTrabalho',e.target.value)}>
+                  <option value="">Selecione de onde vai trabalhar</option>{paises.map(([codigo,nome]) => <option key={codigo} value={codigo}>{nome}</option>)}
+                </select></label>
+                {aceitaTrabalhoLocal(dados.modelos) && <label>Cidade de trabalho<input maxLength={120} value={dados.cidadeTrabalho}
+                  onChange={e=>campo('cidadeTrabalho',e.target.value)} /></label>}
                 <label>Pular quando<small>Termos que excluem uma vaga, separados por vírgula · opcional</small><input maxLength={350} value={dados.pular} placeholder="Ex.: plantão obrigatório" onChange={e => campo('pular', e.target.value)} /></label>
                 <fieldset className="pa-salario"><legend>Faixa salarial mensal <small>Opcional</small></legend>
                   <div className="pa-limites">

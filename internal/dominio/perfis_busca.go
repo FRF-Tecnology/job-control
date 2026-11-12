@@ -10,7 +10,7 @@ const PerfilOriginal = "original"
 
 // O perfil profissional fica materializado em Estado.Perfil para os consumidores
 // existentes. Ao trocar, só os dados específicos da busca viajam com o perfil.
-var camposDaBusca = []string{"nome", "cargo", "cidade", "experienciaAnos", "formacao", "ingles", "stackPrincipal", "stackSecundaria", "foco", "filtros", "contratos", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "faixaSalarial", "curriculos", "curriculoExibicao"}
+var camposDaBusca = []string{"nome", "cargo", "titulosEquivalentes", "cidade", "paisTrabalho", "cidadeTrabalho", "experienciaAnos", "formacao", "ingles", "stackPrincipal", "stackSecundaria", "foco", "filtros", "contratos", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "faixaSalarial", "curriculos", "curriculoExibicao"}
 
 func (e Estado) PerfilBuscaAtivo() string {
 	for _, perfil := range e.PerfisBusca {
@@ -135,6 +135,10 @@ func AtivarPerfilBusca(e Estado, id string) (Estado, error) {
 }
 
 func CriarPerfilBusca(e Estado, id, nome, modelo string) (Estado, error) {
+	return CriarPerfilComCargo(e, id, nome, modelo, "")
+}
+
+func CriarPerfilComCargo(e Estado, id, nome, modelo, cargo string) (Estado, error) {
 	nome = strings.TrimSpace(nome)
 	if nome == "" || utf8.RuneCountInString(nome) > 120 || ContemDocumento(nome) {
 		return e, validacao("informe um nome de perfil válido com até 120 caracteres")
@@ -145,13 +149,21 @@ func CriarPerfilBusca(e Estado, id, nome, modelo string) (Estado, error) {
 		}
 	}
 	dados := criteriosDoPerfil(e.Perfil)
+	delete(dados, "titulosEquivalentes")
 	switch modelo {
 	case "ai":
 		dados["cargo"], dados["stackPrincipal"], dados["stackSecundaria"] = "AI Engineer", []any{"Python", "Machine Learning", "LLM"}, []any{"PyTorch", "MLOps"}
 	case "java":
 		dados["cargo"], dados["stackPrincipal"], dados["stackSecundaria"] = "Java Engineer", []any{"Java", "Spring Boot"}, []any{"SQL", "APIs"}
 	case "outro":
-		dados["cargo"], dados["stackPrincipal"], dados["stackSecundaria"] = nome, []any{}, []any{}
+		cargo = strings.TrimSpace(cargo)
+		if cargo == "" {
+			cargo = nome
+		}
+		if utf8.RuneCountInString(cargo) > 180 || ContemDocumento(cargo) {
+			return e, validacao("informe um cargo válido")
+		}
+		dados["cargo"], dados["stackPrincipal"], dados["stackSecundaria"] = cargo, []any{}, []any{}
 	default:
 		return e, validacao("escolha um cargo de interesse")
 	}

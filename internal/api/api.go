@@ -1061,6 +1061,11 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 		if autor != "eu" {
 			return Resposta{}, falha(403, "somente a pessoa pode iniciar ou confirmar a candidatura")
 		}
+		if acao == "/iniciar-manual" {
+			if err := a.verificarAntesDeAbrir(ctx, id); err != nil {
+				return Resposta{}, err
+			}
+		}
 		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
 			if acao == "/confirmar-envio-manual" {
 				return dominio.ConfirmarManualRadar(e, id, a.relogio(), cx)

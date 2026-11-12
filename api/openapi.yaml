@@ -195,7 +195,8 @@ paths:
         '502': { description: 'Provedor indisponível.' }
   /busca:
     post:
-      summary: Consulta as fontes públicas com o perfil salvo e tria até oito vagas por rodada com a IA conectada.
+      summary: Busca pelo cargo e critérios do perfil ativo. Avalia até dez anúncios por rodada com IA; descartes locais não consomem esse limite.
+      description: Somente anúncios recentes, compatíveis e avaliados podem aparecer como recomendados. A data de descoberta não substitui a data de publicação. A ausência de salário é neutra; a pretensão permanece um atributo do perfil.
       requestBody:
         content:
           application/json:
@@ -268,7 +269,8 @@ paths:
               required: [nome, modelo]
               properties:
                 nome: { type: string, minLength: 1, maxLength: 120 }
-                modelo: { type: string, enum: [ai, java, outro] }
+                cargo: { type: string, maxLength: 180, description: Cargo livre do perfil novo, separado do nome de exibição. }
+                modelo: { type: string, enum: [ai, java, outro], description: A interface usa outro para qualquer profissão. Os modelos anteriores continuam aceitos. }
                 perfilOrigem: { type: string, description: Identificador ativo exibido na janela. }
       responses:
         '201': { description: Perfil criado. O campo perfilBuscaAtivo contém o identificador persistente. }

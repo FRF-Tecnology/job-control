@@ -10,7 +10,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-var camposRascunho = []string{"cargo", "niveis", "modelos", "foco", "principal", "secundaria", "pular", "ingles", "moeda", "minimo", "maximo"}
+var camposRascunho = []string{"cargo", "niveis", "modelos", "foco", "principal", "secundaria", "pular", "ingles", "moeda", "minimo", "maximo", "paisTrabalho", "cidadeTrabalho"}
 
 func revisaoDoRascunho(c Objeto) (int64, error) {
 	v, ok := c["revisao"].(float64)

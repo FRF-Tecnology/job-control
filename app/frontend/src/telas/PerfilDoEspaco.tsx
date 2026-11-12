@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { IconeUI } from '../app/IconeUI';
 import { useApp } from '../app/contexto';
 import { SeletorPerfil } from './SeletorPerfil';
+import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
 import { lerArquivo } from './PrimeiroAcesso';
 import arteCV from '../../../../site/artes/curriculo-verificado.svg';
@@ -14,6 +15,8 @@ const marcaIA:Record<string,string>={Claude:'anthropic',OpenAI:'openai',Gemini:'
 function leitura(p:any){
   const f=p.filtros||{}, faixa=p.faixaSalarial ?? {min:p.pretensaoUSD};
   return {nome:texto(p.nome), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
+    paisTrabalho:texto(p.paisTrabalho), cidadeTrabalho:texto(p.cidadeTrabalho),
+    titulos:lista(p.titulosEquivalentes).join(', '),
     principal:lista(p.stackPrincipal).join(', '), secundaria:lista(p.stackSecundaria).join(', '),
     niveis:lista(f.niveis), modelos:lista(f.modelo), pular:lista(f.pularSe).join(', '),
     moeda:faixa.moeda||'USD',min:String(faixa.min??''),max:String(faixa.max??'')};
@@ -45,6 +48,8 @@ export function PerfilDoEspaco(){
     salvarEstado(true);falhar('');
     try {
       await app.api(url,'PATCH',{nome:dados.nome.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
+        paisTrabalho:dados.paisTrabalho, cidadeTrabalho:dados.cidadeTrabalho.trim(),
+        titulosEquivalentes:separar(dados.titulos),
         stackPrincipal:separar(dados.principal),stackSecundaria:separar(dados.secundaria),
         filtros:{niveis:dados.niveis,modelo:dados.modelos,pularSe:separar(dados.pular)},pretensaoUSD:null,
         faixaSalarial:(dados.min||dados.max)?{moeda:dados.moeda,...dados.min&&{min:Number(dados.min)},...dados.max&&{max:Number(dados.max)}}:null});
@@ -64,7 +69,7 @@ export function PerfilDoEspaco(){
     }catch(e){if(ativa.current)cvFalha((e as Error).message||'Não foi possível salvar o PDF.')}
     finally{if(ativa.current)cvOcupar(false)}
   }
-  type Campo='nome'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max';
+  type Campo='nome'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
   function campo(k:Campo,label:string,op?:{lista?:[string,string][];wide?:boolean;tipo?:'number';dica?:string}){
     return <div className={'pr-field'+(op?.wide?' pr-wide':'')}><label htmlFor={'f-'+k}>{label}</label>{op?.lista?
       <select form="form-perfil-ativo" id={'f-'+k} value={dados[k]} onChange={e=>set(k,e.target.value)}>{op.lista.map(([v,r])=><option key={v} value={v}>{r}</option>)}</select>:
@@ -78,15 +83,19 @@ export function PerfilDoEspaco(){
     <SeletorPerfil/>
     <div className="pr-edit-grid"><div className="pr-stack">
       <Cartao titulo="Perfil profissional" icone="user"><div className="pr-fields">
-        {campo('nome','Nome')}{campo('cargo','Cargo de interesse',{dica:'Ex.: Engenharia de IA'})}
+        {campo('nome','Nome')}{campo('cargo','Cargo de interesse')}
+        {cargoIgualAoNome(dados.cargo,dados.nome) && <p className="pr-wide">O cargo coincide com seu nome. Informe a função que deseja buscar.</p>}
         <Opcoes titulo="Níveis de experiência aceitos" base={['Estágio','Júnior','Pleno','Sênior','Liderança']} valor={dados.niveis} mudar={v=>set('niveis',v)}/>
-        {campo('principal','Habilidades principais',{wide:true,dica:'Ex.: Java, Spring Boot'})}
-        {campo('secundaria','Habilidades complementares')}
+        {campo('titulos','Títulos equivalentes',{wide:true,dica:'Separe os títulos por vírgulas (opcional)'})}
+        {campo('principal','Competências principais',{wide:true})}
+        {campo('secundaria','Competências complementares')}
         {campo('ingles','Nível de inglês',{lista:[['','Selecione'],...[...new Set(['Não falo inglês','Básico','Intermediário','Avançado','Fluente',dados.ingles].filter(Boolean))].map(v=>[v,v] as [string,string])]})}
       </div></Cartao>
       <Cartao titulo="Filtros de busca" icone="sliders"><div className="pr-fields">
         {campo('foco','Mercado',{lista:[['nacional','Brasil'],['internacional','Exterior'],['ambos','Brasil e exterior']]})}
         <Opcoes titulo="Modelo de trabalho" base={['Remoto','Híbrido','Presencial']} valor={dados.modelos} mudar={v=>set('modelos',v)}/>
+        {campo('paisTrabalho','País de trabalho',{lista:[['','Selecione de onde vai trabalhar'],...paises]})}
+        {aceitaTrabalhoLocal(dados.modelos) && campo('cidadeTrabalho','Cidade de trabalho')}
         {campo('pular','Pular vagas com estes termos',{wide:true})}
         <fieldset className="pr-pay pr-wide"><legend>Faixa salarial mensal <small>Opcional</small></legend><div>
           {campo('moeda','Moeda',{lista:[['USD','USD'],['BRL','BRL'],['EUR','EUR']]})}{campo('min','Mínimo',{tipo:'number'})}{campo('max','Máximo',{tipo:'number'})}

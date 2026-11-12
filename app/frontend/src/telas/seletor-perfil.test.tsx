@@ -17,18 +17,19 @@ it('mantém o perfil e as edições quando a pessoa cancela a troca', async () =
   expect(seletor).toHaveProperty('value', 'java');
 });
 
-it('cria a busca Java com o nome escolhido e troca a busca pelo identificador persistente', async () => {
+it('cria uma busca por qualquer cargo com um nome independente e permite trocar para um perfil antigo', async () => {
   const api = vi.fn().mockResolvedValue({});
   const recarregar = vi.fn().mockResolvedValue(undefined);
   const app = { api, recarregar, estado: { perfilBuscaAtivo: 'original', perfisBusca: [{ id: 'original', nome: 'Design' }, { id: 'ai', nome: 'IA' }] } } as unknown as App;
   render(<Contexto.Provider value={app}><SeletorPerfil /></Contexto.Provider>);
   fireEvent.click(screen.getByRole('button', { name: 'Criar perfil' }));
-  fireEvent.change(await screen.findByLabelText('Cargo de interesse'), { target: { value: 'java' } });
-  expect(screen.getByLabelText('Nome do perfil')).toHaveProperty('value', 'Java Engineer');
-  fireEvent.change(screen.getByLabelText('Nome do perfil'), { target: { value: 'Java no Brasil' } });
+  expect(await screen.findByRole('textbox',{name:'Cargo de interesse'})).toHaveProperty('value','');
+  fireEvent.change(screen.getByLabelText('Cargo de interesse'), { target: { value: 'Arquiteta' } });
+  expect(screen.getByLabelText('Nome do perfil')).toHaveProperty('value', 'Arquiteta');
+  fireEvent.change(screen.getByLabelText('Nome do perfil'), { target: { value: 'Arquitetura em Portugal' } });
   fireEvent.submit(screen.getByLabelText('Nome do perfil').closest('form')!);
   await waitFor(() => expect(recarregar).toHaveBeenCalledTimes(1));
-  expect(api).toHaveBeenCalledWith('/api/v1/perfis-busca', 'POST', { nome: 'Java no Brasil', modelo: 'java', perfilOrigem: 'original' });
+  expect(api).toHaveBeenCalledWith('/api/v1/perfis-busca', 'POST', { cargo:'Arquiteta', nome:'Arquitetura em Portugal', modelo:'outro', perfilOrigem:'original' });
   fireEvent.change(screen.getByRole('combobox', { name: 'Perfil de busca' }), { target: { value: 'ai' } });
   await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/perfis-busca/ai/ativar', 'POST', { perfilOrigem: 'original' }));
 });

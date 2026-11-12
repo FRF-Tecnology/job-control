@@ -166,6 +166,8 @@ func MontarPrompt(funcao string, entrada dominio.Objeto) Prompt {
 			" Faixas que se sobrepõem ou ofertas superiores ao máximo desejado atendem à preferência salarial. Um teto comprovadamente abaixo do mínimo reduz a aderência; somente uma regra explícita de piso justifica pular por salário." +
 			" Use pular somente para conflito comprovado e cite a evidência da vaga no motivo." +
 			" Se faltar evidência para uma preferência relevante, use perguntar e indique o que confirmar." +
+			" Salário não divulgado é neutro: não reduza a nota, não peça confirmação nem pule a vaga só por isso. A pretensão do perfil nunca é uma oferta da empresa." +
+			" Avalie as atividades de qualquer profissão. Explique o vínculo citando uma atribuição do anúncio e um requisito ou competência do perfil, sem inventar experiência." +
 			" A nota mede o encaixe profissional; decisão e nota são apenas recomendações para revisão pela pessoa."
 	}
 	return Prompt{

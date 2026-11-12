@@ -14,7 +14,9 @@ const balanco = { encontradas: 3, novas: 3, grupos: { A: 1, B: 1, C: 1 }, pulada
 const json = (dados: unknown) => new Response(JSON.stringify(dados), { headers: { 'content-type': 'application/json' } });
 const vaga = (grupo: string, empresa: string) => ({
   id: `busca-teste-${grupo}`, etapa: 'descoberta', titulo: 'Analista', empresa, aderencia: grupo, mercado: 'nacional',
-  plataforma: 'externo', descobertaEm: '2026-11-10', motivoClaude: `Parecer para ${empresa}.`, triagemConferir: ['Confirmar local da entrevista.'],
+  plataforma: 'externo', descobertaEm: '2026-11-10', publicadaEm: new Date().toISOString().slice(0,10),
+  radarVersao: 1, radarClasse: grupo === 'A' ? 'forte' : grupo === 'B' ? 'conferir' : 'excluir',
+  radarMotivo: `Evidência para ${empresa}.`, motivoClaude: `Parecer para ${empresa}.`, triagemConferir: ['Confirmar local da entrevista.'],
   ...(grupo === 'C' ? { triagemDecisao: 'pular', triagemMotivoPulo: 'Tecnologias fora da stack escolhida.' } : {}),
   fonteBusca: 'Fonte de teste', fonteURL: `https://fonte.example/vagas/${grupo}`, link: `https://empresa.example/oportunidades/${grupo}`,
 });
@@ -78,12 +80,14 @@ describe('Busca pelo perfil', () => {
     await act(async () => { concluirBusca(); });
     fireEvent.click(await screen.findByText('Resultado da busca'));
     expect(screen.getByText('Grupo A · 1')).toBeTruthy();
-    const lista = screen.getByRole('list', { name: 'Vagas para revisão' });
-    ['A', 'B', 'C'].forEach(g => {
+    ['A', 'B', 'C'].forEach((g,i) => {
+      fireEvent.click(screen.getByRole('button',{name:['Recomendadas','A conferir','Histórico'][i]}));
+      const lista = screen.getByRole('list', { name: 'Vagas para revisão' });
       fireEvent.click(within(lista).getByRole('button', { name: new RegExp(`Empresa ${g}`) }));
       const cartao = within(screen.getByRole('article', { name: 'Analista' }));
       expect(cartao.getByText(`Empresa ${g}`)).toBeTruthy();
       expect(cartao.getByText(`Parecer para Empresa ${g}.`)).toBeTruthy();
+      expect(cartao.getByText(`Evidência para Empresa ${g}.`)).toBeTruthy();
       expect(cartao.getByText('Confirmar local da entrevista.')).toBeTruthy();
       if (g === 'C') expect(cartao.getByText(/Tecnologias fora da stack escolhida/)).toBeTruthy();
       expect(cartao.getByRole('link', { name: 'Fonte: Fonte de teste' }).getAttribute('href')).toBe(`https://fonte.example/vagas/${g}`);
