@@ -1,0 +1,108 @@
+.multi-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 4px 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.hero-copy .multi-selector { margin: 12px 0 9px; }
+.pr-page .multi-selector { margin: 0 0 20px; }
+.multi-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 9px;
+  min-width: 0;
+  max-width: 100%;
+}
+.multi-field label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+.multi-select-wrap {
+  position: relative;
+  display: inline-grid;
+  min-width: 0;
+  max-width: 100%;
+}
+.multi-select-wrap select, .multi-create {
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 600;
+  min-height: 36px;
+}
+.multi-select-wrap select {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  max-width: 18rem;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  padding: 7px 30px 7px 11px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--lilac) 35%, var(--line));
+}
+.multi-select-wrap > svg {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  color: var(--lilac);
+  pointer-events: none;
+}
+.multi-create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  color: var(--lilac);
+  background: none;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.multi-create:hover { text-decoration: underline; text-underline-offset: 3px; }
+.multi-select-wrap select:hover { border-color: var(--lilac); }
+.multi-form { display: grid; margin-top: 22px; }
+.multi-form label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.multi-form label:not(:first-child) { margin-top: 18px; }
+.multi-form input, .multi-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+.multi-form select { cursor: pointer; }
+.multi-form p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.multi-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 23px;
+}
+@media (max-width: 580px) {
+  .multi-field { display: grid; }
+  .multi-selector { gap: 4px 6px; }
+  .multi-select-wrap select { max-width: min(53vw, 18rem); }
+  .multi-select-wrap select, .multi-create { min-height: 42px; }
+  .multi-form input, .multi-form select { font-size: 16px; }
+}

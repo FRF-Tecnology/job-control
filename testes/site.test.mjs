@@ -21,6 +21,18 @@ test('site: toda âncora e todo aria-controls apontam para um id que existe', ()
   assert.deepEqual([...new Set(faltam)], []);
 });
 
+test('site: a aprovação demonstrativa tem controle deslizante acessível desde o HTML', () => {
+  const grupo = html.match(/<div class="deslize" data-deslize>([\s\S]*?)data-deslize-reiniciar/);
+  assert.ok(grupo, 'controle e botão de reinício');
+  const controle = grupo[1].match(/<input\b[^>]*type="range"[^>]*>/)?.[0];
+  assert.ok(controle, 'slider nativo para teclado');
+  for (const atributo of ['min="0"', 'max="100"', 'value="0"', 'aria-label="Simular aprovação do lote"']) {
+    assert.ok(controle.includes(atributo), atributo);
+  }
+  const ajuda = controle.match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(ajuda && grupo[1].includes(`id="${ajuda}"`), 'instruções associadas');
+});
+
 test('site: ids não se repetem', () => {
   const ids = todos(html, /\sid="([^"]+)"/g).filter(id => !id.startsWith('lg')); // gradientes do SVG também têm id único
   assert.equal(new Set(ids).size, ids.length);
@@ -29,6 +41,22 @@ test('site: ids não se repetem', () => {
 test('site: o script não tem erro de sintaxe', () => {
   assert.doesNotThrow(() => new vm.Script(js, { filename: 'app.js' }));
   assert.doesNotThrow(() => new vm.Script(ler('tema.js'), { filename: 'tema.js' }));
+});
+
+test('site: a primeira pintura é escura, exceto quando a pessoa já escolheu o tema claro', () => {
+  for (const temaSalvo of [null, 'inválido', 'claro', 'escuro']) {
+    const meta = {};
+    let classeEscura;
+    const document = {
+      documentElement: { classList: { toggle: (_, ativo) => { classeEscura = ativo; } } },
+      querySelector: seletor => seletor === 'meta[name="theme-color"]' ? meta : null,
+      addEventListener() {},
+    };
+    const window = { matchMedia: () => ({ matches: true, addEventListener() {} }), addEventListener() {} };
+    vm.runInNewContext(ler('tema.js'), { window, document, localStorage: { getItem: () => temaSalvo } });
+    assert.equal(classeEscura, temaSalvo !== 'claro');
+    assert.equal(meta.content, temaSalvo !== 'claro' ? '#0C0E2C' : '#EEF2FB');
+  }
 });
 
 test('site: todo texto que o script liga tem lugar na página', () => {
@@ -74,7 +102,7 @@ test('site: os cinco sistemas aparecem no menu de baixar e nos cartões', () => 
     assert.equal(todos(html, new RegExp(`data-baixar="(${k})"`, 'g')).length, 1, `cartão: ${k}`);
     assert.match(js, new RegExp(`k: '${k}'`));
     const disponivel = k === 'mac' || k === 'win';
-    const status = disponivel ? 'Em lançamento' : 'Em breve';
+    const status = disponivel ? 'Disponível' : 'Em breve';
     const opcoes = todos(html, new RegExp(`data-plat="${k}"[^>]*>.*?<small[^>]*>([^<]+)`, 'g'));
     assert.deepEqual(opcoes, [status, status], `status nos menus: ${k}`);
     const [acao] = todos(html, new RegExp(`data-baixar="${k}"><span data-so-texto>([^<]+)`, 'g'));

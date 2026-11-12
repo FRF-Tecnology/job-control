@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="escuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src {{SCRIPT_HASH}}; style-src 'unsafe-inline'; img-src data:; object-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Applyer. — Primeiro acesso</title>
+<style>{{ESTILO}}</style>
+</head>
+<body>
+<noscript>Ative o JavaScript para experimentar o primeiro acesso do Applyer.</noscript>
+<svg aria-hidden="true" class="moldes" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="seta" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+  <symbol id="ok" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="local" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></symbol>
+  <symbol id="upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+  <symbol id="luz" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+  <symbol id="lua" viewBox="0 0 24 24"><path d="M20 15A8.8 8.8 0 0 1 9 4a8.7 8.7 0 1 0 11 11Z"/></symbol>
+  <symbol id="documento" viewBox="0 0 24 24"><path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm7 0v5h5M8 12h7m-7 4h5"/></symbol>
+</defs></svg>
+<header class="appbar"><div class="appbar-in"><div class="assinatura">{{MARCA}}</div><span class="separador"></span><span class="titulo-janela">Primeiro acesso</span>
+  <div class="utilidades"><span class="local"><svg class="ic" aria-hidden="true"><use href="#local"/></svg> Protótipo local</span><button class="icone" id="tema" type="button" aria-label="Ativar tema claro" title="Ativar tema claro"><svg class="ic" aria-hidden="true"><use href="#luz"/></svg></button></div>
+</div></header>
+<div class="janela">
+<aside class="rail">
+  <div><h2>Perfil de busca</h2><nav aria-label="Etapas da configuração" id="passos">
+  <button type="button" data-etapa="0" aria-current="step"><span class="numero">1</span><span><b>Currículo</b><small>Seu documento de referência</small></span></button>
+  <button type="button" data-etapa="1" disabled><span class="numero">2</span><span><b>Vagas e stack</b><small>Cargo, nível e habilidades</small></span></button>
+  <button type="button" data-etapa="2" disabled><span class="numero">3</span><span><b>Condições</b><small>Mercado, idioma e valor</small></span></button>
+  <button type="button" data-etapa="3" disabled><span class="numero">4</span><span><b>Triagem</b><small>Suas regras em ação</small></span></button>
+  </nav></div>
+  <div class="paisagem" aria-hidden="true">{{PAISAGEM}}</div>
+</aside>
+<main id="principal">
+  <div class="andamento"><span id="etapa-atual">Etapa 1 de 4</span><div class="segmentos" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
+  <section class="pagina" data-pagina="0" aria-labelledby="h-cv">
+    <h1 id="h-cv" tabindex="-1">Comece pelo <em>seu currículo.</em></h1>
+    <p class="sub">Anexe o PDF que você usa para se candidatar. Em seguida, escolha que tipo de vaga quer encontrar.</p>
+    <div id="drop" class="drop">
+      <div class="papeis" aria-hidden="true"><div class="folha-fundo"></div><div class="folha"><i></i><b></b><b></b><b></b></div><span class="selo-pdf">PDF</span></div>
+      <div class="drop-texto"><h2 id="arquivo-titulo">Arraste seu currículo para cá</h2><p id="arquivo-info">PDF de até 20 MB</p></div>
+      <div class="arquivo-acoes"><button type="button" class="secundario" id="escolher"><svg class="ic" aria-hidden="true"><use href="#upload"/></svg><span>Escolher PDF</span></button><button id="remover" type="button" class="link" hidden>Remover</button></div>
+      <input id="pdf" type="file" accept=".pdf,application/pdf" hidden>
+    </div>
+    <p class="erro" id="erro-cv" role="alert"></p>
+    <div class="exemplo"><div><b>Quer experimentar primeiro?</b><p>Use um currículo fictício e edite as preferências.</p></div><button id="usar-exemplo" class="link" type="button">Usar perfil de exemplo <span aria-hidden="true">↗</span></button></div>
+    <p class="nota-local"><svg class="ic" aria-hidden="true"><use href="#local"/></svg>O PDF fica neste dispositivo durante a prévia.</p>
+  </section>
+  <section class="pagina" data-pagina="1" aria-labelledby="h-vagas" hidden>
+    <h1 id="h-vagas" tabindex="-1">Quais vagas <em>interessam?</em></h1><p class="sub">Escolha o que precisa combinar com seu perfil e quando uma vaga deve ficar de fora.</p>
+    <div class="campos">
+      <label class="campo" for="cargo">Cargo ou área de interesse<input id="cargo" type="text" maxlength="120" placeholder="Ex.: desenvolvimento de software"></label>
+      <fieldset><legend>Níveis aceitos</legend><div class="opcoes" id="niveis"></div></fieldset>
+      <div class="dupla">
+        <label class="campo" for="principal-stack">Stack principal <small>Ferramentas ou habilidades centrais</small><input id="principal-stack" type="text" maxlength="350" placeholder="Ex.: Java, Spring Boot"></label>
+        <label class="campo" for="secundaria-stack">Stack secundária <small>Complementares · opcional</small><input id="secundaria-stack" type="text" maxlength="350" placeholder="Ex.: React, SQL"></label>
+      </div>
+      <label class="campo" for="pular">Pular quando <small>Separe os termos por vírgula. Essas exclusões têm prioridade.</small><input id="pular" type="text" maxlength="350" placeholder="Ex.: Sênior, plantão obrigatório"></label>
+    </div><p class="erro" id="erro-vagas" role="alert"></p>
+  </section>
+  <section class="pagina" data-pagina="2" aria-labelledby="h-condicoes" hidden>
+    <h1 id="h-condicoes" tabindex="-1">Em quais <em>condições?</em></h1><p class="sub">Defina onde quer trabalhar e os requisitos que a triagem deve comparar.</p>
+    <div class="campos">
+      <fieldset><legend>Mercado de vagas</legend><div class="opcoes" id="mercado"></div></fieldset>
+      <fieldset><legend>Modelos de trabalho aceitos</legend><div class="opcoes" id="modelos"></div></fieldset>
+      <div class="dupla">
+        <label class="campo" for="ingles">Seu nível de inglês<select id="ingles"><option value="">Selecione um nível</option><option>Não falo inglês</option><option>Básico</option><option>Intermediário</option><option>Avançado</option><option>Fluente</option></select></label>
+        <label class="campo" id="campo-usd" for="usd">Pretensão internacional <span class="unidade">US$ por mês · opcional</span><input id="usd" type="number" min=".01" step=".01" inputmode="decimal" placeholder="Ex.: 3500"></label>
+      </div>
+    </div><p class="erro" id="erro-condicoes" role="alert"></p>
+  </section>
+  <section class="pagina" data-pagina="3" aria-labelledby="h-triagem" hidden>
+    <h1 id="h-triagem" tabindex="-1">Sua triagem <em>na prática.</em></h1><p class="sub">Estas vagas são fictícias. Abra um resultado para ver como as suas escolhas influenciam a ordem.</p>
+    <details class="resumo"><summary>Revisar meu perfil</summary><dl id="dados-resumo"></dl></details>
+    <div class="filtros" role="group" aria-label="Filtrar resultados da simulação" id="filtros"></div>
+    <div id="lista" class="lista" role="region" aria-label="Resultados da triagem simulada" tabindex="0"></div>
+  </section>
+  <section class="pagina fim" data-pagina="4" aria-labelledby="h-pronto" hidden>
+    <span class="pronto-icone" aria-hidden="true"><svg class="ic"><use href="#ok"/></svg></span>
+    <h1 id="h-pronto" tabindex="-1">Perfil de busca <em>configurado.</em></h1>
+    <p class="sub" id="resultado-final"></p>
+    <div id="dados-finais" class="ficha-final"></div>
+    <p class="nota-local">Este perfil fica disponível até você fechar ou recarregar a prévia.</p>
+  </section>
+  <footer class="acoes"><button type="button" id="voltar" class="link" hidden><span aria-hidden="true">←</span> Voltar</button><span class="espaco"></span><button class="principal" id="continuar" type="button"><span>Continuar</span><svg class="ic" aria-hidden="true"><use href="#seta"/></svg></button></footer>
+  <div id="aviso" class="sr" role="status" aria-live="polite"></div>
+</main></div>
+<script>{{CODIGO}}</script>
+</body></html>

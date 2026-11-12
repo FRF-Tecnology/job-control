@@ -26,14 +26,14 @@ const DECK = [
 ];
 
 const PROVEDORES = [
-  { id: 'claude', nome: 'Claude', empresa: 'Anthropic', curto: 'Claude Code', estado: 'No app', detalhe: 'Use o Claude Code já conectado no computador ou configure uma chave da Anthropic no app.',
-    metodos: [{ t: 'Claude Code', s: 'Usa a sessão da CLI no computador.', k: 'term' }, { t: 'Chave da Anthropic', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
+  { id: 'claude', nome: 'Claude', empresa: 'Anthropic', curto: 'Assinatura via Claude Code', estado: 'No app', detalhe: 'Entre no Claude Code com a conta da sua assinatura. O Applyer usa essa sessão no computador. Se preferir, conecte a API.',
+    metodos: [{ t: 'Assinatura do Claude', s: 'Conecte sua conta pelo Claude Code instalado no computador.', k: 'term' }, { t: 'Chave da Anthropic', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
   { id: 'chatgpt', nome: 'ChatGPT', empresa: 'OpenAI', curto: 'API da OpenAI', estado: 'No app', detalhe: 'Use os modelos da OpenAI com sua chave de API. A cobrança da API é separada da assinatura do ChatGPT.',
-    metodos: [{ t: 'Chave da OpenAI', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
+    metodos: [{ t: 'Assinatura via Codex · prevista', s: 'Está prevista a conexão com a conta ChatGPT usada no Codex.', k: 'term' }, { t: 'Chave da OpenAI', s: 'Disponível no app. Configuração no cofre do sistema.', k: 'chave' }] },
   { id: 'gemini', nome: 'Gemini', empresa: 'Google', curto: 'API do Gemini', estado: 'No app', detalhe: 'Conecte os modelos Gemini com uma chave de API do Google.',
-    metodos: [{ t: 'Chave do Google', s: 'Configuração no cofre do sistema.', k: 'chave' }] },
-  { id: 'grok', nome: 'Grok', empresa: 'xAI', curto: 'Integração prevista', estado: 'Previsto', detalhe: 'A integração com Grok está prevista para uma versão futura.',
-    metodos: [] },
+    metodos: [{ t: 'Assinatura Google AI · prevista', s: 'Está prevista a conexão pela conta Google com plano compatível.', k: 'term' }, { t: 'Chave do Google', s: 'Disponível no app. Configuração no cofre do sistema.', k: 'chave' }] },
+  { id: 'grok', nome: 'Grok', empresa: 'xAI', curto: 'API da xAI', estado: 'No app', detalhe: 'Use sua chave da xAI e um modelo Grok habilitado na sua conta pela conexão de API compatível com OpenAI.',
+    metodos: [{ t: 'Conta Grok · prevista', s: 'Está prevista a opção de entrar com a sua conta Grok.', k: 'term' }, { t: 'Chave da xAI', s: 'Disponível pela conexão de API compatível no app.', k: 'chave' }] },
   { id: 'openrouter', nome: 'OpenRouter', empresa: 'OpenRouter', curto: 'API compatível', estado: 'No app', detalhe: 'No app, configure o endereço de API compatível, a chave do OpenRouter e o modelo.',
     metodos: [{ t: 'Chave do OpenRouter', s: 'O uso é cobrado pelo provedor.', k: 'chave' }] },
   { id: 'local', nome: 'No seu computador', empresa: 'Modelos locais', curto: 'Modelos locais previstos', estado: 'Previsto', detalhe: 'O suporte a modelos que rodam no seu computador está previsto.',
@@ -43,7 +43,7 @@ const PROVEDORES = [
 const estado = {
   plat: 'win', menu: null,
   aba: 'hoje', triIdx: 0, fora: {}, prov: 'claude',
-  passo: 0, vagaIdx: 0, lote: VAGAS.map((_, i) => i), pipFixo: false, aprovado: false,
+  passo: 0, vagaIdx: 0, lote: VAGAS.map((_, i) => i), pipFixo: false,
 };
 
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
@@ -59,7 +59,6 @@ const ligar = (chave, v) => { for (const el of $$(`[data-liga="${chave}"]`)) tex
 const repetir = el => { if (!el) return; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; };
 
 // ---------- plataforma selecionada ----------
-const IC_OK = 'm4 12 5 5 11-11';
 const sistema = k => SISTEMAS.find(s => s.k === k) ?? SISTEMAS[1];
 function sistemaDaPessoa() {
   const ua = navigator.userAgent || '';
@@ -126,6 +125,7 @@ function desenhar() {
       classe(item, 'on', on); atributo(item, 'aria-pressed', on);
     }
   }
+  posicionarMenuFinal();
 
   // prévia do app
   const p = estado.passo, v = VAGAS[estado.vagaIdx];
@@ -174,12 +174,6 @@ function desenhar() {
   atributo(fixar, 'aria-pressed', estado.pipFixo);
   atributo(fixar, 'aria-label', estado.pipFixo ? 'Recolher a prévia do navegador' : 'Ampliar a prévia do navegador');
 
-  // deslize para aprovar
-  const deslize = $('[data-deslize]');
-  classe(deslize, 'on', estado.aprovado); atributo(deslize, 'aria-pressed', estado.aprovado);
-  escondido($('[data-deslize-espera]'), estado.aprovado); escondido($('[data-deslize-feito]'), !estado.aprovado);
-  atributo($('[data-deslize-icone]'), 'd', estado.aprovado ? IC_OK : 'M3 13h15M13 7l6 6-6 5');
-
   // conecte sua IA
   const prov = PROVEDORES.find(x => x.id === estado.prov) ?? PROVEDORES[0];
   for (const b of $$('[data-prov]')) { const on = b.dataset.prov === prov.id; classe(b, 'on', on); atributo(b, 'aria-pressed', on); }
@@ -205,6 +199,115 @@ function desenhar() {
 
 }
 
+function iniciarDeslize() {
+  const trilho = $('[data-deslize]');
+  const valor = $('.deslize-valor', trilho);
+  const guia = $('.deslize-guia', trilho);
+  const carro = $('.deslize-carro', guia);
+  const alca = $('.knob', guia);
+  const status = $('.deslize-status', trilho);
+  const icone = $('[data-deslize-icone]', trilho);
+  const reiniciar = $('[data-deslize-reiniciar]');
+  const confirmado = 'Lote aprovado na demonstração';
+  let arraste = null, quadro = 0;
+
+  function posicionar(fracao) {
+    carro.style.transform = `translate3d(${fracao * 100}%,0,0)`;
+    const passo = Math.floor(fracao * 10) * 10;
+    if (valor.valueAsNumber !== passo) valor.value = passo;
+    atributo(valor, 'aria-valuetext', fracao === 1 ? confirmado : passo + '%');
+  }
+
+  function assentar(fracao) {
+    const aprovado = fracao === 1;
+    classe(trilho, 'on', aprovado);
+    posicionar(fracao);
+    texto(status, aprovado ? confirmado : '');
+    atributo(icone, 'd', aprovado ? 'm4 12 5 5 11-11' : 'M3 13h15M13 7l6 6-6 5');
+    escondido(reiniciar, !aprovado);
+  }
+
+  function encerrar(aprovado) {
+    const id = arraste.id;
+    arraste = null;
+    cancelAnimationFrame(quadro);
+    quadro = 0;
+    if (alca.hasPointerCapture(id)) alca.releasePointerCapture(id);
+    classe(trilho, 'arrastando', false);
+    assentar(aprovado ? 1 : 0);
+  }
+
+  alca.addEventListener('pointerdown', evento => {
+    if (arraste || !evento.isPrimary || evento.button !== 0 || trilho.classList.contains('on')) return;
+    const pista = guia.getBoundingClientRect(), botao = alca.getBoundingClientRect();
+    const curso = pista.width - botao.width;
+    if (curso <= 0) return;
+    evento.preventDefault();
+    valor.focus({ preventScroll: true });
+    // Se pegar a alça durante a volta, continue do ponto que está sob o dedo.
+    const origem = Math.max(0, Math.min(1, (botao.left - pista.left) / curso));
+    arraste = { id: evento.pointerId, curso, x: evento.clientX, origem, fracao: origem, pista: trilho.getBoundingClientRect() };
+    alca.setPointerCapture(evento.pointerId);
+    classe(trilho, 'arrastando', true);
+    posicionar(origem);
+  });
+  function acompanhar(evento) {
+    if (arraste?.id !== evento.pointerId) return;
+    const { pista, curso, x, origem } = arraste;
+    if (evento.clientY < pista.top || evento.clientY > pista.bottom) return encerrar(false);
+    const delta = evento.clientX - x;
+    arraste.fracao = Math.max(0, Math.min(1, origem + delta / curso));
+    if (arraste.fracao > .5 && delta > 0) return encerrar(true);
+    if (evento.type === 'pointerup') return encerrar(false);
+    // O ponteiro pode mandar várias amostras entre pinturas. Desenhe só a mais recente.
+    if (!quadro) quadro = requestAnimationFrame(() => {
+      quadro = 0;
+      posicionar(arraste.fracao);
+    });
+  }
+  alca.addEventListener('pointermove', acompanhar);
+  alca.addEventListener('pointerup', acompanhar);
+  function cancelar(evento) {
+    if (arraste?.id === evento.pointerId) encerrar(false);
+  }
+  alca.addEventListener('pointercancel', cancelar);
+  alca.addEventListener('lostpointercapture', cancelar);
+  function interromper() { if (arraste) encerrar(false); }
+  window.addEventListener('blur', interromper);
+  window.addEventListener('resize', interromper);
+  valor.addEventListener('keydown', evento => {
+    if (arraste) {
+      evento.preventDefault();
+      if (evento.key === 'Escape') encerrar(false);
+    }
+  });
+  valor.addEventListener('input', () => {
+    const fracao = valor.valueAsNumber / 100;
+    assentar(fracao > .5 ? 1 : fracao);
+  });
+  reiniciar.addEventListener('click', () => {
+    assentar(0);
+    valor.focus({ preventScroll: true });
+  });
+}
+
+function posicionarMenuFinal() {
+  const grupo = estado.menu;
+  if (!grupo || !grupo.closest('.final')) return;
+  const menu = $('[data-bs-menu]', grupo);
+  if (!matchMedia('(max-height:550px)').matches) {
+    classe(menu, 'cima', true);
+    return;
+  }
+  const botao = grupo.getBoundingClientRect();
+  const limiteTopo = Math.max(0, $('.topo').getBoundingClientRect().bottom);
+  // O menu fica a 14px do botão e a pelo menos 8px do cabeçalho ou da borda da tela.
+  const acima = botao.top - limiteTopo - 22;
+  const abaixo = document.documentElement.clientHeight - botao.bottom - 22;
+  classe(menu, 'cima', acima >= abaixo);
+  menu.style.setProperty('--espaco-menu-final', Math.floor(Math.max(0, acima, abaixo)) + 'px');
+}
+
 function fecharMenu(restaurarFoco = false) {
   const menu = estado.menu;
   if (!menu) return;
@@ -213,17 +316,125 @@ function fecharMenu(restaurarFoco = false) {
   if (restaurarFoco) $('[data-bs-seta]', menu).focus();
 }
 
+// O clique nativo continua atendendo ao toque e ao teclado. Com mouse,
+// a primeira entrada já abre a lista e dá tempo de cruzar até o painel.
+function abrirComMouse(grupo, gatilho, aberto, abrir, fechar) {
+  let relogio;
+  let abertoPorHover = false;
+  const cancelarSaida = () => clearTimeout(relogio);
+  gatilho.addEventListener('pointerenter', evento => {
+    if (evento.pointerType !== 'mouse' || !matchMedia('(any-hover: hover)').matches) return;
+    cancelarSaida();
+    if (!aberto()) {
+      abertoPorHover = true;
+      abrir();
+    }
+  });
+  gatilho.addEventListener('click', evento => {
+    if (evento.detail > 0 && abertoPorHover && aberto()) {
+      evento.preventDefault();
+      evento.stopPropagation();
+    }
+    abertoPorHover = false;
+  });
+  grupo.addEventListener('pointerenter', cancelarSaida);
+  grupo.addEventListener('pointerleave', evento => {
+    if (evento.pointerType !== 'mouse') return;
+    cancelarSaida();
+    relogio = setTimeout(() => {
+      if (grupo.querySelector(':focus-visible')) return;
+      if (aberto()) fechar();
+      abertoPorHover = false;
+    }, 220);
+  });
+}
+
+let quadroDeRolagem = 0;
+
+function interromperRolagem() {
+  if (!quadroDeRolagem) return;
+  cancelAnimationFrame(quadroDeRolagem);
+  quadroDeRolagem = 0;
+}
+
+// Só os deslocamentos iniciados por um clique passam por aqui. Roda e toque continuam nativos.
+function navegarAte(destino, foco, { apenasSeOculto = false, aoChegar } = {}) {
+  interromperRolagem();
+  function chegar() {
+    aoChegar?.();
+    if (!foco.matches('button, summary, [tabindex]')) foco.tabIndex = -1;
+    foco.focus({ preventScroll: true });
+  }
+
+  const raiz = document.documentElement;
+  const margem = parseFloat(getComputedStyle(raiz).scrollPaddingTop) || 0;
+  const caixa = destino.getBoundingClientRect();
+  const altura = raiz.clientHeight;
+  const inicio = window.scrollY;
+  let deslocamento = caixa.top - margem;
+  if (apenasSeOculto && deslocamento >= 0) {
+    deslocamento = Math.max(0, caixa.bottom - altura + 12);
+  }
+  // A barra de abas do celular tem seu próprio eixo horizontal.
+  const barra = foco.closest('.app-lado');
+  const esquerda = barra?.scrollLeft || 0;
+  let lateral = 0;
+  if (barra) {
+    const item = foco.getBoundingClientRect();
+    deslocamento = Math.max(deslocamento, item.bottom - altura + 12);
+    const faixa = barra.getBoundingClientRect();
+    if (barra.scrollWidth > barra.clientWidth && (item.left < faixa.left || item.right > faixa.right)) {
+      const centro = esquerda + item.left - faixa.left + (item.width - faixa.width) / 2;
+      lateral = Math.max(0, Math.min(centro, barra.scrollWidth - barra.clientWidth)) - esquerda;
+    }
+  }
+
+  const fim = Math.max(0, Math.min(inicio + deslocamento, raiz.scrollHeight - altura));
+  const distancia = Math.max(Math.abs(fim - inicio), Math.abs(lateral));
+  if (distancia < 1) return chegar();
+  const telas = distancia / Math.max(1, altura);
+  const duracao = Math.min(1420, 320 + 320 * Math.sqrt(telas));
+  const tempo = matchMedia('(prefers-reduced-motion: reduce)').matches ? duracao * .7 : duracao;
+  let partida;
+  function avancar(agora) {
+    partida ??= agora;
+    const t = Math.min(1, Math.max(0, (agora - partida) / tempo));
+    const progresso = t * t * (3 - 2 * t);
+    // A geometria já foi medida. Cada pintura só atualiza as posições de rolagem.
+    if (fim !== inicio) window.scrollTo({ top: inicio + (fim - inicio) * progresso, behavior: 'instant' });
+    if (lateral) barra.scrollTo({ left: esquerda + lateral * progresso, behavior: 'instant' });
+    if (t < 1) quadroDeRolagem = requestAnimationFrame(avancar);
+    else {
+      quadroDeRolagem = 0;
+      chegar();
+    }
+  }
+  quadroDeRolagem = requestAnimationFrame(avancar);
+}
+
 function aoClicar(ev) {
   const alvo = sel => ev.target.closest(sel);
   let el;
+  const link = alvo('a[href^="#"]');
+  if (ev.defaultPrevented || ev.button !== 0) return;
+  if (link && (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || link.target === '_blank')) return;
   if (estado.menu && !estado.menu.contains(ev.target)) fecharMenu();
-  if ((el = alvo('a[href^="#faq-r"]'))) {
-    const pergunta = document.getElementById(el.hash.slice(1));
-    if (pergunta) pergunta.open = true;
-    return;
+  if (link) {
+    const destino = document.getElementById(link.hash.slice(1));
+    if (!destino) return;
+    ev.preventDefault();
+    if (location.hash !== link.hash) history.pushState(null, '', link.hash);
+    if (!link.hasAttribute('data-ir')) {
+      if (destino.matches('details')) {
+        return navegarAte(destino, $('summary', destino), { aoChegar: () => { destino.open = true; } });
+      }
+      const foco = destino.matches('main') ? destino : $('summary, h1, h2', destino) || destino;
+      return navegarAte(destino, foco);
+    }
   }
   if ((el = alvo('[data-bs-seta]'))) {
     const bs = el.closest('[data-bs]');
+    $('.nav-explorar').open = false;
     estado.menu = estado.menu === bs ? null : bs;
     return desenhar();
   }
@@ -233,16 +444,20 @@ function aoClicar(ev) {
   }
   if ((el = alvo('[data-aba]'))) { estado.aba = el.dataset.aba; return desenhar(); }
   if ((el = alvo('[data-ir]'))) {
-    estado.aba = el.dataset.ir;
-    desenhar();
-    return $(`[data-aba="${estado.aba}"]`).focus();
+    const aba = $(`[data-aba="${el.dataset.ir}"]`);
+    const selecionar = () => { estado.aba = el.dataset.ir; desenhar(); };
+    // Trocar a tela aqui alteraria a altura de toda a página acima do mapa.
+    if (el.closest('.final')) return navegarAte($('.app-janela'), aba, { aoChegar: selecionar });
+    selecionar();
+    return navegarAte(aba, aba, { apenasSeOculto: true });
   }
   if (alvo('[data-aprovar]')) {
     const lote = VAGAS.map((_, i) => i).filter(i => !estado.fora[i]);
     if (!lote.length) return;
     Object.assign(estado, { aba: 'aovivo', passo: 0, lote, vagaIdx: lote[0] });
     desenhar();
-    return $('[data-avancar]').focus();
+    const avancar = $('[data-avancar]');
+    return navegarAte(avancar, avancar, { apenasSeOculto: true });
   }
   if (alvo('[data-avancar]')) {
     estado.passo = (estado.passo + 1) % PASSOS.length;
@@ -255,18 +470,87 @@ function aoClicar(ev) {
   if ((el = alvo('[data-triagem]'))) { estado.triIdx = (estado.triIdx + (el.dataset.triagem === 'anterior' ? DECK.length - 1 : 1)) % DECK.length; desenhar(); return repetir($('[data-vaga-cartao]')); }
   if ((el = alvo('[data-chave]'))) { const i = Number(el.dataset.chave); estado.fora[i] = !estado.fora[i]; return desenhar(); }
   if (alvo('[data-pip-fixar]')) { estado.pipFixo = !estado.pipFixo; return desenhar(); }
-  if (alvo('[data-deslize]')) { estado.aprovado = !estado.aprovado; return desenhar(); }
   if ((el = alvo('[data-prov]'))) { if (estado.prov !== el.dataset.prov) { estado.prov = el.dataset.prov; desenhar(); } return; }
 }
 
+function acompanharRolagem() {
+  const topo = $('.topo');
+  const marca = $('.marca', topo);
+  const nav = $('.links', topo);
+  const explorar = $('.nav-explorar', topo);
+  function medir() {
+    topo.style.setProperty('--largura-marca', (marca.offsetWidth + 20) + 'px');
+    topo.style.setProperty('--marca-x', ((topo.clientWidth - marca.offsetWidth) / 2 - marca.offsetLeft) + 'px');
+    topo.style.setProperty('--marca-y', ((46 - marca.offsetHeight) / 2 - marca.offsetTop) + 'px');
+  }
+  medir();
+  if ('ResizeObserver' in window) new ResizeObserver(medir).observe(topo);
+  else window.addEventListener('resize', medir);
+
+  function recolher(valor) {
+    if (topo.classList.contains('recolhido') === valor) return;
+    if (valor) explorar.open = false;
+    nav.inert = valor;
+    topo.classList.toggle('recolhido', valor);
+  }
+  topo.addEventListener('focusin', () => recolher(false));
+  let referencia = Math.max(0, window.scrollY);
+  let agendado = false;
+  function atualizar() {
+    agendado = false;
+    const y = Math.max(0, window.scrollY);
+    const delta = y - referencia;
+    if (y < 60 || delta < -8) recolher(false);
+    else if (y > 110 && delta > 14 && !topo.querySelector(':focus-visible')) recolher(true);
+    else if (Math.abs(delta) < 15) return;
+    referencia = y;
+  }
+  window.addEventListener('scroll', () => {
+    if (agendado) return;
+    agendado = true;
+    requestAnimationFrame(atualizar);
+  }, { passive:true });
+}
+
 function iniciar() {
+  iniciarDeslize();
   estado.plat = sistemaDaPessoa();
+  for (const evento of ['pointerdown', 'touchstart', 'wheel', 'keydown']) {
+    window.addEventListener(evento, interromperRolagem, { capture: true, passive: true });
+  }
+  for (const evento of ['popstate', 'hashchange', 'pagehide', 'blur']) {
+    window.addEventListener(evento, interromperRolagem);
+  }
+  window.addEventListener('scroll', posicionarMenuFinal, { passive:true });
+  window.addEventListener('resize', posicionarMenuFinal);
   document.addEventListener('click', aoClicar);
+  const explorar = $('.nav-explorar');
+  abrirComMouse(explorar, $('summary', explorar), () => explorar.open,
+    () => { fecharMenu(); explorar.open = true; },
+    () => { explorar.open = false; });
+  for (const bs of $$('[data-bs]')) {
+    abrirComMouse(bs, $('[data-bs-seta]', bs), () => estado.menu === bs,
+      () => { explorar.open = false; estado.menu = bs; desenhar(); },
+      () => fecharMenu());
+  }
+  document.addEventListener('click', evento => {
+    if (!explorar.contains(evento.target) || evento.target.closest('a')) explorar.open = false;
+  });
+  explorar.addEventListener('focusout', evento => {
+    if (!explorar.contains(evento.relatedTarget)) explorar.open = false;
+  });
+  document.addEventListener('keydown', evento => {
+    if (evento.key === 'Escape' && explorar.open) {
+      const devolverFoco = explorar.contains(document.activeElement);
+      explorar.open = false;
+      if (devolverFoco) $('summary', explorar).focus();
+    }
+  });
   document.addEventListener('focusin', ev => {
     if (estado.menu && !estado.menu.contains(ev.target)) fecharMenu();
   });
   document.addEventListener('keydown', ev => {
-    if (ev.key === 'Escape' && estado.menu) fecharMenu(true);
+    if (ev.key === 'Escape' && estado.menu) fecharMenu(estado.menu.contains(document.activeElement));
   });
   const abrirPergunta = () => {
     const pergunta = document.getElementById(location.hash.slice(1));
@@ -276,5 +560,102 @@ function iniciar() {
   abrirPergunta();
   desenhar();
   document.documentElement.classList.add('js');
+  acompanharRolagem();
 }
 iniciar();
+
+// O gesto responde à interação; a animação ambiente só roda nos cartões visíveis.
+function iniciarCenasDaRotina() {
+  const secao = $('#como');
+  const pausa = $('[data-pausar-rotina]', secao);
+  const cartoes = $$('.hora', secao);
+  pausa.addEventListener('click', () => {
+    const pausada = secao.classList.toggle('rotina-pausada');
+    texto(pausa, pausada ? 'Retomar animações' : 'Pausar animações');
+  });
+  const acompanharAba = () => secao.classList.toggle('rotina-sem-visibilidade', document.hidden);
+  acompanharAba();
+  document.addEventListener('visibilitychange', acompanharAba);
+  if (!('IntersectionObserver' in window)) {
+    for (const cartao of cartoes) cartao.classList.add('em-tela');
+    return;
+  }
+  const cenas = new IntersectionObserver(entradas => {
+    for (const entrada of entradas) {
+      entrada.target.classList.toggle('em-tela', entrada.isIntersecting);
+      if (entrada.isIntersecting) entrada.target.classList.add('em-vista');
+    }
+  });
+  for (const cartao of cartoes) {
+    cartao.classList.add('prepara-luz');
+    cenas.observe(cartao);
+  }
+}
+iniciarCenasDaRotina();
+
+function iniciarCenarioFinal() {
+  const secao = $('.final');
+  const pausa = $('[data-pausar-final]', secao);
+  const movimentoReduzido = matchMedia('(prefers-reduced-motion: reduce)');
+  let area = null, quadro = 0, toque = 0;
+  let olharX = 0, olharY = 0;
+
+  function repousar() {
+    cancelAnimationFrame(quadro);
+    quadro = 0;
+    secao.style.removeProperty('--olhar-x');
+    secao.style.removeProperty('--olhar-y');
+    secao.classList.remove('final-interagindo');
+    area = null;
+  }
+
+  pausa.addEventListener('click', () => {
+    const pausada = secao.classList.toggle('final-pausada');
+    const descricao = pausada ? 'Retomar animação do cenário' : 'Pausar animação do cenário';
+    atributo(pausa, 'aria-label', descricao);
+    atributo(pausa, 'title', descricao);
+    repousar();
+  });
+
+  secao.addEventListener('pointermove', evento => {
+    if (evento.pointerType !== 'mouse' || secao.classList.contains('final-pausada')) return;
+    secao.classList.add('final-interagindo');
+    if (movimentoReduzido.matches) return;
+    if (!area) area = secao.getBoundingClientRect();
+    olharX = ((evento.clientX - area.left) / area.width - .5) * 8;
+    olharY = ((evento.clientY - area.top) / area.height - .5) * 6;
+    if (quadro) return;
+    quadro = requestAnimationFrame(() => {
+      quadro = 0;
+      secao.style.setProperty('--olhar-x', olharX + 'px');
+      secao.style.setProperty('--olhar-y', olharY + 'px');
+    });
+  }, { passive: true });
+  secao.addEventListener('pointerleave', repousar);
+  secao.addEventListener('pointerdown', evento => {
+    if (evento.pointerType === 'mouse' || secao.classList.contains('final-pausada')) return;
+    clearTimeout(toque);
+    secao.classList.add('final-toque');
+    toque = setTimeout(() => secao.classList.remove('final-toque'), 1000);
+  }, { passive: true });
+  movimentoReduzido.addEventListener('change', repousar);
+  window.addEventListener('resize', repousar);
+  window.addEventListener('scroll', () => { area = null; }, { passive: true });
+
+  const acompanharAba = () => {
+    secao.classList.toggle('final-sem-visibilidade', document.hidden);
+    if (document.hidden) repousar();
+  };
+  acompanharAba();
+  document.addEventListener('visibilitychange', acompanharAba);
+  if ('IntersectionObserver' in window) {
+    const observador = new IntersectionObserver(entradas => {
+      secao.classList.toggle('em-tela', entradas[0].isIntersecting);
+      if (!entradas[0].isIntersecting) repousar();
+    });
+    observador.observe(secao);
+  } else {
+    secao.classList.add('em-tela');
+  }
+}
+iniciarCenarioFinal();
