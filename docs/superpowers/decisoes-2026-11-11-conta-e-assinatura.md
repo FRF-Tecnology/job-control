@@ -47,6 +47,6 @@ Decisões que o executor tomou no lugar do Vinicius enquanto executava os planos
 - Final: parked — tooltip dos botões travados usa a frase sem-internet durante "verificando" — Ruling: aceito, só texto
 - Final: parked — GET /assinatura renova a licença a cada chamada sem intervalo mínimo — Ruling: deferido; só a tela de assinatura chama
 
-## Pendente de decisão do Vinicius
+## Pendente de decisão do Vinicius (resolvido)
 
-- Rascunho de nota do Detalhe (A17) não é apagado depois de um salvamento normal; um rascunho que sobrou de um salvamento automático que falhou pode sobrescrever notas salvas. Correção recomendada: apagar o rascunho sempre que um salvamento der certo (`esquecerRascunho()` em todo `salvarNotas` que volta true).
+- Corrigido em de55363: Rascunho de nota do Detalhe (A17) não é apagado depois de um salvamento normal; um rascunho que sobrou de um salvamento automático que falhou pode sobrescrever notas salvas. Correção recomendada: apagar o rascunho sempre que um salvamento der certo (`esquecerRascunho()` em todo `salvarNotas` que volta true).

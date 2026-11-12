@@ -91,3 +91,16 @@
 - [ ] **Step 1 [Vini]:** Decidir a data; trocar no `.env` as chaves do Stripe de teste pelas de produção e criar o webhook de produção (Claude refaz o Step 2 da Task 6 no modo produção, sem tocar em chaves); emissor em produção.
 - [ ] **Step 2:** Termos e privacidade revisados pelo advogado → `APPLYER_TERMOS_VERSAO=1`; build do app de produção com as três variáveis; marcar cortesia (`update applyer.usuarios set cortesia = true, cortesia_motivo = 'testador' where email = …`) para o Vinicius e os testadores que ele listar.
 - [ ] **Step 3:** Um pagamento real pequeno do próprio Vinicius, com nota emitida, e o estorno pelo painel (**[Vini]**).
+
+## Notas da execução (12/11/2026)
+
+O que surgiu ao executar os planos da nuvem e do app e muda esta etapa:
+
+- **Proxy e IP real:** no Coolify, definir `APPLYER_PROXY_CONFIAVEL` com as redes do Traefik/Coolify e `APPLYER_CONFIAR_CLOUDFLARE=true` (só com a Cloudflare na frente e a origem aceitando apenas IPs da Cloudflare). Sem isso, todos dividem o mesmo limite de tentativas.
+- **Variáveis novas da nuvem:** `APPLYER_ENDERECO_PUBLICO`, `APPLYER_TERMOS_VERSAO` (`0-rascunho` até a revisão do advogado), `NOTAS_PROVEDOR`/`NOTAS_CHAVE`/`NOTAS_EMPRESA`/`NOTAS_SERVICO`. `APPLYER_SEGREDO_CODIGOS` precisa de pelo menos 32 bytes.
+- **Stripe:** o endpoint do webhook deve usar a versão de API `2026-10-28.endive`. Não usar Payment Links (a nuvem confia no `client_reference_id`).
+- **Build do app (virada, Task 8):** a conta só liga quando o build traz `APPLYER_NUVEM_URL` e `APPLYER_NUVEM_PUB` (e `APPLYER_GOOGLE_CLIENT_ID` para o botão do Google). Uma só das duas = erro de build ("nuvem pela metade"). A **CLI e o MCP** precisam ser gerados com as mesmas variáveis; uma CLI/MCP sem a chave numa instalação que já tem `licenca.json` fica travada (`Abra o Applyer para renovar o acesso.`). No CI, as três variáveis entram como secrets nos jobs de pacote só na virada.
+- **Imagem:** publicar e fixar no Coolify a tag por sha (`ghcr.io/frf-tecnology/applyer-nuvem:<sha>`), não a tag móvel `:reescrita-go`.
+- **NFE.io:** validar no sandbox os nomes dos campos (`corpoNFEio`), o código IBGE da cidade, o número do endereço, o PDF assíncrono e a referência externa contra nota em dobro.
+- **Decisões tomadas na execução:** `docs/superpowers/decisoes-2026-11-11-conta-e-assinatura.md`.
+- **Guia para o Vini:** o documento "Applyer: colocar a conta e a assinatura no ar" (claude.ai) resume as 7 etapas e o que cada um faz.
