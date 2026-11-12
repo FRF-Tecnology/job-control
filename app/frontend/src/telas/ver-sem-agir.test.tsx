@@ -91,4 +91,29 @@ describe('Nota da vaga com a trava (A17)', () => {
     expect(sessionStorage.getItem('applyer:nota:a1')).toBeNull();
     expect(screen.queryByText('Sua nota fica guardada aqui e é salva quando o acesso voltar')).toBeNull();
   });
+
+  it('rascunho que sobrou de um salvamento falho não sobrescreve a nota nova', async () => {
+    sessionStorage.setItem('applyer:nota:a1', 'rascunho velho');
+    const falha = vi.fn(async () => { throw new Error('rede caiu'); });
+    const livre = (api: App['api'], notasSalvas: string) => ({ ...appFalso(true, { api }), estado: { ...appFalso(true).estado, vagas: [{ ...VAGA, notas: notasSalvas }] } });
+    const r = render(<Contexto.Provider value={appFalso(false)}><Detalhe id="a1" fechar={() => {}} /></Contexto.Provider>);
+    expect(notas().value).toBe('rascunho velho');
+    // O acesso volta, mas o salvamento automático falha: o rascunho fica.
+    await act(async () => { r.rerender(<Contexto.Provider value={livre(falha, 'antes')}><Detalhe id="a1" fechar={() => {}} /></Contexto.Provider>); });
+    expect(falha).toHaveBeenCalled();
+    expect(sessionStorage.getItem('applyer:nota:a1')).toBe('rascunho velho');
+    // Edição normal com acesso livre, salva no blur.
+    const ok = vi.fn(async () => ({}));
+    await act(async () => { r.rerender(<Contexto.Provider value={livre(ok, 'antes')}><Detalhe id="a1" fechar={() => {}} /></Contexto.Provider>); });
+    fireEvent.change(notas(), { target: { value: 'nota nova' } });
+    await act(async () => { fireEvent.blur(notas()); });
+    expect(ok).toHaveBeenCalledWith('/api/v1/vagas/a1', 'PATCH', { notas: 'nota nova', notasAntes: 'antes' });
+    expect(sessionStorage.getItem('applyer:nota:a1')).toBeNull();
+    // Reabrir: a nota nova aparece e nada é sobrescrito.
+    r.unmount();
+    const outro = vi.fn(async () => ({}));
+    await act(async () => { render(<Contexto.Provider value={livre(outro, 'nota nova')}><Detalhe id="a1" fechar={() => {}} /></Contexto.Provider>); });
+    expect(notas().value).toBe('nota nova');
+    expect(outro).not.toHaveBeenCalled();
+  });
 });

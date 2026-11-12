@@ -25,10 +25,12 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
   useEffect(() => { primeiroBotao.current?.focus(); }, []);
   useEffect(() => {
     if (trava.travado || rascunho == null) return;
-    salvarRef.current(rascunho).then(ok => { if (ok) esquecerRascunho(); });
+    if (rascunho === (v?.notas ?? '')) { esquecerRascunho(); return; } // já é o salvo: nada a guardar
+    salvarRef.current(rascunho);
   }, [trava.travado]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!v) return null;
 
+  const rascunhoAtivo = rascunho != null && rascunho !== (v.notas ?? '') ? rascunho : null; // rascunho igual ao salvo não vale
   const eventos = app.estado.eventos.filter((e: any) => e.vagaId === id).sort((a: any, b: any) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
   const caminho = `/api/v1/vagas/${encode(id)}`;
 
@@ -38,12 +40,13 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
   };
 
   const salvarNotas = async (minha: string): Promise<boolean> => {
-    if ((v.notas ?? '') === minha) return true;
+    if ((v.notas ?? '') === minha) { esquecerRascunho(); return true; }
     try {
       await app.api(caminho, 'PATCH', { notas: minha, notasAntes: v.notas ?? '' });
       app.aviso('Notas salvas');
       app.limpar();
       await app.recarregar();
+      esquecerRascunho();
       return true;
     } catch (e) {
       if (!/mudaram/.test((e as Error).message)) { app.aviso((e as Error).message, true); return false; }
@@ -52,7 +55,9 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
     const atual = (await app.api('/api/v1/estado')).vagas.find((x: any) => x.id === id)?.notas ?? '';
     const juntas = await app.perguntar({ titulo: 'As notas mudaram enquanto você editava', texto: 'Juntei as duas versões. Ajuste e salve.', campo: 'Notas', valor: `${atual}\n\n${minha}`.trim(), multilinha: true, confirmar: 'Salvar notas' });
     if (juntas == null) { app.aviso('Suas notas não foram salvas', true); return false; }
-    return app.agir(() => app.api(caminho, 'PATCH', { notas: juntas, notasAntes: atual }), 'Notas salvas');
+    const salvou = await app.agir(() => app.api(caminho, 'PATCH', { notas: juntas, notasAntes: atual }), 'Notas salvas');
+    if (salvou) esquecerRascunho();
+    return salvou;
   };
   salvarRef.current = salvarNotas;
 
@@ -96,7 +101,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
       <dl>{dados.map(([k, val]) => <div key={k} style={{ display: 'contents' }}><dt>{k}</dt><dd>{val}</dd></div>)}</dl>
       <label className="campo"><span>Notas</span>
         {/* Recomeça do salvo quando as notas mudam por fora (com nada por salvar, a tela recarrega). */}
-        <textarea key={v.notas ?? ''} id="notas-vaga" placeholder="Anotações: recrutador, dúvidas, próximos passos…" defaultValue={rascunho ?? v.notas ?? ''}
+        <textarea key={v.notas ?? ''} id="notas-vaga" placeholder="Anotações: recrutador, dúvidas, próximos passos…" defaultValue={rascunhoAtivo ?? v.notas ?? ''}
           aria-describedby={trava.travado ? 'notas-rascunho' : undefined}
           onChange={ev => { if (trava.travado) guardarRascunho(ev.target.value); }}
           onBlur={ev => { if (!trava.travado) salvarNotas(ev.target.value); }} />
