@@ -44,12 +44,13 @@ func puloDaBusca(e dominio.Estado, v Objeto) bool {
 }
 
 type balancoBusca struct {
-	Encontradas int            `json:"encontradas"`
-	Novas       int            `json:"novas"`
-	Grupos      map[string]int `json:"grupos"`
-	Puladas     int            `json:"puladas"`
-	Pendentes   int            `json:"pendentes"`
-	Avisos      []string       `json:"avisos"`
+	perfilBuscaID string
+	Encontradas   int            `json:"encontradas"`
+	Novas         int            `json:"novas"`
+	Grupos        map[string]int `json:"grupos"`
+	Puladas       int            `json:"puladas"`
+	Pendentes     int            `json:"pendentes"`
+	Avisos        []string       `json:"avisos"`
 }
 
 func aguardandoTriagem(v Objeto) Objeto {
@@ -66,17 +67,28 @@ func aguardandoTriagem(v Objeto) Objeto {
 func (a *API) prepararBusca(ctx context.Context, coletadas []Objeto, assinatura string, r *balancoBusca) ([]Objeto, error) {
 	var lote []Objeto
 	err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
+		if err := conferirPerfilBusca(e, r.perfilBuscaID); err != nil {
+			return e, err
+		}
 		if assinaturaDeBusca(e.Perfil) != assinatura {
 			return e, falha(409, "o perfil mudou; inicie outra busca")
 		}
-		ids := make(map[string]bool, len(e.Vagas))
+		ativo := e.PerfilBuscaAtivo()
+		existentes := make([]Objeto, 0, len(e.Vagas))
 		publicadas := make(map[string]Objeto, len(coletadas))
 		for _, v := range coletadas {
 			publicadas[dominio.Texto(v["id"])] = v
 		}
 		for i, v := range e.Vagas {
 			id := dominio.Texto(v["id"])
-			ids[id] = true
+			if dominio.DonoDaBusca(v) != ativo {
+				// A lista do dia e o acompanhamento são comuns aos perfis.
+				if v["etapa"] != "descoberta" && v["etapa"] != "pulada" {
+					existentes = append(existentes, v)
+				}
+				continue
+			}
+			existentes = append(existentes, v)
 			// Uma vaga importada por outros caminhos pode conter anotações particulares.
 			// Só entra na rodada se a fonte voltou a publicar seu anúncio público.
 			reencontrada := false
@@ -86,6 +98,7 @@ func (a *API) prepararBusca(ctx context.Context, coletadas []Objeto, assinatura 
 					continue
 				}
 				v = maps.Clone(v)
+				v["perfilBuscaId"] = ativo
 				for _, k := range []string{"fonteBusca", "fonteURL", "descricao", "expiraEm", "nivel", "modelo", "mercado", "categorias", "local", "contrato", "periodoSalario", "moeda", "salarioMin", "salarioMax", "salarioUSDMin", "salarioUSDMax"} {
 					if valor, ok := publica[k]; ok {
 						v[k] = valor
@@ -126,12 +139,16 @@ func (a *API) prepararBusca(ctx context.Context, coletadas []Objeto, assinatura 
 				break
 			}
 			id := dominio.Texto(dados["id"])
-			if ids[id] {
+			dados = maps.Clone(dados)
+			dados["anuncioId"], dados["perfilBuscaId"] = id, ativo
+			if ativo != dominio.PerfilOriginal {
+				dados["id"] = ativo + "-" + id
+			}
+			if dominio.AcharDuplicata(existentes, dados) != nil || dominio.AnuncioReservado(e, dados) != nil {
 				continue
 			}
-			dados = maps.Clone(dados)
 			dados["triagemBusca"] = "pendente"
-			novo, v, err := dominio.AdicionarVaga(e, dados, a.ctx(e, "claude"), false)
+			novo, v, err := dominio.AdicionarVaga(e, dados, a.ctx(e, "claude"), true)
 			if err != nil {
 				var dup *dominio.ErroDuplicata
 				var invalida *dominio.ErroValidacao
@@ -141,7 +158,7 @@ func (a *API) prepararBusca(ctx context.Context, coletadas []Objeto, assinatura 
 				return e, err
 			}
 			e = novo
-			ids[id] = true
+			existentes = append(existentes, v)
 			lote = append(lote, v)
 			r.Novas++
 		}
@@ -153,6 +170,9 @@ func (a *API) prepararBusca(ctx context.Context, coletadas []Objeto, assinatura 
 func (a *API) salvarParecer(ctx context.Context, original Objeto, assinatura string, nota triagem.Resultado) (bool, error) {
 	aplicado := false
 	err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
+		if err := conferirPerfilBusca(e, dominio.DonoDaBusca(original)); err != nil {
+			return e, err
+		}
 		if assinaturaDeBusca(e.Perfil) != assinatura {
 			return e, falha(409, "o perfil mudou durante a triagem; busque novamente")
 		}
@@ -225,13 +245,16 @@ func (a *API) salvarParecer(ctx context.Context, original Objeto, assinatura str
 	return aplicado, err
 }
 
-func (a *API) buscarETriar(ctx context.Context) (Resposta, error) {
+func (a *API) buscarETriar(ctx context.Context, esperado string) (Resposta, error) {
 	if !a.buscaEmCurso.TryLock() {
 		return Resposta{}, falha(409, "já existe uma busca em andamento")
 	}
 	defer a.buscaEmCurso.Unlock()
 	e, err := a.arm.Carregar(ctx)
 	if err != nil {
+		return Resposta{}, err
+	}
+	if err := conferirPerfilBusca(e, esperado); err != nil {
 		return Resposta{}, err
 	}
 	if strings.TrimSpace(dominio.Texto(e.Perfil["cargo"])) == "" {
@@ -254,7 +277,7 @@ func (a *API) buscarETriar(ctx context.Context) (Resposta, error) {
 	if ctx.Err() != nil {
 		return Resposta{}, ctx.Err()
 	}
-	r := balancoBusca{Encontradas: len(coleta.Vagas), Grupos: map[string]int{"A": 0, "B": 0, "C": 0}, Avisos: append([]string{}, coleta.Avisos...)}
+	r := balancoBusca{perfilBuscaID: e.PerfilBuscaAtivo(), Encontradas: len(coleta.Vagas), Grupos: map[string]int{"A": 0, "B": 0, "C": 0}, Avisos: append([]string{}, coleta.Avisos...)}
 	assinatura := assinaturaDeBusca(e.Perfil)
 	lote, err := a.prepararBusca(ctx, coleta.Vagas, assinatura, &r)
 	if err != nil {
@@ -294,6 +317,12 @@ func (a *API) buscarETriar(ctx context.Context) (Resposta, error) {
 		r.Avisos = append(r.Avisos, "Uma ou mais vagas ficaram pendentes porque a IA não devolveu uma avaliação válida.")
 	}
 	err = a.gravar(ctx, func(estado dominio.Estado) (dominio.Estado, error) {
+		if err := conferirPerfilBusca(estado, r.perfilBuscaID); err != nil {
+			return estado, err
+		}
+		if assinaturaDeBusca(estado.Perfil) != assinatura {
+			return estado, falha(409, "o perfil mudou durante a busca")
+		}
 		numero := 0
 		for _, rodada := range estado.Rodadas {
 			if n, ok := dominio.NumeroDe(rodada["n"]); ok && int(n) > numero {
@@ -312,7 +341,7 @@ func (a *API) buscarETriar(ctx context.Context) (Resposta, error) {
 		if len(r.Avisos) > 0 {
 			resumo += ". " + strings.Join(r.Avisos, " ")
 		}
-		estado.Rodadas = append(estado.Rodadas, Objeto{"n": numero + 1, "data": a.hoje(), "fontes": fontes, "encontradas": r.Encontradas, "puladas": r.Puladas, "resumo": resumo})
+		estado.Rodadas = append(estado.Rodadas, Objeto{"n": numero + 1, "perfilBuscaId": r.perfilBuscaID, "data": a.hoje(), "fontes": fontes, "encontradas": r.Encontradas, "puladas": r.Puladas, "resumo": resumo})
 		return estado, nil
 	})
 	if err != nil {

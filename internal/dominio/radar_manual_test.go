@@ -5,6 +5,34 @@ import (
 	"time"
 )
 
+func TestListaReservaAprovadaSemDisputarComEnvio(t *testing.T) {
+	agora := time.Now()
+	e := comVaga(t, Estado{}, "manual", "linkedin", linkLI("2"), true)
+	e, c := aprovada(t, e, "manual", agora, nil)
+	emEnvio, _, err := IniciarEnvio(e, c.ID, c.Versao, agora, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := IniciarManualRadar(emEnvio, "manual", nil, agora, eu); err == nil {
+		t.Fatal("tomou um envio em curso")
+	}
+	reservado, v, err := IniciarManualRadar(e, "manual", nil, agora, eu)
+	if err != nil {
+		t.Fatalf("não reservou a aprovada: %v", err)
+	}
+	lido := estadoDe(t, reservado, c.ID)
+	if v["aplicacaoManual"] != true || lido.Aprovacao != nil || lido.Estado != CandBloqueada || lido.Impressao != c.Impressao {
+		t.Fatalf("pacote após reserva %v", lido)
+	}
+	if _, _, err := IniciarEnvio(reservado, c.ID, c.Versao, agora, nil); err == nil {
+		t.Fatal("executor tomou o pacote reservado")
+	}
+	final, _, err := ConfirmarManualRadar(reservado, "manual", agora, eu)
+	if err != nil || len(final.Candidaturas) != 1 || estadoDe(t, final, c.ID).Estado != CandEnviada {
+		t.Fatalf("confirmação %v", err)
+	}
+}
+
 func TestRadarManualExigePessoaEConfirmacao(t *testing.T) {
 	e := comVaga(t, Estado{}, "manual", "outra", "https://vagas.example/teste", false)
 	agora := time.Now()

@@ -94,8 +94,10 @@ func TestGoldenDaApiNode(t *testing.T) {
 		}
 		got := normal(r.Corpo)
 		if c.Caminho == Prefixo+"/estado" && c.Metodo == "GET" {
-			// Campo da janela Go; o retrato fixo do Node não tinha onboarding.
+			// Recursos da janela Go posteriores ao retrato fixo do Node.
 			delete(got.(map[string]any), "onboardingConcluido")
+			delete(got.(map[string]any), "perfilBuscaAtivo")
+			delete(got.(map[string]any), "perfisBusca")
 		}
 		if !reflect.DeepEqual(got, c.Resposta.Corpo) {
 			t.Fatalf("%s: corpo diferente do Node\nGo:   %s\nNode: %s", nome, cortar(emJSON(got)), cortar(emJSON(c.Resposta.Corpo)))

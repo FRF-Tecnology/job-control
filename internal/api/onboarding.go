@@ -40,8 +40,11 @@ func lerOnboarding(w http.ResponseWriter, r *http.Request) (Objeto, error) {
 			return nil, falha(413, "o arquivo ou o formulário excede o limite")
 		}
 		var entrada struct {
-			Perfil    json.RawMessage `json:"perfil"`
-			Curriculo string          `json:"curriculoBase64"`
+			Perfil      json.RawMessage `json:"perfil"`
+			Curriculo   string          `json:"curriculoBase64"`
+			ArquivoID   string          `json:"arquivoId,omitempty"`
+			Revisao     *int64          `json:"revisao,omitempty"`
+			NomeArquivo string          `json:"nomeArquivo,omitempty"`
 		}
 		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limite))
 		dec.DisallowUnknownFields()
@@ -59,6 +62,19 @@ func lerOnboarding(w http.ResponseWriter, r *http.Request) (Objeto, error) {
 			return nil, falha(400, "não foi possível transferir o PDF. Selecione o arquivo novamente")
 		}
 		dados := Objeto{"curriculo": pdf}
+		if entrada.ArquivoID != "" {
+			if len(pdf) != 0 || entrada.NomeArquivo != "" {
+				return nil, erroCampo("escolha uma referência salva ou envie o PDF")
+			}
+			dados["arquivoId"] = entrada.ArquivoID
+			delete(dados, "curriculo")
+		}
+		if entrada.Revisao != nil {
+			dados["revisao"] = float64(*entrada.Revisao)
+		}
+		if nome := nomeDeExibicao(entrada.NomeArquivo); nome != "" {
+			dados["nomeArquivo"] = nome
+		}
 		if entrada.Perfil != nil {
 			var perfil Objeto
 			if json.Unmarshal(entrada.Perfil, &perfil) != nil || perfil == nil {
@@ -122,6 +138,7 @@ func lerOnboarding(w http.ResponseWriter, r *http.Request) (Objeto, error) {
 				return nil, falha(413, "o currículo excede 20 MB")
 			}
 			dados[campo] = b
+			dados["nomeArquivo"] = nomeDeExibicao(parte.FileName())
 		default:
 			return nil, falha(400, "campo desconhecido no primeiro acesso")
 		}
@@ -196,9 +213,16 @@ func (a *API) concluirOnboarding(ctx context.Context, autor string, dados Objeto
 	if autor != "eu" {
 		return Resposta{}, falha(403, msgForaDoAssistente)
 	}
-	pdf, err := pdfDoOnboarding(dados)
+	ref, err := referenciaDoPedido(ctx, a, dados)
 	if err != nil {
 		return Resposta{}, err
+	}
+	var pdf []byte
+	if ref == nil {
+		pdf, err = pdfDoOnboarding(dados)
+		if err != nil {
+			return Resposta{}, err
+		}
 	}
 	perfil, okPerfil := dados["perfil"].(map[string]any)
 	if !okPerfil {
@@ -210,7 +234,7 @@ func (a *API) concluirOnboarding(ctx context.Context, autor string, dados Objeto
 	if _, err := a.arm.BackupDiario(ctx, a.hoje()); err != nil {
 		return Resposta{}, err
 	}
-	err = a.arm.ConcluirOnboarding(ctx, pdf, func(atual Objeto, nome string) (Objeto, error) {
+	montar := func(atual Objeto, nome, exibicao string) (Objeto, error) {
 		if err := a.verificarProvaDoPerfil(ctx); err != nil {
 			return nil, err
 		}
@@ -221,8 +245,21 @@ func (a *API) concluirOnboarding(ctx context.Context, autor string, dados Objeto
 		}
 		cvs["PT"] = "curriculos/" + nome
 		novo["curriculos"] = cvs
+		novo["curriculoExibicao"] = Objeto{"arquivo": cvs["PT"], "nome": exibicao}
 		return novo, exigirPerfilOk(novo)
-	})
+	}
+	if ref != nil {
+		assinatura, _ := json.Marshal([]any{ref.ArquivoID, ref.Revisao, perfil})
+		ref.Assinatura = curriculos.SHA256(assinatura)
+		err = a.arm.ConcluirRascunho(ctx, *ref, montar)
+	} else {
+		err = a.arm.ConcluirOnboarding(ctx, pdf, func(atual Objeto, nome string) (Objeto, error) {
+			return montar(atual, nome, dominio.Texto(dados["nomeArquivo"]))
+		})
+	}
+	if errors.Is(err, armazem.ErrRevisaoRascunho) {
+		return Resposta{}, falha(409, armazem.ErrRevisaoRascunho.Error())
+	}
 	if errors.Is(err, armazem.ErrOnboardingConcluido) {
 		return Resposta{}, falha(409, armazem.ErrOnboardingConcluido.Error())
 	}

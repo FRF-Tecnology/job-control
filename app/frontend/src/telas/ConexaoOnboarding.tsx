@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useApp } from '../app/contexto';
 import { HOST_PADRAO, iaProntaParaBusca, type EstadoIA } from './ConectarIA';
+import { LinkExterno } from '../componentes';
+import type { TentativaExterna } from '../app/rascunhoOnboarding';
 import '../estilo/conexao-onboarding.css';
 
 const MARCAS = [
@@ -19,7 +21,10 @@ function opcao(estado: EstadoIA, marca: Marca): Modo {
   return cli?.instalada && cli.pronta !== false && cli.logada !== false ? 'assinatura' : 'chave';
 }
 
-export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,verificacao?:string) => void }) {
+export function ConexaoOnboarding({ aoConectar, tentativaExterna = '', registrarTentativa }: {
+  aoConectar: (nome:string,verificacao?:string) => void; tentativaExterna?: TentativaExterna;
+  registrarTentativa?: (tipo: TentativaExterna) => void;
+}) {
   const { api, limpar } = useApp();
   const [estado, setEstado] = useState<EstadoIA | null>(null);
   const [marca, setMarca] = useState(MARCAS[0]);
@@ -30,6 +35,8 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,ver
   const [ocupado, setOcupado] = useState(false);
   const trava = useRef(false);
   const [tentativa, setTentativa] = useState(0);
+  const [copia, setCopia] = useState('');
+  const retomarLogin = useRef(Boolean(tentativaExterna));
   const escolher = useCallback((e: EstadoIA, m: Marca) => {
     setMarca(m); setModo(opcao(e, m)); setChave(''); setErro('');
     setModelo(e.provedor === m.provedor && !e.url ? e.modelo ?? '' : '');
@@ -38,9 +45,9 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,ver
     let aberta = true;
     api('/api/v1/ia').then((e: EstadoIA) => {
       if (!aberta) return;
-      const inicial = MARCAS.find(m => e.provedor === m.provedor || e.provedor === m.cli)
+      const inicial = (retomarLogin.current ? MARCAS.find(m => m.nome === 'Claude') : undefined) ?? MARCAS.find(m => e.provedor === m.provedor || e.provedor === m.cli)
         ?? MARCAS.find(m => opcao(e, m) === 'assinatura') ?? MARCAS.find(m=>m.nome==='Claude')!;
-      setEstado(e); escolher(e, inicial);
+      retomarLogin.current=false;setEstado(e); escolher(e, inicial);
     }).catch(e => { if (aberta) setErro(e.message || 'Falha ao consultar as conexões.'); });
     return () => { aberta = false; };
   }, [api, tentativa, escolher]);
@@ -55,6 +62,27 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,ver
   const manterChave = estado.provedor === marca.provedor && !estado.url && Boolean(estado.chaves[marca.provedor]);
   const cliAtual = modo === 'atual' && estado.provedor === marca.cli;
   const destino = modo === 'atual' && estado.url ? estado.url : HOST_PADRAO[marca.provedor];
+  async function confirmarProva() {
+    const prova=await api('/api/v1/ia/testar', 'POST', {});
+    if(prova?.ok !== true) throw new Error('O provedor não confirmou a conexão. Verifique os dados e tente novamente.');
+    limpar(); aoConectar(marca.nome,prova.verificacao);
+  }
+  async function verificarLogin() {
+    if(trava.current) return;
+    trava.current=true;setOcupado(true);setErro('');
+    registrarTentativa?.('login-claude');
+    try {
+      await api('/api/v1/ia/detectar','POST',{});
+      const atual:EstadoIA=await api('/api/v1/ia');
+      setEstado(atual);
+      const detectada=atual.clis.find(c=>c.provedor==='claude-cli');
+      if(!detectada?.instalada || detectada.pronta===false) throw new Error('O Applyer ainda não encontrou uma instalação utilizável do Claude Code.');
+      if(detectada.logada===false) throw new Error('O login do Claude ainda não foi concluído neste computador.');
+      await api('/api/v1/ia/config','PUT',{provedor:'claude-cli'});
+      await confirmarProva();
+    } catch(e) {setErro(e instanceof Error ? e.message : 'Não foi possível verificar o login do Claude.');}
+    finally {trava.current=false;setOcupado(false);window.dispatchEvent(new Event('applyer:ia-alterada'));}
+  }
 
   async function conectar(ev: FormEvent) {
     ev.preventDefault();
@@ -75,15 +103,13 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,ver
           setChave('');
         }
       }
-      const prova=await api('/api/v1/ia/testar', 'POST', {});
-      if(prova?.ok !== true) throw new Error('O provedor não confirmou a conexão. Verifique os dados e tente novamente.');
-      limpar(); aoConectar(marca.nome,prova.verificacao);
+      await confirmarProva();
     } catch (e) {
       // A configuração pode ter sido salva antes de o provedor recusar o teste.
       // Releia o cofre para permitir a tentativa seguinte com a chave já salva.
       try { const atual: EstadoIA = await api('/api/v1/ia'); setEstado(atual); } catch { /* Mostre o erro original. */ }
       setErro((e as Error).message || 'A conexão falhou. Confira os dados e tente novamente.');
-    } finally { trava.current = false; setOcupado(false); }
+    } finally { trava.current = false; setOcupado(false); window.dispatchEvent(new Event('applyer:ia-alterada')); }
   }
 
   return <form className="pa-conexao" onSubmit={conectar}>
@@ -96,10 +122,17 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,ver
     </div>
     <div className="pa-ia-painel">
       <h2>Conectar {marca.nome}</h2>
-      {marca.nome==='Claude' && !assinatura && modo!=='atual' && <p>Para usar sua assinatura, instale o Claude Code nativo e entre com <code>claude auth login</code>. Após o login, <button className="pa-link" type="button" disabled={ocupado} onClick={async () => {
-        setOcupado(true); setErro('');
-        try { await api('/api/v1/ia/detectar', 'POST', {}); setTentativa(n=>n+1); } catch(e){setErro((e as Error).message)} finally{setOcupado(false)}
-      }}>verifique novamente</button>. Você também pode usar sua chave de API.</p>}
+      {marca.nome==='Claude' && (Boolean(tentativaExterna) || (!assinatura && (modo!=='atual' || cliAtual))) && <div className="pa-ajuda-claude">
+        {(!cli?.instalada || cli.pronta===false) && <p>Para usar sua assinatura, instale o aplicativo oficial.{' '}
+          <span onClickCapture={()=>registrarTentativa?.('instalar-claude')}><LinkExterno url={cli?.instalar || 'https://docs.claude.com/claude-code'}>Instalar Claude Code</LinkExterno></span></p>}
+        {!assinatura && <><p>Abra o terminal e entre na sua conta com <code>claude auth login</code>.</p>
+          <button type="button" className="pa-link" onClick={async()=>{
+            registrarTentativa?.('login-claude');
+            try{await navigator.clipboard.writeText('claude auth login');setCopia('Comando copiado.');}
+            catch{setCopia('Selecione e copie o comando acima.');}
+          }}>Copiar comando</button><span role="status">{copia}</span></>}
+        <button type="button" className="pa-secundario" disabled={ocupado} onClick={()=>void verificarLogin()}>Já entrei · verificar</button>
+      </div>}
       {(podeManter || assinatura) && <div className="pa-ia-modos" role="group" aria-label="Forma de conexão">
         {podeManter && <button type="button" disabled={ocupado} aria-pressed={modo === 'atual'} onClick={() => setModo('atual')}>Conexão atual</button>}
         {assinatura && !(podeManter && estado.provedor === marca.cli) && <button type="button" disabled={ocupado} aria-pressed={modo === 'assinatura'} onClick={() => setModo('assinatura')}>Minha assinatura</button>}

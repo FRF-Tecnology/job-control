@@ -2,6 +2,7 @@
 // rotas que gravariam (interpretar, POST /vagas) são interceptadas: este teste não grava nada no servidor. Confere axe
 // nos dois temas, 375 px sem rolagem lateral, os cabeçalhos do Confirmar e "Abrir a Fila" até o cartão da vaga.
 import AxeBuilder from '@axe-core/playwright';
+import { temaDeTeste } from './tema';
 import { expect, test, type Page } from '@playwright/test';
 import { alterarEstado, interceptar, soltarRotas } from './dados-fila';
 
@@ -38,7 +39,7 @@ const axe = async (page: Page) => {
 
 for (const tema of ['light', 'dark'] as const) {
   test(`Seus pedidos: axe sem violações no tema ${tema === 'light' ? 'claro' : 'escuro'}`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: tema });
+    await temaDeTeste(page, tema);
     await preparar(page);
     const v = (await (await axe(page)).analyze()).violations;
     expect(v.map(x => `${x.id}: ${x.nodes.map(n => n.target.join(' ')).join(' | ')}`)).toEqual([]);

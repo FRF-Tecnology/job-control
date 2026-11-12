@@ -32,6 +32,8 @@ func listaDe(e *dominio.Estado, colecao string) *[]dominio.Objeto {
 		return &e.Emails
 	case "candidaturas":
 		return &e.Candidaturas
+	case "perfisBusca":
+		return &e.PerfisBusca
 	}
 	panic("coleção desconhecida: " + colecao)
 }
@@ -48,7 +50,10 @@ type fotos map[string][]string
 func carregar(ctx context.Context, q consultor) (dominio.Estado, fotos, error) {
 	e := dominio.EstadoVazio()
 	f := fotos{}
-	linhas, err := q.QueryContext(ctx, `SELECT colecao, dados FROM itens ORDER BY colecao, ordem`)
+	linhas, err := q.QueryContext(ctx, `SELECT colecao, dados FROM (
+		SELECT colecao, dados, ordem FROM itens
+		UNION ALL SELECT 'perfisBusca', dados, ordem FROM perfis_busca
+	) ORDER BY colecao, ordem`)
 	if err != nil {
 		return e, nil, fmt.Errorf("ler dados: %w", err)
 	}
@@ -141,6 +146,24 @@ func (a *Armazem) gravarCom(ctx context.Context, fn func(*sql.Tx, dominio.Estado
 		}
 		if err := salvarColecao(ctx, tx, "perfil", []dominio.Objeto{perfil}, f["perfil"]); err != nil {
 			return err
+		}
+		for i, p := range novo.PerfisBusca {
+			dados, err := emJSON(p)
+			if err != nil {
+				return err
+			}
+			if i < len(f["perfisBusca"]) && dados == f["perfisBusca"][i] {
+				continue
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO perfis_busca (ordem, dados) VALUES (?, ?)
+				ON CONFLICT(ordem) DO UPDATE SET dados=excluded.dados`, i, dados); err != nil {
+				return err
+			}
+		}
+		if len(novo.PerfisBusca) < len(f["perfisBusca"]) {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM perfis_busca WHERE ordem >= ?", len(novo.PerfisBusca)); err != nil {
+				return err
+			}
 		}
 		_, err = SubirVersao(ctx, tx)
 		return err

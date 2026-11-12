@@ -35,7 +35,7 @@ func IniciarManualRadar(e Estado, id string, pacote Objeto, agora time.Time, ctx
 			return e, v, nil
 		}
 		linkAtual := texto(v["link"])
-		if c.Estado != CandPreparada || (c.URL != linkAtual && !MesmaVaga(c.Plataforma, c.URL, linkAtual)) {
+		if (c.Estado != CandPreparada && c.Estado != CandAprovada) || (c.URL != linkAtual && !MesmaVaga(c.Plataforma, c.URL, linkAtual)) {
 			return e, nil, &ErroConflito{Msg: "já existe uma candidatura para esta vaga; confira a Fila"}
 		}
 		break
@@ -59,7 +59,13 @@ func IniciarManualRadar(e Estado, id string, pacote Objeto, agora time.Time, ctx
 			return e, nil, err
 		}
 	}
-	c.Estado = CandBloqueada
+	// A reserva disputa a mesma transação da fila. Se o executor já iniciou,
+	// o estado enviando foi recusado acima. Se a pessoa chegou primeiro,
+	// a autorização antiga é retirada antes de o novo estado ficar visível.
+	if c.Estado == CandAprovada {
+		c.RevogadaPor = QuemDe(ctx)
+	}
+	c.Estado, c.Aprovacao, c.ProximaTentativaEm = CandBloqueada, nil, ""
 	c.Bloqueio = &Bloqueio{Motivo: "site-externo", Pendencia: "Conclua a candidatura no site da empresa e confirme no Applyer.", Em: agora.Format(time.RFC3339)}
 	novo, _ = salvarCandidatura(novo, i, c, agora)
 	v = vagaDe(novo, id)

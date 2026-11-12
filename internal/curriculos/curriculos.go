@@ -35,7 +35,19 @@ func Ler(pasta, nome string) ([]byte, error) {
 	if filepath.Dir(caminho) != filepath.Clean(pasta) {
 		return nil, ErrFora
 	}
-	antes, err := os.Lstat(caminho)
+	return lerArquivo(caminho, os.Lstat, os.Open)
+}
+
+// LerDaRaiz mantém a pasta aberta e confere a identidade do arquivo durante a leitura.
+func LerDaRaiz(raiz *os.Root, nome string) ([]byte, error) {
+	if !dominio.NomeDeCurriculoValido(nome) {
+		return nil, ErrFora
+	}
+	return lerArquivo(nome, raiz.Lstat, raiz.Open)
+}
+
+func lerArquivo(caminho string, lstat func(string) (os.FileInfo, error), abrir func(string) (*os.File, error)) ([]byte, error) {
+	antes, err := lstat(caminho)
 	if err != nil || !antes.Mode().IsRegular() {
 		return nil, ErrFora
 	}
@@ -46,7 +58,7 @@ func Ler(pasta, nome string) ([]byte, error) {
 	// caminho. Comparar agora fixa a identidade do arquivo conferido, antes de qualquer troca.
 	os.SameFile(antes, antes)
 	entreLstatEOpen()
-	f, err := os.Open(caminho)
+	f, err := abrir(caminho)
 	if err != nil {
 		return nil, ErrFora
 	}

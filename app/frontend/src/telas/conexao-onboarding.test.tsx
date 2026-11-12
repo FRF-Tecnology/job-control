@@ -12,6 +12,21 @@ it('uma resposta sem confirmação explícita não libera o perfil', async () =>
   expect(avancar).not.toHaveBeenCalled();
 });
 const vazio = { configurada: false, clis: [], chaves: {} };
+it('oferece instalação e login e só confirma a assinatura após testar o provedor', async () => {
+  const cli = { provedor:'claude-cli', nome:'Claude', instalada:false, pronta:false, logada:false, instalar:'https://docs.claude.com/claude-code' };
+  const api = vi.fn(async (url:string) => {
+    if (url.endsWith('/ia')) return {...vazio, clis:[{...cli}]};
+    if (url.endsWith('/ia/detectar')) { cli.instalada=true;cli.pronta=true;cli.logada=true; return {}; }
+    if (url.endsWith('/ia/testar')) return {ok:true,verificacao:'13'};
+    return {};
+  });
+  const avancar=montar(api);
+  expect((await screen.findByRole('link',{name:'Instalar Claude Code'})).getAttribute('href')).toBe(cli.instalar);
+  expect(screen.getByText('claude auth login')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'Já entrei · verificar'}));
+  await vi.waitFor(()=>expect(avancar).toHaveBeenCalledWith('Claude','13'));
+  expect(api.mock.calls.map(c=>c[0]).slice(-3)).toEqual(['/api/v1/ia','/api/v1/ia/config','/api/v1/ia/testar']);
+});
 function montar(api: App['api']) {
   const avancar = vi.fn();
   const app = { api, limpar: vi.fn() } as unknown as App;

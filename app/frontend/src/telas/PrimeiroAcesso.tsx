@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
+import { useRascunhoOnboarding, type PDFSalvo, type TentativaExterna } from '../app/rascunhoOnboarding';
 import { Icone } from '../componentes';
 import { NOMES_FOCO } from '../dominio/modelo';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
@@ -9,10 +10,7 @@ import marcaEscura from '../arte/primeiro-acesso/applyer-inversa.svg';
 import arteCurriculo from '../../../../site/artes/curriculo-verificado.svg';
 import '../estilo/primeiro-acesso.css';
 
-const PASSOS = [
-  ['IA e currículo', 'Conexão e documento'],
-  ['Critérios de busca', 'Cargo, habilidades e condições'],
-];
+const PASSOS = ['IA e currículo', 'Critérios de busca'];
 const CLASSES_PROVEDOR: Record<string, string> = { Claude: 'anthropic', OpenAI: 'openai', Gemini: 'google', Grok: 'xai' };
 const NIVEIS = ['Estágio', 'Júnior', 'Pleno', 'Sênior', 'Liderança'];
 const MODELOS = ['Remoto', 'Híbrido', 'Presencial'];
@@ -21,7 +19,6 @@ const TAMANHO_PDF = 20 * 1024 * 1024;
 const MOEDAS = { USD: 'Dólar americano', BRL: 'Real brasileiro', EUR: 'Euro' };
 const NOMES_SUGESTAO = { cargo: 'Cargo', niveis: 'Nível', stackPrincipal: 'Stack principal', stackSecundaria: 'Stack secundária', ingles: 'Inglês' };
 type Sugestao = { campo: keyof typeof NOMES_SUGESTAO; valor: string; evidencia: string };
-type Curriculo = { arquivo: File; base64: string };
 const lista = (v: unknown): string[] => Array.isArray(v) ? v.filter((item): item is string => typeof item === 'string' && item.trim() !== '') : [];
 const termos = (texto: string) => [...new Set(texto.split(/[,;\n]/).map(t => t.trim()).filter(Boolean))];
 
@@ -64,7 +61,7 @@ function Opcoes({ nome, titulo, itens, ativos, mudar }: {
   </div></fieldset>;
 }
 
-function lerArquivo(blob: Blob, base64 = false): Promise<string> {
+export function lerArquivo(blob: Blob, base64 = false): Promise<string> {
   return new Promise((resolve, reject) => {
     const leitor = new FileReader();
     leitor.onerror = () => reject(new Error('Não foi possível ler esse arquivo. Escolha o PDF novamente.'));
@@ -103,8 +100,11 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
 }) {
   const app = useApp();
   const [dados, setDados] = useState(() => perfilInicial(app.estado.perfil ?? {}));
-  const [curriculo, setCurriculo] = useState<Curriculo | null>(null);
-  const arquivo = curriculo?.arquivo;
+  const [curriculo, setCurriculo] = useState<PDFSalvo | null>(null);
+  const [nomeSelecionado, setNomeSelecionado] = useState('');
+  const pdfParaRepetir = useRef<File | 'remover'>();
+  const retomarCriterios = useRef(false);
+  const [tentativaExterna, setTentativaExterna] = useState<TentativaExterna>('');
   const [sugestoes, setSugestoes] = useState<Sugestao[] | null>(null);
   const [etapa, setEtapa] = useState(1);
   const [provedor, setProvedor] = useState('');
@@ -121,23 +121,32 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
   const enviando = useRef(false);
   const editados = useRef(new Set<keyof Dados>());
   const iniciais = useRef(dados);
+  const rascunho = useRascunhoOnboarding(app.api, salvo => {
+    leitura.current++; editados.current = new Set(salvo.editados as (keyof Dados)[]);
+    pdfParaRepetir.current = undefined; setNomeSelecionado(''); setErro(''); setSugestoes(null);
+    verificacao.current = undefined; setProvedor(''); setEtapa(1);
+    setCurriculo(salvo.curriculo); setDados({ ...iniciais.current, ...salvo.dados });
+    retomarCriterios.current = salvo.etapa === 2 && Boolean(salvo.curriculo);
+    setTentativaExterna(salvo.tentativaExterna ?? '');
+  });
   useEffect(() => { titulo.current?.focus(); }, [etapa]);
   useEffect(() => () => { leitura.current++; }, []);
 
   function campo<K extends keyof Dados>(chave: K, valor: Dados[K]) {
     editados.current.add(chave);
+    rascunho.alterar({dados:{[chave]:valor},editados:[...editados.current]});
     setDados(antes => ({ ...antes, [chave]: valor })); setErro('');
   }
-  async function selecionar(arquivos: FileList | null) {
-    if (extraindo || salvando) return;
+  async function selecionar(arquivos: ArrayLike<File> | null) {
+    if (extraindo || salvando || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito') return;
     const versao = ++leitura.current;
-    setArrastando(false); setErro(''); setLendo(false);
+    setArrastando(false); setErro(''); setLendo(false); setNomeSelecionado(''); pdfParaRepetir.current = undefined;
     if (!arquivos?.length) return;
     const pdf = arquivos[0];
     if (arquivos.length !== 1) { setErro('Escolha um currículo por vez.'); return; }
     if (!/\.pdf$/i.test(pdf.name)) { setErro('Escolha um arquivo com extensão .pdf.'); return; }
     if (pdf.size > TAMANHO_PDF) { setErro('O PDF deve ter até 20 MB.'); return; }
-    setLendo(true);
+    setLendo(true); setNomeSelecionado(pdf.name);
     try {
       const [inicio, fim] = await Promise.all([lerArquivo(pdf.slice(0, 5)), lerArquivo(pdf.slice(-1024))]);
       if (leitura.current !== versao) return;
@@ -146,12 +155,16 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
       else {
         const base64 = await lerArquivo(pdf, true);
         if (leitura.current !== versao) return;
-        trocarCurriculo({ arquivo: pdf, base64 });
+        pdfParaRepetir.current = pdf;
+        const salvo = await rascunho.documento('PUT', {nomeArquivo:pdf.name,curriculoBase64:base64});
+        if (leitura.current !== versao) return;
+        pdfParaRepetir.current = undefined;
+        trocarCurriculo(salvo);
       }
-    } catch (e) { if (leitura.current === versao) setErro((e as Error).message); }
-    finally { if (leitura.current === versao) setLendo(false); }
+    } catch (e) { if (leitura.current === versao && !pdfParaRepetir.current) setErro((e as Error).message); }
+    finally { if (leitura.current === versao) {setLendo(false); setNomeSelecionado('');} }
   }
-  function trocarCurriculo(novo: Curriculo | null) {
+  function trocarCurriculo(novo: PDFSalvo | null) {
     setCurriculo(novo); setSugestoes(null);
     setDados(antes => {
       const limpo = { ...iniciais.current };
@@ -159,22 +172,40 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
       return limpo;
     });
   }
-  const podeRevisar = Boolean(curriculo && provedor && !lendo && !extraindo);
+  async function remover() {
+    if (lendo || enviando.current) return;
+    leitura.current++; setLendo(true); setErro(''); pdfParaRepetir.current='remover';
+    try {
+      await rascunho.documento('DELETE',{});
+      trocarCurriculo(null); retomarCriterios.current=false; pdfParaRepetir.current=undefined;
+    } catch { /* O rascunho mostra a falha e mantém o PDF atual. */ }
+    finally {setLendo(false);}
+  }
+  async function irPara(etapa: number) {
+    rascunho.alterar({etapa});
+    try {await rascunho.gravar(); setErro(''); setEtapa(etapa);}
+    catch { /* A pessoa pode repetir a gravação sem perder os campos. */ }
+  }
+  const podeRevisar = Boolean(curriculo && provedor && !lendo && !extraindo && rascunho.situacao!=='conflito' && rascunho.situacao!=='falha');
   async function preencherComIA() {
     if (!podeRevisar || !curriculo || enviando.current) return;
     setErro('');
-    if (sugestoes !== null) { setEtapa(2); return; }
+    if (sugestoes !== null) { await irPara(2); return; }
     const versao = leitura.current;
     enviando.current = true; setExtraindo(true);
     try {
-      const resposta = await app.api('/api/v1/onboarding/sugerir', 'POST', { curriculoBase64: curriculo.base64 }, cabecalhosIA());
+      await rascunho.gravar();
+      const resposta = await app.api('/api/v1/onboarding/sugerir', 'POST', { arquivoId: curriculo.arquivoId, revisao: rascunho.revisao.current }, cabecalhosIA());
       if (leitura.current !== versao) return;
       const itens: Sugestao[] = resposta.sugestoes ?? [];
       setSugestoes(itens);
-      setDados(antes => aplicarSugestoes(antes, itens, editados.current));
-      setEtapa(2);
+      const sugerido = aplicarSugestoes(dados, itens, editados.current);
+      setDados(sugerido);
+      rascunho.alterar({dados:sugerido,editados:[...editados.current]});
+      await irPara(2);
     } catch (e) { if (leitura.current === versao) {
       if(e instanceof ErroApi && e.status===412){setProvedor('');verificacao.current=undefined;}
+      if(e instanceof ErroApi && e.status===409) rascunho.avisarConflito();
       setErro((e as Error).message || 'A IA não conseguiu ler este PDF. Você pode tentar novamente ou preencher o perfil manualmente.');
     } }
     finally { enviando.current = false; setExtraindo(false); }
@@ -182,6 +213,7 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
   async function salvar(ev: FormEvent) {
     ev.preventDefault();
     if (enviando.current || !podeRevisar || !curriculo) return;
+    const buscar = ((ev.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'buscar';
     const problema = validar(dados);
     if (problema) {
       setErro(problema.texto);
@@ -197,13 +229,14 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
     };
     enviando.current = true; setSalvando(true); setErro('');
     try {
-      await app.api('/api/v1/onboarding', 'POST', { perfil, curriculoBase64: curriculo.base64 }, cabecalhosIA());
-      app.limpar(); await concluir(false);
+      await rascunho.gravar();
+      await app.api('/api/v1/onboarding', 'POST', { perfil, arquivoId:curriculo.arquivoId, revisao:rascunho.revisao.current }, cabecalhosIA());
+      app.limpar(); await concluir(buscar);
     } catch (e) {
       if(e instanceof ErroApi && e.status===412) {
-        setEtapa(1); setProvedor(''); verificacao.current=undefined; setErro('A conexão de IA mudou. Verifique novamente; o currículo e os campos continuam aqui.');
+        retomarCriterios.current=true; setEtapa(1); setProvedor(''); verificacao.current=undefined; setErro('A conexão de IA mudou. Verifique novamente; o currículo e os campos continuam aqui.');
       } else if (e instanceof ErroApi && e.status === 409) {
-        app.aviso('O perfil já foi salvo em outra janela.'); await app.recarregar();
+        rascunho.avisarConflito(); await app.recarregar();
       } else setErro((e as Error).message || 'Não foi possível salvar. Tente novamente.');
     } finally { enviando.current = false; setSalvando(false); }
   }
@@ -218,66 +251,76 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
       <button type="button" className="botao-icone" onClick={alternarTema} aria-label="Alternar tema claro/escuro"><Icone d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" /></button>
     </div></header>
     <div className="pa-janela">
-      <aside className="pa-rail">
-        <div><h2>Perfil de busca</h2>
-          <ol aria-label="Etapas da configuração">{PASSOS.map(([nome, sub], i) =>
-            <li key={nome} aria-current={i + 1 === etapa ? 'step' : undefined}>
-              <span className="pa-numero" aria-hidden="true">{i + 1 < etapa ? '✓' : i + 1}</span>
-              <span><b>{nome}</b><small>{sub}</small></span>
-            </li>)}</ol>
-          {etapa === 2 && <div className="pa-documentos">
-            {conexaoConfirmada}
-            <span><img src={arteCurriculo} alt="" /><span><small>PDF selecionado</small>{arquivo?.name}</span></span>
-          </div>}
-        </div>
-        <figure className="pa-ilhas"><img src={paisagem} alt="" className="pa-arte" />
-          <figcaption>E se a vaga dos seus sonhos estiver <strong>a um clique?</strong></figcaption>
-        </figure>
-      </aside>
       <main id="pa-principal" tabIndex={-1}>
-        <div className="pa-andamento"><span>Etapa {etapa} de {PASSOS.length}</span><div aria-hidden="true">{PASSOS.map(([nome], i) => <i key={nome} className={i < etapa ? 'ativa' : ''} />)}</div></div>
+        <ol className="pa-andamento" aria-label={`Etapas da configuração. Etapa ${etapa} de ${PASSOS.length}`}>{PASSOS.map((nome, i) =>
+          <li key={nome} aria-current={i + 1 === etapa ? 'step' : undefined} className={i + 1 < etapa ? 'concluida' : undefined}>
+            <span aria-hidden="true">{i + 1 < etapa ? '✓' : i + 1}</span>{nome}
+          </li>)}</ol>
+        <div className="pa-rascunho" role="status">
+          {rascunho.situacao === 'abrindo' && 'Abrindo rascunho…'}
+          {rascunho.situacao === 'salvando' && 'Salvando…'}
+          {rascunho.situacao === 'salvo' && (retomarCriterios.current ? 'Rascunho recuperado. Verifique a conexão para voltar aos seus critérios.' : 'Salvo neste computador')}
+          {(rascunho.situacao === 'conflito' || rascunho.situacao === 'falha') && <>{rascunho.mensagem}{' '}
+            <button type="button" className="pa-link" onClick={() => {
+              if (rascunho.situacao === 'conflito') {void rascunho.carregar(); return;}
+              const tentativa = pdfParaRepetir.current;
+              if (tentativa === 'remover') void remover();
+              else if (tentativa) void selecionar([tentativa]);
+              else void rascunho.repetir();
+            }}>{rascunho.situacao === 'conflito' ? 'Descartar edições locais e carregar a versão salva' : 'Tentar salvar novamente'}</button></>}
+        </div>
         {etapa === 1 ? <div className="pa-passo">
           <section className="pa-painel-rolagem">
-            <h1 ref={titulo} tabIndex={-1}>Sua IA e <em>seu currículo</em></h1>
-            <p className="pa-sub">Conecte seu provedor de IA e escolha o PDF que vai usar neste perfil.</p>
+            <header className="pa-faixa"><div>
+              <h1 ref={titulo} tabIndex={-1}>Sua IA e seu currículo</h1>
+              <p className="pa-sub">Conecte seu provedor de IA e escolha o PDF que vai usar neste perfil.</p>
+            </div><img src={paisagem} alt="" /></header>
             <div className="pa-cartoes">
               <section className="pa-cartao" aria-labelledby="pa-ia-titulo">
                 <h2 id="pa-ia-titulo">Conexão de IA</h2>
-                {provedor ? <div className="pa-conectada"><div role="status">{conexaoConfirmada}</div>
+                {rascunho.revisao.current == null ? <p className="pa-nota">A conexão estará disponível após abrir o rascunho local.</p> : provedor ? <div className="pa-conectada"><div role="status">{conexaoConfirmada}</div>
                   <button type="button" className="pa-link" disabled={extraindo} onClick={() => setProvedor('')}>Alterar conexão</button>
-                </div> : <ConexaoOnboarding aoConectar={(nome,id)=>{verificacao.current=id;setProvedor(nome)}} />}
+                </div> : <ConexaoOnboarding tentativaExterna={tentativaExterna} registrarTentativa={tipo=>{
+                  setTentativaExterna(tipo);rascunho.alterar({tentativaExterna:tipo});void rascunho.gravar().catch(()=>{});
+                }} aoConectar={(nome,id)=>{
+                  verificacao.current=id; setProvedor(nome);
+                  if(tentativaExterna){setTentativaExterna('');rascunho.alterar({tentativaExterna:''});}
+                  if(retomarCriterios.current && curriculo){retomarCriterios.current=false;setEtapa(2);}
+                }} />}
               </section>
               <section className="pa-cartao pa-cartao-pdf" aria-labelledby="pa-pdf-titulo">
                 <h2 id="pa-pdf-titulo">Seu currículo</h2>
-                <div className={`pa-drop${arrastando || arquivo ? ' destacado' : ''}`} onDragOver={e => { e.preventDefault(); setArrastando(true); }}
+                <div className={`pa-drop${arrastando || curriculo ? ' destacado' : ''}`} onDragOver={e => { e.preventDefault(); setArrastando(true); }}
                   onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setArrastando(false); }}
                   onDrop={e => { e.preventDefault(); void selecionar(e.dataTransfer.files); }}>
                   <img className="pa-arte-cv" src={arteCurriculo} alt="" />
-                  <div aria-live="polite"><b>{arquivo?.name ?? 'Arraste seu currículo para cá'}</b>
-                    <p>{lendo ? 'Conferindo o arquivo…' : arquivo ? `PDF selecionado · ${Math.max(1, Math.ceil(arquivo.size / 1024))} KB` : 'PDF de até 20 MB'}</p></div>
+                  <div aria-live="polite"><b>{curriculo?.nomeExibicao ?? 'Arraste seu currículo para cá'}</b>
+                    <p>{nomeSelecionado ? `Selecionado: ${nomeSelecionado} · Salvando…` : curriculo ? `Currículo salvo neste perfil · ${Math.max(1, Math.ceil(curriculo.tamanho / 1024))} KB` : 'PDF de até 20 MB'}</p></div>
                   <div className="pa-arquivo-acoes">
-                    <button type="button" className="pa-secundario" disabled={extraindo} onClick={() => inputPDF.current?.click()}>{arquivo ? 'Trocar PDF' : 'Escolher PDF'}</button>
-                    {arquivo && <button type="button" className="pa-link" disabled={extraindo} onClick={() => { leitura.current++; trocarCurriculo(null); setLendo(false); setErro(''); }}>Remover</button>}
+                    <button type="button" className="pa-secundario" disabled={extraindo || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito'} onClick={() => inputPDF.current?.click()}>{curriculo ? 'Trocar PDF' : 'Escolher PDF'}</button>
+                    {curriculo && <button type="button" className="pa-link" disabled={extraindo || lendo || rascunho.situacao==='conflito'} onClick={() => void remover()}>Remover</button>}
                   </div>
                   <input type="file" ref={inputPDF} aria-label="Currículo em PDF" accept=".pdf,application/pdf" hidden onChange={e => { void selecionar(e.target.files); e.target.value = ''; }} />
                 </div>
-                <p className="pa-nota">Ao concluir o perfil, o Applyer salva uma cópia do PDF neste computador.</p>
+                <p className="pa-nota">O Applyer guarda uma cópia do PDF neste computador para você retomar o primeiro acesso.</p>
                 {erro && <p className="pa-erro" role="alert">{erro}</p>}
               </section>
             </div>
           </section>
           <footer className="pa-acoes pa-avancar">
             {sugestoes === null && <p className="pa-nota">Ao preencher com IA, você compartilha o texto profissional do currículo com {provedor || 'seu provedor'} para receber sugestões.</p>}
-            {sugestoes === null && <button type="button" className="pa-link pa-manual" disabled={!podeRevisar} onClick={() => { setErro(''); setEtapa(2); }}>Preencher manualmente</button>}
+            {sugestoes === null && <button type="button" className="pa-link pa-manual" disabled={!podeRevisar} onClick={() => void irPara(2)}>Preencher manualmente</button>}
             <button type="button" className="pa-primario" disabled={!podeRevisar} onClick={() => void preencherComIA()}>
               {extraindo ? 'Lendo currículo…' : sugestoes === null ? 'Preencher com IA' : 'Revisar critérios'} <span aria-hidden="true">→</span>
             </button>
           </footer>
-        </div> : <form className="pa-passo" onSubmit={salvar} noValidate>
+        </div> : <form className="pa-passo" onSubmit={salvar} onBlur={rascunho.aoSairDoCampo} noValidate>
           <section className="pa-painel-rolagem">
-            <h1 ref={titulo} tabIndex={-1}>Que vagas <em>você procura?</em></h1>
+            <h1 ref={titulo} tabIndex={-1}>Que vagas você procura?</h1>
             <p className="pa-sub">{sugestoes?.length ? 'Revise as sugestões do seu currículo e escolha onde quer trabalhar.' : sugestoes ? 'A IA não encontrou dados suficientes no currículo. Preencha os campos para orientar a busca.' : 'Informe o cargo, suas habilidades e as condições que você aceita.'}</p>
+            <div className="pa-documentos">{conexaoConfirmada}<span><img src={arteCurriculo} alt="" />{curriculo?.nomeExibicao}</span></div>
             <Evidencias sugestoes={sugestoes ?? []} />
+            <div className="pa-cartoes">
             <fieldset className="pa-grupo-campos" disabled={salvando}>
               <legend>Perfil profissional</legend>
               <div className="pa-campos">
@@ -307,11 +350,15 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
                 </fieldset>
               </div>
             </fieldset>
+            </div>
           </section>
           {erro && <p className="pa-erro" role="alert">{erro}</p>}
           <footer className="pa-acoes">
-            <button type="button" className="pa-link" disabled={salvando} onClick={() => { setErro(''); setEtapa(1); }}><span aria-hidden="true">← </span>Voltar</button>
-            <button type="submit" className="pa-primario" disabled={salvando}>{salvando ? 'Salvando…' : 'Concluir perfil'}</button>
+            <button type="button" className="pa-link" disabled={salvando} onClick={() => void irPara(1)}><span aria-hidden="true">← </span>Voltar</button>
+            <div className="pa-salvar-acoes">
+              <button type="submit" className="pa-secundario" disabled={salvando || !podeRevisar}>Concluir perfil</button>
+              <button type="submit" value="buscar" className="pa-primario" disabled={salvando || !podeRevisar}>{salvando ? 'Salvando…' : 'Salvar e buscar vagas'}</button>
+            </div>
           </footer>
         </form>}
       </main>

@@ -62,12 +62,16 @@ func TestServidorRadarPlaywright(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/api/", a.Handler())
 	mux.Handle("/", http.FileServer(http.Dir(os.Getenv("CENTRAL_TELAS"))))
-	const endereco = "127.0.0.1:4511"
+	endereco := "127.0.0.1:4511"
+	if os.Getenv("APPLYER_E2E_SUITE") == "1" && modo == "controlado" {
+		endereco = "127.0.0.1:4510"
+	}
 	serv := &http.Server{Addr: endereco, ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Host != endereco {
+		if r.Host != endereco && !(endereco == "127.0.0.1:4510" && r.Host == "localhost:4510") {
 			http.Error(w, "host inválido", http.StatusForbidden)
 			return
 		}
+		w.Header().Set("Cache-Control", "no-store")
 		mux.ServeHTTP(w, r)
 	})}
 	t.Fatal(serv.ListenAndServe())

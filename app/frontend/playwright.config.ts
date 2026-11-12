@@ -6,9 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 
-// A jornada de "usuário novo" roda contra o servidor de desenvolvimento (API Go + telas compiladas)
-// com uma pasta de dados vazia. Antes: npm run build (gera dist/).
-// A API do central-dev usa uma única conta de teste e um cofre em memória.
+// Servidor compilado só para testes: API Go, SQLite real e provedor isolado.
+// A prova de conexão é emitida pelo backend. Nenhuma chamada usa a conta do computador.
 const pasta = (process.env.CENTRAL_E2E_PASTA ??= mkdtempSync(join(tmpdir(), 'central-e2e-')));
 const raiz = resolve(aqui, '../..');
 
@@ -26,10 +25,10 @@ export default defineConfig({
     { name: 'celular', dependencies: ['primeiro-acesso'], use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'go run ./cmd/central-dev',
+    command: 'go test -tags e2e_radar ./internal/api -run=^TestServidorRadarPlaywright$ -count=1 -timeout=30m',
     cwd: raiz,
     url: 'http://localhost:4510/api/v1/saude',
-    env: { PORT: '4510', APPLYER_PASTA: pasta, CENTRAL_PASTA: pasta, CENTRAL_E2E_PASTA: pasta, CENTRAL_TELAS: resolve(aqui, 'dist') },
+    env: { APPLYER_E2E_SUITE:'1', APPLYER_E2E_PROVEDOR:'controlado', APPLYER_PASTA: pasta, CENTRAL_E2E_PASTA: pasta, CENTRAL_TELAS: process.env.CENTRAL_E2E_TELAS ?? resolve(aqui, 'dist') },
     timeout: 180_000,
     reuseExistingServer: false,
   },

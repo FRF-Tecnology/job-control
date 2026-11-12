@@ -29,15 +29,22 @@ describe('Busca pelo perfil', () => {
     let concluirBusca!: () => void;
     const aberta = new Promise<void>(resolver => { concluirBusca = resolver; });
     const iniciadas: string[] = [];
+    let revisao = 0;
     const fetch = vi.fn(async (url: string, init: RequestInit) => {
       switch (url) {
         case '/api/v1/estado': return json(estado);
         case '/api/v1/versao': return json({ versao: estado.versao });
         case '/api/v1/ia':
         case '/api/v1/ia/config': return json({ configurada: true, provedor: 'openai', chaves: { openai: '…1234' }, clis: [] });
-        case '/api/v1/ia/testar': return json({ ok: true });
-        case '/api/v1/onboarding':
+        case '/api/v1/ia/testar': return json({ ok: true, verificacao: '3' });
+        case '/api/v1/onboarding/rascunho':
+          if (init.method === 'PATCH') revisao++;
+          return json({ revisao, etapa: 1, dados: {}, editados: [], curriculo: null });
+        case '/api/v1/onboarding/curriculo':
           expect(JSON.parse(init.body as string).curriculoBase64).toBe(btoa('%PDF-1.4\n%%EOF'));
+          return json({ revisao: ++revisao, arquivoId: 'cv-qa', nomeExibicao: 'Teste.pdf', tamanho: 14 });
+        case '/api/v1/onboarding':
+          expect(JSON.parse(init.body as string)).toMatchObject({ arquivoId: 'cv-qa', revisao });
           estado.onboardingConcluido = true; estado.versao = '2';
           return json({ ok: true, onboardingConcluido: true });
         case '/api/v1/busca':
@@ -59,21 +66,22 @@ describe('Busca pelo perfil', () => {
     await screen.findByRole('heading', { name: 'Radar de vagas' });
     expect(iniciadas).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Buscar vagas' }));
-    await screen.findByRole('button', { name: /Buscando e avaliando/ });
+    await screen.findByRole('button', { name: 'Buscando…' });
     expect(location.hash).toBe('#/radar');
     expect(iniciadas).toHaveLength(1);
     act(() => { location.hash = '#/quadro'; });
-    await screen.findByRole('heading', { name: 'Quadro' });
+    await screen.findByRole('heading', { name: 'Quadro de candidaturas' });
     act(() => { location.hash = '#/triagem?buscar=1'; });
     await waitFor(() => expect(location.hash).toBe('#/radar'));
-    await screen.findByRole('button', { name: /Buscando e avaliando/ });
+    await screen.findByRole('button', { name: 'Buscando…' });
     expect(iniciadas).toHaveLength(1);
     await act(async () => { concluirBusca(); });
-    await screen.findByText('Resultado da busca');
+    fireEvent.click(await screen.findByText('Resultado da busca'));
     expect(screen.getByText('Grupo A · 1')).toBeTruthy();
-    const cartoes = screen.getAllByRole('article');
-    ['A', 'B', 'C'].forEach((g, i) => {
-      const cartao = within(cartoes[i]);
+    const lista = screen.getByRole('list', { name: 'Vagas para revisão' });
+    ['A', 'B', 'C'].forEach(g => {
+      fireEvent.click(within(lista).getByRole('button', { name: new RegExp(`Empresa ${g}`) }));
+      const cartao = within(screen.getByRole('article', { name: 'Analista' }));
       expect(cartao.getByText(`Empresa ${g}`)).toBeTruthy();
       expect(cartao.getByText(`Parecer para Empresa ${g}.`)).toBeTruthy();
       expect(cartao.getByText('Confirmar local da entrevista.')).toBeTruthy();

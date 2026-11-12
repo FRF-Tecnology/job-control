@@ -444,6 +444,9 @@ func CriarCandidatura(e Estado, vagaID string, conteudo Objeto, agora time.Time,
 	if FoiEnviada(vaga) {
 		return e, nil, &ErroConflito{Msg: "esta vaga já foi enviada", Existente: vagaID}
 	}
+	if err := AnuncioReservado(e, vaga); err != nil {
+		return e, nil, err
+	}
 	for _, o := range e.Candidaturas {
 		if igual(o["vagaId"], vagaID) && contem(estadosAtivos, texto(o["estado"])) {
 			return e, nil, &ErroConflito{Msg: "esta vaga já tem uma candidatura ativa", Existente: texto(o["id"])}

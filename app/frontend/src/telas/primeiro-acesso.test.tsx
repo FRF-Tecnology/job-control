@@ -14,9 +14,24 @@ const pdf = (nome: string, conteudo = '%PDF-1.4\n%%EOF') => new File([conteudo],
 const clicar = (nome: string | RegExp) => fireEvent.click(screen.getByRole('button', { name: nome }));
 const desabilitado = (nome: string) => (screen.getByRole('button', { name: nome }) as HTMLButtonElement).disabled;
 
-function montar(base: object = perfil, sugerir = vi.fn().mockResolvedValue({ sugestoes: [] }), salvar = vi.fn().mockResolvedValue({ ok: true })) {
+type Arquivo = {arquivoId: string; nomeExibicao: string; tamanho: number};
+const rascunhoVazio = () => ({ revisao: 0, dados: {} as Record<string, unknown>, etapa: 1, editados: [] as string[], curriculo: null as Arquivo | null });
+function montar(base: object = perfil, sugerir = vi.fn().mockResolvedValue({ sugestoes: [] }), salvar = vi.fn().mockResolvedValue({ ok: true }), rascunho = rascunhoVazio()) {
   const concluir = vi.fn();
   const api = vi.fn(async (url: string, _metodo?: string, corpo?: unknown, cabecalhos?: Record<string, string>) => {
+    const c = corpo as any;
+    if (url.endsWith('/rascunho') && !_metodo) return structuredClone(rascunho);
+    if (url.endsWith('/rascunho') || url.endsWith('/onboarding/curriculo')) {
+      if (c.revisao !== rascunho.revisao) throw new ErroApi('A revisão mudou.', 409, {});
+      rascunho.revisao++;
+      if (_metodo === 'PATCH') {
+        Object.assign(rascunho.dados, c.dados); rascunho.etapa = c.etapa ?? rascunho.etapa; rascunho.editados = c.editados ?? rascunho.editados;
+      } else if (_metodo === 'PUT') {
+        rascunho.curriculo = { arquivoId: 'cv-' + rascunho.revisao, nomeExibicao: c.nomeArquivo, tamanho: atob(c.curriculoBase64).length };
+        return { ...rascunho.curriculo, revisao: rascunho.revisao };
+      } else if (_metodo === 'DELETE') rascunho.curriculo = null;
+      return structuredClone(rascunho);
+    }
     if (url === '/api/v1/ia') return { configurada: true, provedor: 'anthropic', chaves: { anthropic: '…1234' }, clis: [] };
     if (url === '/api/v1/ia/testar') return { ok: true, ms: 12 };
     if (url === '/api/v1/onboarding/sugerir') return sugerir(corpo, cabecalhos);
@@ -25,17 +40,26 @@ function montar(base: object = perfil, sugerir = vi.fn().mockResolvedValue({ sug
   });
   const app = { estado: { perfil: base }, api, limpar: vi.fn(), recarregar: vi.fn(), aviso: vi.fn() } as unknown as App;
   render(<Contexto.Provider value={app}><PrimeiroAcesso alternarTema={() => {}} concluir={concluir} /></Contexto.Provider>);
-  return { concluir, sugerir, salvar };
+  return { concluir, sugerir, salvar, api, rascunho };
 }
 
 async function conectar() {
   fireEvent.click(await screen.findByRole('button', { name: 'Usar conexão atual' }));
   await screen.findByText('Claude conectado');
 }
+async function revisar() {
+  clicar('Preencher manualmente');
+  await screen.findByRole('heading', {name:'Que vagas você procura?'});
+}
+async function voltar() {
+  clicar('Voltar');
+  await screen.findByRole('heading', {name:'Sua IA e seu currículo'});
+}
 function anexar(arquivo: File) {
   fireEvent.change(screen.getByLabelText('Currículo em PDF'), { target: { files: [arquivo] } });
 }
 async function escolher(nome: string) {
+  await waitFor(() => expect((screen.getByRole('button', {name:/Escolher PDF|Trocar PDF/}) as HTMLButtonElement).disabled).toBe(false));
   anexar(pdf(nome));
   await screen.findByText(nome, { exact: true });
 }
@@ -44,6 +68,42 @@ function editar(rotulo: string | RegExp, valor: string) {
 }
 
 describe('Primeiro acesso', () => {
+  it('reabre a etapa, os campos e o mesmo PDF após verificar a conexão novamente', async () => {
+    const { rascunho } = montar();
+    await escolher('Curriculo original.pdf'); await conectar(); await revisar();
+    await screen.findByRole('heading', {name: 'Que vagas você procura?'});
+    editar('Cargo ou área de interesse','Java remoto');
+    await waitFor(() => expect(rascunho.dados.cargo).toBe('Java remoto'));
+    expect(rascunho.etapa).toBe(2);
+    cleanup(); montar(perfil, undefined, undefined, rascunho);
+    await screen.findByText('Curriculo original.pdf');
+    expect(screen.queryByText('Claude conectado')).toBeNull();
+    await conectar();
+    expect(await screen.findByDisplayValue('Java remoto')).toBeTruthy();
+  });
+  it('conserva o PDF anterior quando falta espaço e permite repetir a troca', async () => {
+    const { api } = montar();
+    await escolher('Anterior.pdf');
+    api.mockRejectedValueOnce(new Error('Disco cheio.'));
+    anexar(pdf('Novo.pdf'));
+    await screen.findByRole('button', {name:'Tentar salvar novamente'});
+    expect(screen.getByText('Anterior.pdf')).toBeTruthy();
+    clicar('Tentar salvar novamente');
+    await screen.findByText('Novo.pdf');
+    expect(screen.queryByText('Anterior.pdf')).toBeNull();
+  });
+  it('mantém a edição local em conflito até a pessoa escolher a versão da outra janela', async () => {
+    const {rascunho} = montar();
+    await escolher('A.pdf'); await conectar(); await revisar();
+    rascunho.revisao++; rascunho.dados.cargo='Cargo da outra janela';
+    editar('Cargo ou área de interesse','Cargo local');
+    await screen.findByRole('button',{name:/Descartar edições locais/});
+    expect(screen.getByDisplayValue('Cargo local')).toBeTruthy();
+    clicar(/Descartar edições locais/);
+    await screen.findByText('A.pdf');
+    await conectar();
+    expect(await screen.findByDisplayValue('Cargo da outra janela')).toBeTruthy();
+  });
   it('aceita selecionar o PDF primeiro, mas exige a conexão para abrir a revisão', async () => {
     montar();
     await escolher('Perfil.pdf');
@@ -51,11 +111,11 @@ describe('Primeiro acesso', () => {
     expect(desabilitado('Preencher manualmente')).toBe(true);
     await conectar();
     expect(desabilitado('Preencher com IA')).toBe(false);
-    clicar('Preencher manualmente');
+    await revisar();
     expect(screen.getByRole('heading', { name: 'Que vagas você procura?' })).toHaveProperty('tabIndex', -1);
     expect(screen.getByLabelText('Cargo ou área de interesse')).toBeTruthy();
     expect(screen.getByLabelText('Seu nível de inglês')).toBeTruthy();
-    clicar('Voltar'); clicar('Alterar conexão');
+    await voltar(); clicar('Alterar conexão');
     expect(desabilitado('Preencher manualmente')).toBe(true);
     expect(screen.getByText('Perfil.pdf')).toBeTruthy();
   });
@@ -78,7 +138,7 @@ describe('Primeiro acesso', () => {
     const salvar = vi.fn().mockRejectedValueOnce(new ErroApi('PDF recusado', 400, {})).mockResolvedValueOnce({ ok: true });
     const { concluir, sugerir } = montar(perfil, undefined, salvar);
     await conectar(); await escolher('MeuCV.pdf');
-    clicar('Preencher manualmente');
+    await revisar();
     editar('Cargo ou área de interesse', 'Analista de pesquisa'); editar(/Stack secundária/, 'Figma; SQL, Figma');
     fireEvent.click(screen.getByRole('radio', { name: 'Nacional' }));
     expect((screen.getByLabelText('Mínimo') as HTMLInputElement).value).toBe('3200');
@@ -91,11 +151,20 @@ describe('Primeiro acesso', () => {
     expect(sugerir).not.toHaveBeenCalled();
     const [corpo, cabecalhos] = salvar.mock.calls[1];
     expect(cabecalhos).toEqual({ 'X-Applyer-Onboarding': '1' });
-    expect(atob(corpo.curriculoBase64)).toBe('%PDF-1.4\n%%EOF');
+    expect(corpo.arquivoId).toMatch(/^cv-/);
+    expect(corpo.curriculoBase64).toBeUndefined();
     expect(corpo.perfil).toEqual({
       cargo: 'Analista de pesquisa', stackPrincipal: ['Pesquisa'], stackSecundaria: ['Figma', 'SQL'],
       filtros: perfil.filtros, foco: 'nacional', ingles: 'Avançado', faixaSalarial: { min: 4000, max: 6000, moeda },
     });
+  });
+
+  it('só pede a primeira busca ao concluir com Salvar e buscar vagas', async () => {
+    const { concluir } = montar();
+    await conectar(); await escolher('Busca.pdf');
+    await revisar();
+    clicar('Salvar e buscar vagas');
+    await waitFor(() => expect(concluir).toHaveBeenCalledWith(true));
   });
 
   it('preenche pelos trechos do PDF, deixa as preferências livres e preserva edições se o PDF mudar', async () => {
@@ -117,7 +186,7 @@ describe('Primeiro acesso', () => {
     expect((screen.getByLabelText('Seu nível de inglês') as HTMLSelectElement).value).toBe('Avançado');
     expect((screen.getByLabelText('Mínimo') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Remoto') as HTMLInputElement).checked).toBe(false);
-    clicar('Voltar'); await escolher('B.pdf'); clicar('Preencher com IA');
+    await voltar(); await escolher('B.pdf'); clicar('Preencher com IA');
     await screen.findByDisplayValue('SQL');
     expect(screen.getByDisplayValue('Analista de BI')).toBeTruthy();
     expect((screen.getByLabelText('Pleno') as HTMLInputElement).checked).toBe(false);
@@ -128,14 +197,14 @@ describe('Primeiro acesso', () => {
     montar({}, vi.fn().mockRejectedValue(new Error('O PDF não contém texto selecionável.')));
     await conectar(); await escolher('Digitalizado.pdf'); clicar('Preencher com IA');
     await screen.findByText('O PDF não contém texto selecionável.');
-    clicar('Preencher manualmente');
+    await revisar();
     expect(screen.getByRole('heading', { name: 'Que vagas você procura?' })).toBeTruthy();
   });
 
   it('retira a faixa salarial anterior quando a pessoa deixa os dois limites em branco', async () => {
     const { salvar } = montar();
     await conectar(); await escolher('Perfil.pdf');
-    clicar('Preencher manualmente');
+    await revisar();
     editar('Mínimo', '');
     clicar('Concluir perfil');
     await waitFor(() => expect(salvar).toHaveBeenCalled());

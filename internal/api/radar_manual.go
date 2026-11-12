@@ -26,7 +26,8 @@ func (a *API) iniciarManualRadar(e dominio.Estado, id string, cx dominio.Ctx) (d
 	if vaga["idioma"] == "en" {
 		idioma = "en"
 	}
-	cvs := dominio.ObjetoDe(e.Perfil["curriculos"])
+	perfil := e.PerfilDeBusca(dominio.DonoDaBusca(vaga))
+	cvs := dominio.ObjetoDe(perfil["curriculos"])
 	nome := dominio.Texto(cvs[strings.ToUpper(idioma)])
 	if nome == "" {
 		nome = dominio.Texto(cvs["PT"])

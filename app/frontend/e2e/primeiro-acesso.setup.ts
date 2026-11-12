@@ -21,25 +21,6 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   const pdf = await documento.pdf({ format: 'A4' });
   await documento.close();
 
-  if (!radar) {
-    // A configuração não sai da página e nenhum fornecedor recebe o PDF nesta suíte.
-    await page.route('**/api/v1/ia', r => r.fulfill({ json: {
-      configurada: true, provedor: 'claude-cli', chaves: {}, gratis: { disponivel: false },
-      clis: [{ provedor: 'claude-cli', nome: 'Claude', instalada: true, pronta: true, logada: true }],
-      uso: { chamadas: 0, falhas: 0, custoEstimadoUSD: 0 },
-    } }));
-    await page.route('**/api/v1/ia/config', r => r.fulfill({ json: { provedor: 'claude-cli' } }));
-    await page.route('**/api/v1/ia/testar', r => r.fulfill({ json: { ok: true, ms: 12 } }));
-    await page.route('**/api/v1/onboarding/sugerir', r => {
-      expect(Buffer.from(r.request().postDataJSON().curriculoBase64, 'base64')).toEqual(pdf);
-      return r.fulfill({ json: { sugestoes: [
-        { campo: 'cargo', valor: 'Desenvolvimento de software', evidencia: 'Desenvolvimento de software' },
-        { campo: 'stackPrincipal', valor: 'React', evidencia: 'React e Java' },
-        { campo: 'stackPrincipal', valor: 'Java', evidencia: 'React e Java' },
-      ] } });
-    });
-  }
-
   let buscas = 0;
   page.on('request', r => { if (r.method() === 'POST' && r.url().endsWith('/api/v1/busca')) buscas++; });
   await page.goto('/');
@@ -50,14 +31,16 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   const claude = page.getByRole('button', { name: 'Claude', exact: true });
   await expect(claude).toBeVisible({ timeout: 45_000 });
   await claude.click();
-  if (radar) await page.getByRole('button', { name: 'Minha assinatura' }).click();
+  await page.getByRole('button', { name: 'Minha assinatura' }).click();
   await captura(page, info, 'primeiro-acesso');
   if (!radar) {
     const tema = page.getByRole('button', { name: 'Alternar tema claro/escuro' });
+    await expect(page.locator('html')).toHaveAttribute('data-tema', 'escuro');
+    await tema.click();
+    await expect(page.locator('html')).toHaveAttribute('data-tema', 'claro');
+    await captura(page, info, 'primeiro-acesso-claro');
     await tema.click();
     await expect(page.locator('html')).toHaveAttribute('data-tema', 'escuro');
-    await captura(page, info, 'primeiro-acesso-escuro');
-    await tema.click();
   }
   const teste = page.waitForResponse(r => r.url().endsWith('/api/v1/ia/testar'), { timeout: 130_000 });
   await page.getByRole('button', { name: /Conectar e continuar|Usar conexão atual|Verificar conexão|Testar conexão/ }).click();
@@ -87,6 +70,17 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   await page.getByLabel('Moeda').selectOption('USD');
   await page.getByLabel('Mínimo').fill('4000');
   await page.getByLabel('Máximo').fill('6000');
+  if (!radar) {
+    await page.getByLabel('Máximo').blur();
+    await expect(page.getByText('Salvo neste computador', {exact:true})).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('curriculo-teste.pdf', {exact:true})).toBeVisible();
+    await expect(page.getByText('Claude conectado', {exact:true})).toHaveCount(0);
+    await page.getByRole('button', {name:'Usar conexão atual'}).click();
+    await expect(campoCargo).toHaveValue('Desenvolvimento de software');
+    await expect(page.getByLabel('Mínimo')).toHaveValue('4000');
+    await expect(page.getByLabel('Máximo')).toHaveValue('6000');
+  }
   await captura(page, info, 'revisao');
   const salvamento = page.waitForResponse(r => r.url().endsWith('/api/v1/onboarding') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Concluir perfil' }).click();
@@ -119,9 +113,23 @@ test('primeiro acesso, revisão do currículo e Radar de vagas', async ({ page, 
   expect(aposBusca.vagas[0].aderencia).toMatch(/^[ABC]$/);
   expect(aposBusca.vagas[0].etapa).toBe('descoberta');
   const ficha = page.getByRole('article', { name: 'Desenvolvimento de software com React' });
+  const listaRadar = page.getByRole('list', { name: 'Vagas para revisão' });
+  const linha = listaRadar.getByRole('button', { name: /Desenvolvimento de software com React/ });
+  await expect(linha).toHaveAttribute('aria-current', 'true');
+  const outraNota = aposBusca.vagas[0].aderencia === 'B' ? 'A' : 'B';
+  await page.getByRole('button', { name: 'Nota ' + outraNota, exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nenhuma vaga com nota ' + outraNota })).toBeVisible();
+  await page.getByRole('button', { name: 'Ver todas as vagas' }).click();
   await expect(ficha).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
+  await expect(linha).toBeVisible();
+  await expect(ficha).toBeHidden();
+  await linha.click();
+  await expect(ficha).toBeVisible();
+  await expect(listaRadar).toBeHidden();
+  await ficha.getByRole('button', { name: 'Voltar às vagas' }).click();
+  await expect(linha).toBeFocused();
   await page.setViewportSize({ width: 1366, height: 850 });
   await captura(page, info, 'radar-classificacao');
   await ficha.getByRole('button', { name: 'Aplicar na vaga' }).click();

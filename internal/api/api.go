@@ -532,11 +532,14 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 	if p == "/envio/ao-vivo" {
 		return a.rotaAoVivo(ctx, m, c, autor, ped.DaJanela)
 	}
+	if p == "/perfis-busca" || strings.HasPrefix(p, "/perfis-busca/") {
+		return a.perfisBusca(ctx, m, p, autor, c)
+	}
 	if m == "POST" && p == "/busca" {
 		if autor != "eu" {
 			return Resposta{}, falha(403, "somente a pessoa inicia uma busca no app")
 		}
-		return a.buscarETriar(ctx)
+		return a.buscarETriar(ctx, dominio.Texto(c["perfilBuscaId"]))
 	}
 
 	if strings.HasPrefix(p, "/envio") {
@@ -619,6 +622,9 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 	case p == "/perfil" && (m == "PUT" || m == "PATCH"):
 		var novo Objeto
 		if err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
+			if err := conferirPerfilBusca(e, q["perfilBuscaId"]); err != nil {
+				return e, err
+			}
 			novo = c
 			if m == "PATCH" {
 				novo = MesclarPerfil(e.Perfil, c)
@@ -635,7 +641,7 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 			}
 			if assinaturaDeBusca(e.Perfil) != assinaturaDeBusca(novo) {
 				for i, v := range e.Vagas {
-					if v["etapa"] == "descoberta" && v["triagemPerfil"] != nil {
+					if dominio.DonoDaBusca(v) == e.PerfilBuscaAtivo() && v["etapa"] == "descoberta" && v["triagemPerfil"] != nil {
 						e.Vagas[i] = aguardandoTriagem(v)
 					}
 				}
@@ -649,6 +655,16 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 
 	case p == "/onboarding" && m == "POST":
 		return a.concluirOnboarding(ctx, autor, c)
+	case p == "/onboarding/rascunho" && (m == "GET" || m == "PATCH"), p == "/onboarding/curriculo" && (m == "PUT" || m == "DELETE"):
+		if autor != "eu" || a.canal != "" {
+			return Resposta{}, falha(403, msgForaDoAssistente)
+		}
+		return a.rotaRascunho(ctx, m, c)
+	case p == "/perfil/curriculo" && m == "POST":
+		if autor != "eu" || a.canal != "" {
+			return Resposta{}, falha(403, "use a janela do Applyer")
+		}
+		return a.substituirCurriculo(ctx, q["perfilBuscaId"], c)
 	case p == "/onboarding/sugerir" && m == "POST":
 		return a.sugerirPeloCurriculo(ctx, autor, c)
 
@@ -753,7 +769,8 @@ func (a *API) rotasDeLeitura(ctx context.Context, p string, q map[string]string)
 		}
 		corpo := Objeto{
 			"onboardingConcluido": concluido,
-			"vagas":               e.Vagas, "eventos": e.Eventos, "plataformas": e.Plataformas, "rodadas": e.Rodadas, "perfil": e.Perfil,
+			"perfilBuscaAtivo":    e.PerfilBuscaAtivo(), "perfisBusca": e.ResumoPerfisBusca(),
+			"vagas": e.Vagas, "eventos": e.Eventos, "plataformas": e.Plataformas, "rodadas": e.Rodadas, "perfil": e.Perfil,
 			"pedidos": e.Pedidos, "emails": e.Emails, "hoje": a.hoje(), "versao": v, "curriculos": a.curriculos(),
 			"pastaCurriculos": textoOuNulo(a.pastaCurriculos()), "primeirosPassos": a.primeirosPassos(e),
 		}
@@ -1010,6 +1027,33 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 		return vaga, err
 	}
 	switch {
+	case m == "POST" && acao == "/devolver-ao-radar":
+		if err := soCampos(c); err != nil {
+			return Resposta{}, err
+		}
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			return dominio.DevolverAoRadar(e, id, a.relogio(), cx)
+		})
+		if err != nil {
+			return Resposta{}, err
+		}
+		return ok(v)
+	case m == "POST" && acao == "/acompanhamento":
+		if err := soCampos(c, "etapaAntes", "notasAntes", "etapa", "notas"); err != nil {
+			return Resposta{}, err
+		}
+		for _, campo := range []string{"etapaAntes", "notasAntes", "etapa", "notas"} {
+			if _, ok := c[campo].(string); !ok {
+				return Resposta{}, erroCampo(campo + ": texto obrigatório")
+			}
+		}
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			return dominio.AtualizarQuadro(e, id, c["etapaAntes"].(string), c["notasAntes"].(string), c["etapa"].(string), c["notas"].(string), cx)
+		})
+		if err != nil {
+			return Resposta{}, err
+		}
+		return ok(v)
 	case m == "POST" && (acao == "/iniciar-manual" || acao == "/confirmar-envio-manual"):
 		if err := soCampos(c); err != nil {
 			return Resposta{}, err

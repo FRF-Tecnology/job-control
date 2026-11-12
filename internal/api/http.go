@@ -54,7 +54,8 @@ func (a *API) Handler() http.Handler {
 			p = Prefixo + p[len("/api"):]
 		}
 		m := r.Method
-		onboarding := m == http.MethodPost && (p == Prefixo+"/onboarding" || p == Prefixo+"/onboarding/sugerir")
+		comPDF := m == http.MethodPost && (p == Prefixo+"/onboarding" || p == Prefixo+"/onboarding/sugerir" || p == Prefixo+"/perfil/curriculo") || m == http.MethodPut && p == Prefixo+"/onboarding/curriculo"
+		onboarding := comPDF || p == Prefixo+"/onboarding/rascunho" || p == Prefixo+"/onboarding/curriculo"
 		if m != http.MethodGet && m != http.MethodHead && m != http.MethodOptions {
 			if s := r.Header.Get("Sec-Fetch-Site"); s != "" && s != "same-origin" && s != "none" {
 				enviar(w, Resposta{Status: 403, Corpo: Objeto{"erro": "gravação recusada: pedido veio de outro site"}})
@@ -64,7 +65,7 @@ func (a *API) Handler() http.Handler {
 				enviar(w, Resposta{Status: 403, Corpo: Objeto{"erro": "use a tela de primeiro acesso do Applyer"}})
 				return
 			}
-			if !onboarding && !strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			if !comPDF && !strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 				enviar(w, Resposta{Status: 415, Corpo: Objeto{"erro": "envie JSON (content-type: application/json)"}})
 				return
 			}
@@ -73,7 +74,7 @@ func (a *API) Handler() http.Handler {
 		if m != http.MethodGet {
 			var c any
 			var err error
-			if onboarding {
+			if comPDF {
 				c, err = lerOnboarding(w, r)
 			} else {
 				c, err = lerCorpo(r.Body)

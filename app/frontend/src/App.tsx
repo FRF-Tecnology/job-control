@@ -1,18 +1,16 @@
 // Casca da interface: estado, rotas, atualização automática, avisos e diálogos (porte de web/app.mjs).
-import { Component, type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Contexto, chamarApi, ErroApi, type App as AppApi, type Estado, type Pergunta } from './app/contexto';
 import { grupoADireto, prepararProntas } from './app/preparoAutomatico';
-import { resumo } from './dominio/funil';
-import { Icone } from './componentes';
+import { Espaco } from './app/Espaco';
 import { encode } from './util';
 import { Dialogo, type PedidoDialogo } from './app/Dialogo';
 import { Detalhe } from './telas/Detalhe';
 import { TelaHoje } from './telas/Hoje';
 import { TelaTriagem } from './telas/Triagem';
-import { TelaRadar } from './telas/Radar';
-import wordmark from './arte/primeiro-acesso/applyer-inversa.svg';
-import wordmarkClara from './arte/primeiro-acesso/applyer.svg';
-import marcaClaude from '../../../site/marcas/claude.svg';
+import { TelaRadar, vagasDisponiveisNoRadar } from './telas/Radar';
+import { TelaListaDoDia, TelaQuadroCandidaturas } from './telas/Jornada';
+import { PerfilDoEspaco } from './telas/PerfilDoEspaco';
 import { TelaFila } from './telas/Fila';
 import { EVENTO_ENVIO, type EstadoEnvio } from './telas/PainelEnvio';
 import { TelaQuadro } from './telas/Quadro';
@@ -24,41 +22,28 @@ import { TelaPerfil } from './telas/Perfil';
 import { TelaConectarIA } from './telas/ConectarIA';
 import { PrimeiroAcesso } from './telas/PrimeiroAcesso';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
-import { foiEnviada } from './dominio/modelo';
 
-// Ícone de cada seção (menu lateral no PC e abas no celular).
-const ICONES: Record<string, string> = {
-  radar:'M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l8-8',
-  hoje: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
-  triagem: 'M10 3h7a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 7v11a3 3 0 0 0 3 3h9',
-  fila: 'M10 6h10M10 12h10M10 18h10M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17',
-  quadro: 'M4.5 4h2A1.5 1.5 0 0 1 8 5.5v13A1.5 1.5 0 0 1 6.5 20h-2A1.5 1.5 0 0 1 3 18.5v-13A1.5 1.5 0 0 1 4.5 4zM11.5 4h2A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5v-7A1.5 1.5 0 0 1 11.5 4zM18.5 4h1A1.5 1.5 0 0 1 21 5.5v10a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 18.5 4z',
-  vagas: 'M3 8h18v12H3zM9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3',
-  numeros: 'M5 20v-9M12 20V4M19 20v-6M3 20h18',
-  plataformas: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
-  rodadas: 'M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4',
-  perfil: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 21a8 8 0 0 1 16 0',
-  ia: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
-  mais: 'M5 12h.01M12 12h.01M19 12h.01',
-};
+
 // Nome da IA em uso, para o resumo do menu lateral (provedores do GET /ia/config; fora da lista, fica genérico).
 const NOMES_IA: Record<string, string> = {
   'claude-cli': 'Claude Code conectado', 'codex-cli': 'Codex conectado', 'gemini-cli': 'Gemini CLI conectado',
   anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)', xai: 'Grok conectado (chave)',
 };
-type R = ReturnType<typeof resumo>;
-const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
-  { rota:'radar', nome:'Radar', Tela:TelaRadar, aba:true },
-  { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
-  { rota: 'triagem', nome: 'Triagem', Tela: TelaTriagem, contador: r => r.descoberta, aba: true },
-  { rota: 'fila', nome: 'Fila', Tela: TelaFila },
-  { rota: 'quadro', nome: 'Quadro', Tela: TelaQuadro },
-  { rota: 'vagas', nome: 'Vagas', Tela: TelaVagas },
-  { rota: 'numeros', nome: 'Números', Tela: TelaNumeros },
-  { rota: 'plataformas', nome: 'Plataformas', Tela: TelaPlataformas },
-  { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
-  { rota: 'perfil', nome: 'Perfil', Tela: TelaPerfil }, // no menu, "Perfil"; o título da tela segue "Perfil e regras"
-  { rota: 'ia', nome: 'Conectar IA', Tela: TelaConectarIA },
+const MARCAS_IA: Record<string,string> = {
+  'claude-cli':'Claude', anthropic:'Claude', 'codex-cli':'OpenAI', openai:'OpenAI',
+  'gemini-cli':'Gemini', google:'Gemini', xai:'Grok',
+};
+type Destino = { rota: string; nome: string; Tela: () => ReactNode };
+const TELAS: Destino[] = [
+  {rota:'radar',nome:'Radar de vagas',Tela:TelaRadar},
+  {rota:'lista',nome:'Lista do dia',Tela:TelaListaDoDia},
+  {rota:'quadro',nome:'Quadro',Tela:TelaQuadroCandidaturas},
+  {rota:'perfil',nome:'Perfil e IA',Tela:PerfilDoEspaco},
+  {rota:'hoje',nome:'Hoje',Tela:TelaHoje}, {rota:'triagem',nome:'Triagem',Tela:TelaTriagem},
+  {rota:'fila',nome:'Fila',Tela:TelaFila}, {rota:'funil',nome:'Funil completo',Tela:TelaQuadro},
+  {rota:'vagas',nome:'Vagas',Tela:TelaVagas}, {rota:'numeros',nome:'Números',Tela:TelaNumeros},
+  {rota:'plataformas',nome:'Plataformas',Tela:TelaPlataformas}, {rota:'rodadas',nome:'Rodadas',Tela:TelaRodadas},
+  {rota:'regras',nome:'Regras e dados',Tela:TelaPerfil}, {rota:'ia',nome:'Conectar IA',Tela:TelaConectarIA},
 ];
 
 function lerHash() {
@@ -161,6 +146,7 @@ export default function App() {
   useEffect(() => {
     if (!estado || fechando.current || preparando.current) return;
     const modoDireto = (estado.perfil as any)?.modo === 'direto';
+    for (const v of estado.vagas ?? []) if (v.etapa==='descoberta' && v.devolvidaAoRadar) tentadas.current.delete(v.id);
     const talvez = (estado.vagas ?? []).some((v: any) => !tentadas.current.has(v.id)
       && (v.etapa === 'aplicar' || (modoDireto && grupoADireto(v))));
     if (!talvez) return;
@@ -168,7 +154,7 @@ export default function App() {
     (async () => {
       try {
         const candidaturas = await chamarApi('/api/v1/candidaturas');
-        const r = await prepararProntas(chamarApi, { vagas: estado.vagas ?? [], perfil: estado.perfil, curriculos: (estado as any).curriculos ?? [] }, candidaturas, tentadas.current);
+        const r = await prepararProntas(chamarApi, { vagas: estado.vagas ?? [], perfil: estado.perfil, curriculos: estado.curriculos ?? [], perfisBusca: estado.perfisBusca, perfilBuscaAtivo: estado.perfilBuscaAtivo }, candidaturas, tentadas.current);
         if (r.preparadas) aviso(r.preparadas === 1 ? 'Uma candidatura foi preparada sozinha: revise o pacote e aprove na Fila.' : `${r.preparadas} candidaturas foram preparadas sozinhas: revise os pacotes e aprove na Fila.`);
       } catch { /* sem a lista, tenta na próxima leitura */ } finally { preparando.current = false; }
     })();
@@ -190,21 +176,12 @@ export default function App() {
 
   // A IA em uso, para o resumo do menu lateral: lida ao abrir e ao trocar de seção (a pessoa pode ter conectado outra).
   useEffect(() => {
-    let vivo = true;
-    const ler=()=>chamarApi('/api/v1/ia/config').then(r=>{if(vivo)setIA(r)}).catch(()=>{if(vivo)setIA(null)});
+    let vivo = true, leitura = 0;
+    const ler=()=>{const atual=++leitura; return chamarApi('/api/v1/ia/config').then(r=>{if(vivo && atual===leitura)setIA(r)}).catch(()=>{if(vivo && atual===leitura)setIA(null)})};
     void ler(); window.addEventListener('applyer:ia-alterada',ler);
     return () => { vivo = false; window.removeEventListener('applyer:ia-alterada',ler); };
   }, [tela.rota, primeiroAcesso]);
 
-
-  // A luz do fundo segue o ponteiro, devagar. Com "reduzir movimento", fica parada.
-  const luz = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const mover = (ev: PointerEvent) => { if (luz.current) luz.current.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`; };
-    window.addEventListener('pointermove', mover, { passive: true });
-    return () => window.removeEventListener('pointermove', mover);
-  }, []);
 
   // Atualização automática: a cada 5 s, ao voltar para a janela e ao trocar de seção.
   useEffect(() => {
@@ -243,6 +220,7 @@ export default function App() {
     };
     return {
       estado,
+      conexaoIA: {nome: MARCAS_IA[ia?.provedor ?? ''] ?? 'Provedor', verificada:ia?.conexaoVerificada === true},
       hoje: estado.hoje,
       foco: estado.perfil?.foco ?? 'ambos',
       rota: tela.rota,
@@ -251,8 +229,7 @@ export default function App() {
       agir,
       async mudarFoco(foco) {
         if (foco === (estado.perfil?.foco ?? 'ambos')) return;
-        setEstado((e: Estado) => ({ ...e, perfil: { ...e.perfil, foco } }));
-        await agir(() => api('/api/v1/perfil', 'PATCH', { foco }));
+        await agir(() => api('/api/v1/perfil?perfilBuscaId='+encode(estado.perfilBuscaAtivo || 'original'), 'PATCH', { foco }));
       },
       mover: (id, etapa, extras = {}, mensagem) => agir(() => api(`/api/v1/vagas/${encode(id)}/mover`, 'POST', { etapa, ...extras }), mensagem),
       abrirVaga: id => { location.hash = `#/${tela.rota}/${encode(id)}`; },
@@ -262,7 +239,7 @@ export default function App() {
       recarregar: () => carregar(true),
       limpar: () => { sujo.current = false; },
     };
-  }, [estado, tela.rota, vaga, aviso, perguntar, carregar]);
+  }, [estado, ia, tela.rota, vaga, aviso, perguntar, carregar]);
 
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
@@ -272,7 +249,6 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [tela.rota, primeiroAcesso]);
 
-  const r = estado ? resumo(estado.vagas, estado.hoje) : null;
   const detalheAberto = Boolean(estado && vaga && estado.vagas.some((v: any) => v.id === vaga));
   const fecharDetalhe = () => { location.hash = `#/${tela.rota}`; };
 
@@ -282,16 +258,12 @@ export default function App() {
     return () => document.removeEventListener('keydown', aoTeclar);
   });
 
-  const contador = (t: (typeof TELAS)[number]) => {
-    const n = r && t.contador?.(r);
-    return n ? <span className={`contador${t.alerta ? ' alerta' : ''}`}>{n}</span> : null;
+  const vagas = estado?.vagas ?? [];
+  const ativo = estado?.perfilBuscaAtivo || 'original';
+  const quantidades = {
+    radar: vagasDisponiveisNoRadar(vagas, ativo).length,
+    lista: vagas.filter(v=>v.etapa==='aplicar').length,
   };
-
-  // Resumo do dia no menu lateral: os mesmos números da tela Hoje (envios de hoje e o limite do LinkedIn).
-  const enviadasHoje = estado ? estado.vagas.filter((v: any) => foiEnviada(v) && v.envio?.data === estado.hoje) : [];
-  const limiteLinkedin = Number(estado?.perfil?.limiteLinkedinDia) || 40;
-  const linkedinHoje = enviadasHoje.filter((v: any) => v.plataforma === 'linkedin').length;
-
   const Tela = tela.Tela;
   const avisosEDialogo = <>
     <Dialogo pedido={dialogo} fechar={() => setDialogo(null)} />
@@ -299,11 +271,11 @@ export default function App() {
       <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}</div>
   </>;
   if (primeiroAcesso && app && !falha) {
-    const concluir = async () => {
+    const concluir = async (buscar: boolean) => {
       const salvo=await chamarApi('/api/v1/estado');
       if(salvo?.onboardingConcluido !== true) throw new Error('Não foi possível confirmar o perfil salvo. Tente novamente.');
       sujo.current=false; versao.current=salvo.versao;
-      setEstado(salvo); app.navegar('radar');
+      setEstado(salvo); app.navegar(buscar ? 'radar?buscar=1' : 'radar');
     };
     return <><Contexto.Provider value={app}><Protecao chave="primeiro-acesso">
       <PrimeiroAcesso alternarTema={alternarTema} concluir={concluir} />
@@ -311,61 +283,25 @@ export default function App() {
   }
   return (
     <>
-      <div className="fundo" aria-hidden="true">
-        <i className="bolha b1" /><i className="bolha b2" /><i className="bolha b3" /><i className="bolha b4" /><i className="bolha b5" />
-        <i className="luz" ref={luz} />
-      </div>
-      <a className="pular-link" href="#conteudo" onClick={e => { e.preventDefault(); main.current?.focus(); }}>Ir para o conteúdo</a>
-      <header className="topo-app">
-        <div className="topo-dentro">
-          <a className="marca" href="#/radar" aria-label="Applyer — início">
-            <img className="marca-applyer escura" src={wordmark} alt="Applyer." /><img className="marca-applyer clara" src={wordmarkClara} alt="Applyer." />
-          </a>
-          <Menu atual={tela.rota} contador={contador} />
-          {estado && (
-            <div className="lateral-extra so-alto">
-              <b>Hoje</b>
-              <div className="medidor" aria-hidden="true"><span style={{ width: `${Math.round(Math.min(linkedinHoje / limiteLinkedin, 1) * 100)}%` }} /></div>
-              <span>{`${enviadasHoje.length} ${enviadasHoje.length === 1 ? 'candidatura enviada' : 'candidaturas enviadas'} · LinkedIn: ${linkedinHoje} de ${limiteLinkedin}`}</span>
-            </div>
-          )}
-          {ia && (
-            <a className="lateral-extra" href="#/ia">
-              <span className="status-ia">{['claude-cli','anthropic'].includes(ia.provedor ?? '') && <img src={marcaClaude} alt="" width="20" height="20" />}<span className={`ponto${ia.conexaoVerificada ? ' ok' : ''}`} aria-hidden="true" /><b>{ia.conexaoVerificada ? (NOMES_IA[ia.provedor ?? ''] ?? 'IA conectada') : ia.configurada ? 'IA configurada · verificar' : 'Nenhuma IA conectada'}</b></span>
-              <span>{ia.conexaoVerificada ? 'Conexão verificada nesta sessão.' : 'Abra Conectar IA para verificar sua conexão.'}</span>
-            </a>
-          )}
-          <div className="topo-pe">
-            {envioAtivo && <a className="marca-envio" href="#/fila" title="O app está enviando as candidaturas aprovadas. Abra a Fila para pausar.">Envio ligado</a>}
-            <span className={`status-conexao ${conexao.estado}`} role="status">{conexao.texto}</span>
-            <button className="botao-icone" type="button" aria-label="Alternar tema claro/escuro" onClick={alternarTema}>
-              <Icone d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />
-            </button>
-          </div>
-        </div>
-      </header>
-      <main id="conteudo" tabIndex={-1} ref={main}>
+      <Espaco rota={tela.rota} titulo={tela.nome} pessoa={estado?.perfil?.nome ?? ''} ferramentas={TELAS.slice(4)}
+        quantidades={quantidades} status={conexao.texto} falha={Boolean(falha)||conexao.estado==='off'}
+        envio={envioAtivo} tema={alternarTema} ia={{
+          claude:['anthropic','claude-cli'].includes(ia?.provedor ?? ''), verificada:!!ia?.conexaoVerificada,
+          texto:ia?.conexaoVerificada ? (NOMES_IA[ia.provedor ?? ''] ?? 'IA conectada') : ia?.configurada ? 'IA configurada' : 'Conexão pendente'
+        }}>
+      <main id="conteudo" className="area-corpo" tabIndex={-1} ref={main}>
         {falha ? (
           <div className="convite"><div><strong>{falha.titulo}</strong><p>{falha.texto}</p></div></div>
         ) : app && (
           <Contexto.Provider value={app}>
             <Protecao chave={tela.rota}>
               {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
-              <Tela key={tela.rota === 'perfil' ? `perfil-${estado.versao}` : tela.rota} />
+              <Tela key={tela.rota === 'regras' ? `regras-${estado.versao}` : `${tela.rota}-${ativo}`} />
             </Protecao>
           </Contexto.Provider>
         )}
       </main>
-      <nav className="abas" aria-label="Seções principais">
-        {TELAS.filter(t => t.aba).map(t => (
-          <a key={t.rota} href={`#/${t.rota}`} aria-current={t.rota === tela.rota ? 'page' : undefined}>
-            <Icone d={ICONES[t.rota]} />{t.nome}{contador(t)}
-          </a>
-        ))}
-        <button type="button" aria-current={!tela.aba ? 'page' : undefined} onClick={() => setDialogo({ tipo: 'mais', telas: TELAS.filter(t => !t.aba) })}>
-          <Icone d={ICONES.mais} />Mais
-        </button>
-      </nav>
+      </Espaco>
       <aside className="gaveta" aria-label="Detalhe da vaga" hidden={!detalheAberto}>
         {detalheAberto && app && <Contexto.Provider value={app}><Detalhe key={vaga!} id={vaga!} fechar={fecharDetalhe} /></Contexto.Provider>}
       </aside>
@@ -381,42 +317,4 @@ function alternarTema() {
   const escuroAgora = raiz.dataset.tema ? raiz.dataset.tema === 'escuro' : matchMedia('(prefers-color-scheme: dark)').matches;
   raiz.dataset.tema = escuroAgora ? 'claro' : 'escuro';
   try { localStorage.setItem('tema', raiz.dataset.tema); } catch { /* sem armazenamento: o tema vale só agora */ }
-}
-
-// Menu das seções: lateral em telas largas, no topo nas estreitas. No topo, o menu rola para o lado; as pontas
-// cortadas esmaecem e a seção atual fica à vista.
-function Menu({ atual, contador }: { atual: string; contador: (t: (typeof TELAS)[number]) => ReactNode }) {
-  const nav = useRef<HTMLElement>(null);
-  const rolado = useRef(false);
-  const marcar = useCallback(() => {
-    const n = nav.current;
-    if (!n) return;
-    const cortado = n.scrollWidth > n.clientWidth + 1;
-    n.classList.toggle('corta-fim', cortado && n.scrollLeft + n.clientWidth < n.scrollWidth - 1);
-    n.classList.toggle('corta-inicio', cortado && n.scrollLeft > 1);
-    const ativo = n.querySelector<HTMLElement>('[aria-current="page"]');
-    if (cortado && ativo && !rolado.current) { n.scrollLeft = ativo.offsetLeft - (n.clientWidth - ativo.offsetWidth) / 2; rolado.current = true; }
-  }, []);
-  useEffect(() => { rolado.current = false; marcar(); }, [atual, marcar]);
-  useEffect(() => {
-    // A largura da faixa muda também quando algo no topo aparece (ex.: a marca "Envio ligado"), não só na janela.
-    const n = nav.current;
-    const obs = n && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(marcar) : null;
-    if (n && obs) obs.observe(n);
-    window.addEventListener('resize', marcar);
-    return () => { obs?.disconnect(); window.removeEventListener('resize', marcar); };
-  }, [marcar]);
-  return (
-    <nav aria-label="Seções" ref={nav} onScroll={marcar}>
-      {/* No menu lateral, a marca da seção atual desliza até ela (só enfeite: quem diz a seção atual é o aria-current). */}
-      <span className="indicador" aria-hidden="true" style={{ '--i': Math.max(TELAS.findIndex(t => t.rota === atual), 0) } as CSSProperties} />
-      <ul className="menu">
-        {TELAS.map(t => (
-          <li key={t.rota}>
-            <a href={`#/${t.rota}`} aria-current={t.rota === atual ? 'page' : undefined}><Icone d={ICONES[t.rota]} /><span>{t.nome}</span>{contador(t)}</a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
 }
