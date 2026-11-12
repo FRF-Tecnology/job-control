@@ -1,6 +1,6 @@
 // Gaveta com o detalhe da vaga: dados, mover de etapa, notas e linha do tempo (porte de web/telas/detalhe.mjs).
 import { useEffect, useRef, useState } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { ETAPAS } from '../dominio/modelo';
 import { EtapaChip, LinkExterno } from '../componentes';
 import { dataCurta, encode, nomeAssistente, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
@@ -10,6 +10,7 @@ const OPCOES_PENDENCIA = ['Digitar CPF e enviar', 'Fazer login no portal', 'Grav
 
 export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
   const app = useApp();
+  const trava = useTrava();
   const v = app.estado.vagas.find((x: any) => x.id === id);
   const primeiroBotao = useRef<HTMLButtonElement>(null);
   const [novaNota, setNovaNota] = useState('');
@@ -73,7 +74,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
       <div className="acoes">
         <LinkExterno url={v.link} className="botao">Abrir vaga</LinkExterno>
         <label className="campo" style={{ minWidth: '200px' }}><span>Mover para</span>
-          <select value="" onChange={ev => { const e = ev.target.value; if (e) moverPara(e); }}>
+          <select value="" {...trava()} onChange={ev => { const e = ev.target.value; if (e) moverPara(e); }}>
             <option value="">{nomeEtapa(v.etapa)}</option>
             {ETAPAS.filter(e => e !== v.etapa).map(e => <option key={e} value={e}>{nomeEtapa(e)}</option>)}
           </select>
@@ -82,7 +83,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
       <dl>{dados.map(([k, val]) => <div key={k} style={{ display: 'contents' }}><dt>{k}</dt><dd>{val}</dd></div>)}</dl>
       <label className="campo"><span>Notas</span>
         {/* Recomeça do salvo quando as notas mudam por fora (com nada por salvar, a tela recarrega). */}
-        <textarea key={v.notas ?? ''} id="notas-vaga" placeholder="Anotações: recrutador, dúvidas, próximos passos…" defaultValue={v.notas ?? ''} onBlur={ev => salvarNotas(ev.target.value)} />
+        <textarea key={v.notas ?? ''} id="notas-vaga" placeholder="Anotações: recrutador, dúvidas, próximos passos…" defaultValue={v.notas ?? ''} readOnly={trava.travado} onBlur={ev => { if (!trava.travado) salvarNotas(ev.target.value); }} />
       </label>
       <section>
         <h3 style={{ marginBottom: '10px' }}>Linha do tempo</h3>
@@ -97,7 +98,7 @@ export function Detalhe({ id, fechar }: { id: string; fechar: () => void }) {
             {['nota', 'retorno', 'teste', 'entrevista', 'follow-up'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <input id="nova-nota" type="text" placeholder="Registrar algo (ex.: recrutador respondeu)" value={novaNota} onChange={ev => setNovaNota(ev.target.value)} />
-          <button className="botao-fantasma" type="submit">Registrar</button>
+          <button className="botao-fantasma" type="submit" {...trava()}>Registrar</button>
         </form>
         {eventos.length ? (
           <ol className="linha-tempo">

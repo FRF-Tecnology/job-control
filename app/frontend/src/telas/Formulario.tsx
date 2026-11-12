@@ -5,6 +5,7 @@
 // ainda é "envie à mão". Nada aqui envia: aprovar continua sendo o botão da Fila, que só libera sem pendentes.
 import { useState } from 'react';
 import { perguntaSensivel } from '../app/sensivel';
+import { useTrava } from '../app/contexto';
 import type { EstruturaFormulario, PerguntaFormulario } from '../app/impressao';
 
 type Resposta = { pergunta: string; resposta: string; origem: string; perguntaId?: string };
@@ -30,6 +31,7 @@ export function FormularioCand({ c, ocupado, onLer, onResponder }: {
   c: CandFormulario; ocupado: boolean; onLer: () => void; onResponder: (conteudo: CandFormulario['conteudo']) => void;
 }) {
   const [valores, setValores] = useState<Record<string, string>>({});
+  const trava = useTrava();
   const typeform = ehTypeform(c.url);
   const respostaDe = (p: PerguntaFormulario) => c.conteudo.respostas.find(r => r.perguntaId === p.id);
   const pendentes = new Set(c.pendentes ?? []);
@@ -40,7 +42,7 @@ export function FormularioCand({ c, ocupado, onLer, onResponder }: {
 
   const salvar = (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (!prontas.length) return;
+    if (!prontas.length || trava.travado) return;
     const novos = new Set(prontas.map(p => p.id));
     const respostas = [
       ...c.conteudo.respostas.filter(r => !r.perguntaId || !novos.has(r.perguntaId)),
@@ -57,20 +59,20 @@ export function FormularioCand({ c, ocupado, onLer, onResponder }: {
         // Typeform ainda é à mão: ler confere a página e a deixa bloqueada ("envie à mão"), com "Marcar como enviada".
         <div className="formulario-ler">
           <p className="pequeno aviso-cv"><strong>Typeform: envie à mão.</strong> O app ainda não preenche Typeform. Abra o link da vaga e envie você; depois, marque como enviada.</p>
-          {preparada && <button className="botao-fantasma p" type="button" disabled={ocupado} onClick={onLer}>{ocupado ? 'Conferindo…' : 'Conferir e enviar à mão'}</button>}
+          {preparada && <button className="botao-fantasma p" type="button" {...trava(ocupado)} onClick={onLer}>{ocupado ? 'Conferindo…' : 'Conferir e enviar à mão'}</button>}
         </div>
       ) : !c.estrutura ? (
         preparada && (
           <div className="formulario-ler">
             <p className="pequeno mudo">Leia o formulário para ver as perguntas antes de aprovar. O app abre a página sem janela e só lê: não preenche nem envia nada.</p>
-            <button className="botao p" type="button" disabled={ocupado} onClick={onLer}>{ocupado ? 'Lendo…' : 'Ler formulário'}</button>
+            <button className="botao p" type="button" {...trava(ocupado)} onClick={onLer}>{ocupado ? 'Lendo…' : 'Ler formulário'}</button>
           </div>
         )
       ) : (
         <>
           <div className="formulario-topo">
             <h3>{`Perguntas do formulário (${c.estrutura.perguntas.length})`}</h3>
-            {preparada && <button className="botao-fantasma p" type="button" disabled={ocupado} onClick={onLer}>Ler de novo</button>}
+            {preparada && <button className="botao-fantasma p" type="button" {...trava(ocupado)} onClick={onLer}>Ler de novo</button>}
           </div>
           {pendentes.size > 0
             ? <p className="pequeno formulario-pendentes" role="status">{`${pendentes.size === 1 ? 'Falta responder 1 pergunta obrigatória' : `Faltam responder ${pendentes.size} perguntas obrigatórias`} para aprovar.`}</p>
@@ -109,7 +111,7 @@ export function FormularioCand({ c, ocupado, onLer, onResponder }: {
             </ol>
             {respondiveis.length > 0 && preparada && (
               <div className="acoes">
-                <button className="botao p" type="submit" disabled={ocupado || !prontas.length}>{prontas.length > 1 ? `Salvar ${prontas.length} respostas` : 'Salvar resposta'}</button>
+                <button className="botao p" type="submit" {...trava(ocupado || !prontas.length)}>{prontas.length > 1 ? `Salvar ${prontas.length} respostas` : 'Salvar resposta'}</button>
               </div>
             )}
           </form>

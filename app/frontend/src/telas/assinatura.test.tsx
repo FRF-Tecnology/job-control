@@ -53,3 +53,18 @@ describe('Assinatura', () => {
     expect(screen.getByRole('button', { name: 'Assinar' })).toBeTruthy();
   });
 });
+
+describe('Assinatura: o acompanhamento desiste', () => {
+  afterEach(() => vi.useRealTimers());
+  it('depois de 10 min sem pagamento, oferece Conferir de novo', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { chamadas, releConta } = montar(TESTE);
+    await clicar('Assinar');
+    await act(async () => { await vi.advanceTimersByTimeAsync(10 * 60_000 + 4000); });
+    expect(screen.getByText('Não vimos o pagamento ainda. Se você pagou, espere um pouco e clique em Conferir de novo.')).toBeTruthy();
+    const antes = { gets: chamadas.filter(c => c.rota === 'GET /api/v1/assinatura').length, rele: releConta.mock.calls.length };
+    await clicar('Conferir de novo');
+    expect(chamadas.filter(c => c.rota === 'GET /api/v1/assinatura').length).toBe(antes.gets + 1);
+    expect(releConta.mock.calls.length).toBe(antes.rele + 1);
+  });
+});

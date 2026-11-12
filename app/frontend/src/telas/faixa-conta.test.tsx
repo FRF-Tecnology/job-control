@@ -1,10 +1,12 @@
 // Faixa da conta e trava das ações (Task 7): o texto de cada situação, a trava que desabilita as ações das telas
 // (menos Perfil, IA e Assinatura) e o 402 de qualquer chamada que faz a faixa aparecer. Só dados fictícios.
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Contexto, chamarApi, type App } from '../app/contexto';
+import { Contexto, ID_FAIXA, chamarApi, type App } from '../app/contexto';
 import { EVENTO_TRAVA, textoFaixa, useConta, type Situacao } from '../app/conta';
-import { FaixaConta, TravaDaTela } from './FaixaConta';
+import { FaixaConta } from './FaixaConta';
+import { TelaVagas } from './Vagas';
+import { PainelEnvio } from './PainelEnvio';
 import { TelaTriagem } from './Triagem';
 import { TelaPerfil } from './Perfil';
 
@@ -57,24 +59,56 @@ function appFalso(podeAgir: boolean): App {
   };
 }
 
-describe('TravaDaTela', () => {
-  const botoes = () => screen.getAllByRole('button') as HTMLButtonElement[];
-  it('sem poder agir, os botões da Triagem ficam desabilitados', () => {
-    render(<Contexto.Provider value={appFalso(false)}><TravaDaTela rota="triagem" ativa podeAgir={false}><TelaTriagem /></TravaDaTela></Contexto.Provider>);
-    expect(botoes().length).toBeGreaterThan(0);
-    expect(botoes().every(b => b.matches(':disabled'))).toBe(true);
+// Ruling A13: só as ações de escrita travam (desabilitadas, com a frase da faixa); ver continua livre.
+describe('TestTravaDesabilitaSoEscrita', () => {
+  const FRASE = 'Seu teste acabou. Você ainda vê tudo; para buscar e se candidatar, assine.';
+  const botao = (nome: string) => screen.getByRole('button', { name: nome }) as HTMLButtonElement;
+  it('Triagem: decidir fica desabilitado com a frase; ver o detalhe não', () => {
+    render(<Contexto.Provider value={appFalso(false)}><TelaTriagem /></Contexto.Provider>);
+    for (const nome of ['Pular vaga (tecla P)', 'Aplicar na vaga (tecla A)']) {
+      expect(botao(nome).disabled).toBe(true);
+      expect(botao(nome).title).toBe(FRASE);
+      expect(botao(nome).getAttribute('aria-describedby')).toBe(ID_FAIXA);
+    }
+    expect(botao('Ver detalhes da vaga').disabled).toBe(false);
+    expect(botao('Decidir depois').disabled).toBe(false);
   });
-  it('podendo agir, nada fica desabilitado pela trava', () => {
-    render(<Contexto.Provider value={appFalso(true)}><TravaDaTela rota="triagem" ativa podeAgir><TelaTriagem /></TravaDaTela></Contexto.Provider>);
-    expect(botoes().some(b => b.matches(':disabled'))).toBe(false);
+  it('Triagem: a tecla A não decide, só avisa', async () => {
+    const app = appFalso(false);
+    const avisos: string[] = [];
+    app.aviso = t => { avisos.push(t); };
+    location.hash = '#/triagem';
+    render(<Contexto.Provider value={app}><TelaTriagem /></Contexto.Provider>);
+    await act(async () => { fireEvent.keyDown(document.body, { key: 'a' }); });
+    expect(app.mover).not.toHaveBeenCalled();
+    expect(avisos).toEqual([FRASE]);
+    location.hash = '';
   });
-  it('o Perfil continua liberado mesmo travado', () => {
-    render(<Contexto.Provider value={appFalso(false)}><TravaDaTela rota="perfil" ativa podeAgir={false}><TelaPerfil /></TravaDaTela></Contexto.Provider>);
-    expect(screen.getAllByRole('button', { name: 'Salvar perfil' }).every(b => !b.matches(':disabled'))).toBe(true);
+  it('podendo agir, a Triagem fica como antes', () => {
+    render(<Contexto.Provider value={appFalso(true)}><TelaTriagem /></Contexto.Provider>);
+    expect(botao('Aplicar na vaga (tecla A)').disabled).toBe(false);
+    expect(botao('Aplicar na vaga (tecla A)').title).toBe('');
   });
-  it('conta desligada no build: nenhuma moldura em volta da tela (como antes)', () => {
-    const { container } = render(<TravaDaTela rota="triagem" ativa={false} podeAgir><p>tela</p></TravaDaTela>);
-    expect(container.querySelector('fieldset')).toBeNull();
+  it('Vagas: os filtros continuam; adicionar vaga não', () => {
+    render(<Contexto.Provider value={appFalso(false)}><TelaVagas /></Contexto.Provider>);
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('combobox').every(s => !(s as HTMLSelectElement).disabled)).toBe(true);
+    expect(botao('Adicionar vaga').disabled).toBe(true);
+  });
+  it('Fila: Pausar envio continua (A9); Retomar não', async () => {
+    const app = appFalso(false);
+    let envio = { ligado: true, pausado: false, enviandoAgora: null, desfechos: [] };
+    app.api = vi.fn(async (_c: string, metodo = 'GET') => { if (metodo === 'GET') return envio; return (envio = { ...envio, pausado: true }); });
+    render(<Contexto.Provider value={app}><PainelEnvio nome={() => 'x'} motivo={() => 'x'} /></Contexto.Provider>);
+    expect((await screen.findByRole('button', { name: 'Pausar envio' }) as HTMLButtonElement).disabled).toBe(false);
+    await act(async () => { fireEvent.click(botao('Pausar envio')); });
+    expect((await screen.findByRole('button', { name: 'Retomar envio' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  it('Perfil: salvar o perfil trava (o servidor bloqueia PUT /perfil); a seção Conta não', () => {
+    render(<Contexto.Provider value={appFalso(false)}><TelaPerfil /></Contexto.Provider>);
+    expect(screen.getAllByRole('button', { name: 'Salvar perfil' }).every(b => (b as HTMLButtonElement).disabled)).toBe(true);
+    expect(botao('Sair da conta').disabled).toBe(false);
+    expect((screen.getByLabelText('Nome completo') as HTMLInputElement).disabled).toBe(false);
   });
 });
 
@@ -105,5 +139,12 @@ describe('402 de qualquer chamada', () => {
     expect(eventos).toEqual(['teste-acabou']);
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Seu teste acabou. Você ainda vê tudo; para buscar e se candidatar, assine.'));
     expect(fetch.mock.calls.filter(c => c[0] === '/api/v1/conta').length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('chamarApi', () => {
+  it('204 sem corpo (sair, cancelar o Google, excluir) não quebra mesmo com content-type json', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204, headers: { 'content-type': 'application/json' } })));
+    await expect(chamarApi('/api/v1/conta/sair', 'POST', {})).resolves.toBe('');
   });
 });

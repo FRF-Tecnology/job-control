@@ -369,3 +369,18 @@ func TestExcluirSemEmailEErrosDaNuvem(t *testing.T) {
 		}
 	}
 }
+
+// "Conferir de novo" na tela (depois que o acompanhamento de 10 min desistiu): GET /assinatura pede a licença à nuvem
+// antes de responder, então quem pagou tarde aparece como assinante na hora.
+func TestGetAssinaturaRenovaLicenca(t *testing.T) {
+	a := novoAmbConta(t, "")
+	a.entrar()
+	a.f.Assinante("ana@exemplo.com")
+	if a.c.Situacao().Estado == "assinante" {
+		t.Fatal("a licença local não deveria saber ainda")
+	}
+	o := a.chamar("GET", "/assinatura", nil, 200)
+	if s, _ := o["situacao"].(map[string]any); s["estado"] != "assinante" {
+		t.Fatalf("GET /assinatura não renovou: %v", o["situacao"])
+	}
+}

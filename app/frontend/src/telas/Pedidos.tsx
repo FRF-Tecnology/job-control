@@ -3,7 +3,7 @@
 // com o corpo EXATO da proposta e os cabeçalhos X-Pedido e X-Impressao. Tudo o que vem do pedido ou da IA aparece só
 // como texto (sem HTML e sem link automático), e os erros viram frases fixas.
 import { useEffect, useRef, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { encode, nomeEtapa, NOMES_SUB } from '../util';
 
 type Chamada = { metodo: string; caminho: string; corpo: Record<string, unknown> };
@@ -48,6 +48,7 @@ const ERRO_CONFIRMAR: Record<number, string> = {
 // quando ninguém mais está ocupado (uma leitura por vez). A proposta que voltar continua esperando o Confirmar.
 export function SeusPedidos({ pedidos, iaConectada, pedirJa = null, aoPedirJa }: { pedidos: Pedido[]; iaConectada: boolean; pedirJa?: string | null; aoPedirJa?: () => void }) {
   const app = useApp();
+  const trava = useTrava();
   const [ocupado, setOcupado] = useState<{ id: string; o: 'pedir' | 'confirmar' | 'descartar' } | null>(null);
   const secao = useRef<HTMLElement>(null);
   const jaPedido = useRef<string | null>(null);
@@ -109,7 +110,7 @@ export function SeusPedidos({ pedidos, iaConectada, pedirJa = null, aoPedirJa }:
                 ? <p role="status">A IA está lendo o pedido…</p>
                 : iaConectada && (
                   <div className="acoes">
-                    <button className="botao p" type="button" disabled={!ninguemOcupado} onClick={() => pedir(p)} aria-label={`Pedir para a IA: ${p.texto}`}>Pedir para a IA</button>
+                    <button className="botao p" type="button" {...trava(!ninguemOcupado)} onClick={() => pedir(p)} aria-label={`Pedir para a IA: ${p.texto}`}>Pedir para a IA</button>
                   </div>
                 ))}
 
@@ -126,11 +127,11 @@ export function SeusPedidos({ pedidos, iaConectada, pedirJa = null, aoPedirJa }:
                   {!!pr.falta?.length && <ul className="pequeno mudo falta">{pr.falta.map(f => <li key={f}>{f}</li>)}</ul>}
                   <div className="acoes">
                     {pr.chamada && (
-                      <button className="botao p" type="button" disabled={!ninguemOcupado || !chamadaValida(pr.chamada)} onClick={() => confirmar(p)}>
+                      <button className="botao p" type="button" {...trava(!ninguemOcupado || !chamadaValida(pr.chamada))} onClick={() => confirmar(p)}>
                         {este === 'confirmar' ? 'Confirmando…' : 'Confirmar'}
                       </button>
                     )}
-                    <button className="botao-fantasma p" type="button" disabled={!ninguemOcupado} onClick={() => descartar(p)}>Descartar</button>
+                    <button className="botao-fantasma p" type="button" {...trava(!ninguemOcupado)} onClick={() => descartar(p)}>Descartar</button>
                   </div>
                   {pr.chamada && !chamadaValida(pr.chamada) && <p className="pequeno erro-resposta">Esta proposta não pode ser confirmada por aqui. Descarte e peça de novo.</p>}
                 </div>

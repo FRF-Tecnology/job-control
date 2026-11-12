@@ -217,6 +217,9 @@ func (a *API) executarConta(ctx context.Context, p string, c Objeto) (Resposta, 
 	case "/conta/excluir":
 		return a.excluirNaNuvem(ctx, c)
 	case "/assinatura":
+		// Pede a licença antes: a tela usa esta leitura para "Conferir de novo" depois de pagar. Sem internet, as
+		// notas abaixo dão o erro.
+		_ = a.conta.AtualizarLicenca(ctx)
 		notas, err := a.conta.Notas(ctx)
 		if err != nil {
 			return Resposta{}, err

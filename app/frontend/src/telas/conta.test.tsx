@@ -219,3 +219,57 @@ describe('Seção Conta do Perfil', () => {
     expect(screen.getByRole('alert').textContent).toContain('não deu para encerrar a sessão');
   });
 });
+
+describe('Rodada de correções 1', () => {
+  it('a espera do Google mantém a cadência de 2 s mesmo com a casca redesenhando', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const gets: number[] = [];
+    const api = vi.fn(async (caminho: string, metodo = 'GET') => {
+      if (metodo === 'GET' && caminho === '/api/v1/conta') { gets.push(Date.now()); return { ativa: true, entrada: false, google: 'aguardando' }; }
+      return {};
+    });
+    const r = render(<TelaConta api={api} aoEntrar={() => {}} />);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Entrar com Google' })); });
+    // A casca redesenha 10 vezes, cada uma com um aoEntrar novo.
+    for (let i = 0; i < 10; i++) await act(async () => { r.rerender(<TelaConta api={api} aoEntrar={() => {}} />); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(4100); });
+    expect(gets.length).toBe(3); // agora + 2 s + 4 s
+  });
+
+  it('cancelar o Google: uma leitura que volta depois não mexe na tela', async () => {
+    let soltar: (v: unknown) => void = () => {};
+    const api = vi.fn(async (caminho: string, metodo = 'GET') => {
+      if (metodo === 'GET' && caminho === '/api/v1/conta') return new Promise(r => { soltar = r; });
+      return {};
+    });
+    render(<TelaConta api={api} aoEntrar={() => {}} />);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Entrar com Google' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cancelar' })); });
+    await act(async () => { soltar({ ativa: true, entrada: false, google: 'erro:Algo deu errado', google_motivo: '' }); });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy();
+  });
+
+  it('esqueci a senha: a senha digitada antes não vem preenchida', async () => {
+    montar({ 'POST /api/v1/conta/recuperar': ok() });
+    digitar('Email', 'ana@exemplo.com');
+    digitar('Senha', 'senha-antiga-1');
+    await clicar('Esqueci a senha');
+    await enviar('Enviar código');
+    expect((screen.getByLabelText('Senha nova') as HTMLInputElement).value).toBe('');
+  });
+
+  it('criar com termos novos: oferece aceitar e reenvia com a versão', async () => {
+    const { chamadas } = montar({
+      'POST /api/v1/conta/criar': [erro(409, { erro: 'Os termos mudaram', motivo: 'termos', versao: '1-novo' }), ok()],
+    });
+    await clicar('Criar uma conta');
+    digitar('Email', 'ana@exemplo.com');
+    digitar('Senha', 'senha-forte-1');
+    fireEvent.click(screen.getByLabelText(/Li e aceito/));
+    await enviar('Criar conta');
+    await clicar('Aceito os novos termos');
+    expect(chamadas[1]).toEqual({ rota: 'POST /api/v1/conta/criar', corpo: { email: 'ana@exemplo.com', senha: 'senha-forte-1', termos: '1-novo' } });
+    expect(screen.getByLabelText('Código de confirmação')).toBeTruthy();
+  });
+});

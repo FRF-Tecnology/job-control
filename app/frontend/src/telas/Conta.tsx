@@ -54,6 +54,13 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
   const comecarEspera = () => { const n = Date.now(); setAgora(n); setAte(n + ESPERA_CODIGO * 1000); };
   const origem = useRef<Origem>('criar');
   const primeiro = useRef<HTMLInputElement>(null);
+  // aoEntrar num ref: a casca pode redesenhar à vontade sem reiniciar a espera do Google.
+  const aoEntrarRef = useRef(aoEntrar);
+  aoEntrarRef.current = aoEntrar;
+  // googleAtivo: só a espera do Google em curso pode mexer na tela depois do GET /conta (cancelar ou sair do passo
+  // desliga na hora, antes de qualquer resposta chegar).
+  const googleAtivo = useRef(false);
+  useEffect(() => () => { googleAtivo.current = false; }, []);
 
   useEffect(() => { primeiro.current?.focus(); }, [passo]);
   useEffect(() => {
@@ -62,7 +69,11 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
     return () => clearInterval(t);
   }, [ate]);
 
-  const ir = (p: Passo) => { setErro(''); setInfo(''); setTermos(null); setPasso(p); };
+  const ir = (p: Passo) => {
+    googleAtivo.current = p === 'google';
+    if (p === 'esqueci') setSenha(''); // a senha antiga não aparece no campo da senha nova
+    setErro(''); setInfo(''); setTermos(null); setPasso(p);
+  };
   const irParaCodigo = (o: Origem, texto: string) => {
     origem.current = o;
     setCodigo('');
@@ -71,8 +82,9 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
     comecarEspera();
   };
   const entrou = async () => {
+    googleAtivo.current = false;
     setSenha(''); setCodigo('');
-    await aoEntrar();
+    await aoEntrarRef.current();
   };
 
   // O erro da nuvem: os motivos conhecidos mudam o passo; o resto mostra a frase do servidor (429 e 503 inclusive).
@@ -93,12 +105,13 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
     await api('/api/v1/conta/entrar', 'POST', t ? { email, senha, termos: t } : { email, senha });
     await entrou();
   }, entrar);
-  const criar = () => {
+  // t: a versão dos termos aceita na caixa "Termos novos" (a nuvem recusou a que a tela conhece).
+  const criar = async (t?: string): Promise<void> => {
     if (!aceito) { setErro('Para criar a conta, aceite os termos de uso e a política de privacidade.'); return; }
     return executar(async () => {
-      await api('/api/v1/conta/criar', 'POST', { email, senha, termos: TERMOS_VERSAO });
+      await api('/api/v1/conta/criar', 'POST', { email, senha, termos: t ?? TERMOS_VERSAO });
       irParaCodigo('criar', `Enviamos um código para ${email}. Digite-o abaixo.`);
-    });
+    }, criar);
   };
   const confirmar = (t?: string): Promise<void> => executar(async () => {
     await api('/api/v1/conta/confirmar', 'POST', t ? { email, codigo, senha, termos: t } : { email, codigo, senha });
@@ -112,39 +125,44 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
     await api('/api/v1/conta/nova-senha', 'POST', { email, codigo, senha });
     await entrou();
   });
-  const reenviar = () => executar(async () => {
+  const reenviar = (t?: string): Promise<void> => executar(async () => {
     try {
-      if (origem.current === 'criar') await api('/api/v1/conta/criar', 'POST', { email, senha, termos: TERMOS_VERSAO });
+      if (origem.current === 'criar') await api('/api/v1/conta/criar', 'POST', { email, senha, termos: t ?? TERMOS_VERSAO });
       else if (origem.current === 'recuperar') await api('/api/v1/conta/recuperar', 'POST', { email });
-      else await api('/api/v1/conta/entrar', 'POST', { email, senha });
+      else await api('/api/v1/conta/entrar', 'POST', t ? { email, senha, termos: t } : { email, senha });
     } catch (e) {
       if (!(e instanceof ErroApi && e.dados?.motivo === 'confirmar')) throw e; // entrar de novo: a nuvem manda o código
     }
     comecarEspera();
     setInfo(`Enviamos outro código para ${email}.`);
-  });
+  }, reenviar);
   const google = (t = TERMOS_VERSAO): Promise<void> => executar(async () => {
     await api('/api/v1/conta/google', 'POST', { termos: t });
     ir('google');
   });
-  const cancelarGoogle = () => executar(async () => {
-    await api('/api/v1/conta/google/cancelar', 'POST', {});
-    ir('entrar');
-  });
+  const cancelarGoogle = () => {
+    googleAtivo.current = false; // uma leitura em andamento não mexe mais na tela
+    return executar(async () => {
+      await api('/api/v1/conta/google/cancelar', 'POST', {});
+      ir('entrar');
+    });
+  };
 
   // Aguardando o Google: GET /conta agora e a cada 2 s até entrar, dar erro ou a pessoa cancelar.
   const conferirGoogle = useCallback(async () => {
     let c: any;
     try { c = await api('/api/v1/conta'); } catch { return; } // tenta de novo no próximo tique
-    if (c?.entrada) { await aoEntrar(); return; }
+    if (!googleAtivo.current) return; // cancelou (ou saiu do passo) enquanto a leitura voltava
+    if (c?.entrada) { await entrou(); return; }
     const g: string = c?.google ?? '';
     if (g === 'aguardando') return;
+    googleAtivo.current = false;
     setPasso('entrar');
     if (!g.startsWith('erro:')) return; // cancelado em outro lugar
     const frase = g.slice('erro:'.length);
     if (c.google_motivo === 'termos') setTermos({ versao: c.google_versao || TERMOS_VERSAO, mensagem: frase, refazer: v => google(v) });
     else setErro(frase);
-  }, [api, aoEntrar]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (passo !== 'google') return;
     let vivo = true;
@@ -193,7 +211,7 @@ export function TelaConta({ api, aoEntrar }: { api: Api; aoEntrar: () => void | 
         {tempo}
         <div className="acoes">
           <button className="botao" type="submit" disabled={ocupado}>{passo === 'codigo' ? 'Confirmar' : 'Salvar senha nova'}</button>
-          <button className="botao-fantasma" type="button" disabled={ocupado || espera > 0} onClick={reenviar}>Pedir outro código</button>
+          <button className="botao-fantasma" type="button" disabled={ocupado || espera > 0} onClick={() => reenviar()}>Pedir outro código</button>
           <button className="botao-fantasma" type="button" onClick={() => { setSenha(''); ir('entrar'); }}>Voltar</button>
         </div>
       </>);

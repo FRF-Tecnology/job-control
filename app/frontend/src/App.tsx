@@ -21,7 +21,7 @@ import { TelaConectarIA } from './telas/ConectarIA';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
 import { foiEnviada } from './dominio/modelo';
 import { podeAgir as podeAgirCom, useConta } from './app/conta';
-import { FaixaConta, TravaDaTela } from './telas/FaixaConta';
+import { FaixaConta } from './telas/FaixaConta';
 import { TelaConta } from './telas/Conta';
 import { TelaAssinatura } from './telas/Assinatura';
 
@@ -307,7 +307,7 @@ export default function App() {
   const Tela = tela.Tela;
   // Porta da conta: com a conta ligada e sem entrada, só a tela Conta (antes do primeiro acesso e de tudo o mais).
   const porta = contaAtiva && !conta?.entrada;
-  const entrou = async () => { await releConta(); await carregar(true); };
+  const entrou = useCallback(async () => { await releConta(); await carregar(true); }, [releConta, carregar]);
   return (
     <>
       <div className="fundo" aria-hidden="true">
@@ -353,10 +353,8 @@ export default function App() {
           <Contexto.Provider value={app}>
             {contaAtiva && <FaixaConta situacao={conta} reler={releConta} />}
             <Protecao chave={tela.rota}>
-              <TravaDaTela rota={tela.rota} ativa={contaAtiva} podeAgir={liberado}>
-                {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
-                <Tela key={tela.rota === 'perfil' ? `perfil-${estado.versao}` : tela.rota} />
-              </TravaDaTela>
+              {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
+              <Tela key={tela.rota === 'perfil' ? `perfil-${estado.versao}` : tela.rota} />
             </Protecao>
           </Contexto.Provider>
         )}

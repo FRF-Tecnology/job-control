@@ -18,24 +18,37 @@ export function TelaAssinatura() {
   const [mensagem, setMensagem] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [conferindo, setConferindo] = useState(false);
+  const [desistiu, setDesistiu] = useState(false); // 10 min sem ver o pagamento: oferece "Conferir de novo"
   const assinante = c?.estado === 'assinante' && !c.motivo;
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
+  // GET /assinatura: as notas, e o servidor pede a licença à nuvem antes de responder.
+  const lerAssinatura = () => app.api('/api/v1/assinatura')
+    .then(r => { if (vivo.current) { setErro(''); setNotas(Array.isArray(r?.notas) ? r.notas : []); } })
+    .catch(e => { if (vivo.current) setErro((e as Error).message); });
   useEffect(() => {
     if (!c?.ativa || !c.entrada) return;
-    app.api('/api/v1/assinatura').then(r => { if (vivo.current) setNotas(Array.isArray(r?.notas) ? r.notas : []); })
-      .catch(e => { if (vivo.current) setErro((e as Error).message); });
+    lerAssinatura();
   }, [c?.ativa, c?.entrada, assinante]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Depois de Assinar: relê a conta até virar assinante (a casca tira a faixa e libera as telas).
   useEffect(() => {
     if (!conferindo) return;
-    if (assinante) { setConferindo(false); setMensagem('Assinatura ativa. Obrigado!'); return; }
+    if (assinante) { setConferindo(false); setDesistiu(false); setMensagem('Assinatura ativa. Obrigado!'); return; }
     const fim = Date.now() + PRAZO;
-    const t = setInterval(() => { if (Date.now() > fim) { setConferindo(false); return; } app.releConta?.(); }, CADENCIA);
+    const t = setInterval(() => {
+      if (Date.now() > fim) { setConferindo(false); setDesistiu(true); setMensagem(''); return; }
+      app.releConta?.();
+    }, CADENCIA);
     return () => clearInterval(t);
   }, [conferindo, assinante]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (assinante && desistiu) { setDesistiu(false); setMensagem('Assinatura ativa. Obrigado!'); } }, [assinante, desistiu]);
+
+  const conferirDeNovo = async () => {
+    setOcupado(true);
+    try { await lerAssinatura(); await app.releConta?.(); } finally { if (vivo.current) setOcupado(false); }
+  };
 
   const abrir = async (rota: 'assinar' | 'gerenciar') => {
     setOcupado(true); setErro('');
@@ -59,6 +72,10 @@ export function TelaAssinatura() {
       <fieldset>
         <p style={{ margin: 0 }}><b>{situacao}</b></p>
         {mensagem && <p className="mudo" role="status" style={{ margin: 0 }}>{mensagem}</p>}
+        {desistiu && !assinante && (<>
+          <p role="status" style={{ margin: 0 }}>Não vimos o pagamento ainda. Se você pagou, espere um pouco e clique em Conferir de novo.</p>
+          <div><button className="botao-fantasma" type="button" disabled={ocupado} onClick={conferirDeNovo}>Conferir de novo</button></div>
+        </>)}
         <div aria-live="assertive">{erro && <p className="erro-resposta" role="alert">{erro}</p>}</div>
         <div className="acoes">
           {!assinante && <button className="botao" type="button" disabled={ocupado} onClick={() => abrir('assinar')}>Assinar</button>}

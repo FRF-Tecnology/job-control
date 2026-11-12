@@ -1,6 +1,6 @@
 // Vagas: tabela com busca e filtros (porte de web/telas/vagas.mjs).
 import { useEffect, useRef, useState } from 'react';
-import { useApp, type App } from '../app/contexto';
+import { useApp, useTrava, type App } from '../app/contexto';
 import { ETAPAS, NOMES_ETAPA, normalizar } from '../dominio/modelo';
 import { Convite, EtapaChip } from '../componentes';
 import { contem, dataCurta, nomePlataforma } from '../util';
@@ -17,6 +17,7 @@ let paginaGuardada = 0;
 
 export function TelaVagas() {
   const app = useApp();
+  const trava = useTrava();
   const { vagas, plataformas } = app.estado;
   const [filtros, setFiltros] = useState<Filtros>(lerFiltros);
   const [pagina, setPagina] = useState(paginaGuardada);
@@ -46,7 +47,7 @@ export function TelaVagas() {
       <header className="cabecalho">
         <div><h1>Vagas</h1><p>{`${lista.length} de ${vagas.length}`}</p></div>
         <div className="acoes">
-          <button className="botao-fantasma" type="button" onClick={() => novaVaga(app)}>Adicionar vaga</button>
+          <button className="botao-fantasma" type="button" {...trava()} onClick={() => novaVaga(app)}>Adicionar vaga</button>
           <a className="botao-fantasma" href="/api/v1/exportar.csv">Exportar CSV</a>
         </div>
       </header>

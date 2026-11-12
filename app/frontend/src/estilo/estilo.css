@@ -794,9 +794,6 @@ dialog form { display: grid; gap: 16px; }
 @media (max-width: 720px) { .flutuante.encaixado, .flutuante.solto, .fl-borda { display: none; } }
 
 /* ---------- conta (Task 7) ---------- */
-/* A trava das telas: o fieldset só desabilita as ações; não desenha caixa nenhuma. */
-fieldset.trava { display: contents; }
-fieldset.trava > * { animation: entrar-tela .7s var(--facil) backwards; }
 .faixa-conta { margin: 0 0 20px; padding: 12px 14px; border-radius: var(--raio-m); background: var(--destaque-suave); overflow-wrap: anywhere; }
 .faixa-conta.travada { background: var(--ambar-suave); }
 .tela-conta { display: grid; gap: 16px; max-width: 560px; }

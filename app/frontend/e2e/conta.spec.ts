@@ -1,7 +1,7 @@
 // Conta, teste e trava de ponta a ponta (Task 7), contra o central-dev com -tags contafalsa (projeto "conta" do
 // playwright.config.ts, porta 4511): abrir → criar a conta → código 123456 → Hoje com a faixa do teste → a rota de
 // teste avança 25 h → buscar dá 402 e a faixa de bloqueio aparece → assinar (a rota de teste faz o papel do Checkout)
-// → liberado. Só dados fictícios; sem janela (headless).
+// → liberado → sair volta à porta. Só dados fictícios; sem janela (headless).
 import { expect, test } from '@playwright/test';
 
 test.describe.configure({ mode: 'serial' });
@@ -40,17 +40,20 @@ test('conta nova: teste de 24 h, trava depois dele e assinatura libera', async (
   expect((await avancou.json()).motivo).toBe('teste-acabou');
 
   // 5. A tela ainda não releu a conta: buscar vai ao servidor, que responde 402; a faixa de bloqueio aparece e as
-  // ações da tela ficam desabilitadas (ver continua).
+  // ações de escrita ficam desabilitadas (ver continua).
   const resposta = page.waitForResponse(r => r.url().endsWith('/api/v1/pedidos') && r.request().method() === 'POST');
   await pedido.fill('Buscar vagas de React remotas');
   await pedido.press('Enter');
   expect((await resposta).status()).toBe(402);
   await expect(faixa).toContainText(BLOQUEIO);
-  await expect(pedido).toBeDisabled();
-  // O Perfil continua liberado (sair, excluir a conta, apagar os dados).
+  // Ruling A13: só a escrita trava (enviar o pedido); a caixa de texto e a navegação continuam.
+  await expect(page.getByRole('button', { name: 'Enviar pedido' })).toBeDisabled();
+  await expect(pedido).toBeEnabled();
+  // No Perfil, sair e excluir a conta continuam; salvar o perfil trava (o servidor bloqueia PUT /perfil).
   await page.goto('/#/perfil');
   await expect(page.getByRole('button', { name: 'Sair da conta' })).toBeEnabled();
   await expect(page.locator('#perfil-nome')).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Salvar perfil' }).first()).toBeDisabled();
 
   // 6. Assinar: o central-dev não abre o navegador; a rota de teste faz o papel do pagamento no Checkout.
   await page.goto('/#/assinatura');
@@ -62,9 +65,15 @@ test('conta nova: teste de 24 h, trava depois dele e assinatura libera', async (
 
   // 7. Liberado: buscar volta a funcionar.
   await page.goto('/#/hoje');
-  await expect(pedido).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Enviar pedido' })).toBeEnabled();
   const depois = page.waitForResponse(r => r.url().endsWith('/api/v1/pedidos') && r.request().method() === 'POST');
   await pedido.fill('Buscar vagas de React remotas');
   await pedido.press('Enter');
   expect((await depois).status()).toBeLessThan(300);
+
+  // 8. Sair da conta (Perfil): volta para a porta de entrada.
+  await page.goto('/#/perfil');
+  await page.getByRole('button', { name: 'Sair da conta' }).click();
+  await expect(page.getByRole('heading', { name: 'Entre na sua conta' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Seções' })).toHaveCount(0);
 });

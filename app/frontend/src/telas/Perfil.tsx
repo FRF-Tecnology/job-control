@@ -1,6 +1,6 @@
 // Perfil e regras (porte de web/telas/perfil.mjs). O formulário guarda as edições localmente até salvar.
 import { useState } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { JanelaApp } from './JanelaApp';
 import { SeusDados } from './SeusDados';
 import { SecaoConta } from './Conta';
@@ -31,6 +31,7 @@ function perfilInicial(estado: any) {
 
 export function TelaPerfil() {
   const app = useApp();
+  const trava = useTrava();
   const [perfil, setPerfil] = useState<any>(() => perfilInicial(app.estado));
   const pdfs: any[] = app.estado.curriculos ?? [];
   const mudar = (fn: (p: any) => void) => setPerfil((p: any) => { const n = structuredClone(p); fn(n); return n; });
@@ -67,10 +68,11 @@ export function TelaPerfil() {
   return (<>
     <form className="formulario" onSubmit={async ev => {
       ev.preventDefault();
+      if (trava.travado) return;
       if (await app.agir(() => app.api('/api/v1/perfil', 'PUT', perfil), 'Perfil salvo')) app.limpar();
     }}>
       <header className="cabecalho"><div><h1>Perfil e regras</h1><p>O Claude lê esta página antes de cada rodada. CPF, RG e senhas nunca ficam aqui.</p></div>
-        <button className="botao" type="submit">Salvar perfil</button></header>
+        <button className="botao" type="submit" {...trava()}>Salvar perfil</button></header>
       {CAMPOS.map(([grupo, campos]) => <fieldset key={grupo}><legend>{grupo}</legend><div className="duas">{campos.map(campo)}</div></fieldset>)}
       <fieldset><legend>Currículos</legend>
         {pdfs.length ? (
@@ -107,7 +109,7 @@ export function TelaPerfil() {
         </div>
         <div><button className="botao-fantasma" type="button" onClick={() => mudar(p => { p.respostasPadrao.push({ pergunta: '', resposta: '' }); })}>Adicionar resposta</button></div>
       </fieldset>
-      <div><button className="botao" type="submit">Salvar perfil</button></div>
+      <div><button className="botao" type="submit" {...trava()}>Salvar perfil</button></div>
     </form>
     <SecaoConta />
     <JanelaApp />
