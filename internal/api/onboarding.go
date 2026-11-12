@@ -211,6 +211,9 @@ func (a *API) concluirOnboarding(ctx context.Context, autor string, dados Objeto
 		return Resposta{}, err
 	}
 	err = a.arm.ConcluirOnboarding(ctx, pdf, func(atual Objeto, nome string) (Objeto, error) {
+		if err := a.verificarProvaDoPerfil(ctx); err != nil {
+			return nil, err
+		}
 		novo := MesclarPerfil(atual, perfil)
 		cvs := dominio.ObjetoDe(novo["curriculos"])
 		if cvs == nil {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -71,11 +72,33 @@ type cli struct{ qual string }
 
 func (c cli) Nome() string { return c.qual + "-cli" }
 
+// Aplicativos abertos pelo Finder/Explorer nem sempre herdam o PATH do terminal.
+// Só consultamos a instalação nativa conhecida da pessoa, sem shell ou download.
+func localizarCLI(comando string) (string, error) {
+	p, err := exec.LookPath(comando)
+	if err == nil || comando != "claude" || !errors.Is(err, exec.ErrNotFound) {
+		return p, err
+	}
+	casa, e := os.UserHomeDir()
+	if e != nil || !filepath.IsAbs(casa) {
+		return "", err
+	}
+	nome := "claude"
+	if runtime.GOOS == "windows" {
+		nome += ".exe"
+	}
+	p, e = exec.LookPath(filepath.Join(casa, ".local", "bin", nome))
+	if e != nil {
+		return "", err
+	}
+	return p, nil
+}
+
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
 func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
 	// O arquivo conferido é o mesmo que roda: o caminho resolvido pelo LookPath vai para o CommandContext.
-	alvo, err := exec.LookPath(comando)
+	alvo, err := localizarCLI(comando)
 	if err != nil {
 		alvo = comando // o exec devolve o erro de "não achei" na hora de rodar
 	}
@@ -197,7 +220,7 @@ func (c cli) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, er
 	if p.Modelo != "" && !ModeloSeguro(p.Modelo) {
 		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": " + MsgModeloInseguro, Provedor: nome}
 	}
-	if _, err := exec.LookPath(c.qual); err != nil {
+	if _, err := localizarCLI(c.qual); err != nil {
 		return RespostaProvedor{}, &ErroIA{Tipo: "config", Mensagem: nome + ": a CLI não está instalada neste computador", Provedor: nome}
 	}
 	switch c.qual {
@@ -336,7 +359,7 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 	saida := make([]EstadoCLI, 0, len(CLIs))
 	for _, info := range CLIs {
 		e := EstadoCLI{InfoCLI: info}
-		if caminho, err := exec.LookPath(info.Comando); err == nil {
+		if caminho, err := localizarCLI(info.Comando); err == nil {
 			e.Instalada, e.Pronta = true, true
 			if msg, fora := CLIIndisponivel(info.Provedor); fora {
 				e.Pronta, e.Aviso, e.Motivo = false, msg, MotivoPolitica
@@ -344,17 +367,19 @@ func DetectarCLIs(ctx context.Context) []EstadoCLI {
 				e.Pronta, e.Aviso, e.Motivo = false, msgCmdInseguro, MotivoFormato
 			}
 			c, cancelar := context.WithTimeout(ctx, 15*time.Second)
-			if out, err := comandoCLI(c, info.Comando, "--version").Output(); err == nil {
+			if out, err := comandoCLI(c, caminho, "--version").Output(); err == nil {
 				e.Versao = strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
 			}
 			switch info.Comando {
 			case "claude":
-				if out, err := comandoCLI(c, "claude", "auth", "status", "--json").Output(); err == nil {
+				out, statusErr := comandoCLI(c, caminho, "auth", "status", "--json").Output()
+				var saida *exec.ExitError
+				if statusErr == nil || (errors.As(statusErr, &saida) && saida.ExitCode() == 1) {
 					var s struct {
-						LoggedIn bool `json:"loggedIn"`
+						LoggedIn *bool `json:"loggedIn"`
 					}
 					if json.Unmarshal(out, &s) == nil {
-						e.Logada = &s.LoggedIn
+						e.Logada = s.LoggedIn
 					}
 				}
 			case "codex":

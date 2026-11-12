@@ -8,12 +8,14 @@ const aqui = dirname(fileURLToPath(import.meta.url));
 
 // A jornada de "usuário novo" roda contra o servidor de desenvolvimento (API Go + telas compiladas)
 // com uma pasta de dados vazia. Antes: npm run build (gera dist/).
-// Todos os workers usam a mesma conta de teste e um cofre em memória no central-dev.
+// A API do central-dev usa uma única conta de teste e um cofre em memória.
 const pasta = (process.env.CENTRAL_E2E_PASTA ??= mkdtempSync(join(tmpdir(), 'central-e2e-')));
 const raiz = resolve(aqui, '../..');
 
 export default defineConfig({
   testDir: './e2e',
+  // A Fila prepara vagas ao abrir a tela. Outra aba de teste pode gravar na conta antes da jornada.
+  workers: 1,
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',

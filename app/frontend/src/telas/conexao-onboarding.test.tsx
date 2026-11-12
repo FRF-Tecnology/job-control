@@ -4,6 +4,13 @@ import { Contexto, type App } from '../app/contexto';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
 
 afterEach(cleanup);
+it('uma resposta sem confirmação explícita não libera o perfil', async () => {
+  const api = vi.fn(async (u:string) => u.endsWith('/ia') ? {configurada:true,provedor:'anthropic',chaves:{anthropic:'…teste'},clis:[]} : {ok:false});
+  const avancar=montar(api);
+  fireEvent.click(await screen.findByRole('button',{name:'Usar conexão atual'}));
+  await screen.findByRole('alert');
+  expect(avancar).not.toHaveBeenCalled();
+});
 const vazio = { configurada: false, clis: [], chaves: {} };
 function montar(api: App['api']) {
   const avancar = vi.fn();

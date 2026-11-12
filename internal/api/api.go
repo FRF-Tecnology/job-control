@@ -69,6 +69,7 @@ type API struct {
 	cofre            segredos.Cofre
 	provedoresExtras map[string]ia.Provedor // só nos testes: provedor de IA falso
 	credenciaisIA    sync.RWMutex           // serializa alterações de rota, vínculos de host e acesso ao cofre
+	provaIA          provaConexao           // confirmação da configuração atual, apenas nesta sessão
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
 	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
 	cacheCLIs        cacheDeteccao
@@ -472,7 +473,7 @@ func exigirPerfilOk(perfil any) error {
 
 var (
 	reVagaID       = regexp.MustCompile(`^/vagas/([^/]+)$`)
-	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z]+)?$`)
+	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z-]+)?$`)
 	rePedido       = regexp.MustCompile(`^/pedidos/([^/]+)/concluir$`)
 	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar)$`)
 	rePlataforma   = regexp.MustCompile(`^/plataformas/([^/]+)$`)
@@ -1009,6 +1010,23 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 		return vaga, err
 	}
 	switch {
+	case m == "POST" && (acao == "/iniciar-manual" || acao == "/confirmar-envio-manual"):
+		if err := soCampos(c); err != nil {
+			return Resposta{}, err
+		}
+		if autor != "eu" {
+			return Resposta{}, falha(403, "somente a pessoa pode iniciar ou confirmar a candidatura")
+		}
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			if acao == "/confirmar-envio-manual" {
+				return dominio.ConfirmarManualRadar(e, id, a.relogio(), cx)
+			}
+			return a.iniciarManualRadar(e, id, cx)
+		})
+		if err != nil {
+			return Resposta{}, err
+		}
+		return ok(v)
 	case m == "PATCH" && acao == "":
 		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
 			return dominio.AtualizarVaga(e, id, c, cx)

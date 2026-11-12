@@ -19,7 +19,7 @@ function opcao(estado: EstadoIA, marca: Marca): Modo {
   return cli?.instalada && cli.pronta !== false && cli.logada !== false ? 'assinatura' : 'chave';
 }
 
-export function ConexaoOnboarding({ aoConectar }: { aoConectar: () => void }) {
+export function ConexaoOnboarding({ aoConectar }: { aoConectar: (nome:string,verificacao?:string) => void }) {
   const { api, limpar } = useApp();
   const [estado, setEstado] = useState<EstadoIA | null>(null);
   const [marca, setMarca] = useState(MARCAS[0]);
@@ -39,7 +39,7 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: () => void }) {
     api('/api/v1/ia').then((e: EstadoIA) => {
       if (!aberta) return;
       const inicial = MARCAS.find(m => e.provedor === m.provedor || e.provedor === m.cli)
-        ?? MARCAS.find(m => opcao(e, m) === 'assinatura') ?? MARCAS[0];
+        ?? MARCAS.find(m => opcao(e, m) === 'assinatura') ?? MARCAS.find(m=>m.nome==='Claude')!;
       setEstado(e); escolher(e, inicial);
     }).catch(e => { if (aberta) setErro(e.message || 'Falha ao consultar as conexões.'); });
     return () => { aberta = false; };
@@ -75,8 +75,9 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: () => void }) {
           setChave('');
         }
       }
-      await api('/api/v1/ia/testar', 'POST', {});
-      limpar(); aoConectar();
+      const prova=await api('/api/v1/ia/testar', 'POST', {});
+      if(prova?.ok !== true) throw new Error('O provedor não confirmou a conexão. Verifique os dados e tente novamente.');
+      limpar(); aoConectar(marca.nome,prova.verificacao);
     } catch (e) {
       // A configuração pode ter sido salva antes de o provedor recusar o teste.
       // Releia o cofre para permitir a tentativa seguinte com a chave já salva.
@@ -95,6 +96,10 @@ export function ConexaoOnboarding({ aoConectar }: { aoConectar: () => void }) {
     </div>
     <div className="pa-ia-painel">
       <h2>Conectar {marca.nome}</h2>
+      {marca.nome==='Claude' && !assinatura && modo!=='atual' && <p>Para usar sua assinatura, instale o Claude Code nativo e entre com <code>claude auth login</code>. Após o login, <button className="pa-link" type="button" disabled={ocupado} onClick={async () => {
+        setOcupado(true); setErro('');
+        try { await api('/api/v1/ia/detectar', 'POST', {}); setTentativa(n=>n+1); } catch(e){setErro((e as Error).message)} finally{setOcupado(false)}
+      }}>verifique novamente</button>. Você também pode usar sua chave de API.</p>}
       {(podeManter || assinatura) && <div className="pa-ia-modos" role="group" aria-label="Forma de conexão">
         {podeManter && <button type="button" disabled={ocupado} aria-pressed={modo === 'atual'} onClick={() => setModo('atual')}>Conexão atual</button>}
         {assinatura && !(podeManter && estado.provedor === marca.cli) && <button type="button" disabled={ocupado} aria-pressed={modo === 'assinatura'} onClick={() => setModo('assinatura')}>Minha assinatura</button>}

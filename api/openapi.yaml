@@ -52,6 +52,7 @@ paths:
       summary: Conclui o primeiro acesso na janela, salva o PDF local e as preferências de busca da pessoa.
       parameters:
         - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+        - { in: header, name: X-Applyer-Verificacao, description: Prova retornada pelo teste de IA na sessão. Uma prova vencida retorna 412., schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -81,6 +82,7 @@ paths:
       summary: 'Extrai o texto localmente e pede sugestões ao provedor de IA escolhido. Cada sugestão contém um trecho do currículo; a pessoa revisa antes de salvar.'
       parameters:
         - { in: header, name: X-Applyer-Onboarding, required: true, schema: { type: string, enum: ['1'] } }
+        - { in: header, name: X-Applyer-Verificacao, description: Prova retornada pelo teste de IA na sessão. Uma prova vencida retorna 412., schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -147,6 +149,18 @@ paths:
   /vagas/{id}/mover: { post: { summary: 'Muda a etapa: {etapa, motivo?, pendencia?, subEtapa?, envio?, texto?}. Mover para aplicar é a aprovação da pessoa: vindo do assistente dá 400 (jc-a2y.28). Com X-Pedido e X-Impressao (só da tela), confirma a proposta registrar-etapa de um pedido: a chamada tem de ser a proposta, e o pedido vira feito', parameters: [{ name: X-Pedido, in: header, required: false, schema: { type: string, pattern: '^pd-' }, description: 'Confirma a proposta deste pedido (jc-a2y.7.1): só da tela; com X-Impressao' }, { name: X-Impressao, in: header, required: false, schema: { type: string, pattern: '^sha256:v1:[0-9a-f]{64}$' }, description: 'A impressão da proposta (sha256:v1 de {pedidoId, acao, parametros}); diferente da guardada, ou chamada diferente da guardada, dá 409 e nada muda' }] } }
   /vagas/{id}/eventos: { post: { summary: 'Linha do tempo: {tipo?, texto} (201)' } }
   /vagas/{id}/followup: { post: { summary: '{acao: "feito", texto?} ou {acao: "adiar", dias?}' } }
+  /vagas/{id}/iniciar-manual:
+    post:
+      x-so-tela: true
+      summary: 'Reserva o pacote do currículo do perfil para candidatura pela pessoa. Retorna a vaga com aplicacaoManual, candidaturaManualId e urlCandidaturaManual. Não aprova nem envia; repetir retoma o mesmo pacote.'
+  /vagas/{id}/confirmar-envio-manual:
+    post:
+      x-so-tela: true
+      summary: 'Registra o envio que a pessoa confirmou na plataforma externa. Atualiza a vaga, a candidatura e o histórico uma vez; exige a intenção pendente ou um recibo já concluído.'
+  /ia/detectar:
+    post:
+      x-so-tela: true
+      summary: 'Atualiza a detecção da CLI após login. Detectar um executável não confirma o provedor.'
   /duplicatas: { get: { summary: 'Vagas com a mesma empresa+título (?empresa=&titulo=&excluir=)' } }
   /followups: { get: { summary: Follow-ups vencidos com a mensagem sugerida } }
   /perfil:
@@ -260,7 +274,7 @@ paths:
         '400': { $ref: '#/components/responses/Erro' }
   /ia/testar:
     post:
-      summary: 'Triagem de uma vaga fictícia para ver se a IA responde (não grava nada além do uso)'
+      summary: 'Testa a rota padrão sem reserva com uma vaga fictícia. Mantém a verificação somente na sessão; não envia o currículo.'
       responses:
         '200':
           description: A IA respondeu dentro do contrato
@@ -271,6 +285,7 @@ paths:
                 required: [ok, ms, saida]
                 properties:
                   ok: { type: boolean, const: true }
+                  verificacao: { type: string, description: 'Revisão confirmada, usada em X-Applyer-Verificacao ao sugerir ou concluir o primeiro acesso.' }
                   ms: { type: integer, description: Tempo da chamada }
                   saida: { $ref: '#/components/schemas/Triagem' }
         '400': { $ref: '#/components/responses/ErroIAConfig' }
@@ -814,6 +829,7 @@ components:
       type: object
       required: [configurada]
       properties:
+        conexaoVerificada: { type: boolean, description: 'Verdadeiro para uma configuração testada com sucesso nesta sessão.' }
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }
@@ -843,6 +859,7 @@ components:
       type: object
       required: [configurada, chaves, clis, gratis, uso]
       properties:
+        conexaoVerificada: { type: boolean, description: 'Verificação da configuração atual na sessão.' }
         configurada: { type: boolean }
         provedor: { type: string }
         modelo: { type: string }

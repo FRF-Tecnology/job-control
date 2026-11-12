@@ -109,6 +109,9 @@ func (a *API) sugerirPeloCurriculo(ctx context.Context, autor string, dados Obje
 	if err != nil {
 		return Resposta{}, err
 	}
+	if err := a.verificarProvaDoPerfil(ctx); err != nil {
+		return Resposta{}, err
+	}
 	saida, err := iaPerfil.Executar(ctx, "sugerirPerfilDoCV", Objeto{"curriculo": texto})
 	if err != nil {
 		return respostaIA(err)

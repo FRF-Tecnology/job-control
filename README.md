@@ -9,11 +9,11 @@ Cada pessoa roda a sua cópia, no próprio computador e com os próprios dados. 
 
 ## Primeiro acesso no aplicativo desktop (Windows e macOS)
 
-No Applyer, anexe seu currículo em PDF e informe o cargo, os níveis aceitos, as duas stacks, as exclusões, o mercado, os modelos de trabalho, o inglês e a pretensão mensal em USD. A última etapa permite revisar e salvar. O PDF fica na pasta de currículos do app e o perfil no banco local. Instalações que já têm dados continuam abrindo normalmente.
+Conecte sua IA e escolha um currículo em PDF na primeira tela. Com Claude, a confirmação depende de uma resposta real da CLI autenticada ou da API. Na segunda tela, revise o cargo, o nível, a stack e as condições. A faixa salarial mensal é opcional (BRL, USD ou EUR). **Concluir perfil** grava o PDF e o perfil no computador e abre o **Radar de vagas**. Nesta primeira versão o rascunho ainda não é salvo antes da conclusão.
 
-Com uma IA conectada, **Salvar e buscar vagas** abre a Triagem. Para outra rodada, use **Buscar vagas com meu perfil** em Hoje ou Triagem. O app consulta a Gupy para o Brasil, a Himalayas para oportunidades internacionais remotas e a Arbeitnow para vagas europeias quando os modelos selecionados incluem trabalho híbrido ou presencial. A cobertura depende dos anúncios dessas fontes. [Gupy](https://portal.gupy.io/) · [Himalayas](https://himalayas.app/) · [Arbeitnow](https://www.arbeitnow.com/)
+No Radar, **Buscar vagas** consulta fontes conforme o perfil: [Gupy](https://portal.gupy.io/) para o Brasil, [Himalayas](https://himalayas.app/) para oportunidades internacionais remotas e [Arbeitnow](https://www.arbeitnow.com/) para vagas europeias quando o modelo inclui híbrido ou presencial. A cobertura depende dos anúncios publicados.
 
-Cada rodada processa até oito vagas. As exclusões explícitas ficam registradas com motivo. A IA compara anúncio e critérios profissionais e a Triagem apresenta A, B e C em ordem de prioridade. Uma avaliação interrompida fica pendente para outra rodada. Para modificar as preferências, abra **Perfil**.
+Cada rodada avalia até oito vagas. O Radar apresenta A, B e C em ordem de prioridade; avaliações interrompidas ficam pendentes. **Aplicar na vaga** reserva a candidatura. Abra o site da empresa no navegador padrão, preencha e envie por lá. Voltar ao Applyer não registra um envio: use **Já enviei** para gravá-lo no Quadro. É possível fechar e reabrir uma candidatura pendente sem duplicá-la. Para alterar os critérios, abra **Perfil**.
 
 ## Abrir a Central em Node
 1. Instale o [Node.js](https://nodejs.org) 18 ou mais novo (só uma vez).

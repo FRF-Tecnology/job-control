@@ -634,6 +634,7 @@ func CancelarCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado,
 	}
 	c.Estado, c.Aprovacao = CandCancelada, nil
 	novo, o := salvarCandidatura(e, i, c, agora)
+	limparIntencaoRadar(novo, c, false)
 	return novo, o, nil
 }
 
@@ -652,6 +653,7 @@ func ReabrirCandidatura(e Estado, id string, agora time.Time, ctx Ctx) (Estado, 
 	}
 	c.Estado, c.Aprovacao, c.Bloqueio, c.Resultado = CandPreparada, nil, nil, nil
 	novo, o := salvarCandidatura(e, i, c, agora)
+	limparIntencaoRadar(novo, c, false)
 	if v := vagaDe(novo, c.VagaID); v != nil && igual(v["etapa"], "bloqueada") {
 		movido, _, err := MoverVaga(novo, c.VagaID, "aplicar", Objeto{}, ctx)
 		if err != nil {
@@ -682,6 +684,7 @@ func ConcluirManual(e Estado, id string, agora time.Time, ctx Ctx) (Estado, Obje
 
 func concluirEnvio(e Estado, i int, c Candidatura, agora time.Time, ctx Ctx) (Estado, Objeto, error) {
 	novo, o := salvarCandidatura(e, i, c, agora)
+	limparIntencaoRadar(novo, c, true)
 	if v := vagaDe(novo, c.VagaID); v != nil && !FoiEnviada(v) {
 		movido, _, err := MoverVaga(novo, c.VagaID, "enviada", Objeto{"envio": Objeto{"data": ctx.Agora, "candidaturaId": c.ID}}, ctx)
 		if err != nil {

@@ -88,11 +88,22 @@ func (a *API) Handler() http.Handler {
 			}
 			corpo = c
 		}
+		// Clientes anteriores não enviam a revisão. A janela do Radar atrela o
+		// documento ao teste da rota escolhida, inclusive se reconfigurada entre telas.
+		ctxPedido := r.Context()
+		if protocolo := r.Header.Get("X-Applyer-Verificacao"); onboarding && protocolo != "" {
+			geracao, err := strconv.ParseUint(protocolo, 10, 64)
+			if err != nil || geracao&1 == 0 || a.provaIA.estado.Load() != geracao {
+				enviar(w, Resposta{Status: http.StatusPreconditionFailed, Corpo: Objeto{"erro": "a conexão de IA mudou; verifique novamente"}})
+				return
+			}
+			ctxPedido = context.WithValue(ctxPedido, chaveProvaDoPerfil{}, geracao)
+		}
 		caminho := p
 		if r.URL.RawQuery != "" {
 			caminho += "?" + r.URL.RawQuery
 		}
-		resp, err := a.Chamar(r.Context(), Pedido{Metodo: m, Caminho: caminho, Corpo: corpo, Autor: "eu",
+		resp, err := a.Chamar(ctxPedido, Pedido{Metodo: m, Caminho: caminho, Corpo: corpo, Autor: "eu",
 			XPedido: r.Header.Get("X-Pedido"), XImpressao: r.Header.Get("X-Impressao"), DaJanela: daJanela(r)})
 		// Só o cancelamento em si: um erro de verdade (disco, SQLite) que coincide com a saída do cliente continua 500.
 		if err != nil && r.Context().Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {

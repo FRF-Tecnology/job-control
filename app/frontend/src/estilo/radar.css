@@ -1,0 +1,57 @@
+.radar { max-width: 940px; margin-inline: auto; }
+.radar-cabecalho {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(140px, 1fr);
+  align-items: center; gap: 6px; margin-bottom: 14px;
+  padding: clamp(20px, 3vw, 32px); overflow: hidden;
+  border-radius: var(--raio); background: #222048; color: #fff; box-shadow: var(--sombra);
+}
+.radar-cabecalho::after {
+  content: ''; display: block; min-height: 130px; align-self: stretch;
+  background: url('../arte/radar.svg') center / contain no-repeat;
+}
+.radar-cabecalho .busca-perfil { margin: 12px 0 0; padding: 0; background: transparent; box-shadow: none; }
+.radar-cabecalho .mudo { color: #d8d5ee; }
+.radar-cabecalho .botao {
+  background: #c1f6db; color: #172f29; border-color: transparent; text-shadow: none;
+}
+.radar-cabecalho .botao:hover { background: #d9ffe9; }
+.radar-cabecalho a { color: #c1f6db; }
+.radar-cabecalho :focus-visible { outline-color: #fff; }
+.radar-cabecalho .chip.contorno { color: #ece9ff; border-color: #817d9e; background: transparent; }
+.radar-perfil, .radar-vaga {
+  padding: clamp(17px, 2.8vw, 28px);
+  border: 1px solid var(--aro);
+  border-radius: var(--raio-m);
+  background: var(--vidro);
+  box-shadow: var(--sombra);
+  overflow-wrap: anywhere;
+}
+.radar-perfil { margin-bottom: 12px; }
+.radar-perfil-topo, .radar-vaga-topo {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+}
+.radar-perfil h2 { margin: 4px 0; }
+.radar-criterios {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 10px 20px; border-top: 1px solid var(--linha); padding-top: 14px; margin: 13px 0 0;
+}
+.radar-criterios dt, .radar-empresa, .radar-fonte { color: var(--tinta-2); font-size: .86rem; }
+.radar-criterios dd { margin: 2px 0 0; font-weight: 600; }
+.radar-resultados { display: grid; gap: 12px; }
+.radar-resultados > h2 { margin: 5px 0; }
+.radar-empresa { font-weight: 650; }
+.radar-vaga h3 { margin-top: 4px; font-size: 1.22rem; }
+.radar-vaga p, .radar-vaga ul { margin: 8px 0; }
+.radar-fonte { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.radar-vaga-acoes { border-top: 1px solid var(--linha); margin-top: 12px; padding-top: 12px; }
+.radar-vaga-acoes p:first-child { margin-top: 0; }
+.radar-aguardando { color: var(--ambar); }
+.radar-enviada { color: var(--verde); font-weight: 700; }
+.radar-erro, .radar [role=alert] { color: var(--erro); }
+@media (max-width: 650px) {
+  .radar-cabecalho { grid-template-columns: 1fr; position: relative; }
+  .radar-cabecalho h1 { padding-right: 68px; }
+  .radar-cabecalho::after {
+    position: absolute; inset: 12px 8px auto auto; width: 80px; height: 46px; min-height: 0; pointer-events: none;
+  }
+}

@@ -9,6 +9,10 @@ import { Dialogo, type PedidoDialogo } from './app/Dialogo';
 import { Detalhe } from './telas/Detalhe';
 import { TelaHoje } from './telas/Hoje';
 import { TelaTriagem } from './telas/Triagem';
+import { TelaRadar } from './telas/Radar';
+import wordmark from './arte/primeiro-acesso/applyer-inversa.svg';
+import wordmarkClara from './arte/primeiro-acesso/applyer.svg';
+import marcaClaude from '../../../site/marcas/claude.svg';
 import { TelaFila } from './telas/Fila';
 import { EVENTO_ENVIO, type EstadoEnvio } from './telas/PainelEnvio';
 import { TelaQuadro } from './telas/Quadro';
@@ -17,13 +21,14 @@ import { TelaNumeros } from './telas/Numeros';
 import { TelaPlataformas } from './telas/Plataformas';
 import { TelaRodadas } from './telas/Rodadas';
 import { TelaPerfil } from './telas/Perfil';
-import { iaProntaParaBusca, TelaConectarIA } from './telas/ConectarIA';
+import { TelaConectarIA } from './telas/ConectarIA';
 import { PrimeiroAcesso } from './telas/PrimeiroAcesso';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
 import { foiEnviada } from './dominio/modelo';
 
 // Ícone de cada seção (menu lateral no PC e abas no celular).
 const ICONES: Record<string, string> = {
+  radar:'M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l8-8',
   hoje: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
   triagem: 'M10 3h7a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 7v11a3 3 0 0 0 3 3h9',
   fila: 'M10 6h10M10 12h10M10 18h10M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17',
@@ -41,14 +46,14 @@ const NOMES_IA: Record<string, string> = {
   'claude-cli': 'Claude Code conectado', 'codex-cli': 'Codex conectado', 'gemini-cli': 'Gemini CLI conectado',
   anthropic: 'Claude conectado (chave)', openai: 'ChatGPT conectado (chave)', google: 'Gemini conectado (chave)', xai: 'Grok conectado (chave)',
 };
-const RETOMAR_BUSCA = 'applyer.primeiraBuscaPendente';
 type R = ReturnType<typeof resumo>;
 const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r: R) => number; alerta?: boolean; aba?: boolean }[] = [
+  { rota:'radar', nome:'Radar', Tela:TelaRadar, aba:true },
   { rota: 'hoje', nome: 'Hoje', Tela: TelaHoje, contador: r => r.bloqueadas + r.followUps, alerta: true, aba: true },
   { rota: 'triagem', nome: 'Triagem', Tela: TelaTriagem, contador: r => r.descoberta, aba: true },
   { rota: 'fila', nome: 'Fila', Tela: TelaFila },
   { rota: 'quadro', nome: 'Quadro', Tela: TelaQuadro },
-  { rota: 'vagas', nome: 'Vagas', Tela: TelaVagas, aba: true },
+  { rota: 'vagas', nome: 'Vagas', Tela: TelaVagas },
   { rota: 'numeros', nome: 'Números', Tela: TelaNumeros },
   { rota: 'plataformas', nome: 'Plataformas', Tela: TelaPlataformas },
   { rota: 'rodadas', nome: 'Rodadas', Tela: TelaRodadas },
@@ -58,7 +63,7 @@ const TELAS: { rota: string; nome: string; Tela: () => ReactNode; contador?: (r:
 
 function lerHash() {
   // "?..." no fim (ex.: #/fila?preparar=<vagaId>, vindo de um pedido) é da tela, não muda a rota.
-  const [, rota = 'hoje', vaga] = location.hash.split('?')[0].split('/');
+  const [, rota = 'radar', vaga] = location.hash.split('?')[0].split('/');
   const tela = TELAS.find(t => t.rota === rota) ?? TELAS[0];
   let id: string | null = null;
   try { id = vaga ? decodeURIComponent(vaga) : null; } catch { id = null; }
@@ -96,7 +101,7 @@ export default function App() {
   const [conexao, setConexao] = useState<{ texto: string; estado: 'ok' | 'off' | '' }>({ texto: '', estado: '' });
   const [envio, setEnvio] = useState<Partial<EstadoEnvio> | null>(null); // GET /envio: a marca no cabeçalho (jc-a2y.51) e o navegador flutuante
   const envioAtivo = !!envio && envio.ligado === true && envio.pausado === false; // ligado e não pausado
-  const [ia, setIA] = useState<{ configurada: boolean; provedor?: string } | null>(null); // null: ainda não sabe
+  const [ia, setIA] = useState<{ configurada: boolean; conexaoVerificada?:boolean; provedor?: string } | null>(null);
   const [falha, setFalha] = useState<Falha>(null);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [dialogo, setDialogo] = useState<PedidoDialogo | null>(null);
@@ -186,20 +191,11 @@ export default function App() {
   // A IA em uso, para o resumo do menu lateral: lida ao abrir e ao trocar de seção (a pessoa pode ter conectado outra).
   useEffect(() => {
     let vivo = true;
-    chamarApi(primeiroAcesso ? '/api/v1/ia' : '/api/v1/ia/config').then(r => {
-      if (vivo) setIA({ configurada: primeiroAcesso ? iaProntaParaBusca(r) : !!r?.configurada, provedor: r?.provedor });
-    }).catch(() => { if (vivo) setIA(null); });
-    return () => { vivo = false; };
+    const ler=()=>chamarApi('/api/v1/ia/config').then(r=>{if(vivo)setIA(r)}).catch(()=>{if(vivo)setIA(null)});
+    void ler(); window.addEventListener('applyer:ia-alterada',ler);
+    return () => { vivo = false; window.removeEventListener('applyer:ia-alterada',ler); };
   }, [tela.rota, primeiroAcesso]);
 
-  useEffect(() => {
-    if (estado?.onboardingConcluido !== true) return;
-    try {
-      if (!localStorage.getItem(RETOMAR_BUSCA)) return;
-      if (!location.hash) location.replace('#/ia?primeira-busca=1');
-      else if (location.hash.split('?')[0] !== '#/ia') localStorage.removeItem(RETOMAR_BUSCA);
-    } catch { /* A navegação da sessão também funciona sem armazenamento local. */ }
-  }, [estado?.onboardingConcluido, tela.rota]);
 
   // A luz do fundo segue o ponteiro, devagar. Com "reduzir movimento", fica parada.
   const luz = useRef<HTMLElement>(null);
@@ -303,12 +299,11 @@ export default function App() {
       <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}</div>
   </>;
   if (primeiroAcesso && app && !falha) {
-    const concluir = (buscar: boolean) => {
-      try {
-        if (buscar) localStorage.removeItem(RETOMAR_BUSCA); else localStorage.setItem(RETOMAR_BUSCA, '1');
-      } catch { /* A escolha só precisa persistir para reabrir Conectar IA após fechar o app. */ }
-      app.navegar(buscar ? 'triagem?buscar=1' : 'ia?primeira-busca=1');
-      setEstado((atual: Estado) => ({ ...atual, onboardingConcluido: true }));
+    const concluir = async () => {
+      const salvo=await chamarApi('/api/v1/estado');
+      if(salvo?.onboardingConcluido !== true) throw new Error('Não foi possível confirmar o perfil salvo. Tente novamente.');
+      sujo.current=false; versao.current=salvo.versao;
+      setEstado(salvo); app.navegar('radar');
     };
     return <><Contexto.Provider value={app}><Protecao chave="primeiro-acesso">
       <PrimeiroAcesso alternarTema={alternarTema} concluir={concluir} />
@@ -323,9 +318,8 @@ export default function App() {
       <a className="pular-link" href="#conteudo" onClick={e => { e.preventDefault(); main.current?.focus(); }}>Ir para o conteúdo</a>
       <header className="topo-app">
         <div className="topo-dentro">
-          <a className="marca" href="#/hoje" aria-label="Applyer — início">
-            <span className="logo-ic"><Icone><path d="M21 3L3 10.5l7 2.5 2.5 7z" /><path d="M21 3L10 13" /></Icone></span>
-            <span>Applyer</span>
+          <a className="marca" href="#/radar" aria-label="Applyer — início">
+            <img className="marca-applyer escura" src={wordmark} alt="Applyer." /><img className="marca-applyer clara" src={wordmarkClara} alt="Applyer." />
           </a>
           <Menu atual={tela.rota} contador={contador} />
           {estado && (
@@ -337,8 +331,8 @@ export default function App() {
           )}
           {ia && (
             <a className="lateral-extra" href="#/ia">
-              <span className="status-ia"><span className={`ponto${ia.configurada ? ' ok' : ''}`} aria-hidden="true" /><b>{ia.configurada ? (NOMES_IA[ia.provedor ?? ''] ?? 'IA conectada') : 'Nenhuma IA conectada'}</b></span>
-              <span>{ia.configurada ? 'Sua IA, sua assinatura. Seus dados ficam neste computador.' : 'Conecte a sua IA para ela opinar na triagem e escrever rascunhos.'}</span>
+              <span className="status-ia">{['claude-cli','anthropic'].includes(ia.provedor ?? '') && <img src={marcaClaude} alt="" width="20" height="20" />}<span className={`ponto${ia.conexaoVerificada ? ' ok' : ''}`} aria-hidden="true" /><b>{ia.conexaoVerificada ? (NOMES_IA[ia.provedor ?? ''] ?? 'IA conectada') : ia.configurada ? 'IA configurada · verificar' : 'Nenhuma IA conectada'}</b></span>
+              <span>{ia.conexaoVerificada ? 'Conexão verificada nesta sessão.' : 'Abra Conectar IA para verificar sua conexão.'}</span>
             </a>
           )}
           <div className="topo-pe">
