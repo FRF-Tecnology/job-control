@@ -88,10 +88,20 @@ func (a *API) sugerirPeloCurriculo(ctx context.Context, autor string, dados Obje
 	if autor != "eu" {
 		return Resposta{}, falha(403, msgForaDoAssistente)
 	}
-	if err := soCampos(dados, "curriculo"); err != nil {
+	if err := soCampos(dados, "curriculo", "nomeArquivo", "arquivoId", "revisao"); err != nil {
 		return Resposta{}, err
 	}
-	arquivo, err := pdfDoOnboarding(dados)
+	ref, err := referenciaDoPedido(ctx, a, dados)
+	if err != nil {
+		return Resposta{}, err
+	}
+	var arquivo []byte
+	if ref == nil {
+		arquivo, err = pdfDoOnboarding(dados)
+	} else {
+		arquivo, err = a.arm.LerPDFRascunho(ctx, *ref)
+		err = erroDoRascunho(err)
+	}
 	if err != nil {
 		return Resposta{}, err
 	}
@@ -109,9 +119,18 @@ func (a *API) sugerirPeloCurriculo(ctx context.Context, autor string, dados Obje
 	if err != nil {
 		return Resposta{}, err
 	}
+	if err := a.verificarProvaDoPerfil(ctx); err != nil {
+		return Resposta{}, err
+	}
+	if err := a.conferirReferenciaAtual(ctx, ref); err != nil {
+		return Resposta{}, err
+	}
 	saida, err := iaPerfil.Executar(ctx, "sugerirPerfilDoCV", Objeto{"curriculo": texto})
 	if err != nil {
 		return respostaIA(err)
+	}
+	if err := a.conferirReferenciaAtual(ctx, ref); err != nil {
+		return Resposta{}, err
 	}
 	return ok(Objeto{"sugestoes": sugestoesComFonte(texto, saida)})
 }

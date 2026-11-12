@@ -17,6 +17,7 @@ export interface Pergunta {
 
 export interface App {
   estado: Estado;
+  conexaoIA?: { nome: string; verificada: boolean };
   hoje: string;
   foco: string;
   rota: string;

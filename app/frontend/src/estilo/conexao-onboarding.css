@@ -53,8 +53,13 @@
 .pa-ia-painel h2 { margin: 0 0 12px; font-size: 1.12rem; }
 .pa-ia-painel p { margin: 0; color: var(--tinta-2); font-size: .86rem; overflow-wrap: anywhere; }
 .pa-ia-modos { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+.pa-ajuda-claude { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-bottom:16px; }
+.pa-ajuda-claude p { width:100%; }
+.pa-ajuda-claude a { color:var(--destaque); }
+.pa-ajuda-claude code { white-space:nowrap; }
 .pa-ia-modos button { padding: 7px 12px; border-radius: 8px; color: var(--tinta-2); background: var(--superficie); border: 1px solid var(--linha); }
 .pa-ia-modos button[aria-pressed="true"] { border-color: var(--destaque); color: var(--destaque); }
+@media (pointer: coarse), (max-width: 780px) { .pa-ia-modos button { min-height: 44px; min-width: 44px; } }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .pa-provedor:not(:disabled):hover { transform: translateY(-3px); border-color: var(--destaque); }
 }

@@ -1,12 +1,29 @@
 // Peças pequenas usadas em várias telas.
-import type { ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import { nomeEtapa, safeHref } from './util';
 
 // Link para fora do app, em outra janela. Sem endereço http(s), mostra `semLink` (ou nada).
 export function LinkExterno({ url, className, children, semLink = null }: { url: unknown; className?: string; children: ReactNode; semLink?: ReactNode }) {
+  const [erro, setErro] = useState(false);
   const href = safeHref(url);
   if (!href) return <>{semLink}</>;
-  return <a className={className} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+  async function abrir(evento: MouseEvent<HTMLAnchorElement>) {
+    // São as pontes nativas que o runtime Wails usa em WebView2 e WebKit.
+    const janela = window as Window & {
+      chrome?: { webview?: { postMessage?: unknown } };
+      webkit?: { messageHandlers?: { external?: { postMessage?: unknown } } };
+    };
+    if (!janela.chrome?.webview?.postMessage && !janela.webkit?.messageHandlers?.external?.postMessage) return;
+    evento.preventDefault();
+    const destino = evento.currentTarget.href;
+    setErro(false);
+    try {
+      const { Browser } = await import('@wailsio/runtime');
+      await Browser.OpenURL(destino);
+    } catch { setErro(true); }
+  }
+  return <><a className={className} href={href} target="_blank" rel="noopener noreferrer" onClick={abrir}>{children}</a>
+    {erro && <span role="alert">Não foi possível abrir o navegador. Tente o link novamente.</span>}</>;
 }
 
 // Ícone de linha (24x24) a partir dos caminhos SVG.

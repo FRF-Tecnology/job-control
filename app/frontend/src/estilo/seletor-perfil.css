@@ -1,0 +1,22 @@
+.seletor-perfil { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.seletor-perfil > label { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 9px; min-width: 0; color: var(--muted); font-size: .8rem; }
+.seletor-perfil > label select { max-width: min(18rem, 55vw); min-height: 36px; padding: 5px 9px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-weight: 600; }
+.seletor-perfil .criar-perfil { min-height: 36px; border: none; border-radius: 8px; color: var(--lilac); background: transparent; cursor: pointer; font: inherit; font-size: .85rem; font-weight: 600; }
+.seletor-perfil .criar-perfil:hover { text-decoration: underline; }
+.seletor-perfil .dialogo-perfil { width: min(420px, 92vw); margin: auto; padding: 1.5rem; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 16px 60px #0006; }
+.dialogo-perfil::backdrop { background: #0c091bbb; }
+.dialogo-perfil form, .dialogo-perfil label { display: grid; gap: .4rem; }
+.dialogo-perfil form { gap: 1rem; }
+.dialogo-perfil h2, .dialogo-perfil p { margin: 0; }
+.dialogo-perfil label { font-size: .875rem; font-weight: 600; }
+.dialogo-perfil input, .dialogo-perfil select { width: 100%; min-height: 42px; padding: 7px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.dialogo-perfil p { color: var(--muted); font-size: .875rem; }
+.dialogo-perfil form > div { display: flex; justify-content: flex-end; gap: .5rem; }
+@media(max-width: 580px) {
+  .seletor-perfil { align-items: flex-end; }
+  .seletor-perfil > label { display: grid; }
+  .seletor-perfil > label select, .seletor-perfil .criar-perfil { min-height: 42px; }
+}
+@media (pointer: coarse) {
+  .seletor-perfil > label select, .seletor-perfil .criar-perfil, .dialogo-perfil button, .dialogo-perfil select, .dialogo-perfil input { min-width: 44px; min-height: 44px; }
+}

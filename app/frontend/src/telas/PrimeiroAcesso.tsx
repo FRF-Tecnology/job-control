@@ -1,28 +1,25 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
+import { useRascunhoOnboarding, type PDFSalvo, type TentativaExterna } from '../app/rascunhoOnboarding';
 import { Icone } from '../componentes';
 import { NOMES_FOCO } from '../dominio/modelo';
+import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
 import paisagem from '../arte/primeiro-acesso/paisagem.svg';
 import marca from '../arte/primeiro-acesso/applyer.svg';
 import marcaEscura from '../arte/primeiro-acesso/applyer-inversa.svg';
+import arteCurriculo from '../../../../site/artes/curriculo-verificado.svg';
 import '../estilo/primeiro-acesso.css';
 
-const PASSOS = [
-  ['Sua IA', 'Conexão com o provedor'],
-  ['Currículo', 'Seu documento de referência'],
-  ['Vagas e stack', 'Cargo, nível e habilidades'],
-  ['Condições', 'Mercado, idioma e valor'],
-  ['Triagem', 'Revisão e primeira busca'],
-];
+const PASSOS = ['IA e currículo', 'Critérios de busca'];
+const CLASSES_PROVEDOR: Record<string, string> = { Claude: 'anthropic', OpenAI: 'openai', Gemini: 'google', Grok: 'xai' };
 const NIVEIS = ['Estágio', 'Júnior', 'Pleno', 'Sênior', 'Liderança'];
 const MODELOS = ['Remoto', 'Híbrido', 'Presencial'];
 const INGLES = ['Não falo inglês', 'Básico', 'Intermediário', 'Avançado', 'Fluente'];
 const TAMANHO_PDF = 20 * 1024 * 1024;
 const MOEDAS = { USD: 'Dólar americano', BRL: 'Real brasileiro', EUR: 'Euro' };
-const NOMES_SUGESTAO = { cargo: 'Cargo', niveis: 'Nível', stackPrincipal: 'Stack principal', stackSecundaria: 'Stack secundária', ingles: 'Inglês' };
+const NOMES_SUGESTAO = { cargo: 'Cargo', niveis: 'Nível', stackPrincipal: 'Competências principais', stackSecundaria: 'Competências complementares', ingles: 'Inglês' };
 type Sugestao = { campo: keyof typeof NOMES_SUGESTAO; valor: string; evidencia: string };
-type Curriculo = { arquivo: File; base64: string };
 const lista = (v: unknown): string[] => Array.isArray(v) ? v.filter((item): item is string => typeof item === 'string' && item.trim() !== '') : [];
 const termos = (texto: string) => [...new Set(texto.split(/[,;\n]/).map(t => t.trim()).filter(Boolean))];
 
@@ -30,6 +27,7 @@ function perfilInicial(perfil: any = {}) {
   const faixa = perfil.faixaSalarial ?? { min: perfil.pretensaoUSD, moeda: 'USD' };
   return {
     cargo: perfil.cargo ?? '', niveis: lista(perfil.filtros?.niveis), modelos: lista(perfil.filtros?.modelo),
+    paisTrabalho: String(perfil.paisTrabalho ?? ''), cidadeTrabalho: String(perfil.cidadeTrabalho ?? ''),
     foco: (Object.prototype.hasOwnProperty.call(NOMES_FOCO, perfil.foco) ? perfil.foco : '') as keyof typeof NOMES_FOCO | '',
     principal: lista(perfil.stackPrincipal).join(', '), secundaria: lista(perfil.stackSecundaria).join(', '),
     pular: lista(perfil.filtros?.pularSe).join(', '), ingles: perfil.ingles ?? '',
@@ -39,25 +37,18 @@ function perfilInicial(perfil: any = {}) {
 }
 
 type Dados = ReturnType<typeof perfilInicial>;
-type Problema = { etapa: number; campo: string; texto: string };
-
-function validar(etapa: number, dados: Dados, curriculo: Curriculo | null): Problema | null {
-  const falha = (campo: string, texto: string) => ({ etapa, campo, texto });
-  if (etapa === 1 && !curriculo) return falha('arquivo', 'Escolha seu currículo em PDF para continuar.');
-  if (etapa === 2) {
-    if (!dados.cargo.trim()) return falha('cargo', 'Informe um cargo ou área de interesse.');
-    if (!dados.niveis.length) return falha('niveis', 'Selecione pelo menos um nível de experiência.');
-    if (!termos(dados.principal).length) return falha('principal-stack', 'Informe pelo menos uma habilidade ou ferramenta principal.');
+function validar(dados: Dados) {
+  const falha = (campo: string, texto: string) => ({ campo, texto });
+  if (!dados.cargo.trim()) return falha('cargo', 'Informe um cargo ou área de interesse.');
+  if (!dados.niveis.length) return falha('niveis', 'Selecione pelo menos um nível de experiência.');
+  if (!termos(dados.principal).length) return falha('principal-stack', 'Informe pelo menos uma habilidade ou ferramenta principal.');
+  if (!dados.ingles) return falha('ingles', 'Informe seu nível de inglês.');
+  if (!dados.foco) return falha('mercado', 'Escolha o mercado em que deseja buscar vagas.');
+  if (!dados.modelos.length) return falha('modelos', 'Selecione pelo menos um modelo de trabalho.');
+  for (const campo of ['minimo', 'maximo'] as const) {
+    if (dados[campo] && (!Number.isFinite(Number(dados[campo])) || Number(dados[campo]) <= 0)) return falha(campo, 'Use um valor positivo ou deixe o limite em branco.');
   }
-  if (etapa === 3) {
-    if (!dados.foco) return falha('mercado', 'Escolha o mercado em que deseja buscar vagas.');
-    if (!dados.modelos.length) return falha('modelos', 'Selecione pelo menos um modelo de trabalho.');
-    if (!dados.ingles) return falha('ingles', 'Informe seu nível de inglês.');
-    for (const campo of ['minimo', 'maximo'] as const) {
-      if (dados[campo] && (!Number.isFinite(Number(dados[campo])) || Number(dados[campo]) <= 0)) return falha(campo, 'Use um valor positivo ou deixe o limite em branco.');
-    }
-    if (dados.minimo && dados.maximo && Number(dados.maximo) < Number(dados.minimo)) return falha('maximo', 'O máximo precisa ser maior ou igual ao mínimo.');
-  }
+  if (dados.minimo && dados.maximo && Number(dados.maximo) < Number(dados.minimo)) return falha('maximo', 'O máximo precisa ser maior ou igual ao mínimo.');
   return null;
 }
 
@@ -72,7 +63,7 @@ function Opcoes({ nome, titulo, itens, ativos, mudar }: {
   </div></fieldset>;
 }
 
-function lerArquivo(blob: Blob, base64 = false): Promise<string> {
+export function lerArquivo(blob: Blob, base64 = false): Promise<string> {
   return new Promise((resolve, reject) => {
     const leitor = new FileReader();
     leitor.onerror = () => reject(new Error('Não foi possível ler esse arquivo. Escolha o PDF novamente.'));
@@ -111,11 +102,16 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
 }) {
   const app = useApp();
   const [dados, setDados] = useState(() => perfilInicial(app.estado.perfil ?? {}));
-  const [curriculo, setCurriculo] = useState<Curriculo | null>(null);
-  const arquivo = curriculo?.arquivo;
+  const [curriculo, setCurriculo] = useState<PDFSalvo | null>(null);
+  const [nomeSelecionado, setNomeSelecionado] = useState('');
+  const pdfParaRepetir = useRef<File | 'remover'>();
+  const retomarCriterios = useRef(false);
+  const [tentativaExterna, setTentativaExterna] = useState<TentativaExterna>('');
   const [sugestoes, setSugestoes] = useState<Sugestao[] | null>(null);
-  const [etapa, setEtapa] = useState(0);
-  const [liberada, setLiberada] = useState(0);
+  const [etapa, setEtapa] = useState(1);
+  const [provedor, setProvedor] = useState('');
+  const verificacao=useRef<string>();
+  const cabecalhosIA=():Record<string,string>=>verificacao.current ? {'X-Applyer-Onboarding':'1','X-Applyer-Verificacao':verificacao.current} : {'X-Applyer-Onboarding':'1'};
   const [erro, setErro] = useState('');
   const [lendo, setLendo] = useState(false);
   const [extraindo, setExtraindo] = useState(false);
@@ -127,23 +123,32 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
   const enviando = useRef(false);
   const editados = useRef(new Set<keyof Dados>());
   const iniciais = useRef(dados);
+  const rascunho = useRascunhoOnboarding(app.api, salvo => {
+    leitura.current++; editados.current = new Set(salvo.editados as (keyof Dados)[]);
+    pdfParaRepetir.current = undefined; setNomeSelecionado(''); setErro(''); setSugestoes(null);
+    verificacao.current = undefined; setProvedor(''); setEtapa(1);
+    setCurriculo(salvo.curriculo); setDados({ ...iniciais.current, ...salvo.dados });
+    retomarCriterios.current = salvo.etapa === 2 && Boolean(salvo.curriculo);
+    setTentativaExterna(salvo.tentativaExterna ?? '');
+  });
   useEffect(() => { titulo.current?.focus(); }, [etapa]);
   useEffect(() => () => { leitura.current++; }, []);
 
   function campo<K extends keyof Dados>(chave: K, valor: Dados[K]) {
     editados.current.add(chave);
+    rascunho.alterar({dados:{[chave]:valor},editados:[...editados.current]});
     setDados(antes => ({ ...antes, [chave]: valor })); setErro('');
   }
-  async function selecionar(arquivos: FileList | null) {
-    if (extraindo || salvando) return;
+  async function selecionar(arquivos: ArrayLike<File> | null) {
+    if (extraindo || salvando || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito') return;
     const versao = ++leitura.current;
-    setArrastando(false); setErro(''); setLendo(false);
+    setArrastando(false); setErro(''); setLendo(false); setNomeSelecionado(''); pdfParaRepetir.current = undefined;
     if (!arquivos?.length) return;
     const pdf = arquivos[0];
     if (arquivos.length !== 1) { setErro('Escolha um currículo por vez.'); return; }
     if (!/\.pdf$/i.test(pdf.name)) { setErro('Escolha um arquivo com extensão .pdf.'); return; }
     if (pdf.size > TAMANHO_PDF) { setErro('O PDF deve ter até 20 MB.'); return; }
-    setLendo(true);
+    setLendo(true); setNomeSelecionado(pdf.name);
     try {
       const [inicio, fim] = await Promise.all([lerArquivo(pdf.slice(0, 5)), lerArquivo(pdf.slice(-1024))]);
       if (leitura.current !== versao) return;
@@ -152,78 +157,96 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
       else {
         const base64 = await lerArquivo(pdf, true);
         if (leitura.current !== versao) return;
-        trocarCurriculo({ arquivo: pdf, base64 });
+        pdfParaRepetir.current = pdf;
+        const salvo = await rascunho.documento('PUT', {nomeArquivo:pdf.name,curriculoBase64:base64});
+        if (leitura.current !== versao) return;
+        pdfParaRepetir.current = undefined;
+        trocarCurriculo(salvo);
       }
-    } catch (e) { if (leitura.current === versao) setErro((e as Error).message); }
-    finally { if (leitura.current === versao) setLendo(false); }
+    } catch (e) { if (leitura.current === versao && !pdfParaRepetir.current) setErro((e as Error).message); }
+    finally { if (leitura.current === versao) {setLendo(false); setNomeSelecionado('');} }
   }
-  function trocarCurriculo(novo: Curriculo | null) {
-    setCurriculo(novo); setSugestoes(null); setLiberada(1);
+  function trocarCurriculo(novo: PDFSalvo | null) {
+    setCurriculo(novo); setSugestoes(null);
     setDados(antes => {
       const limpo = { ...iniciais.current };
       for (const chave of editados.current) Object.assign(limpo, { [chave]: antes[chave] });
       return limpo;
     });
   }
-  function ir(destino: number) {
-    for (let i = 0; i < destino; i++) {
-      const problema = validar(i, dados, curriculo);
-      if (problema) {
-        setEtapa(i); setErro(problema.texto);
-        requestAnimationFrame(() => document.getElementById(`pa-${problema.campo}`)?.focus());
-        return false;
-      }
-    }
-    setErro(''); setEtapa(destino); setLiberada(n => Math.max(n, destino)); return true;
-  }
-  async function preencherComIA() {
-    if (!curriculo) { ir(2); return; }
-    if (sugestoes !== null) { ir(2); return; }
-    const versao = leitura.current;
-    enviando.current = true; setExtraindo(true); setErro('');
+  async function remover() {
+    if (lendo || enviando.current) return;
+    leitura.current++; setLendo(true); setErro(''); pdfParaRepetir.current='remover';
     try {
-      const resposta = await app.api('/api/v1/onboarding/sugerir', 'POST', { curriculoBase64: curriculo.base64 }, { 'X-Applyer-Onboarding': '1' });
+      await rascunho.documento('DELETE',{});
+      trocarCurriculo(null); retomarCriterios.current=false; pdfParaRepetir.current=undefined;
+    } catch { /* O rascunho mostra a falha e mantém o PDF atual. */ }
+    finally {setLendo(false);}
+  }
+  async function irPara(etapa: number) {
+    rascunho.alterar({etapa});
+    try {await rascunho.gravar(); setErro(''); setEtapa(etapa);}
+    catch { /* A pessoa pode repetir a gravação sem perder os campos. */ }
+  }
+  const podeRevisar = Boolean(curriculo && provedor && !lendo && !extraindo && rascunho.situacao!=='conflito' && rascunho.situacao!=='falha');
+  async function preencherComIA() {
+    if (!podeRevisar || !curriculo || enviando.current) return;
+    setErro('');
+    if (sugestoes !== null) { await irPara(2); return; }
+    const versao = leitura.current;
+    enviando.current = true; setExtraindo(true);
+    try {
+      await rascunho.gravar();
+      const resposta = await app.api('/api/v1/onboarding/sugerir', 'POST', { arquivoId: curriculo.arquivoId, revisao: rascunho.revisao.current }, cabecalhosIA());
       if (leitura.current !== versao) return;
       const itens: Sugestao[] = resposta.sugestoes ?? [];
       setSugestoes(itens);
-      setDados(antes => aplicarSugestoes(antes, itens, editados.current));
-      ir(2);
-    } catch (e) { if (leitura.current === versao) setErro((e as Error).message || 'A IA não conseguiu ler este PDF. Você pode tentar novamente ou preencher o perfil manualmente.'); }
+      const sugerido = aplicarSugestoes(dados, itens, editados.current);
+      setDados(sugerido);
+      rascunho.alterar({dados:sugerido,editados:[...editados.current]});
+      await irPara(2);
+    } catch (e) { if (leitura.current === versao) {
+      if(e instanceof ErroApi && e.status===412){setProvedor('');verificacao.current=undefined;}
+      if(e instanceof ErroApi && e.status===409) rascunho.avisarConflito();
+      setErro((e as Error).message || 'A IA não conseguiu ler este PDF. Você pode tentar novamente ou preencher o perfil manualmente.');
+    } }
     finally { enviando.current = false; setExtraindo(false); }
   }
-  async function continuar(ev: FormEvent) {
+  async function salvar(ev: FormEvent) {
     ev.preventDefault();
-    if (enviando.current || lendo) return;
-    if (etapa === 1) { await preencherComIA(); return; }
-    if (etapa < 4) { ir(etapa + 1); return; }
-    if (!ir(4) || !curriculo) return;
+    if (enviando.current || !podeRevisar || !curriculo) return;
+    const buscar = ((ev.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'buscar';
+    const problema = validar(dados);
+    if (problema) {
+      setErro(problema.texto);
+      document.getElementById(`pa-${problema.campo}`)?.focus();
+      return;
+    }
     const perfil = {
       cargo: dados.cargo.trim(), stackPrincipal: termos(dados.principal), stackSecundaria: termos(dados.secundaria),
+      ...(dados.paisTrabalho && {paisTrabalho:dados.paisTrabalho}),
+      ...(dados.cidadeTrabalho.trim() && {cidadeTrabalho:dados.cidadeTrabalho.trim()}),
       filtros: { niveis: dados.niveis, modelo: dados.modelos, pularSe: termos(dados.pular) }, foco: dados.foco, ingles: dados.ingles,
-      ...(dados.minimo || dados.maximo ? { faixaSalarial: {
+      faixaSalarial: dados.minimo || dados.maximo ? {
         moeda: dados.moeda, ...(dados.minimo ? { min: Number(dados.minimo) } : {}), ...(dados.maximo ? { max: Number(dados.maximo) } : {}),
-      } } : {}),
+      } : null,
     };
-    enviando.current = true; setSalvando(true);
+    enviando.current = true; setSalvando(true); setErro('');
     try {
-      await app.api('/api/v1/onboarding', 'POST', { perfil, curriculoBase64: curriculo.base64 }, { 'X-Applyer-Onboarding': '1' });
-      app.limpar(); concluir(true);
+      await rascunho.gravar();
+      await app.api('/api/v1/onboarding', 'POST', { perfil, arquivoId:curriculo.arquivoId, revisao:rascunho.revisao.current }, cabecalhosIA());
+      app.limpar(); await concluir(buscar);
     } catch (e) {
-      if (e instanceof ErroApi && e.status === 409) {
-        app.aviso('O perfil já foi salvo em outra janela.'); await app.recarregar();
+      if(e instanceof ErroApi && e.status===412) {
+        retomarCriterios.current=true; setEtapa(1); setProvedor(''); verificacao.current=undefined; setErro('A conexão de IA mudou. Verifique novamente; o currículo e os campos continuam aqui.');
+      } else if (e instanceof ErroApi && e.status === 409) {
+        rascunho.avisarConflito(); await app.recarregar();
       } else setErro((e as Error).message || 'Não foi possível salvar. Tente novamente.');
     } finally { enviando.current = false; setSalvando(false); }
   }
-  const dinheiro = (valor: string) => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: dados.moeda, maximumFractionDigits: 2, minimumFractionDigits: 0 });
-  const salario = dados.minimo && dados.maximo ? `${dinheiro(dados.minimo)} a ${dinheiro(dados.maximo)}`
-    : dados.minimo ? `A partir de ${dinheiro(dados.minimo)}` : dados.maximo ? `Até ${dinheiro(dados.maximo)}` : '';
-  const resumo = [
-    ['Currículo', arquivo?.name], ['Cargo ou área', dados.cargo], ['Níveis', dados.niveis.join(', ')],
-    ['Stack principal', termos(dados.principal).join(', ')], ['Stack secundária', termos(dados.secundaria).join(', ') || 'Não informada'],
-    ['Pular quando', termos(dados.pular).join(', ') || 'Sem exclusões adicionais'],
-    ['Mercado', dados.foco ? NOMES_FOCO[dados.foco] : ''], ['Modelos de trabalho', dados.modelos.join(', ')], ['Inglês', dados.ingles],
-    ['Faixa salarial', salario ? `${salario} por mês (${dados.moeda})` : 'A combinar'],
-  ];
+  const conexaoConfirmada = <span className={`pa-verificada ${CLASSES_PROVEDOR[provedor] ?? ''}`}>
+    <span className="pa-logotipo" aria-hidden="true" />{provedor} conectado
+  </span>;
   return <div className="primeiro-acesso">
     <a className="pular-link" href="#pa-principal" onClick={e => { e.preventDefault(); document.getElementById('pa-principal')?.focus(); }}>Ir para o conteúdo</a>
     <header className="pa-topo"><div className="pa-barra">
@@ -232,56 +255,106 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
       <button type="button" className="botao-icone" onClick={alternarTema} aria-label="Alternar tema claro/escuro"><Icone d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" /></button>
     </div></header>
     <div className="pa-janela">
-      <aside className="pa-rail"><div><h2>Perfil de busca</h2><nav aria-label="Etapas da configuração">{PASSOS.map(([nome, sub], i) =>
-        <button type="button" key={nome} disabled={i > liberada || (etapa === 0 && i > 0) || extraindo || salvando || lendo} aria-current={i === etapa ? 'step' : undefined}
-          onClick={() => ir(i)}>
-          <span className="pa-numero" aria-hidden="true">{i < etapa ? '✓' : i + 1}</span><span><b>{nome}</b><small>{sub}</small></span>
-        </button>)}</nav></div><figure className="pa-ilhas"><img src={paisagem} alt="" className="pa-arte" />
-          <figcaption>E se a vaga dos seus sonhos estiver <strong>a um clique?</strong></figcaption>
-        </figure></aside>
       <main id="pa-principal" tabIndex={-1}>
-        <div className="pa-andamento"><span>Etapa {etapa + 1} de {PASSOS.length}</span><div aria-hidden="true">{PASSOS.map(([nome], i) => <i key={nome} className={i <= etapa ? 'ativa' : ''} />)}</div></div>
-        {etapa === 0 ? <section className="pa-etapa-ia">
-          <h1 ref={titulo} tabIndex={-1}>Conecte <em>sua IA.</em></h1>
-          <p className="pa-sub">Escolha quem vai ler seu currículo e comparar seu perfil com as vagas.</p>
-          <ConexaoOnboarding aoConectar={() => ir(1)} />
-        </section> :
-          <form onSubmit={continuar}>
-            {etapa === 1 && <section>
-              <h1 ref={titulo} tabIndex={-1}>Anexe <em>seu currículo.</em></h1>
-              <p className="pa-sub">Use o PDF com sua experiência mais recente. A IA pode sugerir cargo, nível, habilidades e inglês para você revisar.</p>
-              <div className={`pa-drop${arrastando || arquivo ? ' destacado' : ''}`} onDragOver={e => { e.preventDefault(); setArrastando(true); }}
-                onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setArrastando(false); }}
-                onDrop={e => { e.preventDefault(); void selecionar(e.dataTransfer.files); }}>
-                <div className="pa-papel" aria-hidden="true"><i /><b>PDF</b></div>
-                <div aria-live="polite"><h2>{arquivo?.name ?? 'Arraste seu currículo para cá'}</h2><p>{lendo ? 'Conferindo o arquivo…' : arquivo ? `PDF selecionado · ${Math.max(1, Math.ceil(arquivo.size / 1024))} KB` : 'PDF de até 20 MB'}</p></div>
-                <div className="pa-arquivo-acoes"><button id="pa-arquivo" type="button" className="pa-secundario" disabled={extraindo} onClick={() => inputPDF.current?.click()}>{arquivo ? 'Trocar PDF' : 'Escolher PDF'}</button>
-                  {arquivo && <button type="button" className="pa-link" disabled={extraindo} onClick={() => { leitura.current++; trocarCurriculo(null); setLendo(false); setErro(''); }}>Remover</button>}</div>
-                <input type="file" ref={inputPDF} aria-label="Currículo em PDF" accept=".pdf,application/pdf" hidden onChange={e => { void selecionar(e.target.files); e.target.value = ''; }} />
-              </div>
-              <p className="pa-nota">Ao escolher “Preencher com IA”, o Applyer compartilha o texto profissional do currículo com o provedor conectado. O PDF é salvo no seu computador ao concluir.</p>
-              {extraindo && <p className="pa-leitura" role="status"><span aria-hidden="true" />Lendo seu currículo…</p>}
-            </section>}
-            {etapa === 2 && <section>
-              <h1 ref={titulo} tabIndex={-1}>Quais vagas <em>interessam?</em></h1><p className="pa-sub">{sugestoes?.length ? 'Confira as sugestões do seu currículo, ajuste os níveis que você aceita e escolha o que a busca deve pular.' : sugestoes ? 'A IA não encontrou dados suficientes neste currículo. Preencha os campos para orientar sua busca.' : 'Escolha o cargo, suas habilidades e os critérios que devem deixar uma vaga de fora.'}</p>
-              <Evidencias sugestoes={(sugestoes ?? []).filter(s => s.campo !== 'ingles')} />
+        <ol className="pa-andamento" aria-label={`Etapas da configuração. Etapa ${etapa} de ${PASSOS.length}`}>{PASSOS.map((nome, i) =>
+          <li key={nome} aria-current={i + 1 === etapa ? 'step' : undefined} className={i + 1 < etapa ? 'concluida' : undefined}>
+            <span aria-hidden="true">{i + 1 < etapa ? '✓' : i + 1}</span>{nome}
+          </li>)}</ol>
+        <div className="pa-rascunho" role="status">
+          {rascunho.situacao === 'abrindo' && 'Abrindo rascunho…'}
+          {rascunho.situacao === 'salvando' && 'Salvando…'}
+          {rascunho.situacao === 'salvo' && (retomarCriterios.current ? 'Rascunho recuperado. Verifique a conexão para voltar aos seus critérios.' : 'Salvo neste computador')}
+          {(rascunho.situacao === 'conflito' || rascunho.situacao === 'falha') && <>{rascunho.mensagem}{' '}
+            <button type="button" className="pa-link" onClick={() => {
+              if (rascunho.situacao === 'conflito') {void rascunho.carregar(); return;}
+              const tentativa = pdfParaRepetir.current;
+              if (tentativa === 'remover') void remover();
+              else if (tentativa) void selecionar([tentativa]);
+              else void rascunho.repetir();
+            }}>{rascunho.situacao === 'conflito' ? 'Descartar edições locais e carregar a versão salva' : 'Tentar salvar novamente'}</button></>}
+        </div>
+        {etapa === 1 ? <div className="pa-passo">
+          <section className="pa-painel-rolagem">
+            <header className="pa-faixa"><div>
+              <h1 ref={titulo} tabIndex={-1}>Sua IA e seu currículo</h1>
+              <p className="pa-sub">Conecte seu provedor de IA e escolha o PDF que vai usar neste perfil.</p>
+            </div><img src={paisagem} alt="" /></header>
+            <div className="pa-cartoes">
+              <section className="pa-cartao" aria-labelledby="pa-ia-titulo">
+                <h2 id="pa-ia-titulo">Conexão de IA</h2>
+                {rascunho.revisao.current == null ? <p className="pa-nota">A conexão estará disponível após abrir o rascunho local.</p> : provedor ? <div className="pa-conectada"><div role="status">{conexaoConfirmada}</div>
+                  <button type="button" className="pa-link" disabled={extraindo} onClick={() => setProvedor('')}>Alterar conexão</button>
+                </div> : <ConexaoOnboarding tentativaExterna={tentativaExterna} registrarTentativa={tipo=>{
+                  setTentativaExterna(tipo);rascunho.alterar({tentativaExterna:tipo});void rascunho.gravar().catch(()=>{});
+                }} aoConectar={(nome,id)=>{
+                  verificacao.current=id; setProvedor(nome);
+                  if(tentativaExterna){setTentativaExterna('');rascunho.alterar({tentativaExterna:''});}
+                  if(retomarCriterios.current && curriculo){retomarCriterios.current=false;setEtapa(2);}
+                }} />}
+              </section>
+              <section className="pa-cartao pa-cartao-pdf" aria-labelledby="pa-pdf-titulo">
+                <h2 id="pa-pdf-titulo">Seu currículo</h2>
+                <div className={`pa-drop${arrastando || curriculo ? ' destacado' : ''}`} onDragOver={e => { e.preventDefault(); setArrastando(true); }}
+                  onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setArrastando(false); }}
+                  onDrop={e => { e.preventDefault(); void selecionar(e.dataTransfer.files); }}>
+                  <img className="pa-arte-cv" src={arteCurriculo} alt="" />
+                  <div aria-live="polite"><b>{curriculo?.nomeExibicao ?? 'Arraste seu currículo para cá'}</b>
+                    <p>{nomeSelecionado ? `Selecionado: ${nomeSelecionado} · Salvando…` : curriculo ? `Currículo salvo neste perfil · ${Math.max(1, Math.ceil(curriculo.tamanho / 1024))} KB` : 'PDF de até 20 MB'}</p></div>
+                  <div className="pa-arquivo-acoes">
+                    <button type="button" className="pa-secundario" disabled={extraindo || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito'} onClick={() => inputPDF.current?.click()}>{curriculo ? 'Trocar PDF' : 'Escolher PDF'}</button>
+                    {curriculo && <button type="button" className="pa-link" disabled={extraindo || lendo || rascunho.situacao==='conflito'} onClick={() => void remover()}>Remover</button>}
+                  </div>
+                  <input type="file" ref={inputPDF} aria-label="Currículo em PDF" accept=".pdf,application/pdf" hidden onChange={e => { void selecionar(e.target.files); e.target.value = ''; }} />
+                </div>
+                <p className="pa-nota">O Applyer guarda uma cópia do PDF neste computador para você retomar o primeiro acesso.</p>
+                {erro && <p className="pa-erro" role="alert">{erro}</p>}
+              </section>
+            </div>
+          </section>
+          <footer className="pa-acoes pa-avancar">
+            {sugestoes === null && <p className="pa-nota">Ao preencher com IA, você compartilha o texto profissional do currículo com {provedor || 'seu provedor'} para receber sugestões.</p>}
+            {sugestoes === null && <button type="button" className="pa-link pa-manual" disabled={!podeRevisar} onClick={() => void irPara(2)}>Preencher manualmente</button>}
+            <button type="button" className="pa-primario" disabled={!podeRevisar} onClick={() => void preencherComIA()}>
+              {extraindo ? 'Lendo currículo…' : sugestoes === null ? 'Preencher com IA' : 'Revisar critérios'} <span aria-hidden="true">→</span>
+            </button>
+          </footer>
+        </div> : <form className="pa-passo" onSubmit={salvar} onBlur={rascunho.aoSairDoCampo} noValidate>
+          <section className="pa-painel-rolagem">
+            <h1 ref={titulo} tabIndex={-1}>Que vagas você procura?</h1>
+            <p className="pa-sub">{sugestoes?.length ? 'Revise as sugestões do seu currículo e escolha onde quer trabalhar.' : sugestoes ? 'A IA não encontrou dados suficientes no currículo. Preencha os campos para orientar a busca.' : 'Informe o cargo, suas habilidades e as condições que você aceita.'}</p>
+            <div className="pa-documentos">{conexaoConfirmada}<span><img src={arteCurriculo} alt="" />{curriculo?.nomeExibicao}</span></div>
+            <Evidencias sugestoes={sugestoes ?? []} />
+            <div className="pa-cartoes">
+            <fieldset className="pa-grupo-campos" disabled={salvando}>
+              <legend>Perfil profissional</legend>
               <div className="pa-campos">
-                <label>Cargo ou área de interesse<input id="pa-cargo" maxLength={120} value={dados.cargo} placeholder="Ex.: desenvolvimento de software" onChange={e => campo('cargo', e.target.value)} /></label>
+                <label>Cargo ou área de interesse<input id="pa-cargo" maxLength={120} value={dados.cargo} onChange={e => campo('cargo', e.target.value)} /></label>
+                {cargoIgualAoNome(dados.cargo, app.estado.perfil?.nome) && <div className="pa-nota">
+                  <p>O cargo coincide com seu nome. Informe a função que deseja buscar.</p>
+                  {sugestoes?.filter(s => s.campo === 'cargo' && !cargoIgualAoNome(s.valor, dados.cargo)).map(s =>
+                    <button key={s.valor} type="button" className="pa-link" onClick={() => campo('cargo',s.valor)}>{s.valor}</button>)}
+                </div>}
                 <Opcoes nome="niveis" titulo="Níveis aceitos" itens={NIVEIS} ativos={dados.niveis} mudar={v => campo('niveis', v)} />
                 <div className="pa-dupla">
-                  <label>Stack principal<small>Ferramentas ou habilidades centrais</small><input id="pa-principal-stack" maxLength={350} value={dados.principal} placeholder="Ex.: Java, Spring Boot" onChange={e => campo('principal', e.target.value)} /></label>
-                  <label>Stack secundária<small>Complementares · opcional</small><input maxLength={350} value={dados.secundaria} placeholder="Ex.: React, SQL" onChange={e => campo('secundaria', e.target.value)} /></label>
+                  <label>Competências principais<small>Habilidades ou ferramentas que usa na função</small><input id="pa-principal-stack" maxLength={350} value={dados.principal} onChange={e => campo('principal', e.target.value)} /></label>
+                  <label>Competências complementares<small>Opcional</small><input maxLength={350} value={dados.secundaria} onChange={e => campo('secundaria', e.target.value)} /></label>
                 </div>
-                <label>Pular quando<small>Separe por vírgula os termos que excluem uma vaga.</small><input maxLength={350} value={dados.pular} placeholder="Ex.: plantão obrigatório" onChange={e => campo('pular', e.target.value)} /></label>
-              </div></section>}
-            {etapa === 3 && <section>
-              <h1 ref={titulo} tabIndex={-1}>Em quais <em>condições?</em></h1><p className="pa-sub">Defina onde quer trabalhar e os requisitos que a triagem deve comparar.</p>
-              <div className="pa-campos"><fieldset><legend>Mercado de vagas</legend><div className="pa-opcoes">{(Object.entries(NOMES_FOCO) as [keyof typeof NOMES_FOCO, string][]).map(([key, nome], i) =>
-                <label key={key}><input id={i === 0 ? 'pa-mercado' : undefined} type="radio" name="mercado" checked={dados.foco === key} onChange={() => campo('foco', key)} /><span>{nome}</span></label>)}</div></fieldset>
-                <Opcoes nome="modelos" titulo="Modelos de trabalho aceitos" itens={MODELOS} ativos={dados.modelos} mudar={v => campo('modelos', v)} />
                 <label>Seu nível de inglês<select id="pa-ingles" value={dados.ingles} onChange={e => campo('ingles', e.target.value)}>
                   <option value="">Selecione um nível</option>{[...new Set([...INGLES, dados.ingles])].filter(Boolean).map(v => <option key={v}>{v}</option>)}</select></label>
-                <Evidencias sugestoes={(sugestoes ?? []).filter(s => s.campo === 'ingles')} />
+              </div>
+            </fieldset>
+            <fieldset className="pa-grupo-campos" disabled={salvando}>
+              <legend>Filtros de busca</legend>
+              <div className="pa-campos">
+                <fieldset><legend>Mercado de vagas</legend><div className="pa-opcoes">{(Object.entries(NOMES_FOCO) as [keyof typeof NOMES_FOCO, string][]).map(([key, nome], i) =>
+                  <label key={key}><input id={i === 0 ? 'pa-mercado' : undefined} type="radio" name="mercado" checked={dados.foco === key} onChange={() => campo('foco', key)} /><span>{nome}</span></label>)}</div></fieldset>
+                <Opcoes nome="modelos" titulo="Modelos de trabalho aceitos" itens={MODELOS} ativos={dados.modelos} mudar={v => campo('modelos', v)} />
+                <label>País de trabalho<select value={dados.paisTrabalho} onChange={e => campo('paisTrabalho',e.target.value)}>
+                  <option value="">Selecione de onde vai trabalhar</option>{paises.map(([codigo,nome]) => <option key={codigo} value={codigo}>{nome}</option>)}
+                </select></label>
+                {aceitaTrabalhoLocal(dados.modelos) && <label>Cidade de trabalho<input maxLength={120} value={dados.cidadeTrabalho}
+                  onChange={e=>campo('cidadeTrabalho',e.target.value)} /></label>}
+                <label>Pular quando<small>Termos que excluem uma vaga, separados por vírgula · opcional</small><input maxLength={350} value={dados.pular} placeholder="Ex.: plantão obrigatório" onChange={e => campo('pular', e.target.value)} /></label>
                 <fieldset className="pa-salario"><legend>Faixa salarial mensal <small>Opcional</small></legend>
                   <div className="pa-limites">
                     <label>Moeda<select value={dados.moeda} onChange={e => campo('moeda', e.target.value as Dados['moeda'])}>{Object.entries(MOEDAS).map(([sigla, nome]) => <option key={sigla} value={sigla}>{sigla} · {nome}</option>)}</select></label>
@@ -289,20 +362,19 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
                     <label>Máximo<input id="pa-maximo" type="number" min=".01" step=".01" inputMode="decimal" placeholder="6.000" value={dados.maximo} onChange={e => campo('maximo', e.target.value)} /></label>
                   </div>
                 </fieldset>
-              </div></section>}
-            {etapa === 4 && <section>
-              <h1 ref={titulo} tabIndex={-1}>Revise seu <em>perfil de busca.</em></h1>
-              <p className="pa-sub">Confira o currículo e os critérios que o Applyer vai usar na sua primeira busca.</p>
-              <dl className="pa-resumo">{resumo.map(([nome, valor]) => <div key={nome}><dt>{nome}</dt><dd>{valor}</dd></div>)}</dl>
-              <p className="pa-nota">Ao salvar, sua IA avalia as vagas e ordena os resultados em A, B e C.</p>
-            </section>}
-            {erro && <p className="pa-erro" role="alert">{erro}</p>}
-            <footer className="pa-acoes"><button type="button" className="pa-link" disabled={salvando || extraindo} onClick={() => ir(etapa - 1)}>← Voltar</button>
-              {etapa === 1 && sugestoes === null && arquivo && <button type="button" className="pa-link pa-manual" disabled={lendo || extraindo} onClick={() => ir(2)}>Preencher manualmente</button>}
-              <button type="submit" className="pa-primario" disabled={lendo || extraindo || salvando}>
-                {salvando ? 'Salvando…' : extraindo ? 'Lendo currículo…' : etapa === 1 && sugestoes === null ? 'Preencher com IA' : etapa === 4 ? 'Salvar e buscar vagas' : 'Continuar'} <span aria-hidden="true">→</span>
-              </button></footer>
-          </form>}
+              </div>
+            </fieldset>
+            </div>
+          </section>
+          {erro && <p className="pa-erro" role="alert">{erro}</p>}
+          <footer className="pa-acoes">
+            <button type="button" className="pa-link" disabled={salvando} onClick={() => void irPara(1)}><span aria-hidden="true">← </span>Voltar</button>
+            <div className="pa-salvar-acoes">
+              <button type="submit" className="pa-secundario" disabled={salvando || !podeRevisar}>Concluir perfil</button>
+              <button type="submit" value="buscar" className="pa-primario" disabled={salvando || !podeRevisar}>{salvando ? 'Salvando…' : 'Salvar e buscar vagas'}</button>
+            </div>
+          </footer>
+        </form>}
       </main>
     </div>
   </div>;

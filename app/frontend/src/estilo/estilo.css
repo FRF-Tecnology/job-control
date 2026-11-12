@@ -797,3 +797,11 @@ dialog form { display: grid; gap: 16px; }
 @keyframes cutucar { 50% { transform: translateX(-4px); } }
 /* No celular não há navegador flutuante: o ao vivo fica na Fila. */
 @media (max-width: 720px) { .flutuante.encaixado, .flutuante.solto, .fl-borda { display: none; } }
+.marca-applyer { width: 108px; max-width: 100%; height: 32px; object-fit: contain; }
+.marca .marca-applyer.escura {display:none}
+:root[data-tema="escuro"] .marca .marca-applyer.clara {display:none}
+:root[data-tema="escuro"] .marca .marca-applyer.escura {display:block}
+@media(prefers-color-scheme:dark){
+  :root:not([data-tema="claro"]) .marca .marca-applyer.clara {display:none}
+  :root:not([data-tema="claro"]) .marca .marca-applyer.escura {display:block}
+}

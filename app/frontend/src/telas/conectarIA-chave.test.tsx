@@ -96,13 +96,13 @@ describe('Conectar IA: chave presa ao endereço', () => {
     const destino = within(form).getByText('compativel.exemplo.com').closest('.destino-chave') as HTMLElement;
     expect(destino.className).toContain('proprio');
     expect(destino.textContent).toContain('endereço próprio');
-    const topo = (await screen.findByText(/^Conectada:/)).closest('.convite') as HTMLElement;
+    const topo = (await screen.findByText(/^Configurada:/)).closest('.convite') as HTMLElement;
     expect(within(topo).getByText(/Chave para compativel\.exemplo\.com \(endereço próprio\)/)).toBeTruthy();
   });
 
   it('endereço padrão no topo aparece como padrão', async () => {
     montar({ estado: { configurada: true, provedor: 'anthropic', modelo: 'claude-haiku-5-5', chaves: { anthropic: '…1234', openai: null, google: null } } });
-    const topo = (await screen.findByText(/^Conectada:/)).closest('.convite') as HTMLElement;
+    const topo = (await screen.findByText(/^Configurada:/)).closest('.convite') as HTMLElement;
     expect(within(topo).getByText(/Chave para api\.anthropic\.com \(padrão\)/)).toBeTruthy();
   });
 

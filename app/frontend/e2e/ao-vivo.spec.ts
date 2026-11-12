@@ -2,6 +2,7 @@
 // interceptados, com um JPEG de verdade gerado num canvas. Confere: a CSP deixa o <img> com data: e nada mais (nenhuma
 // violação), o quadro aparece, axe nos dois temas, 375 px, fechar desliga, e o 404 real vira frase fixa.
 import AxeBuilder from '@axe-core/playwright';
+import { temaDeTeste } from './tema';
 import { expect, test, type Page } from '@playwright/test';
 import { ENVIO, interceptar, soltarRotas } from './dados-fila';
 
@@ -25,7 +26,7 @@ async function preparar(page: Page) {
 
 for (const tema of ['light', 'dark'] as const) {
   test(`ao vivo com quadro (${tema === 'light' ? 'claro' : 'escuro'}): imagem aparece sem violar a CSP, axe limpo, fechar desliga`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: tema });
+    await temaDeTeste(page, tema);
     await preparar(page);
     await page.goto('/#/fila');
     const imagem = await jpeg(page);

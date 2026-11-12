@@ -16,7 +16,7 @@ const AVISO_PADRAO = 'O app não consegue usar esta instalação. Veja como inst
 // O aviso do back vem em minúscula (cabe no meio de uma frase); na tela ele é frase própria.
 const avisoDe = (c: CLI) => { const t = c.aviso?.trim() || AVISO_PADRAO; return t[0].toUpperCase() + t.slice(1); };
 export type EstadoIA = {
-  configurada: boolean; provedor?: string; modelo?: string; url?: string;
+  configurada: boolean; conexaoVerificada?:boolean; provedor?: string; modelo?: string; url?: string;
   chaves: Record<string, string | null>; clis: CLI[]; gratis: { disponivel: boolean };
   uso: { chamadas: number; falhas: number; custoEstimadoUSD: number };
 };
@@ -61,7 +61,7 @@ export function TelaConectarIA() {
   const campoChave = useRef<HTMLInputElement>(null);
   const primeiraBusca = new URLSearchParams(location.hash.split('?')[1]).get('primeira-busca') === '1';
 
-  const ler = useCallback(async () => { const d: EstadoIA = await app.api('/api/v1/ia'); setIA(d); return d; }, [app]);
+  const ler = useCallback(async () => { const d: EstadoIA = await app.api('/api/v1/ia'); setIA(d); window.dispatchEvent(new Event('applyer:ia-alterada')); return d; }, [app]);
   // Na primeira leitura, o formulário já vem com o provedor de chave em uso, o modelo e o endereço dele: salvar sem
   // redigitar o endereço não volta para o padrão (o que apagaria a chave).
   useEffect(() => {
@@ -95,7 +95,7 @@ export function TelaConectarIA() {
         await ler();
         campoChave.current?.focus();
       } else {
-        app.aviso(`${NOMES[escolha]} conectado`);
+        app.aviso('Configuração salva. Use “Testar conexão” para verificar.');
         await ler();
       }
     } catch (e) { app.aviso((e as Error).message, true); } finally { setOcupado(null); }
@@ -105,9 +105,10 @@ export function TelaConectarIA() {
     setOcupado(rotulo);
     try { await fn(); if (msg) app.aviso(msg); await ler(); } catch (e) { app.aviso((e as Error).message, true); } finally { setOcupado(null); }
   };
-  const usar = (provedor: string, extra: object = {}) => fazer(provedor, () => app.api('/api/v1/ia/config', 'PUT', { provedor, ...extra }), `${NOMES[provedor]} conectado`);
+  const usar = (provedor: string, extra: object = {}) => fazer(provedor, () => app.api('/api/v1/ia/config', 'PUT', { provedor, ...extra }), 'Provedor configurado. Teste a conexão.');
   const testar = () => fazer('testar', async () => {
     const r = await app.api('/api/v1/ia/testar', 'POST', {});
+    if(r?.ok!==true) throw new Error('O provedor não confirmou a conexão. Tente novamente.');
     app.aviso(`A IA respondeu em ${(r.ms / 1000).toFixed(1)} s`);
   });
 
@@ -130,13 +131,13 @@ export function TelaConectarIA() {
       </header>
 
       {primeiraBusca && <Convite titulo="Seu perfil de busca está salvo" texto={iaProntaParaBusca(ia)
-        ? 'Sua IA está conectada. Abra a Triagem para iniciar a primeira busca.'
+        ? 'Sua IA está configurada. Abra o Radar para iniciar a primeira busca.'
         : 'Conecte a IA abaixo para iniciar a primeira busca com os critérios do seu perfil.'}>
         <div className="acoes">{iaProntaParaBusca(ia) && <a className="botao" href="#/triagem?buscar=1">Buscar vagas</a>}
           <a className="botao-fantasma" href="#/triagem">Ir para a Triagem</a></div>
       </Convite>}
       {ativa && naoPronta(cliAtiva) ? (
-        <Convite ambar titulo={`Conectada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
+        <Convite ambar titulo={`Configurada, mas não pronta: ${ativa}`} texto={avisoDe(cliAtiva!)}>
           <span className="acoes">
             {acaoNaoPronta(cliAtiva!, 'botao p')}
             {desconectar}
@@ -150,7 +151,7 @@ export function TelaConectarIA() {
           </span>
         </Convite>
       ) : ativa ? (
-        <Convite azul titulo={`Conectada: ${ativa}`} texto={`${resumoChave}${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
+        <Convite azul titulo={`${ia.conexaoVerificada?'Conectada':'Configurada'}: ${ativa}`} texto={`${resumoChave}${ia.modelo ? `Modelo ${ia.modelo}. ` : ''}Últimos 30 dias: ${ia.uso.chamadas} uso(s)${ia.uso.custoEstimadoUSD ? `, cerca de US$ ${ia.uso.custoEstimadoUSD.toFixed(2)}` : ''}.`}>
           <span className="acoes">
             <button className="botao" type="button" disabled={!!ocupado} onClick={testar}>{ocupado === 'testar' ? 'Testando…' : 'Testar conexão'}</button>
             {desconectar}

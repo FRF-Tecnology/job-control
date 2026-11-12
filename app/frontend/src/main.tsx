@@ -8,6 +8,8 @@ import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
 import '@fontsource/inter/800.css'
 import './estilo/estilo.css'
+import './estilo/espaco-base.css'
+import './estilo/espaco.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

@@ -21,10 +21,21 @@ func AbrirPasta(pastaDados string) (*os.Root, error) {
 		return nil, err
 	}
 	defer dados.Close()
-	if err := dados.Mkdir("curriculos", 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
-		return nil, err
+	return abrirSubpasta(dados, "curriculos", true)
+}
+
+// O rascunho fica fora da lista de PDFs do perfil até a confirmação da pessoa.
+func AbrirRascunho(curriculos *os.Root, criar bool) (*os.Root, error) {
+	return abrirSubpasta(curriculos, ".rascunho-onboarding", criar)
+}
+
+func abrirSubpasta(dados *os.Root, nome string, criar bool) (*os.Root, error) {
+	if criar {
+		if err := dados.Mkdir(nome, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
+			return nil, err
+		}
 	}
-	info, err := dados.Lstat("curriculos")
+	info, err := dados.Lstat(nome)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +45,7 @@ func AbrirPasta(pastaDados string) (*os.Root, error) {
 	// No Windows, SameFile fixa a identidade de Lstat ao consultá-la pela
 	// primeira vez (assim como na leitura de um PDF em Ler).
 	os.SameFile(info, info)
-	raiz, err := dados.OpenRoot("curriculos")
+	raiz, err := dados.OpenRoot(nome)
 	if err != nil {
 		return nil, err
 	}

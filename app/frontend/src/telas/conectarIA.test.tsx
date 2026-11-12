@@ -56,7 +56,7 @@ describe('Conectar IA: CLI não pronta', () => {
 
   it('se a IA em uso não está pronta, o topo avisa e oferece desconectar', async () => {
     montar({ configurada: true, provedor: 'claude-cli' });
-    const topo = (await screen.findByText(/Conectada, mas não pronta/)).closest('.convite') as HTMLElement;
+    const topo = (await screen.findByText(/Configurada, mas não pronta/)).closest('.convite') as HTMLElement;
     expect(within(topo).getByText(NA_TELA)).toBeTruthy();
     expect(within(topo).getByRole('button', { name: 'Desconectar' })).toBeTruthy();
     expect(within(topo).queryByRole('button', { name: 'Testar conexão' })).toBeNull();

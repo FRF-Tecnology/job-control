@@ -15,11 +15,15 @@ import (
 const chaveOnboarding = "primeiroAcesso"
 
 type primeiroAcesso struct {
-	Concluido bool   `json:"concluido"`
-	Arquivo   string `json:"arquivo,omitempty"`
+	Concluido      bool   `json:"concluido"`
+	Arquivo        string `json:"arquivo,omitempty"`
+	ReciboRascunho string `json:"reciboRascunho,omitempty"`
 }
 
+var errMesmoRascunho = errors.New("rascunho já promovido")
+
 var ErrOnboardingConcluido = errors.New("o primeiro acesso já foi concluído")
+var ErrOnboardingIncompleto = errors.New("conclua o primeiro acesso antes de alterar o currículo")
 
 func lerPrimeiroAcesso(ctx context.Context, tx *sql.Tx) (primeiroAcesso, error) {
 	var registro primeiroAcesso
@@ -41,17 +45,24 @@ func (a *Armazem) prepararOnboarding(ctx context.Context) error {
 		if !existe && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
+		rascunho, err := lerRascunho(ctx, tx)
+		if err != nil {
+			return err
+		}
 		if a.pasta != "" {
-			temPDF, err := recuperarPasta(a.pasta, registro.Arquivo, !existe)
+			temPDF, err := recuperarPasta(a.pasta, registro.Arquivo, !existe && rascunho.Revisao == 0)
 			if err != nil && !errors.Is(err, curriculos.ErrFora) {
 				return err
 			}
 			registro.Concluido = registro.Concluido || temPDF
+			if err := limparRascunho(a.pasta, rascunho); err != nil && !errors.Is(err, curriculos.ErrFora) {
+				return err
+			}
 		}
 		if existe {
 			return nil
 		}
-		if !registro.Concluido {
+		if !registro.Concluido && rascunho.Revisao == 0 {
 			err = tx.QueryRowContext(ctx, `SELECT EXISTS(
 				SELECT 1 FROM itens WHERE colecao NOT IN ('perfil', 'plataformas')
 				UNION ALL SELECT 1 FROM itens p, json_tree(p.dados) j WHERE colecao = 'perfil'
@@ -112,6 +123,19 @@ func (a *Armazem) OnboardingConcluido(ctx context.Context) (bool, error) {
 // ConcluirOnboarding publica o PDF e grava perfil, marcador e versão sob a
 // mesma trava de escrita entre processos. A referência só existe após COMMIT.
 func (a *Armazem) ConcluirOnboarding(ctx context.Context, pdf []byte, montar func(dominio.Objeto, string) (dominio.Objeto, error)) error {
+	return a.importarCV(ctx, pdf, true, nil, func(e dominio.Estado, nome, _ string) (dominio.Objeto, error) { return montar(e.Perfil, nome) })
+}
+
+func (a *Armazem) SubstituirCurriculo(ctx context.Context, pdf []byte, montar func(dominio.Estado, string) (dominio.Objeto, error)) error {
+	return a.importarCV(ctx, pdf, false, nil, func(e dominio.Estado, nome, _ string) (dominio.Objeto, error) { return montar(e, nome) })
+}
+func (a *Armazem) ConcluirRascunho(ctx context.Context, ref ReferenciaRascunho, montar func(dominio.Objeto, string, string) (dominio.Objeto, error)) error {
+	return a.importarCV(ctx, nil, true, &ref, func(e dominio.Estado, nome, exibicao string) (dominio.Objeto, error) {
+		return montar(e.Perfil, nome, exibicao)
+	})
+}
+
+func (a *Armazem) importarCV(ctx context.Context, pdf []byte, primeiro bool, ref *ReferenciaRascunho, montar func(dominio.Estado, string, string) (dominio.Objeto, error)) error {
 	if _, err := a.OnboardingConcluido(ctx); err != nil {
 		return err
 	}
@@ -126,28 +150,49 @@ func (a *Armazem) ConcluirOnboarding(ctx context.Context, pdf []byte, montar fun
 		if err != nil {
 			return e, err
 		}
-		if registro.Concluido {
+		if primeiro && registro.Concluido {
+			if ref != nil && registro.ReciboRascunho == ref.Assinatura && ref.Assinatura != "" {
+				return e, errMesmoRascunho
+			}
 			return e, ErrOnboardingConcluido
 		}
-		if err := curriculos.RecuperarImportacoes(raiz, ""); err != nil {
+		if !primeiro && !registro.Concluido {
+			return e, ErrOnboardingIncompleto
+		}
+		if err := curriculos.RecuperarImportacoes(raiz, registro.Arquivo); err != nil {
 			return e, err
 		}
-		var nome string
+		var nome, exibicao, recibo string
+		if ref != nil {
+			pdf, exibicao, err = a.pdfRascunho(ctx, tx, *ref)
+			if err != nil {
+				return e, err
+			}
+			recibo = ref.Assinatura
+		}
 		marca, nome, err = curriculos.Importar(raiz, pdf)
 		if err != nil {
 			return e, err
 		}
-		e.Perfil, err = montar(e.Perfil, nome)
+		e.Perfil, err = montar(e, nome, exibicao)
 		if err != nil {
 			return e, err
 		}
-		valor, err := json.Marshal(primeiroAcesso{Concluido: true, Arquivo: nome})
+		if primeiro {
+			if _, err = tx.ExecContext(ctx, "DELETE FROM meta WHERE chave=?", chaveRascunho); err != nil {
+				return e, err
+			}
+		}
+		valor, err := json.Marshal(primeiroAcesso{Concluido: true, Arquivo: nome, ReciboRascunho: recibo})
 		if err != nil {
 			return e, err
 		}
 		_, err = tx.ExecContext(ctx, "UPDATE meta SET valor = ? WHERE chave = ?", string(valor), chaveOnboarding)
 		return e, err
 	})
+	if errors.Is(err, errMesmoRascunho) {
+		return nil
+	}
 	if marca != "" {
 		// Um cancelamento HTTP também desfaz o arquivo. Reconsultar o banco
 		// protege tanto uma falha de COMMIT quanto a corrida com outra janela.

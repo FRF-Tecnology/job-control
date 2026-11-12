@@ -64,7 +64,7 @@ describe('Conectar IA: ação conforme o motivo da CLI não pronta', () => {
 
   it('IA em uso não pronta por política: topo âmbar com "Usar chave de API"', async () => {
     montar({ configurada: true, provedor: 'codex-cli' });
-    const topo = (await screen.findByText(/Conectada, mas não pronta/)).closest('.convite') as HTMLElement;
+    const topo = (await screen.findByText(/Configurada, mas não pronta/)).closest('.convite') as HTMLElement;
     expect(topo.className).toContain('ambar');
     expect(within(topo).getByRole('button', { name: 'Usar chave de API' })).toBeTruthy();
     expect(within(topo).queryByRole('link', { name: 'Como instalar' })).toBeNull();
@@ -73,7 +73,7 @@ describe('Conectar IA: ação conforme o motivo da CLI não pronta', () => {
 
   it('IA em uso não pronta por formato: topo âmbar com "Como instalar"', async () => {
     montar({ configurada: true, provedor: 'claude-cli' });
-    const topo = (await screen.findByText(/Conectada, mas não pronta/)).closest('.convite') as HTMLElement;
+    const topo = (await screen.findByText(/Configurada, mas não pronta/)).closest('.convite') as HTMLElement;
     expect(topo.className).toContain('ambar');
     expect(within(topo).getByRole('link', { name: 'Como instalar' })).toBeTruthy();
   });

@@ -37,6 +37,7 @@ function perfilInicial(estado: any) {
 export function TelaPerfil() {
   const app = useApp();
   const [perfil, setPerfil] = useState<any>(() => perfilInicial(app.estado));
+  const [origem] = useState<string>(() => app.estado.perfilBuscaAtivo ?? 'original');
   const pdfs: any[] = app.estado.curriculos ?? [];
   const mudar = (fn: (p: any) => void) => setPerfil((p: any) => { const n = structuredClone(p); fn(n); return n; });
   const faixa = faixaDoPerfil(perfil);
@@ -82,7 +83,7 @@ export function TelaPerfil() {
       ev.preventDefault();
       const atualizado = { ...perfil };
       if (!faixa.min && !faixa.max) delete atualizado.faixaSalarial;
-      if (await app.agir(() => app.api('/api/v1/perfil', 'PUT', atualizado), 'Perfil salvo')) app.limpar();
+      if (await app.agir(() => app.api('/api/v1/perfil?perfilBuscaId=' + encodeURIComponent(origem), 'PUT', atualizado), 'Perfil salvo')) app.limpar();
     }}>
       <header className="cabecalho"><div><h1>Perfil e regras</h1><p>O Claude lê esta página antes de cada rodada. CPF, RG e senhas nunca ficam aqui.</p></div>
         <button className="botao" type="submit">Salvar perfil</button></header>
