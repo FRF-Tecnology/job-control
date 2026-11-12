@@ -182,3 +182,25 @@ func TestHTTPContextoCancelado(t *testing.T) {
 		t.Fatalf("queria context.Canceled, veio %v", err)
 	}
 }
+
+// O cliente não segue redirecionamento (o token não vai para outro endereço): 3xx vira ErroNuvem com o status.
+func TestHTTPNaoSegueRedirecionamento(t *testing.T) {
+	var outro int
+	destino := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { outro++ }))
+	defer destino.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, destino.URL+"/v1/licenca", http.StatusFound)
+	}))
+	defer srv.Close()
+	for _, cliente := range []*http.Client{nil, {}} {
+		n, _ := NovaHTTP(srv.URL, cliente)
+		_, err := n.Licenca(context.Background(), "tok", "d")
+		var e *ErroNuvem
+		if !errors.As(err, &e) || e.Status != http.StatusFound {
+			t.Fatalf("erro errado: %#v", err)
+		}
+	}
+	if outro != 0 {
+		t.Fatalf("seguiu o redirecionamento %d vez(es)", outro)
+	}
+}

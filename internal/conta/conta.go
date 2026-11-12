@@ -40,6 +40,9 @@ type Situacao struct {
 	TesteFim   *time.Time     `json:"teste_fim"`
 	PeriodoFim *time.Time     `json:"periodo_fim"`
 	Motivo     string         `json:"motivo"`
+	// Verificando: o app acabou de abrir e a primeira conferência com a nuvem ainda não terminou. A tela mostra
+	// "Conferindo sua conta…" no lugar da faixa de sem internet; a trava (Motivo, PodeAgir) não muda por ele.
+	Verificando bool `json:"verificando"`
 }
 
 // Conta guarda a sessão (renovação no cofre, acesso só na memória) e a licença (em memória e em licenca.json)
@@ -62,14 +65,15 @@ type Conta struct {
 	dispMu sync.Mutex
 	disp   string
 
-	mu        sync.RWMutex
-	entrada   bool
-	acesso    string
-	acessoAte time.Time // pelo relógio da nuvem
-	lic       *licenca.Licenca
-	desvio    time.Duration // emitida_em − relógio do PC quando a licença chegou
-	geracao   uint64        // muda a cada entrada/saída: descarta licença pedida pela sessão anterior
-	errCofre  string        // último erro ao gravar a renovação no cofre ("" se está tudo certo)
+	mu          sync.RWMutex
+	entrada     bool
+	acesso      string
+	acessoAte   time.Time // pelo relógio da nuvem
+	lic         *licenca.Licenca
+	desvio      time.Duration // emitida_em − relógio do PC quando a licença chegou
+	geracao     uint64        // muda a cada entrada/saída: descarta licença pedida pela sessão anterior
+	errCofre    string        // último erro ao gravar a renovação no cofre ("" se está tudo certo)
+	verificando bool          // de Nova até a primeira tentativa de Iniciar acabar (Situacao.Verificando)
 
 	laco atomic.Int32 // quantas goroutines de Iniciar estão vivas (para os testes)
 
@@ -85,6 +89,7 @@ func Nova(n Nuvem, cofre segredos.Cofre, pasta string, pub ed25519.PublicKey, ag
 	if r, err := cofre.Ler(chaveRenovacao); err == nil && r != "" {
 		c.renovacao, c.entrada = r, true
 	}
+	c.verificando = c.entrada // sem conta, não há o que conferir
 	if c.entrada {
 		if l, desvio, _, err := lerArquivoLicenca(pasta, pub); err == nil {
 			c.lic, c.desvio = &l, desvio
@@ -105,6 +110,9 @@ func (c *Conta) Iniciar(ctx context.Context) {
 					espera = intervaloSemRede
 				}
 			}
+			c.mu.Lock()
+			c.verificando = false // a primeira tentativa acabou (deu certo ou não)
+			c.mu.Unlock()
 			t := time.NewTimer(espera)
 			select {
 			case <-ctx.Done():
@@ -127,12 +135,12 @@ func (c *Conta) ErroCofre() string {
 // Situacao devolve o estado atual sem I/O.
 func (c *Conta) Situacao() Situacao {
 	c.mu.RLock()
-	entrada, lic, desvio := c.entrada, c.lic, c.desvio
+	entrada, lic, desvio, verificando := c.entrada, c.lic, c.desvio, c.verificando
 	c.mu.RUnlock()
 	if !entrada {
 		return Situacao{Motivo: MotivoSemConta}
 	}
-	s := Situacao{Entrada: true}
+	s := Situacao{Entrada: true, Verificando: verificando}
 	if lic == nil {
 		s.Motivo = MotivoSemInternet
 		return s
@@ -176,8 +184,9 @@ func (c *Conta) Entrou(ctx context.Context, p Par) error {
 	c.renovacao = p.Renovacao
 	c.mu.Lock()
 	c.entrada, c.acesso, c.acessoAte = true, p.Acesso, p.AcessoAte
-	c.errCofre = "" // a gravação acima deu certo
-	c.lic = nil     // o desvio fica: é do relógio do PC, não da conta
+	c.errCofre = ""       // a gravação acima deu certo
+	c.lic = nil           // o desvio fica: é do relógio do PC, não da conta
+	c.verificando = false // entrou agora: a licença é pedida logo abaixo
 	c.geracao++
 	c.mu.Unlock()
 	c.arqMu.Lock()
@@ -198,6 +207,20 @@ func (c *Conta) Sair(ctx context.Context) error {
 	return c.limpar()
 }
 
+// SairLocal apaga a sessão e a licença só neste computador, sem chamar a nuvem (Apagar meus dados): o token de
+// renovação vence sozinho.
+func (c *Conta) SairLocal() error {
+	c.renovMu.Lock()
+	defer c.renovMu.Unlock()
+	return c.limpar()
+}
+
+// ApagarSessaoLocal apaga a sessão no cofre e licenca.json na pasta quando não há Conta ligada (build sem a nuvem).
+// O que não existe conta como apagado.
+func ApagarSessaoLocal(cofre segredos.Cofre, pasta string) error {
+	return errors.Join(cofre.Apagar(chaveRenovacao), apagarLicenca(pasta))
+}
+
 // limpar apaga a sessão e a licença. Chamar com renovMu.
 func (c *Conta) limpar() error {
 	c.renovacao = ""
@@ -206,6 +229,7 @@ func (c *Conta) limpar() error {
 	c.entrada, c.acesso, c.acessoAte = false, "", time.Time{}
 	c.errCofre = ""
 	c.lic = nil
+	c.verificando = false
 	c.geracao++
 	c.mu.Unlock()
 	c.arqMu.Lock()

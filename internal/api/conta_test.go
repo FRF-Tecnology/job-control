@@ -183,7 +183,7 @@ func TestAssinarAbreNavegador(t *testing.T) {
 	a := novoAmbConta(t, "")
 	a.entrar()
 	a.chamar("POST", "/assinatura/assinar", Objeto{}, 202)
-	if u := <-a.abertas; u != "https://stripe.exemplo.com/checkout" {
+	if u := <-a.abertas; u != "https://checkout.stripe.com/c/pay/falso" {
 		t.Fatalf("URL aberta: %q", u)
 	}
 	// O pagamento acontece: o acompanhamento em segundo plano pega a licença nova sozinho.
@@ -192,7 +192,7 @@ func TestAssinarAbreNavegador(t *testing.T) {
 	espera(t, func() bool { return !a.api.acompanhando.Load() }) // parou ao virar assinante
 
 	a.chamar("POST", "/assinatura/gerenciar", Objeto{}, 202)
-	if u := <-a.abertas; u != "https://stripe.exemplo.com/portal" {
+	if u := <-a.abertas; u != "https://billing.stripe.com/p/session/falso" {
 		t.Fatalf("URL do portal: %q", u)
 	}
 	o := a.chamar("GET", "/assinatura", nil, 200)
@@ -383,4 +383,92 @@ func TestGetAssinaturaRenovaLicenca(t *testing.T) {
 	if s, _ := o["situacao"].(map[string]any); s["estado"] != "assinante" {
 		t.Fatalf("GET /assinatura não renovou: %v", o["situacao"])
 	}
+}
+
+// "Tentar de novo" (ruling A14): POST /conta/atualizar pede a licença à nuvem e devolve a situação; dentro de 10 s da
+// última vez, só devolve a situação de agora (sem chamar a nuvem). Liberado com a trava ligada.
+func TestContaAtualizar(t *testing.T) {
+	a := novoAmbConta(t, "")
+	agora := time.Date(2026, 11, 11, 9, 0, 0, 0, time.UTC)
+	a.api.relogio = func() time.Time { return agora }
+	a.api.podeAgir = a.c.PodeAgir
+	a.entrar()
+	if s := a.chamar("POST", "/conta/atualizar", Objeto{}, 200); s["entrada"] != true || s["estado"] != "teste" || s["ativa"] != true {
+		t.Fatalf("atualizar: %v", s)
+	}
+	a.f.Assinante("ana@exemplo.com")
+	agora = agora.Add(9 * time.Second)
+	if s := a.chamar("POST", "/conta/atualizar", Objeto{}, 200); s["estado"] != "teste" {
+		t.Fatalf("dentro de 10 s chamou a nuvem: %v", s)
+	}
+	agora = agora.Add(2 * time.Second)
+	if s := a.chamar("POST", "/conta/atualizar", Objeto{}, 200); s["estado"] != "assinante" {
+		t.Fatalf("depois de 10 s: %v", s)
+	}
+	// Sem internet: 200 com a situação (a faixa mostra o motivo), não erro.
+	a.f.SemInternet(true)
+	agora = agora.Add(time.Minute)
+	a.chamar("POST", "/conta/atualizar", Objeto{}, 200)
+	a.chamar("POST", "/conta/atualizar", Objeto{"x": 1}, 400)
+}
+
+// O botão do Google só aparece quando o build tem o client_id (google_disponivel em GET /conta).
+func TestContaGoogleDisponivel(t *testing.T) {
+	a := novoAmbConta(t, "")
+	antes := conta.GoogleClientID
+	t.Cleanup(func() { conta.GoogleClientID = antes })
+	conta.GoogleClientID = ""
+	if s := a.chamar("GET", "/conta", nil, 200); s["google_disponivel"] != false {
+		t.Fatalf("sem client_id: %v", s)
+	}
+	conta.GoogleClientID = "cliente-teste.apps.googleusercontent.com"
+	if s := a.chamar("GET", "/conta", nil, 200); s["google_disponivel"] != true {
+		t.Fatalf("com client_id: %v", s)
+	}
+}
+
+// Só abre no navegador endereço https do Stripe (checkout.stripe.com, billing.stripe.com); outro vira 502.
+func TestAssinaturaSoAbreStripe(t *testing.T) {
+	a := novoAmbConta(t, "")
+	for _, u := range []string{"http://checkout.stripe.com/c", "https://stripe.com.exemplo.com/c", "https://checkout.stripe.com@exemplo.com/c",
+		"https://exemplo.com/stripe.com", "javascript:alert(1)", "", "https://notstripe.com/c"} {
+		_, err := a.api.abrirAssinatura(context.Background(), func(context.Context) (string, error) { return u, nil }, false)
+		if err == nil {
+			t.Errorf("%q: aceito", u)
+			continue
+		}
+		r, conhecido := respostaDeErro(err)
+		c, _ := r.Corpo.(Objeto)
+		if !conhecido || r.Status != 502 || c["erro"] != "Endereço de pagamento inválido" {
+			t.Errorf("%q = %v %v", u, r, err)
+		}
+	}
+	select {
+	case u := <-a.abertas:
+		t.Fatalf("abriu %q", u)
+	default:
+	}
+	for _, u := range []string{"https://checkout.stripe.com/c/pay/x", "https://billing.stripe.com/p/session/x"} {
+		if _, err := a.api.abrirAssinatura(context.Background(), func(context.Context) (string, error) { return u, nil }, false); err != nil {
+			t.Errorf("%q: %v", u, err)
+		}
+		if got := <-a.abertas; got != u {
+			t.Errorf("abriu %q; queria %q", got, u)
+		}
+	}
+}
+
+// Com a conta ligada, Apagar meus dados sai da conta aqui sem chamar a nuvem (sessão, licença e memória).
+func TestApagarDadosSaiDaConta(t *testing.T) {
+	a := novoAmbConta(t, "")
+	a.entrar()
+	a.f.SemInternet(true) // sem rede: sai só aqui
+	o := a.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
+	if o["completo"] != true {
+		t.Fatalf("apagar: %v", o)
+	}
+	if s := a.c.Situacao(); s.Entrada {
+		t.Fatalf("continuou entrada: %+v", s)
+	}
+	<-a.saiu
 }

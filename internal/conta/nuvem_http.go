@@ -27,7 +27,7 @@ type nuvemHTTP struct {
 
 // NovaHTTP cria o cliente da nuvem real. Só aceita https://, exceto loopback
 // (http://127.0.0.1 e http://localhost), usado nos testes. cliente nil usa um novo com
-// timeout de 15 s; um cliente sem timeout é copiado com 15 s.
+// timeout de 15 s; um cliente sem timeout é copiado com 15 s. Nenhum segue redirecionamento.
 func NovaHTTP(endereco string, cliente *http.Client) (Nuvem, error) {
 	u, err := url.Parse(strings.TrimRight(endereco, "/"))
 	if err != nil || u.Host == "" {
@@ -37,13 +37,17 @@ func NovaHTTP(endereco string, cliente *http.Client) (Nuvem, error) {
 	if u.Scheme != "https" && !(u.Scheme == "http" && loopback) {
 		return nil, errors.New("o endereço da nuvem precisa ser https://")
 	}
-	if cliente == nil {
-		cliente = &http.Client{Timeout: tempoLimite}
-	} else if cliente.Timeout == 0 {
-		c := *cliente
-		c.Timeout = tempoLimite
-		cliente = &c
+	// Cópia: o timeout de 15 s quando falta e nunca seguir redirecionamento (o token não vai para outro endereço;
+	// o 3xx volta como ErroNuvem com o status).
+	c := http.Client{Timeout: tempoLimite}
+	if cliente != nil {
+		c = *cliente
+		if c.Timeout == 0 {
+			c.Timeout = tempoLimite
+		}
 	}
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	cliente = &c
 	return &nuvemHTTP{base: u.String(), cliente: cliente}, nil
 }
 

@@ -378,7 +378,10 @@ func (f *Falsa) stripe(ctx context.Context, acesso, tipo string) (string, error)
 	if _, err := f.conta(acesso); err != nil {
 		return "", err
 	}
-	return "https://stripe.exemplo.com/" + tipo, nil
+	if tipo == "portal" {
+		return "https://billing.stripe.com/p/session/falso", nil
+	}
+	return "https://checkout.stripe.com/c/pay/falso", nil
 }
 
 func (f *Falsa) Notas(ctx context.Context, acesso string) ([]Nota, error) {

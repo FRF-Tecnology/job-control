@@ -165,6 +165,7 @@ func TestLiberadoSemLicenca(t *testing.T) {
 		{"get", Prefixo + "/vagas", true},
 		{"POST", Prefixo + "/conta", true},
 		{"POST", Prefixo + "/conta/entrar?x=1", true},
+		{"POST", Prefixo + "/conta/atualizar", true}, // "Tentar de novo" da faixa
 		{"POST", Prefixo + "/assinatura", true},
 		{"POST", Prefixo + "/ia/chaves/gemini", true},
 		{"POST", Prefixo + "/vagas", false},

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/FRF-Tecnology/job-control/internal/config"
+	"github.com/FRF-Tecnology/job-control/internal/conta"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
@@ -218,14 +219,22 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	a.apagando = true
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}, Fechar: true}
 
-	// 2) Chaves de IA no cofre do sistema (a que já não existe conta como apagada).
+	// 2) Chaves de IA e a sessão da conta no cofre do sistema (a que já não existe conta como apagada).
 	var errChaves error
 	for _, p := range comChave {
 		if err := a.cofre.Apagar(p); err != nil {
 			errChaves = err
 		}
 	}
-	res.item(itemChaves, errChaves)
+	// A conta sai deste computador junto (sessão no cofre e licenca.json), sem chamar a nuvem. Entra no item das
+	// chaves: também é segredo no cofre.
+	var errConta error
+	if a.conta != nil {
+		errConta = a.conta.SairLocal()
+	} else {
+		errConta = conta.ApagarSessaoLocal(a.cofre, pasta)
+	}
+	res.item(itemChaves, errors.Join(errChaves, errConta))
 
 	// 3) Perfil do navegador, currículos e backups.
 	res.item(itemNavegador, removerTudo(config.PastaNavegador(pasta)))

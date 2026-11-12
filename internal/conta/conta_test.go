@@ -553,3 +553,33 @@ func TestRenovarSobreviveAoCancelamentoDoChamador(t *testing.T) {
 		t.Fatal("o token novo devia estar no cofre")
 	}
 }
+
+// Ao abrir com uma licença velha, a tela não deve piscar "Sem conexão": verificando fica true de Nova até a primeira
+// tentativa de Iniciar acabar (deu certo ou não). PodeAgir não muda por causa dele.
+func TestVerificandoAteAPrimeiraTentativa(t *testing.T) {
+	for _, semRede := range []bool{false, true} {
+		a := novoAmbiente(t, 0)
+		p := a.parConfirmado(t, "ana@exemplo.com")
+		a.cofre[chaveRenovacao] = p.Renovacao // app reaberto: só a renovação no cofre
+		c := a.conta(nil)
+		if s := c.Situacao(); !s.Verificando || s.Motivo != MotivoSemInternet {
+			t.Fatalf("antes de Iniciar: %+v", s)
+		}
+		querAgir(t, c, false, MotivoSemInternet) // a trava continua como antes
+		a.f.SemInternet(semRede)
+		ctx, cancelar := context.WithCancel(context.Background())
+		c.Iniciar(ctx)
+		esperar(t, func() bool { return !c.Situacao().Verificando })
+		quer := ""
+		if semRede {
+			quer = MotivoSemInternet
+		}
+		querAgir(t, c, quer == "", quer)
+		cancelar()
+	}
+	// Sem conta, não há o que conferir.
+	a := novoAmbiente(t, 0)
+	if s := a.conta(nil).Situacao(); s.Verificando {
+		t.Fatalf("sem conta: %+v", s)
+	}
+}

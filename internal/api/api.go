@@ -103,6 +103,9 @@ type API struct {
 	acompanhando    atomic.Bool
 	cadenciaAssinar time.Duration
 	prazoAssinar    time.Duration
+	// atualizarMu e ultimaAtualizacao: o intervalo mínimo de POST /conta/atualizar (conta.go).
+	atualizarMu       sync.Mutex
+	ultimaAtualizacao time.Time
 	// podeAgir: a trava das ações (trava.go). nil: tudo liberado.
 	podeAgir func() (bool, string)
 }

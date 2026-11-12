@@ -714,6 +714,19 @@ paths:
       responses:
         '200': { description: 'Situação (ativa true), ou só {ativa: false} quando este build não tem a nuvem: a tela pula a entrada', content: { application/json: { schema: { oneOf: [{ $ref: '#/components/schemas/ContaDesligada' }, { $ref: '#/components/schemas/SituacaoConta' }] } } } }
         '403': { $ref: '#/components/responses/SoTela' }
+  /conta/atualizar:
+    post:
+      x-so-tela: true
+      summary: "\"Tentar de novo\" da faixa: pede a licença à nuvem agora e devolve a situação, como GET /conta. Dentro de 10 s da última vez, só devolve a situação (sem chamar a nuvem). Sem internet ou sem conta, também 200: o motivo vem na situação. Liberado com a trava ligada"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Situação, content: { application/json: { schema: { $ref: '#/components/schemas/SituacaoConta' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
   /conta/criar:
     post:
       x-so-tela: true
@@ -889,6 +902,7 @@ paths:
         '202': { description: 'Navegador aberto: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
         '401': { $ref: '#/components/responses/ErroConta' }
         '403': { $ref: '#/components/responses/SoTela' }
+        '502': { description: 'A nuvem mandou um endereço que não é https do Stripe (checkout.stripe.com, billing.stripe.com): {erro} e o navegador não abre', content: { application/json: { schema: { $ref: '#/components/schemas/ErroConta' } } } }
         '503': { $ref: '#/components/responses/ErroConta' }
   /assinatura/gerenciar:
     post:
@@ -903,6 +917,7 @@ paths:
         '202': { description: 'Navegador aberto: {mensagem}', content: { application/json: { schema: { $ref: '#/components/schemas/MensagemConta' } } } }
         '401': { $ref: '#/components/responses/ErroConta' }
         '403': { $ref: '#/components/responses/SoTela' }
+        '502': { description: 'A nuvem mandou um endereço que não é https do Stripe (checkout.stripe.com, billing.stripe.com): {erro} e o navegador não abre', content: { application/json: { schema: { $ref: '#/components/schemas/ErroConta' } } } }
         '503': { $ref: '#/components/responses/ErroConta' }
 
 components:
@@ -928,6 +943,8 @@ components:
         google_motivo: { type: string, description: 'Só em GET /conta. Motivo do erro do Google (termos, entrar-com-senha)' }
         google_versao: { type: string, description: 'Só em GET /conta. Versão atual dos termos quando google_motivo é termos' }
         erro_cofre: { type: string, description: 'Só em GET /conta. Vazio, ou o erro ao guardar a sessão no cofre (a sessão vale só até o app fechar)' }
+        google_disponivel: { type: boolean, description: 'Só em GET /conta. O build tem o login com Google; false: a tela esconde o botão' }
+        verificando: { type: boolean, description: 'O app acabou de abrir e a primeira conferência com a nuvem não terminou: a tela mostra "Conferindo sua conta…" no lugar de sem internet. Não muda a trava' }
     AvisoExclusao:
       type: object
       required: [contaExcluida, dadosApagados, erro]

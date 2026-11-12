@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,6 +22,8 @@ const (
 
 	cadenciaAssinarPadrao = 5 * time.Second
 	prazoAssinarPadrao    = 10 * time.Minute
+	// intervaloAtualizar: o mínimo entre dois "Tentar de novo" que chamam a nuvem (POST /conta/atualizar).
+	intervaloAtualizar = 10 * time.Second
 )
 
 // ehExcluirEApagar: POST /conta/excluir com apagarDados true. Passa pela trava de escrita (como /dados/apagar),
@@ -109,11 +112,14 @@ type respostaConta struct {
 	GoogleMotivo string `json:"google_motivo"`
 	GoogleVersao string `json:"google_versao"`
 	ErroCofre    string `json:"erro_cofre"`
+	// GoogleDisponivel: o build tem o client_id do Google; sem ele, a tela esconde "Entrar com Google".
+	GoogleDisponivel bool `json:"google_disponivel"`
 }
 
 func (a *API) estadoDaConta() respostaConta {
 	return respostaConta{Ativa: true, Situacao: a.conta.Situacao(), Google: a.conta.EstadoGoogle(),
-		GoogleMotivo: a.conta.EstadoGoogleMotivo(), GoogleVersao: a.conta.EstadoGoogleVersao(), ErroCofre: a.conta.ErroCofre()}
+		GoogleMotivo: a.conta.EstadoGoogleMotivo(), GoogleVersao: a.conta.EstadoGoogleVersao(), ErroCofre: a.conta.ErroCofre(),
+		GoogleDisponivel: conta.GoogleClientID != ""}
 }
 
 func semConteudo() (Resposta, error) { return Resposta{Status: 204}, nil }
@@ -126,7 +132,7 @@ func (a *API) rotasConta(ctx context.Context, m, p string, c Objeto, autor strin
 	switch {
 	case m == "GET" && p == "/conta":
 	case m == "POST" && (p == "/conta/criar" || p == "/conta/confirmar" || p == "/conta/entrar" || p == "/conta/recuperar" ||
-		p == "/conta/nova-senha" || p == "/conta/google" || p == "/conta/google/cancelar" || p == "/conta/sair" || p == "/conta/excluir"):
+		p == "/conta/nova-senha" || p == "/conta/atualizar" || p == "/conta/google" || p == "/conta/google/cancelar" || p == "/conta/sair" || p == "/conta/excluir"):
 	case m == "GET" && p == "/assinatura", m == "POST" && (p == "/assinatura/assinar" || p == "/assinatura/gerenciar"):
 	default:
 		return Resposta{}, false, nil
@@ -149,6 +155,11 @@ func (a *API) executarConta(ctx context.Context, p string, c Objeto) (Resposta, 
 	switch p {
 	case "/conta":
 		return ok(a.estadoDaConta())
+	case "/conta/atualizar":
+		if err := soCampos(c); err != nil {
+			return Resposta{}, err
+		}
+		return ok(a.atualizarConta(ctx))
 	case "/conta/criar":
 		t, err := textos(c, []string{"email", "senha", "termos"})
 		if err != nil {
@@ -240,6 +251,33 @@ func (a *API) executarConta(ctx context.Context, p string, c Objeto) (Resposta, 
 		return a.abrirAssinatura(ctx, a.conta.Portal, false)
 	}
 	return Resposta{}, falha(404, "rota não encontrada")
+}
+
+// atualizarConta ("Tentar de novo" da faixa, ruling A14): pede a licença à nuvem e devolve a situação. Dentro de
+// intervaloAtualizar da última vez, só devolve a situação de agora. Erro da nuvem (sem internet, sem conta) não vira
+// erro aqui: a situação já mostra o motivo.
+func (a *API) atualizarConta(ctx context.Context) respostaConta {
+	a.atualizarMu.Lock()
+	agora := a.relogio()
+	chamar := a.ultimaAtualizacao.IsZero() || agora.Sub(a.ultimaAtualizacao) >= intervaloAtualizar
+	if chamar {
+		a.ultimaAtualizacao = agora
+	}
+	a.atualizarMu.Unlock()
+	if chamar {
+		_ = a.conta.AtualizarLicenca(ctx)
+	}
+	return a.estadoDaConta()
+}
+
+// enderecoDoStripe: só https e host do Stripe (checkout.stripe.com, billing.stripe.com) vão para o navegador.
+func enderecoDoStripe(endereco string) bool {
+	u, err := url.Parse(endereco)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	return h == "stripe.com" || strings.HasSuffix(h, ".stripe.com")
 }
 
 // termosOuPadrao: sem o campo, vale a versão atual dos termos (a nuvem recusa com 409 se ela mudou).
@@ -375,11 +413,14 @@ func (a *API) excluirEApagar(ctx context.Context, ped Pedido) (Resposta, error) 
 // abrirAssinatura pede o endereço à nuvem e abre no navegador. Com acompanhar, passa a renovar a licença até a
 // assinatura aparecer.
 func (a *API) abrirAssinatura(ctx context.Context, pedir func(context.Context) (string, error), acompanhar bool) (Resposta, error) {
-	url, err := pedir(ctx)
+	endereco, err := pedir(ctx)
 	if err != nil {
 		return Resposta{}, err
 	}
-	if a.abrirNavegador == nil || a.abrirNavegador(url) != nil {
+	if !enderecoDoStripe(endereco) {
+		return Resposta{}, &erroApi{502, Objeto{"erro": "Endereço de pagamento inválido"}}
+	}
+	if a.abrirNavegador == nil || a.abrirNavegador(endereco) != nil {
 		return Resposta{}, erroNavegador()
 	}
 	if acompanhar {
