@@ -21,10 +21,15 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/api"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/config"
+	"github.com/FRF-Tecnology/job-control/internal/segredos"
 	modelodados "github.com/FRF-Tecnology/job-control/modelo-dados"
 )
 
 func main() {
+	pastaTeste := os.Getenv("CENTRAL_E2E_PASTA")
+	if pastaTeste != "" && pastaTeste != os.Getenv("APPLYER_PASTA") && pastaTeste != os.Getenv("CENTRAL_PASTA") {
+		falhar("teste", fmt.Errorf("a pasta do servidor deve ser a pasta de teste"))
+	}
 	pasta, err := config.PastaDados()
 	if err != nil {
 		falhar("pasta de dados", err)
@@ -49,6 +54,9 @@ func main() {
 	}
 	// Depois de "apagar meus dados", o processo sai (o banco já foi fechado e apagado).
 	o := api.Opcoes{AoApagar: func() { os.Exit(0) }, EnvioLigado: painelDoEnvio}
+	if pastaTeste != "" {
+		o.Cofre = segredos.Memoria{}
+	}
 	// Conta: só com -tags contafalsa (nuvem falsa e a rota de teste do relógio); sem a tag, sem conta (ruling A11).
 	minhaConta, envolver := contaDoDev(pasta)
 	if minhaConta != nil {

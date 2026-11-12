@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +32,8 @@ func listaDe(e *dominio.Estado, colecao string) *[]dominio.Objeto {
 		return &e.Emails
 	case "candidaturas":
 		return &e.Candidaturas
+	case "perfisBusca":
+		return &e.PerfisBusca
 	}
 	panic("coleção desconhecida: " + colecao)
 }
@@ -47,7 +50,10 @@ type fotos map[string][]string
 func carregar(ctx context.Context, q consultor) (dominio.Estado, fotos, error) {
 	e := dominio.EstadoVazio()
 	f := fotos{}
-	linhas, err := q.QueryContext(ctx, `SELECT colecao, dados FROM itens ORDER BY colecao, ordem`)
+	linhas, err := q.QueryContext(ctx, `SELECT colecao, dados FROM (
+		SELECT colecao, dados, ordem FROM itens
+		UNION ALL SELECT 'perfisBusca', dados, ordem FROM perfis_busca
+	) ORDER BY colecao, ordem`)
 	if err != nil {
 		return e, nil, fmt.Errorf("ler dados: %w", err)
 	}
@@ -141,6 +147,24 @@ func (a *Armazem) gravarCom(ctx context.Context, fn func(*sql.Tx, dominio.Estado
 		if err := salvarColecao(ctx, tx, "perfil", []dominio.Objeto{perfil}, f["perfil"]); err != nil {
 			return err
 		}
+		for i, p := range novo.PerfisBusca {
+			dados, err := emJSON(p)
+			if err != nil {
+				return err
+			}
+			if i < len(f["perfisBusca"]) && dados == f["perfisBusca"][i] {
+				continue
+			}
+			if _, err = tx.ExecContext(ctx, `INSERT INTO perfis_busca (ordem, dados) VALUES (?, ?)
+				ON CONFLICT(ordem) DO UPDATE SET dados=excluded.dados`, i, dados); err != nil {
+				return err
+			}
+		}
+		if len(novo.PerfisBusca) < len(f["perfisBusca"]) {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM perfis_busca WHERE ordem >= ?", len(novo.PerfisBusca)); err != nil {
+				return err
+			}
+		}
 		_, err = SubirVersao(ctx, tx)
 		return err
 	})
@@ -161,14 +185,39 @@ func (a *Armazem) BackupDiario(ctx context.Context, hoje string) (bool, error) {
 	destino := filepath.Join(a.pasta, "backups", "central-"+hoje+".db")
 	if _, err := os.Stat(destino); err == nil {
 		return false, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, err
 	}
 	if err := os.MkdirAll(filepath.Dir(destino), 0o700); err != nil {
 		return false, err
 	}
-	if _, err := a.db.ExecContext(ctx, `VACUUM INTO ?`, destino); err != nil {
+	// Outra instância pode iniciar o backup no mesmo dia. Cada uma faz o
+	// VACUUM INTO em seu arquivo e só o primeiro backup completo é publicado.
+	tmp, err := os.CreateTemp(filepath.Dir(destino), ".backup-*.tmp")
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(tmp.Name())
+	if err := tmp.Close(); err != nil {
+		return false, err
+	}
+	if _, err := a.db.ExecContext(ctx, `VACUUM INTO ?`, tmp.Name()); err != nil {
 		return false, fmt.Errorf("backup: %w", err)
 	}
-	return true, nil
+	criado := false
+	err = a.Transacao(ctx, func(_ *sql.Tx) error {
+		if _, err := os.Stat(destino); err == nil {
+			return nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := os.Rename(tmp.Name(), destino); err != nil {
+			return err
+		}
+		criado = true
+		return nil
+	})
+	return criado, err
 }
 
 // Pasta é onde o banco mora ("" para banco em memória).

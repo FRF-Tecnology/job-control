@@ -2,8 +2,7 @@
 // Roda no PC e no celular (playwright.config.ts). Cada projeto usa a mesma pasta de dados, então
 // a jornada é feita uma vez (PC) e o celular confere as telas com os dados que ela deixou.
 import { expect, test, type Page } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { posix } from 'node:path';
 
 const ir = async (page: Page, rota: string) => {
   await page.goto(`/#/${rota}`);
@@ -37,23 +36,25 @@ const avisou = (page: Page, texto: string) => expect.poll(() => page.evaluate(()
 test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   test.skip(info.project.name !== 'pc', 'a jornada grava dados; roda só uma vez');
 
-  // 1. Primeiro acesso: guia "Primeiros passos" com 0 de 3 e plataformas iniciais já cadastradas.
+  // 1. Após o onboarding: o currículo já está na pasta e as plataformas iniciais estão cadastradas.
   await ir(page, 'hoje');
   await expect(page.getByRole('heading', { name: 'Olá.' })).toBeVisible();
   // O selo do topo é a conexão com os dados locais, não a IA (jc-a2y.38).
-  await expect(page.locator('.status-conexao')).toHaveText('Dados locais');
-  await expect(page.getByText('0 de 3 prontos')).toBeVisible();
+  await page.getByRole('button', { name: 'Ferramentas' }).click();
+  await expect(page.locator('.status-dados')).toHaveText('Dados locais');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText('1 de 3 prontos')).toBeVisible();
   await ir(page, 'plataformas');
   await expect(page.locator('article.plataforma').first()).toBeVisible();
 
   // 2. Perfil: nome e salvar. O passo "Preencher o perfil" fica pronto.
-  await ir(page, 'perfil');
+  await ir(page, 'regras');
   await page.locator('#perfil-nome').fill('Ana Teste');
   await page.locator('form.formulario button[type=submit]').first().click();
   await avisou(page, 'Perfil salvo');
   await ir(page, 'hoje');
   await expect(page.getByRole('heading', { name: 'Olá, Ana.' })).toBeVisible();
-  await expect(page.getByText('1 de 3 prontos')).toBeVisible();
+  await expect(page.getByText('2 de 3 prontos')).toBeVisible();
 
   // 3. Pedido pela caixa "O que vamos fazer hoje?".
   await page.getByLabel('O que vamos fazer hoje?').fill('Buscar vagas de React remotas');
@@ -76,13 +77,21 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect(page.getByText('Tudo decidido')).toBeVisible();
 
   // 6. Quadro: a vaga está em "Aplicar". Detalhe → Mover para Enviada.
-  await ir(page, 'quadro');
+  await ir(page, 'funil');
   const coluna = page.locator('section.coluna.e-aplicar');
   await expect(coluna.locator('article.cartao')).toHaveCount(1);
   await coluna.locator('article.cartao').click();
   await page.locator('aside.gaveta select').first().selectOption('enviada');
   await avisou(page, 'Movida para Enviada');
   await expect(page.locator('aside.gaveta .etapa')).toHaveText('Enviada');
+  await ir(page, 'quadro');
+  const enviada = page.getByRole('region', {name:'Enviada'}).getByRole('button', {name:/Senior React Developer/});
+  await expect(enviada).toBeVisible();
+  await expect(page.locator('.avisos .aviso')).toHaveCount(0);
+  await page.screenshot({path:info.outputPath('quadro-de-candidaturas.png'), animations:'disabled'});
+  await enviada.click();
+  await expect(page.getByRole('dialog',{name:'Detalhes da candidatura'}).getByRole('heading', {name:'Histórico'})).toBeVisible();
+  await page.keyboard.press('Escape');
 
   // 7. Hoje e Números contam o envio.
   await ir(page, 'hoje');
@@ -134,9 +143,8 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   // 9. Fila (P5, jc-a2y.6.3.1, .6.3.3 e .6.12): a vaga que chega a Aplicar ganha a candidatura preparada sozinha,
   //    com o pacote vindo do perfil e da pasta de currículos; a impressão que a tela calcula bate com a do servidor
   //    ("Conferida nesta tela"); depois a pessoa edita o pacote. Currículo e dados fictícios.
-  const pasta = process.env.CENTRAL_E2E_PASTA!;
-  mkdirSync(join(pasta, 'curriculos'), { recursive: true });
-  writeFileSync(join(pasta, 'curriculos', 'curriculo-exemplo.pdf'), '%PDF-1.4\n% curriculo ficticio para teste\n');
+  const perfil = await (await page.request.get('/api/v1/perfil')).json();
+  const curriculoEscolhido = posix.basename(perfil.curriculos.PT);
   const vagaFila = 'li-fila-exemplo-1';
   const nova = await page.request.post('/api/v1/vagas', { data: { id: vagaFila, empresa: 'Empresa Fila Exemplo', titulo: 'Pessoa Dev Fila', link: 'https://www.linkedin.com/jobs/view/987654321', plataforma: 'linkedin' } });
   expect(nova.status(), await nova.text()).toBe(201);
@@ -152,7 +160,7 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect.poll(daVaga, { timeout: 15_000 }).toBeTruthy();
   const criada = await daVaga();
   expect(criada.estado).toBe('preparada');
-  expect(criada.conteudo.curriculo.arquivo).toBe('curriculo-exemplo.pdf');
+  expect(criada.conteudo.curriculo.arquivo).toBe(curriculoEscolhido);
   expect(criada.conteudo.contato.nome).toBe('Ana Teste'); // do perfil (passo 2)
   const avisouPreparo = async () => ((await page.evaluate(() => (window as any).__avisos as string[])) ?? []).some(t => /preparadas? sozinhas?: revise/.test(t));
   // Espera o aviso, ou esta aba ter tentado e só ter recebido 409 (outra aba preparou tudo antes).
@@ -160,6 +168,19 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   if (preparosDaAba.includes(201)) await expect.poll(avisouPreparo).toBe(true); // esta aba criou: o aviso é obrigatório
   else test.info().annotations.push({ type: 'corrida', description: `outra aba preparou antes (respostas desta aba: ${preparosDaAba.join(',') || 'nenhuma'})` });
   const naFila = page.getByTestId(criada.id);
+  await ir(page, 'lista');
+  const revisar = page.getByRole('button', {name:/Revisar pacote de Pessoa Dev Fila/});
+  await expect(revisar).toBeVisible();
+  await expect(page.locator('.avisos .aviso')).toHaveCount(0);
+  await page.screenshot({path:info.outputPath('lista-do-dia.png'), animations:'disabled'});
+  await revisar.click();
+  const revisao = page.getByRole('dialog', {name:'Revisar pacote'});
+  const rotuloCV = perfil.curriculoExibicao;
+  const nomeCV = rotuloCV?.arquivo === perfil.curriculos.PT ? rotuloCV.nome : criada.conteudo.curriculo.arquivo;
+  await expect(revisao.getByText(nomeCV || criada.conteudo.curriculo.arquivo, {exact:true})).toBeVisible();
+  await page.screenshot({path:info.outputPath('revisar-pacote.png'), animations:'disabled'});
+  await page.keyboard.press('Escape');
+  await ir(page, 'fila');
   await expect(naFila.getByText('Para revisar')).toBeVisible();
   // O selo fica à vista; o código, recolhido em "Detalhes técnicos" (jc-a2y.6.3.5).
   await expect(naFila.getByText('Conferida nesta tela')).toBeVisible();
@@ -211,11 +232,11 @@ test('PC: conta nova até a primeira candidatura', async ({ page }, info) => {
   await expect(naFila.getByText('Cancelada', { exact: true })).toBeVisible();
 });
 
-test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ page }, info) => {
+test('celular: todas as telas cabem em 375 px e a navegação funciona', async ({ page }, info) => {
   test.skip(info.project.name !== 'celular', 'conferência de layout no celular');
   // O projeto celular é um Pixel 7 (412 px); a meta é a tela menor, 375 px (jc-a2y.53).
   await page.setViewportSize({ width: 375, height: 812 });
-  for (const rota of ['hoje', 'triagem', 'fila', 'quadro', 'vagas', 'numeros', 'plataformas', 'rodadas', 'perfil']) {
+  for (const rota of ['radar', 'lista', 'quadro', 'perfil', 'hoje', 'triagem', 'fila', 'funil', 'vagas', 'numeros', 'plataformas', 'rodadas', 'regras']) {
     await ir(page, rota);
     const rolaDeLado = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
     expect(rolaDeLado, `${rota} rola para o lado`).toBe(false);
@@ -231,17 +252,77 @@ test('celular: todas as telas cabem em 375 px e as abas funcionam', async ({ pag
       return el.scrollWidth > el.clientWidth + 1 ? [`${el.tagName.toLowerCase()}.${[...el.classList].join('.')} "${(el.textContent ?? '').trim().slice(0, 40)}" ${el.scrollWidth}>${el.clientWidth}`] : [];
     }));
     expect(vazam, `${rota}: texto vaza do bloco`).toEqual([]);
-    // Rolando até o fim, o conteúdo termina acima da barra de abas fixa (a barra não cobre nada).
+    // No fim da página, o conteúdo pode ser alcançado sem ficar coberto pela navegação do app.
     const cobre = await page.evaluate(() => {
       scrollTo(0, document.documentElement.scrollHeight);
-      const abas = document.querySelector('nav.abas')?.getBoundingClientRect();
+      const barra = document.querySelector('header.topbar')!.getBoundingClientRect();
       const ultimo = [...document.querySelectorAll('main#conteudo > *')].at(-1)?.getBoundingClientRect();
-      return abas && ultimo ? ultimo.bottom > abas.top + 0.5 : false;
+      return !!ultimo && (ultimo.bottom > innerHeight + 1 || (barra.bottom > 0 && ultimo.bottom <= barra.bottom));
     });
-    expect(cobre, `${rota}: a barra de abas cobre o fim do conteúdo`).toBe(false);
+    expect(cobre, `${rota}: fim do conteúdo encoberto`).toBe(false);
   }
   await ir(page, 'hoje');
-  await page.locator('nav.abas').getByRole('button', { name: 'Mais' }).click();
-  await page.locator('.folha-mais a', { hasText: 'Números' }).click();
+  await page.getByRole('button', { name: 'Abrir navegação' }).click();
+  await page.getByRole('navigation', {name:'Navegação principal'}).getByRole('link', {name:'Lista do dia'}).click();
+  await expect(page).toHaveURL(/#\/lista$/);
+  await page.getByRole('button', {name:'Ferramentas'}).click();
+  await page.getByRole('navigation', {name:'Ferramentas avançadas'}).getByRole('link',{name:'Números'}).click();
   await expect(page).toHaveURL(/#\/numeros$/);
+});
+
+test('Lista do dia: aplicar manualmente, retomar e mover a candidatura no quadro', async ({ page, context }, info) => {
+  const id = 'jornada-manual-' + info.project.name;
+  const empresa = 'Empresa fictícia ' + info.project.name;
+  const url = `https://vaga.example.invalid/${id}`;
+  let recebimentos = 0;
+  await context.route(url, r => r.fulfill({contentType:'text/html', body:
+    '<meta charset="utf-8"><h1>Candidatura de teste</h1><form action="recibo" method="post"><button name="confirmar" value="sim">Enviar candidatura de teste</button></form>'}));
+  await context.route('https://vaga.example.invalid/recibo', r => {
+    expect(r.request().method()).toBe('POST');
+    expect(r.request().postData()).toBe('confirmar=sim');
+    recebimentos++;
+    return r.fulfill({contentType:'text/html',body:'<meta charset="utf-8"><h1>Candidatura recebida</h1>'});
+  });
+  const criar = await page.request.post('/api/v1/vagas', {data:{id, empresa, titulo:'Analista de testes', link:url, plataforma:'outra'}});
+  expect(criar.status()).toBe(201);
+  expect((await page.request.post(`/api/v1/vagas/${id}/mover`, {data:{etapa:'aplicar'}})).status()).toBe(200);
+  await ir(page, 'lista');
+  const linha = page.getByRole('listitem').filter({hasText:empresa});
+  await linha.getByRole('button', {name:'Aprovar pacote'}).click();
+  await page.locator('dialog#dialogo').getByRole('button', {name:'Aprovar pacote'}).click();
+  await expect(linha.getByRole('button',{name:'Retirar aprovação'})).toBeVisible();
+  await page.getByRole('button',{name:'Aplicar na próxima vaga'}).click();
+  const modal = page.getByRole('dialog',{name:'Candidatura no site da empresa'});
+  await expect(modal).toContainText(empresa);
+  await page.screenshot({path:info.outputPath('candidatura-no-site.png'), animations:'disabled'});
+  const novaGuia = context.waitForEvent('page');
+  await modal.getByRole('link',{name:'Abrir candidatura no navegador'}).click();
+  const externa = await novaGuia;
+  await expect(externa.getByRole('heading',{name:'Candidatura de teste'})).toBeVisible();
+  await externa.getByRole('button',{name:'Enviar candidatura de teste'}).click();
+  await expect(externa.getByRole('heading',{name:'Candidatura recebida'})).toBeVisible();
+  await externa.close();
+  await modal.getByRole('button',{name:'Continuar depois'}).click();
+  await page.reload();
+  await linha.getByRole('button', {name:'Retomar candidatura'}).click();
+  await modal.getByRole('button', {name:'Já enviei'}).click();
+  await page.getByRole('link', {name:'Ver no quadro'}).click();
+  const nomeCartao = `Abrir candidatura de Analista de testes na ${empresa}`;
+  const card = page.getByRole('button', {name:nomeCartao});
+  await expect(page.getByRole('region',{name:'Enviada'}).getByRole('button',{name:nomeCartao})).toBeVisible();
+  await card.click();
+  const detalhe = page.getByRole('dialog',{name:'Detalhes da candidatura'});
+  await detalhe.getByLabel('Etapa atual').selectOption('Entrevista');
+  await detalhe.getByLabel('Anotação').fill('Conversa com a equipe de teste');
+  await detalhe.getByRole('button',{name:'Salvar alterações'}).click();
+  await expect(detalhe).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole('region',{name:'Entrevista'})).toContainText(empresa);
+  await page.screenshot({path:info.outputPath('quadro-com-entrevista.png'), animations:'disabled'});
+  await card.click();
+  await expect(detalhe.getByLabel('Anotação')).toHaveValue('Conversa com a equipe de teste');
+  await expect(detalhe.getByText('Etapa alterada de Enviada para Entrevista.', {exact:false})).toBeVisible();
+  const inscricoes: {vagaId:string;estado:string}[] = await (await page.request.get('/api/v1/candidaturas')).json();
+  expect(inscricoes.filter(c => c.vagaId === id).map(c => c.estado)).toEqual(['enviada']);
+  expect(recebimentos).toBe(1);
 });

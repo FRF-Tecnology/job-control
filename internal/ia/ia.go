@@ -51,7 +51,9 @@ func Nova(cfg Config, chave func(string) string, registrar func(Uso)) *IA {
 	return &IA{
 		Config: cfg, Chave: chave, RegistrarUso: registrar, Agora: time.Now,
 		Provedores: map[string]Provedor{
-			"anthropic": anthropic{cliente}, "openai": openai{cliente}, "google": google{cliente},
+			"anthropic": anthropic{cliente}, "google": google{cliente},
+			"openai":     chatCompletions{cliente, "openai", "https://api.openai.com", "OPENAI_API_KEY"},
+			"xai":        chatCompletions{cliente, "xai", "https://api.x.ai", "XAI_API_KEY"},
 			"claude-cli": cli{qual: "claude"}, "codex-cli": cli{qual: "codex"}, "gemini-cli": cli{qual: "gemini"},
 		},
 	}

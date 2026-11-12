@@ -75,6 +75,9 @@ jobs:
         run: |
           npx playwright install chromium
           npm run e2e
+      - name: Primeiro acesso, busca e candidatura no Radar (Windows, provedor controlado)
+        working-directory: app/frontend
+        run: npx playwright test --config playwright.radar.config.ts
 
   # App no macOS (Apple Silicon): testes e um .app de TESTE como artefato do run (jc-a2y.64).
   # Sem assinatura da Apple, notarização ou release: isso é da P8 e exige conta Apple Developer.
@@ -107,6 +110,11 @@ jobs:
         working-directory: app/frontend
         run: npm test
       - run: go vet ./...
+      - name: Primeiro acesso, busca e candidatura no Radar (macOS, provedor controlado)
+        working-directory: app/frontend
+        run: |
+          npx playwright install chromium
+          npx playwright test --config playwright.radar.config.ts
       - name: go vet do build com envio (envio_dev)
         run: go vet -tags envio_dev ./...
       - run: go test ./...

@@ -168,6 +168,29 @@ func ValidarPerfil(x any) []string {
 			erros = append(erros, k+" deve ser texto")
 		}
 	}
+	if v := p["paisTrabalho"]; v != nil && v != "" {
+		s, ok := v.(string)
+		if !ok || len(s) != 2 || s[0] < 'A' || s[0] > 'Z' || s[1] < 'A' || s[1] > 'Z' {
+			erros = append(erros, "informe o país de trabalho com duas letras (ex.: BR)")
+		}
+	}
+	if v := p["cidadeTrabalho"]; v != nil {
+		if s, ok := v.(string); !ok || len(s) > 250 {
+			erros = append(erros, "informe uma cidade de trabalho válida")
+		}
+	}
+	if v := p["titulosEquivalentes"]; v != nil {
+		if !listaDeTextos(v) || len(ListaDe(v)) > 12 {
+			erros = append(erros, "informe até 12 cargos equivalentes")
+		} else {
+			for _, t := range ListaDe(v) {
+				if len(Texto(t)) > 180 {
+					erros = append(erros, "um título equivalente é longo demais")
+					break
+				}
+			}
+		}
+	}
 	for _, k := range listasPerfil {
 		if p[k] != nil && !listaDeTextos(p[k]) {
 			erros = append(erros, k+" deve ser uma lista de textos")
@@ -191,12 +214,49 @@ func ValidarPerfil(x any) []string {
 	if p["foco"] != nil && !contem(Focos, p["foco"]) {
 		erros = append(erros, "foco deve ser "+strings.Join(Focos, ", "))
 	}
+	if faixa := p["faixaSalarial"]; faixa != nil {
+		if problema := validarFaixaSalarial(faixa); problema != "" {
+			erros = append(erros, problema)
+		}
+	}
 	for _, k := range numerosPerfil {
 		if p[k] != nil && !igual(p[k], "") && !finito(p[k]) {
 			erros = append(erros, k+" deve ser número")
 		}
 	}
 	return erros
+}
+
+func validarFaixaSalarial(v any) string {
+	faixa := ObjetoDe(v)
+	if !contem([]string{"USD", "BRL", "EUR"}, faixa["moeda"]) {
+		return "escolha USD, BRL ou EUR para a faixa salarial mensal"
+	}
+	for campo, valor := range faixa {
+		switch campo {
+		case "moeda":
+		case "min", "max":
+			switch valor.(type) {
+			case int, float64:
+				n, _ := NumeroDe(valor)
+				if n > 0 && finito(valor) {
+					continue
+				}
+			}
+			return "os limites da faixa salarial devem ser números positivos"
+		default:
+			return "campo desconhecido na faixa salarial"
+		}
+	}
+	if faixa["min"] == nil && faixa["max"] == nil {
+		return "informe ao menos um limite da faixa salarial"
+	}
+	minimo, _ := NumeroDe(faixa["min"])
+	maximo, _ := NumeroDe(faixa["max"])
+	if maximo > 0 && minimo > maximo {
+		return "o máximo da faixa salarial deve ser maior ou igual ao mínimo"
+	}
+	return ""
 }
 
 func respostasValidas(x any) bool {

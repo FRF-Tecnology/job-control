@@ -18,6 +18,7 @@ export interface Pergunta {
 
 export interface App {
   estado: Estado;
+  conexaoIA?: { nome: string; verificada: boolean };
   hoje: string;
   foco: string;
   rota: string;
@@ -55,7 +56,10 @@ export class ErroApi extends Error {
 
 // Chamada à API local. Erro de validação vira mensagem com a lista de erros.
 export async function chamarApi(caminho: string, metodo = 'GET', corpo?: unknown, cabecalhos?: Record<string, string>) {
-  const r = await fetch(caminho, { method: metodo, headers: { ...cabecalhos, 'content-type': 'application/json' }, body: corpo !== undefined ? JSON.stringify(corpo) : undefined });
+  const multipart = corpo instanceof FormData;
+  const headers = multipart ? cabecalhos : { ...cabecalhos, 'content-type': 'application/json' };
+  const body = multipart ? corpo : corpo !== undefined ? JSON.stringify(corpo) : undefined;
+  const r = await fetch(caminho, { method: metodo, headers, body });
   // 204 (sair, cancelar o Google, excluir a conta): sem corpo, mesmo que o servidor diga json.
   const dados = r.status === 204 ? '' : r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text();
   // 402: a trava das ações (o teste acabou, sem assinatura, sem internet ou sem conta). A casca relê a conta e mostra a faixa.

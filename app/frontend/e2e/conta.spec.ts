@@ -1,5 +1,5 @@
 // Conta, teste e trava de ponta a ponta (Task 7), contra o central-dev com -tags contafalsa (projeto "conta" do
-// playwright.config.ts, porta 4511): abrir → criar a conta → código 123456 → Hoje com a faixa do teste → a rota de
+// playwright.config.ts, porta 4511, pasta já em uso): abrir → criar a conta → código 123456 → Hoje com a faixa do teste → a rota de
 // teste avança 25 h → buscar dá 402 e a faixa de bloqueio aparece → assinar (a rota de teste faz o papel do Checkout)
 // → liberado → sair volta à porta. Só dados fictícios; sem janela (headless).
 import { expect, test } from '@playwright/test';
@@ -12,7 +12,7 @@ test('conta nova: teste de 24 h, trava depois dele e assinatura libera', async (
   // 1. Sem conta: só a porta de entrada, antes de tudo (sem menu).
   await page.goto('/#/hoje');
   await expect(page.getByRole('heading', { name: 'Entre na sua conta' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Seções' })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Navegação principal' })).toHaveCount(0);
   await expect(page.getByLabel('Email')).toBeFocused();
 
   // 2. Criar a conta e confirmar com o código da nuvem falsa.
@@ -26,11 +26,14 @@ test('conta nova: teste de 24 h, trava depois dele e assinatura libera', async (
   await page.getByLabel('Código de confirmação').fill('123456');
   await page.getByRole('button', { name: 'Confirmar' }).click();
 
-  // 3. Primeiro acesso: Hoje, com a faixa do teste e o menu com a Assinatura.
+  // 3. Pasta já em uso (currículo antigo semeado no playwright.config.ts): sem o primeiro acesso, direto no app.
+  // Hoje, com a faixa do teste; a Assinatura fica no menu Ferramentas.
   await expect(page.getByRole('heading', { name: 'Olá.' })).toBeVisible();
   const faixa = page.locator('.faixa-conta');
   await expect(faixa).toHaveText(/^Seu teste acaba em (23 h 59 min|24 h 0 min) · Assinar$/);
-  await expect(page.getByRole('navigation', { name: 'Seções' }).getByRole('link', { name: 'Assinatura' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ferramentas' }).click();
+  await expect(page.getByRole('navigation', { name: 'Ferramentas avançadas' }).getByRole('link', { name: 'Assinatura' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ferramentas' }).click();
   const pedido = page.getByLabel('O que vamos fazer hoje?');
   await expect(pedido).toBeEnabled();
 
@@ -49,8 +52,8 @@ test('conta nova: teste de 24 h, trava depois dele e assinatura libera', async (
   // Ruling A13: só a escrita trava (enviar o pedido); a caixa de texto e a navegação continuam.
   await expect(page.getByRole('button', { name: 'Enviar pedido' })).toBeDisabled();
   await expect(pedido).toBeEnabled();
-  // No Perfil, sair e excluir a conta continuam; salvar o perfil trava (o servidor bloqueia PUT /perfil).
-  await page.goto('/#/perfil');
+  // Em Regras e dados, sair e excluir a conta continuam; salvar o perfil trava (o servidor bloqueia PUT /perfil).
+  await page.goto('/#/regras');
   await expect(page.getByRole('button', { name: 'Sair da conta' })).toBeEnabled();
   await expect(page.locator('#perfil-nome')).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Salvar perfil' }).first()).toBeDisabled();
@@ -71,9 +74,9 @@ test('conta nova: teste de 24 h, trava depois dele e assinatura libera', async (
   await pedido.press('Enter');
   expect((await depois).status()).toBeLessThan(300);
 
-  // 8. Sair da conta (Perfil): volta para a porta de entrada.
+  // 8. Sair da conta (Perfil e IA): volta para a porta de entrada.
   await page.goto('/#/perfil');
   await page.getByRole('button', { name: 'Sair da conta' }).click();
   await expect(page.getByRole('heading', { name: 'Entre na sua conta' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Seções' })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Navegação principal' })).toHaveCount(0);
 });

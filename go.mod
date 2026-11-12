@@ -10,6 +10,7 @@ require (
 	github.com/fergusstrange/embedded-postgres v1.34.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
+	github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/stripe/stripe-go/v87 v87.1.0
 	github.com/wailsapp/wails/v3 v3.1.0

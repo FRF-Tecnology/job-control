@@ -42,6 +42,9 @@ func TestGeminiRecebePedidoPeloStdin(t *testing.T) {
 
 // CLI que não está no PATH: nem instalada, nem pronta, sem aviso.
 func TestDetectarCLIsSemNadaInstalado(t *testing.T) {
+	casa := t.TempDir()
+	t.Setenv("HOME", casa)
+	t.Setenv("USERPROFILE", casa)
 	t.Setenv("PATH", t.TempDir())
 	for _, e := range DetectarCLIs(context.Background()) {
 		if e.Instalada || e.Pronta || e.Aviso != "" || e.Motivo != "" {

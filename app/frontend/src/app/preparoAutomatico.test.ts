@@ -17,6 +17,20 @@ describe('vagasProntas', () => {
 });
 
 describe('prepararProntas', () => {
+  it('usa o currículo e o nome da busca que guardou a vaga quando outro perfil está ativo', async () => {
+    const api = vi.fn().mockResolvedValue({});
+    const dados = { vagas: [vaga('v', 'aplicar', { perfilBuscaId: 'origem' })], perfilBuscaAtivo: 'outro', perfil: PERFIL,
+      curriculos: [...PDFS, { nome: 'origem.pdf' }], perfisBusca: [{ id: 'origem', perfilPacote: { nome: 'Pessoa do perfil', curriculos: { PT: 'curriculos/origem.pdf' } } }] };
+    await prepararProntas(api, dados, [], new Set());
+    expect(api.mock.calls[0][2].conteudo).toMatchObject({ contato: { nome: 'Pessoa do perfil' }, curriculo: { arquivo: 'origem.pdf' } });
+  });
+  it('mantém a vaga para revisão se só houver PDF de outro perfil na pasta', async () => {
+    const api = vi.fn();
+    const dados = { vagas: [vaga('v', 'aplicar', { perfilBuscaId: 'java' })], perfilBuscaAtivo: 'java', perfil: { curriculos: { PT: 'curriculos/java.pdf' } },
+      curriculos: [{ nome: 'ia.pdf' }], perfisBusca: [{ id: 'original', perfilPacote: PERFIL }, { id: 'java', perfilPacote: {} }] };
+    expect(await prepararProntas(api, dados, [], new Set())).toEqual({ preparadas: 0, semPdf: 1 });
+    expect(api).not.toHaveBeenCalled();
+  });
   it('cria a candidatura com o pacote do perfil (sem pergunta sensível) e não repete a vaga', async () => {
     const api = vi.fn(async () => ({}));
     const tentadas = new Set<string>();

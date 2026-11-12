@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
@@ -13,10 +11,8 @@ import (
 // PrepararPrimeiraVez deixa uma conta nova pronta: cria a pasta de currículos e, se o banco nunca foi
 // gravado, coloca as plataformas iniciais. Devolve true quando era a primeira vez.
 func (a *Armazem) PrepararPrimeiraVez(ctx context.Context, plataformas []byte) (bool, error) {
-	if a.pasta != "" {
-		if err := os.MkdirAll(filepath.Join(a.pasta, "curriculos"), 0o700); err != nil {
-			return false, err
-		}
+	if err := a.prepararOnboarding(ctx); err != nil {
+		return false, err
 	}
 	v, err := a.Versao(ctx)
 	if err != nil || v > 0 {

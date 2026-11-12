@@ -21,6 +21,7 @@ type Estado struct {
 	Emails      []Objeto `json:"emails"`
 	// Candidaturas é a fila da P5. omitempty: conta sem candidaturas sai igual ao estado do Node (golden).
 	Candidaturas []Objeto `json:"candidaturas,omitempty"`
+	PerfisBusca  []Objeto `json:"perfisBusca,omitempty"`
 }
 
 // EstadoVazio é o estado de uma conta nova.
@@ -41,7 +42,7 @@ func clonarLista(l []Objeto) []Objeto {
 
 // Clonar copia o estado inteiro (nada é compartilhado com o original).
 func (e Estado) Clonar() Estado {
-	return Estado{clonarLista(e.Vagas), clonarLista(e.Eventos), clonarLista(e.Plataformas), clonarLista(e.Rodadas), clonarObj(e.Perfil), clonarLista(e.Pedidos), clonarLista(e.Emails), clonarLista(e.Candidaturas)}
+	return Estado{clonarLista(e.Vagas), clonarLista(e.Eventos), clonarLista(e.Plataformas), clonarLista(e.Rodadas), clonarObj(e.Perfil), clonarLista(e.Pedidos), clonarLista(e.Emails), clonarLista(e.Candidaturas), clonarLista(e.PerfisBusca)}
 }
 
 // Ctx é o contexto de cada operação: quem fez, quando e de qual conta.
@@ -209,6 +210,11 @@ func MoverVaga(e Estado, id any, etapa any, extras Objeto, ctx Ctx) (Estado, Obj
 		return e, nil, err
 	}
 	antes := novo.Vagas[i]
+	if etapa == "aplicar" {
+		if err := AnuncioReservado(e, antes); err != nil {
+			return e, nil, err
+		}
+	}
 	if CanalDoAssistente(ctx.Canal) {
 		if err := conferirMoverDoAssistente(antes, etapa, extras); err != nil {
 			return e, nil, err
@@ -559,7 +565,8 @@ func FilaAplicar(e Estado) []Objeto {
 	direto := igual(obj(e.Perfil)["modo"], "direto")
 	fila := []Objeto{}
 	for _, v := range e.Vagas {
-		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")) {
+		recomendada := v["triagemDecisao"] == nil || igual(v["triagemDecisao"], "aplicar")
+		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && recomendada && v["devolvidaAoRadar"] != true && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")) {
 			fila = append(fila, v)
 		}
 	}

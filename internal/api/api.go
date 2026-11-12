@@ -21,6 +21,7 @@ import (
 
 	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/busca"
 	"github.com/FRF-Tecnology/job-control/internal/conta"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
@@ -60,13 +61,17 @@ type Resposta struct {
 
 // API guarda as dependências da API local.
 type API struct {
-	arm       *armazem.Armazem
-	hoje      func() string
-	contaID   string
-	aleatorio func() string // só nos testes: deixa os ids previsíveis
+	buscaEmCurso   sync.Mutex
+	consultarVagas func(context.Context, dominio.Objeto) busca.Coleta
+	arm            *armazem.Armazem
+	hoje           func() string
+	contaID        string
+	aleatorio      func() string // só nos testes: deixa os ids previsíveis
 
 	cofre            segredos.Cofre
 	provedoresExtras map[string]ia.Provedor // só nos testes: provedor de IA falso
+	credenciaisIA    sync.RWMutex           // serializa alterações de rota, vínculos de host e acesso ao cofre
+	provaIA          provaConexao           // confirmação da configuração atual, apenas nesta sessão
 	detectarCLIs     func(context.Context) []ia.EstadoCLI
 	relogio          func() time.Time // só nos testes muda; janela do cache da detecção de CLIs
 	cacheCLIs        cacheDeteccao
@@ -209,7 +214,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
 		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp,
-		conta: o.Conta, abrirNavegador: o.AbrirNavegador, podeAgir: o.PodeAgir}
+		conta: o.Conta, abrirNavegador: o.AbrirNavegador, podeAgir: o.PodeAgir, consultarVagas: busca.Consultar}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -460,6 +465,9 @@ func MesclarPerfil(atual, p Objeto) Objeto {
 	for k, v := range p {
 		novo[k] = v
 	}
+	if _, mudouFaixa := p["faixaSalarial"]; mudouFaixa {
+		delete(novo, "pretensaoUSD")
+	}
 	filtros := Objeto{}
 	for k, v := range dominio.ObjetoDe(atual["filtros"]) {
 		filtros[k] = v
@@ -495,7 +503,7 @@ func exigirPerfilOk(perfil any) error {
 
 var (
 	reVagaID       = regexp.MustCompile(`^/vagas/([^/]+)$`)
-	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z]+)?$`)
+	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z-]+)?$`)
 	rePedido       = regexp.MustCompile(`^/pedidos/([^/]+)/concluir$`)
 	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar)$`)
 	rePlataforma   = regexp.MustCompile(`^/plataformas/([^/]+)$`)
@@ -553,6 +561,15 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 	}
 	if p == "/envio/ao-vivo" {
 		return a.rotaAoVivo(ctx, m, c, autor, ped.DaJanela)
+	}
+	if p == "/perfis-busca" || strings.HasPrefix(p, "/perfis-busca/") {
+		return a.perfisBusca(ctx, m, p, autor, c)
+	}
+	if m == "POST" && p == "/busca" {
+		if autor != "eu" {
+			return Resposta{}, falha(403, "somente a pessoa inicia uma busca no app")
+		}
+		return a.buscarETriar(ctx, dominio.Texto(c["perfilBuscaId"]))
 	}
 
 	if strings.HasPrefix(p, "/envio") {
@@ -639,29 +656,53 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		return Resposta{Status: 200, Corpo: r}, err
 
 	case p == "/perfil" && (m == "PUT" || m == "PATCH"):
-		e, err := a.arm.Carregar(ctx)
-		if err != nil {
-			return Resposta{}, err
-		}
-		novo := c
-		if m == "PATCH" {
-			novo = MesclarPerfil(e.Perfil, c)
-		}
-		// jc-a2y.28: o modo direto aplica o grupo A sem Triagem; só a pessoa liga. O assistente pode só voltar para revisar.
-		if autor != "eu" && dominio.Igual(novo["modo"], "direto") && !dominio.Igual(e.Perfil["modo"], "direto") {
-			return Resposta{}, &dominio.ErroValidacao{Erros: []string{ErroModoSoPessoa}}
-		}
-		if err := exigirPerfilOk(novo); err != nil {
-			return Resposta{}, err
-		}
-		// jc-a2y.7.5: só o que está sendo gravado agora (o corpo). No PATCH de outro campo, o que já está guardado não trava.
-		if pergunta := dominio.RespostaPadraoSensivel(c); pergunta != "" {
-			return Resposta{}, &dominio.ErroValidacao{Erros: []string{ErroRespostaSensivel + ": " + cortarLinha(pergunta, 80)}}
-		}
-		if err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) { e.Perfil = novo; return e, nil }); err != nil {
+		var novo Objeto
+		if err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
+			if err := conferirPerfilBusca(e, q["perfilBuscaId"]); err != nil {
+				return e, err
+			}
+			novo = c
+			if m == "PATCH" {
+				novo = MesclarPerfil(e.Perfil, c)
+			}
+			if autor != "eu" && dominio.Igual(novo["modo"], "direto") && !dominio.Igual(e.Perfil["modo"], "direto") {
+				return e, &dominio.ErroValidacao{Erros: []string{ErroModoSoPessoa}}
+			}
+			if err := exigirPerfilOk(novo); err != nil {
+				return e, err
+			}
+			// Só as respostas padrão alteradas agora recebem a verificação adicional.
+			if pergunta := dominio.RespostaPadraoSensivel(c); pergunta != "" {
+				return e, &dominio.ErroValidacao{Erros: []string{ErroRespostaSensivel + ": " + cortarLinha(pergunta, 80)}}
+			}
+			if assinaturaDeBusca(e.Perfil) != assinaturaDeBusca(novo) {
+				for i, v := range e.Vagas {
+					if dominio.DonoDaBusca(v) == e.PerfilBuscaAtivo() && v["etapa"] == "descoberta" && v["triagemPerfil"] != nil {
+						e.Vagas[i] = aguardandoTriagem(v)
+					}
+				}
+			}
+			e.Perfil = novo
+			return e, nil
+		}); err != nil {
 			return Resposta{}, err
 		}
 		return ok(novo)
+
+	case p == "/onboarding" && m == "POST":
+		return a.concluirOnboarding(ctx, autor, c)
+	case p == "/onboarding/rascunho" && (m == "GET" || m == "PATCH"), p == "/onboarding/curriculo" && (m == "PUT" || m == "DELETE"):
+		if autor != "eu" || a.canal != "" {
+			return Resposta{}, falha(403, msgForaDoAssistente)
+		}
+		return a.rotaRascunho(ctx, m, c)
+	case p == "/perfil/curriculo" && m == "POST":
+		if autor != "eu" || a.canal != "" {
+			return Resposta{}, falha(403, "use a janela do Applyer")
+		}
+		return a.substituirCurriculo(ctx, q["perfilBuscaId"], c)
+	case p == "/onboarding/sugerir" && m == "POST":
+		return a.sugerirPeloCurriculo(ctx, autor, c)
 
 	case m == "POST" && p == "/pedidos":
 		var ped Objeto
@@ -747,6 +788,30 @@ func (a *API) rotasDeLeitura(ctx context.Context, p string, q map[string]string)
 	if p == "/curriculos" {
 		return Resposta{Status: 200, Corpo: Objeto{"pasta": textoOuNulo(a.pastaCurriculos()), "arquivos": a.curriculos()}}, true, nil
 	}
+	if p == "/estado" {
+		// Leia a versão antes dos campos. Uma conclusão simultânea torna a
+		// próxima consulta de versão diferente e a tela relê o estado.
+		v, err := a.Versao(ctx)
+		if err != nil {
+			return Resposta{}, true, err
+		}
+		concluido, err := a.arm.OnboardingConcluido(ctx)
+		if err != nil {
+			return Resposta{}, true, err
+		}
+		e, err := a.arm.Carregar(ctx)
+		if err != nil {
+			return Resposta{}, true, err
+		}
+		corpo := Objeto{
+			"onboardingConcluido": concluido,
+			"perfilBuscaAtivo":    e.PerfilBuscaAtivo(), "perfisBusca": e.ResumoPerfisBusca(),
+			"vagas": e.Vagas, "eventos": e.Eventos, "plataformas": e.Plataformas, "rodadas": e.Rodadas, "perfil": e.Perfil,
+			"pedidos": e.Pedidos, "emails": e.Emails, "hoje": a.hoje(), "versao": v, "curriculos": a.curriculos(),
+			"pastaCurriculos": textoOuNulo(a.pastaCurriculos()), "primeirosPassos": a.primeirosPassos(e),
+		}
+		return Resposta{Status: 200, Corpo: corpo}, true, nil
+	}
 	e, err := a.arm.Carregar(ctx)
 	if err != nil {
 		return Resposta{}, true, err
@@ -754,16 +819,6 @@ func (a *API) rotasDeLeitura(ctx context.Context, p string, q map[string]string)
 	hoje := a.hoje()
 	var corpo any
 	switch p {
-	case "/estado":
-		v, err := a.Versao(ctx)
-		if err != nil {
-			return Resposta{}, true, err
-		}
-		corpo = Objeto{
-			"vagas": e.Vagas, "eventos": e.Eventos, "plataformas": e.Plataformas, "rodadas": e.Rodadas, "perfil": e.Perfil,
-			"pedidos": e.Pedidos, "emails": e.Emails, "hoje": hoje, "versao": v, "curriculos": a.curriculos(),
-			"pastaCurriculos": textoOuNulo(a.pastaCurriculos()), "primeirosPassos": a.primeirosPassos(e),
-		}
 	case "/resumo":
 		corpo = dominio.CalcularResumo(e.Vagas, hoje)
 	case "/vagas":
@@ -1008,6 +1063,55 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 		return vaga, err
 	}
 	switch {
+	case m == "POST" && acao == "/devolver-ao-radar":
+		if err := soCampos(c); err != nil {
+			return Resposta{}, err
+		}
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			return dominio.DevolverAoRadar(e, id, a.relogio(), cx)
+		})
+		if err != nil {
+			return Resposta{}, err
+		}
+		return ok(v)
+	case m == "POST" && acao == "/acompanhamento":
+		if err := soCampos(c, "etapaAntes", "notasAntes", "etapa", "notas"); err != nil {
+			return Resposta{}, err
+		}
+		for _, campo := range []string{"etapaAntes", "notasAntes", "etapa", "notas"} {
+			if _, ok := c[campo].(string); !ok {
+				return Resposta{}, erroCampo(campo + ": texto obrigatório")
+			}
+		}
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			return dominio.AtualizarQuadro(e, id, c["etapaAntes"].(string), c["notasAntes"].(string), c["etapa"].(string), c["notas"].(string), cx)
+		})
+		if err != nil {
+			return Resposta{}, err
+		}
+		return ok(v)
+	case m == "POST" && (acao == "/iniciar-manual" || acao == "/confirmar-envio-manual"):
+		if err := soCampos(c); err != nil {
+			return Resposta{}, err
+		}
+		if autor != "eu" {
+			return Resposta{}, falha(403, "somente a pessoa pode iniciar ou confirmar a candidatura")
+		}
+		if acao == "/iniciar-manual" {
+			if err := a.verificarAntesDeAbrir(ctx, id); err != nil {
+				return Resposta{}, err
+			}
+		}
+		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
+			if acao == "/confirmar-envio-manual" {
+				return dominio.ConfirmarManualRadar(e, id, a.relogio(), cx)
+			}
+			return a.iniciarManualRadar(e, id, cx)
+		})
+		if err != nil {
+			return Resposta{}, err
+		}
+		return ok(v)
 	case m == "PATCH" && acao == "":
 		v, err := executar(func(e dominio.Estado, cx dominio.Ctx) (dominio.Estado, Objeto, error) {
 			return dominio.AtualizarVaga(e, id, c, cx)

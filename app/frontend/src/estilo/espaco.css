@@ -1,0 +1,37 @@
+/* A área do protótipo substitui a moldura de vidro. O onboarding tem sua própria grade. */
+#root:has(> .espaco) {display:block;max-width:none;margin:0;padding:0}
+.espaco {min-height:100vh;--papel:var(--bg);--superficie:var(--surface);--tinta:var(--text);--tinta-2:var(--muted);--linha:var(--line);font-size:16px;line-height:1.5}
+.espaco .rail{overflow-y:auto}
+.espaco,.espaco :is(h1,h2,h3,h4){--fonte-texto:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;--fonte-display:var(--fonte-texto);font-family:var(--fonte-texto)}
+.espaco .nav-link>span:not(.nav-count){white-space:nowrap}
+.espaco .nav-heading{text-transform:uppercase}
+.espaco .wordmark img.logo-diurna{display:none}
+.espaco .area-corpo{width:100%;min-width:0}
+.espaco .area-corpo > *{animation:entrada-espaco .15s ease-out}
+@keyframes entrada-espaco{from{opacity:.85;transform:translateY(2px)}to{opacity:1;transform:none}}
+.espaco .status-dot.pendente{background:#9992aa}
+.espaco .barra-opcoes{position:relative;display:flex;align-items:center;gap:.65rem}
+.espaco #ferramentas-menu{position:absolute;top:calc(100% + 7px);right:0;width:min(230px,90vw);padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;z-index:5;box-shadow:0 14px 30px #05051140}
+.espaco #ferramentas-menu :is(a,button){display:block;text-align:left;background:transparent;color:var(--text);width:100%;border:0;padding:8px 12px;border-radius:7px;font:500 13px/1.4 var(--fonte-texto)}
+.espaco #ferramentas-menu a:hover,.espaco #ferramentas-menu button:hover{background:var(--panel)}
+.espaco #ferramentas-menu button{margin-top:5px;border-top:1px solid var(--line);border-radius:0}
+.espaco .status-dados,.espaco .selo-envio{color:var(--mint);font-size:12px}
+.espaco #ferramentas-menu .status-dados{display:block;padding:8px 12px}
+@media(pointer:coarse),(max-width:780px){.espaco a.selo-envio{display:inline-flex;align-items:center;min-width:44px;min-height:44px}}
+@media(pointer:coarse),(max-width:780px){.espaco button.link-vaga{min-height:44px;min-width:44px}}
+.espaco #connection-icon img{filter:brightness(0) saturate(100%) invert(77%) sepia(36%) saturate(736%) hue-rotate(316deg)}
+.espaco .logo-noturna{filter:none}
+.espaco .pr-marca-ia{display:flex;align-items:center;gap:10px}
+:root[data-tema="claro"] .espaco{color-scheme:light;--bg:#f5f4fa;--surface:#fff;--panel:#efedf7;--text:#252137;--muted:#575269;--line:#d1cedd;--lilac:#6246ad;--mint:#276e57;--amber:#865819}
+:root[data-tema="claro"] .espaco :is(.rail,.topbar){background:#f9f8fd;border-color:var(--line)}
+:root[data-tema="claro"] .espaco :is(.nav-heading,.nav-link,.crumb-home,.crumb-divider){color:var(--muted)}
+:root[data-tema="claro"] .espaco .workspace{background:var(--bg)}
+:root[data-tema="claro"] .espaco .wordmark .logo-noturna{display:none}
+:root[data-tema="claro"] .espaco .wordmark .logo-diurna{display:block}
+:root[data-tema="claro"] .espaco :is(.nav-link.active,.nav-link:hover,.demo-control,.connection-box,.nav-count,.btn.secondary,.btn.quiet:hover){background:#e9e5f6;color:var(--text);border-color:var(--line)}
+:root[data-tema="claro"] .espaco :is(.nav-account,.person){border-color:var(--line)}
+:root[data-tema="claro"] .espaco :is(.breadcrumb strong,.btn.quiet){color:var(--text)}
+:root[data-tema="claro"] .espaco .radar-hero{--lilac:#c1b3ff;--muted:#d6d2e8;--text:#f4f2ff;--mint:#98e5c5;color:#f4f2ff;color-scheme:dark}
+:root[data-tema="claro"] .espaco .btn.primary{background:#c1b3ff;color:#221931}
+@media(max-width: 780px){.espaco .barra-opcoes{gap:.3rem}.espaco .status-dados{max-width:110px}.espaco .rail{z-index:16}.espaco #nav-scrim{z-index:15}}
+@media(pointer:coarse),(max-width:780px){.espaco :is(.btn,.nav-link,.demo-control,.icon-btn,.hero-edit),.espaco #ferramentas-menu :is(a,button){min-height:44px}.espaco .icon-btn{min-width:44px}}

@@ -2,6 +2,7 @@
 // Só leitura neste passo; aprovar e as outras ações chegam no jc-a2y.6.3.2. A impressão é recalculada aqui a
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { grupoADireto, perfilDoPacote } from '../app/preparoAutomatico';
 import { ErroApi, useApp, useTrava, type Pergunta } from '../app/contexto';
 import { impressaoCandidatura, type EstruturaFormulario } from '../app/impressao';
 import { FormularioCand, formularioSemAprovar, type CandFormulario } from './Formulario';
@@ -11,6 +12,8 @@ import { mercadoDe } from '../dominio/modelo';
 import { doAssistente, encode, nomeAssistente, type Quem } from '../util';
 import { PacoteForm } from './PacoteForm';
 import { ListaDoDia } from './ListaDoDia';
+import { PacotesDia } from './PacotesDia';
+import { CabecalhoJornada } from './JornadaUI';
 import { entrarNavegador, PainelEnvio, type EstadoEnvio } from './PainelEnvio';
 import { LimiteCartao, type Limite } from './LimiteDiario';
 
@@ -94,7 +97,7 @@ function rotulo(c: Candidatura) {
   return NOME_ESTADO[c.estado];
 }
 
-export function TelaFila() {
+export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
   const app = useApp();
   const trava = useTrava();
   const [lista, setLista] = useState<Candidatura[] | null>(null);
@@ -189,7 +192,8 @@ export function TelaFila() {
       setPreparando(null); setEditando(null);
       await app.recarregar();
       await ler();
-    } catch (e) { explicar(e); } finally { setOcupado(false); }
+      return true;
+    } catch (e) { explicar(e); return false; } finally { setOcupado(false); }
   };
   const preparar = (vagaId: string, conteudo: ConteudoPacote) =>
     gravar(() => app.api('/api/v1/candidaturas', 'POST', { vagaId, conteudo }), 'Candidatura preparada. Revise o pacote e aprove.');
@@ -197,9 +201,9 @@ export function TelaFila() {
   const salvarEdicao = async (c: Candidatura, conteudo: ConteudoPacote) => {
     if (c.estado === 'aprovada') {
       const ok = await app.perguntar({ titulo: 'Editar desfaz a aprovação', texto: 'Depois de salvar, o pacote volta para revisão e precisa de nova aprovação.', confirmar: 'Salvar e desfazer a aprovação' });
-      if (ok === null) return;
+      if (ok === null) return false;
     }
-    await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/conteudo`, 'PUT', { conteudo, versao: c.versao }),
+    return gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/conteudo`, 'PUT', { conteudo, versao: c.versao }),
       c.estado === 'aprovada' ? 'Pacote atualizado. Revise e aprove de novo.' : 'Pacote atualizado.');
   };
 
@@ -232,13 +236,18 @@ export function TelaFila() {
   const aprovar = async (c: Candidatura) => {
     const impressao = calculadas[c.id];
     if (!impressao || impressao !== c.impressao) return;
-    const ok = await app.perguntar({
+    const ok = await app.perguntar(jornada ? {
+      titulo: 'Aprovar este pacote?',
+      texto: `Você autoriza um envio para ${empresaDe(c)} hoje. Se o envio automático estiver ativo, o app poderá iniciar. Para enviar pelo navegador, escolha “Aplicar no site”.`,
+      confirmar: 'Aprovar pacote',
+    } : {
       titulo: 'Aprovar e enviar este pacote?',
       texto: `O app envia exatamente este pacote para ${empresaDe(c)}, hoje e uma vez só. Até o envio começar, você pode tirar a aprovação.`,
       confirmar: 'Aprovar e enviar',
     });
     if (ok === null) return;
-    await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/aprovar`, 'POST', { impressao }), 'Aprovado. O app envia este pacote hoje, uma vez.');
+    await gravar(() => app.api(`/api/v1/candidaturas/${encode(c.id)}/aprovar`, 'POST', { impressao }),
+      jornada ? 'Pacote aprovado.' : 'Aprovado. O app envia este pacote hoje, uma vez.');
   };
   // Demais ações: corpo {} (o contrato recusa campo a mais). As que mudam o rumo pedem confirmação antes.
   const acao = async (c: Candidatura, rota: string, sucesso: string, confirmar?: Pergunta) => {
@@ -266,7 +275,7 @@ export function TelaFila() {
     ? { titulo: 'Você conferiu que foi enviada?', texto: `Confira ${na(c)} antes. A candidatura e a vaga passam para Enviada.`, confirmar: 'Marcar como enviada' }
     : { titulo: 'Você enviou pela página?', texto: 'A candidatura e a vaga passam para Enviada.', confirmar: 'Marcar como enviada' });
 
-  const cabecalho = (
+  const cabecalho = jornada ? <CabecalhoJornada titulo="Lista do dia" descricao="Revise os pacotes das vagas que você escolheu no radar." /> : (
     <header className="cabecalho">
       <div><h1>Fila</h1><p>O pacote exato que vai para cada vaga. Nada sai sem a sua aprovação.</p></div>
     </header>
@@ -281,9 +290,13 @@ export function TelaFila() {
   // Vagas que podem ganhar candidatura: em Aplicar (ou grupo A em Descoberta no modo direto), sem uma ativa.
   const ativas = new Set(lista.filter(c => c.estado !== 'cancelada').map(c => c.vagaId));
   const prontas = (app.estado.vagas ?? []).filter((v: any) => !ativas.has(v.id)
-    && (v.etapa === 'aplicar' || (perfil.modo === 'direto' && v.etapa === 'descoberta' && v.aderencia === 'A')));
+    && (v.etapa === 'aplicar' || (perfil.modo === 'direto' && grupoADireto(v))));
 
   const nomeCand = (id: string) => { const c = lista.find(x => x.id === id); const v = c && vaga(c.vagaId); return v ? `${v.empresa} — ${v.titulo}` : 'uma candidatura'; };
+
+  if (jornada) return <PacotesDia candidaturas={lista} calculadas={calculadas} limites={limites} ocupado={ocupado}
+    aprovar={aprovar} revogar={c => acao(c, 'revogar', 'Aprovação retirada.')} salvar={salvarEdicao}
+    atualizar={async () => {await app.recarregar(); await ler();}} plataforma={p => PLATAFORMAS[p] ?? p} />;
 
   return (
     <div className="fila">
@@ -307,19 +320,21 @@ export function TelaFila() {
         <section className="bloco prontas" aria-label="Prontas para preparar" role="region">
           <header><h2>Prontas para preparar</h2></header>
           <ul className="lista-cartao">
-            {prontas.map((v: any) => (
+            {prontas.map((v: any) => {
+              const dono = perfilDoPacote(app.estado, v);
+              return (
               <li key={v.id} className="pronta">
                 <div className="pronta-topo">
                   <strong>{`${v.empresa} — ${v.titulo}`}</strong>
                   {preparando !== v.id && <button className="botao p" type="button" data-preparar={v.id} {...trava()} onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
                 </div>
                 {preparando === v.id && (
-                  <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, perfil, pdfs)} pdfs={pdfs} perfil={perfil}
-                    rotulo="Preparar candidatura" ocupado={ocupado} foraDoPacote={perguntasSensiveisDoPerfil(perfil)}
+                  <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, dono, pdfs)} pdfs={pdfs} perfil={dono}
+                    rotulo="Preparar candidatura" ocupado={ocupado} foraDoPacote={perguntasSensiveisDoPerfil(dono)}
                     onSalvar={k => preparar(v.id, k)} onCancelar={() => { devolverFoco.current = `[data-preparar="${v.id}"]`; setPreparando(null); }} />
                 )}
               </li>
-            ))}
+            );})}
           </ul>
         </section>
       )}
@@ -346,7 +361,7 @@ export function TelaFila() {
                   </header>
                   <p className="situacao">{situacao(c)}</p>
                   {editando === c.id ? (
-                    <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} perfil={perfil} rotulo="Salvar pacote" ocupado={ocupado}
+                    <PacoteForm inicial={c.conteudo as unknown as ConteudoPacote} pdfs={pdfs} perfil={v && perfilDoPacote(app.estado, v)} rotulo="Salvar pacote" ocupado={ocupado}
                       onSalvar={k => salvarEdicao(c, k)} onCancelar={() => { devolverFoco.current = botaoEditar(c.id); setEditando(null); }} />
                   ) : (<>
                   {c.plataforma === 'formulario' && (
