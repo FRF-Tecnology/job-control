@@ -158,6 +158,30 @@ describe('Radar de vagas', () => {
     expect(screen.getByText(/Java Engineer · Remoto · Vagas do Brasil/)).toBeTruthy();
     expect(screen.getByText('Informe de qual país você vai trabalhar.')).toBeTruthy();
   });
+  it('sem nota A, Recomendadas aponta para as vagas a conferir', () => {
+    montar([vaga('b1', 'B'), vaga('b2', 'B'), { ...vaga('c1', 'C') }]);
+    expect(screen.getByRole('heading', { name: 'Nenhuma vaga com nota A nesta busca' })).toBeTruthy();
+    expect(screen.getByText('2 vagas com nota B ou ainda sem avaliação esperam sua conferência.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver vagas a conferir' }));
+    expect(screen.getByRole('button', { name: 'A conferir' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /Empresa b1 Engenharia b1/ })).toBeTruthy();
+  });
+  it('sem nada a conferir, Recomendadas mantém o aviso de antes', () => {
+    montar([{ ...vaga('c1', 'C') }]);
+    expect(screen.queryByRole('button', { name: 'Ver vagas a conferir' })).toBeNull();
+  });
+  it('durante a busca, sem nota A ainda, avisa e aponta para as vagas a conferir', async () => {
+    let terminar: (b: unknown) => void = () => {};
+    const api = vi.fn(() => new Promise(fim => { terminar = fim; }));
+    montar([vaga('b1', 'B')], api);
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar vagas' }));
+    expect(screen.getByText('Buscando vagas para o seu perfil…')).toBeTruthy();
+    expect(screen.getByText('Ainda nenhuma vaga com nota A. 1 vaga com nota B ou ainda sem avaliação espera sua conferência.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver vagas a conferir' }));
+    expect(screen.getByRole('button', { name: /Empresa b1 Engenharia b1/ })).toBeTruthy();
+    // A busca em andamento fica guardada por perfil: termina aqui para não vazar para os outros testes.
+    await act(async () => { terminar({ encontradas: 1, novas: 1, grupos: { A: 0, B: 1, C: 0 }, avisos: [], pendentes: 0, puladas: 0 }); });
+  });
   it('abre um anúncio sem registrar envio e retoma a intenção salva depois de reabrir', async () => {
     const v = vaga('a', 'A');
     const vagas = [v];
