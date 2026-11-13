@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Contexto, type App } from '../app/contexto';
-import { ConexaoOnboarding } from './ConexaoOnboarding';
+import { avisoDeDemora, ConexaoOnboarding, msgDemora } from './ConexaoOnboarding';
 
 afterEach(cleanup);
 it('uma resposta sem confirmação explícita não libera o perfil', async () => {
@@ -62,4 +62,23 @@ it('mantém a pessoa na etapa e permite testar a conexão salva novamente', asyn
   fireEvent.click(screen.getByRole('button', { name: /Usar conexão atual/ }));
   await vi.waitFor(() => expect(avancar).toHaveBeenCalledOnce());
   expect(api.mock.calls.every(c => ['/api/v1/ia', '/api/v1/ia/testar'].includes(c[0]))).toBe(true);
+});
+
+it('explica a espera quando a verificação demora e some quando a IA responde', async () => {
+  let responder: (v: unknown) => void = () => {};
+  const api = vi.fn((u: string) => u.endsWith('/ia') ? Promise.resolve({ configurada: true, provedor: 'anthropic', chaves: { anthropic: '…teste' }, clis: [] })
+    : u.endsWith('/ia/testar') ? new Promise(fim => { responder = fim; }) : Promise.resolve({}));
+  const avancar = montar(api as unknown as App['api']);
+  const botao = await screen.findByRole('button', { name: 'Usar conexão atual' });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    fireEvent.click(botao);
+    await act(async () => { vi.advanceTimersByTime(avisoDeDemora - 1); });
+    expect(screen.queryByText(msgDemora)).toBeNull();
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(screen.getByText(msgDemora)).toBeTruthy();
+    await act(async () => { responder({ ok: true, verificacao: '13' }); });
+    expect(screen.queryByText(msgDemora)).toBeNull();
+  } finally { vi.useRealTimers(); }
+  expect(avancar).toHaveBeenCalled();
 });
