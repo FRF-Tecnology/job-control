@@ -118,3 +118,5 @@
   .pr-progress { gap: 6px; font-size: .74rem; }
   .pr-progress b { width: 12px; }
 }
+/* Aviso curto abaixo do e-mail e do telefone. */
+.pr-nota { margin: -4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
