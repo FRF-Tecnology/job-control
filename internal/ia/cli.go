@@ -72,26 +72,36 @@ type cli struct{ qual string }
 
 func (c cli) Nome() string { return c.qual + "-cli" }
 
+// pastasDoSistemaCLI são as pastas do Homebrew, onde `brew install` (e o npm do Node do Homebrew) põe o
+// Claude Code: /opt/homebrew/bin no Mac com Apple Silicon e /usr/local/bin no Mac com Intel. Um app aberto
+// pelo Finder recebe só /usr/bin:/bin:/usr/sbin:/sbin no PATH e não enxerga nenhuma das duas.
+// É variável só para o teste trocar por uma pasta temporária.
+var pastasDoSistemaCLI = []string{"/opt/homebrew/bin", "/usr/local/bin"}
+
 // Aplicativos abertos pelo Finder/Explorer nem sempre herdam o PATH do terminal.
-// Só consultamos a instalação nativa conhecida da pessoa, sem shell ou download.
+// Só consultamos as instalações conhecidas da pessoa (a nativa e, fora do Windows, a do Homebrew),
+// sem shell ou download.
 func localizarCLI(comando string) (string, error) {
 	p, err := exec.LookPath(comando)
 	if err == nil || comando != "claude" || !errors.Is(err, exec.ErrNotFound) {
 		return p, err
 	}
-	casa, e := os.UserHomeDir()
-	if e != nil || !filepath.IsAbs(casa) {
-		return "", err
-	}
 	nome := "claude"
+	var pastas []string
+	if casa, e := os.UserHomeDir(); e == nil && filepath.IsAbs(casa) {
+		pastas = append(pastas, filepath.Join(casa, ".local", "bin"))
+	}
 	if runtime.GOOS == "windows" {
 		nome += ".exe"
+	} else {
+		pastas = append(pastas, pastasDoSistemaCLI...)
 	}
-	p, e = exec.LookPath(filepath.Join(casa, ".local", "bin", nome))
-	if e != nil {
-		return "", err
+	for _, pasta := range pastas {
+		if p, e := exec.LookPath(filepath.Join(pasta, nome)); e == nil {
+			return p, nil
+		}
 	}
-	return p, nil
+	return "", err
 }
 
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
