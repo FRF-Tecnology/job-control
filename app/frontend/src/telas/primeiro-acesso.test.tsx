@@ -68,6 +68,27 @@ function editar(rotulo: string | RegExp, valor: string) {
 }
 
 describe('Primeiro acesso', () => {
+  it('ao escolher o mercado, sugere país e moeda sem passar por cima do que a pessoa escolheu', async () => {
+    montar({ ...perfil, foco: undefined, pretensaoUSD: undefined });
+    await conectar(); await escolher('MeuCV.pdf'); await revisar();
+    const valor = (rotulo: string) => (screen.getByLabelText(rotulo) as HTMLSelectElement).value;
+    expect(valor('Moeda')).toBe('USD');
+    fireEvent.click(screen.getByRole('radio', { name: 'Nacional' }));
+    expect(valor('País de trabalho')).toBe('BR');
+    expect(valor('Moeda')).toBe('BRL');
+    fireEvent.click(screen.getByRole('radio', { name: 'Internacional' }));
+    expect(valor('País de trabalho')).toBe('BR'); // a pessoa continua trabalhando do Brasil
+    expect(valor('Moeda')).toBe('USD');
+    editar('Moeda', 'EUR'); editar('País de trabalho', 'PT');
+    fireEvent.click(screen.getByRole('radio', { name: 'Nacional' }));
+    expect(valor('Moeda')).toBe('EUR');
+    expect(valor('País de trabalho')).toBe('PT');
+  });
+  it('abre a moeda em real para um perfil Nacional ainda sem faixa', async () => {
+    montar({ ...perfil, foco: 'nacional', pretensaoUSD: undefined });
+    await conectar(); await escolher('MeuCV.pdf'); await revisar();
+    expect((screen.getByLabelText('Moeda') as HTMLSelectElement).value).toBe('BRL');
+  });
   it('reabre a etapa, os campos e o mesmo PDF após verificar a conexão novamente', async () => {
     const { rascunho } = montar();
     await escolher('Curriculo original.pdf'); await conectar(); await revisar();
