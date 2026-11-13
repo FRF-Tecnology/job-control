@@ -38,10 +38,37 @@ const (
 	msgVagaLenta      = "Uma ou mais vagas ficaram pendentes porque a IA demorou demais para responder. Elas entram na próxima rodada."
 )
 
+// semVazio trata o campo vazio como ausente na assinatura. O primeiro acesso não grava
+// titulosEquivalentes nem cidadeTrabalho; o Perfil e IA grava [] e "". Sem isso, o primeiro
+// "Salvar perfil", mesmo sem mudar nada, trocava a assinatura e mandava todas as vagas avaliadas
+// de volta para a triagem. O vazio vira nil, que é como o campo ausente já entrava: as assinaturas
+// gravadas antes desta mudança continuam iguais. Zero (ex.: experienciaAnos) não é vazio.
+func semVazio(v any) any {
+	switch x := v.(type) {
+	case string:
+		if strings.TrimSpace(x) == "" {
+			return nil
+		}
+	case []any:
+		if len(x) == 0 {
+			return nil
+		}
+	case []string:
+		if len(x) == 0 {
+			return nil
+		}
+	case Objeto:
+		if len(x) == 0 {
+			return nil
+		}
+	}
+	return v
+}
+
 func assinaturaDeBusca(perfil Objeto) string {
 	dados := Objeto{}
 	for _, campo := range []string{"cargo", "titulosEquivalentes", "paisTrabalho", "cidadeTrabalho", "foco", "filtros", "contratos", "stackPrincipal", "stackSecundaria", "ingles", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "experienciaAnos", "formacao", "cidade"} {
-		dados[campo] = perfil[campo]
+		dados[campo] = semVazio(perfil[campo])
 	}
 	// Mantenha a assinatura de quem ainda usa o perfil anterior à faixa mensal.
 	if faixa := perfil["faixaSalarial"]; faixa != nil {
