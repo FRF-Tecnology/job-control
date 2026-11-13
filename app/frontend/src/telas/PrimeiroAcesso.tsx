@@ -24,7 +24,8 @@ const lista = (v: unknown): string[] => Array.isArray(v) ? v.filter((item): item
 const termos = (texto: string) => [...new Set(texto.split(/[,;\n]/).map(t => t.trim()).filter(Boolean))];
 
 function perfilInicial(perfil: any = {}) {
-  const faixa = perfil.faixaSalarial ?? { min: perfil.pretensaoUSD, moeda: 'USD' };
+  // Sem faixa salva, a moeda segue o mercado (Nacional pensa o salário em reais); a pretensão antiga é sempre em USD.
+  const faixa = perfil.faixaSalarial ?? { min: perfil.pretensaoUSD, moeda: !perfil.pretensaoUSD && perfil.foco === 'nacional' ? 'BRL' : 'USD' };
   return {
     cargo: perfil.cargo ?? '', niveis: lista(perfil.filtros?.niveis), modelos: lista(perfil.filtros?.modelo),
     paisTrabalho: String(perfil.paisTrabalho ?? ''), cidadeTrabalho: String(perfil.cidadeTrabalho ?? ''),
@@ -138,6 +139,20 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
     editados.current.add(chave);
     rascunho.alterar({dados:{[chave]:valor},editados:[...editados.current]});
     setDados(antes => ({ ...antes, [chave]: valor })); setErro('');
+  }
+  // O mercado já indica o país de trabalho e a moeda do salário. Preenche os dois só enquanto a pessoa não mexeu
+  // neles, e sem marcar como editados (trocar o mercado de novo continua ajustando).
+  function escolherMercado(foco: Dados['foco']) {
+    const padrao: Partial<Dados> = {};
+    if (foco === 'nacional' && !dados.paisTrabalho && !editados.current.has('paisTrabalho')) padrao.paisTrabalho = 'BR';
+    if (!editados.current.has('moeda') && !dados.minimo && !dados.maximo && (foco === 'nacional' || foco === 'internacional')) {
+      padrao.moeda = foco === 'nacional' ? 'BRL' : 'USD';
+    }
+    campo('foco', foco);
+    if (Object.keys(padrao).length) {
+      rascunho.alterar({ dados: padrao, editados: [...editados.current] });
+      setDados(antes => ({ ...antes, ...padrao }));
+    }
   }
   async function selecionar(arquivos: ArrayLike<File> | null) {
     if (extraindo || salvando || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito') return;
@@ -347,7 +362,7 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
               <legend>Filtros de busca</legend>
               <div className="pa-campos">
                 <fieldset><legend>Mercado de vagas</legend><div className="pa-opcoes">{(Object.entries(NOMES_FOCO) as [keyof typeof NOMES_FOCO, string][]).map(([key, nome], i) =>
-                  <label key={key}><input id={i === 0 ? 'pa-mercado' : undefined} type="radio" name="mercado" checked={dados.foco === key} onChange={() => campo('foco', key)} /><span>{nome}</span></label>)}</div></fieldset>
+                  <label key={key}><input id={i === 0 ? 'pa-mercado' : undefined} type="radio" name="mercado" checked={dados.foco === key} onChange={() => escolherMercado(key)} /><span>{nome}</span></label>)}</div></fieldset>
                 <Opcoes nome="modelos" titulo="Modelos de trabalho aceitos" itens={MODELOS} ativos={dados.modelos} mudar={v => campo('modelos', v)} />
                 <label>País de trabalho<select value={dados.paisTrabalho} onChange={e => campo('paisTrabalho',e.target.value)}>
                   <option value="">Selecione de onde vai trabalhar</option>{paises.map(([codigo,nome]) => <option key={codigo} value={codigo}>{nome}</option>)}
