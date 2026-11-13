@@ -97,6 +97,29 @@ function rotulo(c: Candidatura) {
   return NOME_ESTADO[c.estado];
 }
 
+/** Quanto tempo a tela segura o cartão pedido no lugar enquanto os painéis de cima terminam de carregar. */
+export const ancoraDoCartaoMs = 2000;
+
+// Vindo de "Abrir a Fila", a tela rola até o cartão. Os painéis acima dele (envio, Lista do dia, limites) chegam
+// depois e empurravam o cartão ~1.700 px para baixo, para fora da tela (em ~4 de cada 10 aberturas no celular).
+// Enquanto a página muda de tamanho, rola de novo até o cartão; para no primeiro toque, rolagem ou tecla da pessoa,
+// e de qualquer jeito depois de ancoraDoCartaoMs.
+export function rolarAteOCartao(id: string) {
+  const ir = () => document.querySelector(`[data-testid="${id}"]`)?.scrollIntoView({ block: 'start' });
+  requestAnimationFrame(ir);
+  if (typeof ResizeObserver === 'undefined') return;
+  const observador = new ResizeObserver(() => requestAnimationFrame(ir));
+  observador.observe(document.body);
+  const eventos = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
+  const parar = () => {
+    observador.disconnect();
+    clearTimeout(prazo);
+    for (const ev of eventos) removeEventListener(ev, parar, true);
+  };
+  const prazo = setTimeout(parar, ancoraDoCartaoMs);
+  for (const ev of eventos) addEventListener(ev, parar, true);
+}
+
 export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
   const app = useApp();
   const [lista, setLista] = useState<Candidatura[] | null>(null);
@@ -138,7 +161,7 @@ export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
     history.replaceState(null, '', '#/fila');
     if (!/^[A-Za-z0-9._-]{1,80}$/.test(pedidoPreparar)) return;
     const cand = lista.find(c => c.vagaId === pedidoPreparar && c.estado !== 'cancelada');
-    if (cand) { requestAnimationFrame(() => document.querySelector(`[data-testid="${cand.id}"]`)?.scrollIntoView({ block: 'start' })); return; }
+    if (cand) { rolarAteOCartao(cand.id); return; }
     if ((app.estado.vagas ?? []).some((v: any) => v.id === pedidoPreparar)) { setEditando(null); setPreparando(pedidoPreparar); }
   }, [lista, pedidoPreparar]); // eslint-disable-line react-hooks/exhaustive-deps
 
