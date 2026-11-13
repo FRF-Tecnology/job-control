@@ -79,6 +79,8 @@
 .rd-loading:has(.rd-loading-nota) { padding: 14px 20px; margin-bottom: 12px; }
 .rd-loading:has(.rd-loading-nota) p { margin: 0; }
 .rd-loading .rd-loading-nota { margin-top: 4px; }
+/* Sem nota A ainda: o aviso e o atalho para "A conferir" na mesma linha (quebram no celular). */
+.rd-loading div.rd-loading-nota { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .rd-skeletons > div { display: flex; gap: 12px; align-items: center; }
 .rd-skeletons i, .rd-skeletons b { display: block; border-radius: 4px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); animation: rd-pulse 1s ease-in-out infinite alternate; }
 .rd-skeletons i { width: 34px; height: 34px; border-radius: 8px; }

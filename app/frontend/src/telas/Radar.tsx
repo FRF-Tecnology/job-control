@@ -192,6 +192,12 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const candidatas = disponiveis.filter(v => categoria(v, agora) === filtro);
   const visiveis = filtro === 'Recomendadas' ? candidatas.slice(0,10) : candidatas;
   const atual = visiveis.find(v => v.id === selecao) ?? visiveis[0];
+  // Recomendadas só mostra nota A. Numa rodada só com B (ou ainda avaliando), a aba parecia vazia e as vagas
+  // ficavam escondidas em "A conferir": a tela aponta para lá.
+  const aConferir = disponiveis.filter(v => categoria(v, agora) === 'A conferir').length;
+  const semNotaA = filtro === 'Recomendadas' && !atual && aConferir > 0;
+  const textoSemNotaA = `${plural(aConferir, 'vaga com nota B ou ainda sem avaliação espera', 'vagas com nota B ou ainda sem avaliação esperam')} sua conferência.`;
+  const verAConferir = <button type="button" className="btn secondary" onClick={() => mudarFiltro('A conferir')}>Ver vagas a conferir</button>;
   const recibo = todas.find(v => v.id === confirmada && (foiEnviada(v) || v.etapa === 'enviada'));
   const puladas = todas.filter(v => v.etapa === 'pulada' && v.triagemBusca !== 'expirada');
   const ultima = estado.rodadas?.filter(r => (r.perfilBuscaId ?? 'original') === idPerfil).slice(-1)[0];
@@ -287,6 +293,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
       {/* A triagem leva de 20 a 80 s por vaga: durante a busca, as já avaliadas aparecem abaixo (a busca recarrega o estado). */}
       {buscando && <div className="rd-loading" aria-busy="true"><p role="status">Buscando vagas para o seu perfil…</p>
         {atual ? <p className="rd-loading-nota">As vagas já avaliadas aparecem abaixo enquanto a busca continua.</p>
+          : semNotaA ? <div className="rd-loading-nota"><p>Ainda nenhuma vaga com nota A. {textoSemNotaA}</p>{verAConferir}</div>
           : <div className="rd-skeletons" aria-hidden="true">{[0, 1, 2].map(n => <div key={n}><i /><span><b /><b /></span></div>)}</div>}
       </div>}
       {(!buscando || atual) && <>
@@ -311,7 +318,10 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
             </button></li>)}
           </ul>
           <VagaDoRadar key={atual.id} vaga={atual} pretensao={pretensao} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer} />
-        </div> : disponiveis.length || filtro !== 'Recomendadas' ? <>
+        </div> : semNotaA ? <>
+          <EstadoRadar titulo="Nenhuma vaga com nota A nesta busca" mensagem={textoSemNotaA}>{verAConferir}</EstadoRadar>
+          {desfazer}
+        </> : disponiveis.length || filtro !== 'Recomendadas' ? <>
           <EstadoRadar titulo={filtro === 'Recomendadas' ? 'Nenhuma recomendação confirmada' : filtro === 'A conferir' ? 'Nenhuma vaga a conferir' : 'Nenhuma vaga no histórico'}
             mensagem={filtro === 'Recomendadas' ? 'Veja se há vagas a conferir ou anúncios no histórico.' : 'As vagas desta categoria aparecerão aqui.'}/>
           {desfazer}
