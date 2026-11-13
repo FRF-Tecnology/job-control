@@ -153,6 +153,11 @@ describe('Radar de vagas', () => {
     expect(screen.queryByText('Buscando vagas para o seu perfil…')).toBeNull();
     expect(screen.getByRole('button', { name: /Empresa nova Engenharia nova/ })).toBeTruthy();
   });
+  it('mostra o mercado como "vagas do Brasil", sem parecer o país que falta no perfil', () => {
+    montar([], vi.fn(), { perfil: { ...perfil, foco: 'nacional' } });
+    expect(screen.getByText(/Java Engineer · Remoto · Vagas do Brasil/)).toBeTruthy();
+    expect(screen.getByText('Informe de qual país você vai trabalhar.')).toBeTruthy();
+  });
   it('abre um anúncio sem registrar envio e retoma a intenção salva depois de reabrir', async () => {
     const v = vaga('a', 'A');
     const vagas = [v];

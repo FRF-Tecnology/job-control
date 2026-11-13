@@ -27,7 +27,9 @@ type Nota = typeof notas[number];
 const filtros = ['Recomendadas', 'A conferir', 'Histórico'] as const;
 type Filtro = typeof filtros[number];
 const afinidade: Record<Nota, string> = { A: 'Alta compatibilidade', B: 'Compatibilidade média', C: 'Baixa compatibilidade' };
-const mercados: Record<string, string> = { nacional: 'Brasil', internacional: 'Exterior', ambos: 'Brasil e exterior' };
+// No resumo do perfil, o mercado aparece como "vagas de…": sozinho, "Brasil" parecia o país de trabalho da pessoa,
+// logo acima do aviso pedindo esse país.
+const mercados: Record<string, string> = { nacional: 'Vagas do Brasil', internacional: 'Vagas do exterior', ambos: 'Vagas do Brasil e do exterior' };
 const temNota = (nota?: string): nota is Nota => notas.includes(nota as Nota);
 const ordem = (v: Vaga) => temNota(v.aderencia) ? notas.indexOf(v.aderencia) : notas.length;
 const pequena = () => window.matchMedia?.('(max-width: 760px)').matches ?? false;
