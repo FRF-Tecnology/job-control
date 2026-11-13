@@ -4,14 +4,19 @@ import { plural } from '../util';
 
 type Balanco = { novas: number; encontradas: number; grupos: Record<string, number>; puladas: number; pendentes: number; avisos: string[] };
 const emCurso = new Map<string, Promise<Balanco>>();
+/** De quanto em quanto tempo a tela relê as vagas durante a busca: a triagem grava uma vaga por vez. */
+export const intervaloDaBusca = 4000;
 
 function iniciar(app: App, perfil: string): Promise<Balanco> {
   const existente = emCurso.get(perfil);
   if (existente) return existente;
+  // A rodada pode levar minutos (até 10 triagens da IA, uma por vez). Relendo o estado, as vagas já avaliadas
+  // aparecem no Radar sem esperar o fim.
+  const relogio = setInterval(() => { void app.recarregar().catch(() => { /* a próxima volta tenta de novo */ }); }, intervaloDaBusca);
   const pedido = app.api('/api/v1/busca', 'POST', { perfilBuscaId: perfil }).then(async (r: Balanco) => {
     await app.recarregar();
     return r;
-  }).finally(() => emCurso.delete(perfil));
+  }).finally(() => { clearInterval(relogio); emCurso.delete(perfil); });
   emCurso.set(perfil, pedido);
   return pedido;
 }

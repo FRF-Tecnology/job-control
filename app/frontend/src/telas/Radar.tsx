@@ -277,14 +277,17 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
     </section>
     <section className="rd-results" aria-labelledby="rd-title" ref={regiao}>
       <div className="rd-toolbar"><div className="rd-heading"><h2 id="rd-title" tabIndex={-1}>Vagas encontradas</h2>
-        {!buscando && <span className="rd-count" aria-label={plural(visiveis.length, 'vaga disponível', 'vagas disponíveis')}>{visiveis.length}</span>}</div>
-        {!buscando && <div className="rd-filters" role="group" aria-label="Filtrar vagas por compatibilidade">
+        <span className="rd-count" aria-label={plural(visiveis.length, 'vaga disponível', 'vagas disponíveis')}>{visiveis.length}</span></div>
+        <div className="rd-filters" role="group" aria-label="Filtrar vagas por compatibilidade">
           {filtros.map(nome => <button key={nome} type="button" aria-pressed={filtro === nome} onClick={() => mudarFiltro(nome)}>{nome}</button>)}
-        </div>}
+        </div>
       </div>
-      {buscando ? <div className="rd-loading" aria-busy="true"><p role="status">Buscando vagas para o seu perfil…</p>
-        <div className="rd-skeletons" aria-hidden="true">{[0, 1, 2].map(n => <div key={n}><i /><span><b /><b /></span></div>)}</div>
-      </div> : <>
+      {/* A triagem leva de 20 a 80 s por vaga: durante a busca, as já avaliadas aparecem abaixo (a busca recarrega o estado). */}
+      {buscando && <div className="rd-loading" aria-busy="true"><p role="status">Buscando vagas para o seu perfil…</p>
+        {atual ? <p className="rd-loading-nota">As vagas já avaliadas aparecem abaixo enquanto a busca continua.</p>
+          : <div className="rd-skeletons" aria-hidden="true">{[0, 1, 2].map(n => <div key={n}><i /><span><b /><b /></span></div>)}</div>}
+      </div>}
+      {(!buscando || atual) && <>
         {recibo && <article aria-label={recibo.titulo} className="rd-confirmacao">
           <p className="rd-enviada" role="status"><IconeUI nome="check" tamanho={16} />Candidatura enviada</p>
           <strong>{recibo.titulo}</strong><span>{recibo.empresa}</span><a className="btn secondary" href="#/quadro">Ver no quadro</a>

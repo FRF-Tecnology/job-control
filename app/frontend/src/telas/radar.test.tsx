@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, type App } from '../app/contexto';
 import { TelaRadar } from './Radar';
+import { intervaloDaBusca } from './BuscaDoPerfil';
 
 const abrir = vi.hoisted(() => vi.fn());
 vi.mock('@wailsio/runtime', () => ({ Browser: { OpenURL: abrir } }));
@@ -135,6 +136,23 @@ describe('Radar de vagas', () => {
     expect(screen.queryByText('A busca foi interrompida')).toBeNull();
   });
 
+  it('mostra as vagas já avaliadas enquanto a busca continua', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let terminar: (b: unknown) => void = () => {};
+    const api = vi.fn(() => new Promise(fim => { terminar = fim; }));
+    const vagas: any[] = [];
+    montar(vagas, api);
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar vagas' }));
+    expect(screen.getByText('Buscando vagas para o seu perfil…')).toBeTruthy();
+    vagas.push(vaga('nova', 'A')); // a triagem gravou a primeira vaga e a busca continua
+    await act(async () => { vi.advanceTimersByTime(intervaloDaBusca); });
+    expect(screen.getByRole('button', { name: /Empresa nova Engenharia nova/ })).toBeTruthy();
+    expect(screen.getByText('As vagas já avaliadas aparecem abaixo enquanto a busca continua.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Buscando…' })).toBeTruthy();
+    await act(async () => { terminar({ encontradas: 1, novas: 1, grupos: { A: 1, B: 0, C: 0 }, avisos: [], pendentes: 0, puladas: 0 }); });
+    expect(screen.queryByText('Buscando vagas para o seu perfil…')).toBeNull();
+    expect(screen.getByRole('button', { name: /Empresa nova Engenharia nova/ })).toBeTruthy();
+  });
   it('abre um anúncio sem registrar envio e retoma a intenção salva depois de reabrir', async () => {
     const v = vaga('a', 'A');
     const vagas = [v];

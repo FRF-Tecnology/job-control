@@ -21,6 +21,23 @@ import (
 
 const limiteDaBusca = 10
 
+// Prazos da busca. A coleta (os sites) tem o prazo dela, e a triagem não divide esse prazo: cada vaga tem o
+// próprio, e a rodada inteira tem um teto. Com a IA levando de 20 a 80 s por vaga (Claude Code, Haiku), um prazo
+// único de 3 minutos para a coleta e as 10 triagens cortava a rodada depois de 3 ou 4 vagas, e a tela pedia para
+// conferir a conexão sem a conexão ter problema. São variáveis só para os testes encurtarem.
+var (
+	prazoDaColeta = 3 * time.Minute
+	// Abaixo dos 120 s da própria CLI e do cliente HTTP da IA, para o prazo da vaga vencer primeiro e a vaga
+	// lenta ficar pendente (sem parar a rodada).
+	prazoPorVaga   = 110 * time.Second
+	prazoDaTriagem = 12 * time.Minute
+)
+
+const (
+	msgRodadaSemTempo = "A rodada usou o tempo dela antes de avaliar todas as vagas. Clique em Retomar avaliação das vagas para continuar de onde parou."
+	msgVagaLenta      = "Uma ou mais vagas ficaram pendentes porque a IA demorou demais para responder. Elas entram na próxima rodada."
+)
+
 func assinaturaDeBusca(perfil Objeto) string {
 	dados := Objeto{}
 	for _, campo := range []string{"cargo", "titulosEquivalentes", "paisTrabalho", "cidadeTrabalho", "foco", "filtros", "contratos", "stackPrincipal", "stackSecundaria", "ingles", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "experienciaAnos", "formacao", "cidade"} {
@@ -338,9 +355,9 @@ func (a *API) buscarETriar(ctx context.Context, esperado string) (Resposta, erro
 	if err != nil {
 		return Resposta{}, err
 	}
-	prazo, cancelar := context.WithTimeout(ctx, 3*time.Minute)
-	defer cancelar()
-	coleta := a.consultarVagas(prazo, e.Perfil)
+	prazoColeta, cancelarColeta := context.WithTimeout(ctx, prazoDaColeta)
+	coleta := a.consultarVagas(prazoColeta, e.Perfil)
+	cancelarColeta()
 	if ctx.Err() != nil {
 		return Resposta{}, ctx.Err()
 	}
@@ -350,14 +367,20 @@ func (a *API) buscarETriar(ctx context.Context, esperado string) (Resposta, erro
 	if err != nil {
 		return Resposta{}, err
 	}
-	falhaIndividual := false
+	rodada, cancelarRodada := context.WithTimeout(ctx, prazoDaTriagem)
+	defer cancelarRodada()
+	falhaIndividual, vagaLenta := false, false
 	for i, v := range lote {
 		var nota triagem.Resultado
 		var err error
+		venceuDaVaga := false
 		if v["radarClasse"] == "excluir" {
 			nota = triagem.Resultado{Estado: "pulada", Decisao: "pular", Motivo: dominio.Texto(v["radarMotivo"]), MotivoPulo: dominio.Texto(v["radarMotivo"])}
 		} else {
-			nota, err = triagem.AvaliarRadar(prazo, motor, e.Perfil, v)
+			porVaga, cancelarVaga := context.WithTimeout(rodada, prazoPorVaga)
+			nota, err = triagem.AvaliarRadar(porVaga, motor, e.Perfil, v)
+			venceuDaVaga = errors.Is(porVaga.Err(), context.DeadlineExceeded) && rodada.Err() == nil
+			cancelarVaga()
 			if nota.Aderencia == "A" && v["radarClasse"] != "forte" {
 				nota.Aderencia = "B"
 			}
@@ -369,15 +392,25 @@ func (a *API) buscarETriar(ctx context.Context, esperado string) (Resposta, erro
 			return Resposta{}, ctx.Err()
 		}
 		if err != nil {
+			if rodada.Err() != nil {
+				// O teto da rodada venceu: as que faltam ficam para o Retomar, sem culpar a conexão.
+				r.Avisos = append(r.Avisos, msgRodadaSemTempo)
+				r.Pendentes += len(lote) - i
+				break
+			}
 			var daIA *ia.ErroIA
-			if errors.As(err, &daIA) && (daIA.Tipo == "regra" || daIA.Tipo == "esquema" || daIA.Tipo == "entrada") {
+			if venceuDaVaga || errors.As(err, &daIA) && (daIA.Tipo == "regra" || daIA.Tipo == "esquema" || daIA.Tipo == "entrada") {
 				aplicado, err := a.salvarParecer(ctx, v, assinatura, triagem.Resultado{Estado: "pendente"})
 				if err != nil {
 					return Resposta{}, err
 				}
 				if aplicado {
 					r.Pendentes++
-					falhaIndividual = true
+					if venceuDaVaga {
+						vagaLenta = true
+					} else {
+						falhaIndividual = true
+					}
 				}
 				continue
 			}
@@ -400,6 +433,9 @@ func (a *API) buscarETriar(ctx context.Context, esperado string) (Resposta, erro
 	}
 	if falhaIndividual {
 		r.Avisos = append(r.Avisos, "Uma ou mais vagas ficaram pendentes porque a IA não devolveu uma avaliação válida.")
+	}
+	if vagaLenta {
+		r.Avisos = append(r.Avisos, msgVagaLenta)
 	}
 	err = a.gravar(ctx, func(estado dominio.Estado) (dominio.Estado, error) {
 		if err := conferirPerfilBusca(estado, r.perfilBuscaID); err != nil {
