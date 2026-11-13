@@ -46,6 +46,7 @@ func TestDetectarCLIsSemNadaInstalado(t *testing.T) {
 	t.Setenv("HOME", casa)
 	t.Setenv("USERPROFILE", casa)
 	t.Setenv("PATH", t.TempDir())
+	pastasDoSistemaNoTeste(t) // nem o Claude do Homebrew de quem roda o teste
 	for _, e := range DetectarCLIs(context.Background()) {
 		if e.Instalada || e.Pronta || e.Aviso != "" || e.Motivo != "" {
 			t.Errorf("%s: %+v", e.Comando, e)

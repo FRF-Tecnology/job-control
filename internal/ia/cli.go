@@ -128,7 +128,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 	var saida, erro limitado
 	saida.max, erro.max = limiteSaida, 64<<10
 	cmd.Stdout, cmd.Stderr = &saida, &erro
-	cmd.Env = semChaves(os.Environ())
+	cmd.Env = semChaves(cmd.Env)
 	err = cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
 		return nil, "", &ErroIA{Tipo: "provedor", Mensagem: comando + ": passou do tempo limite", Provedor: comando + "-cli", Reintentavel: true}
@@ -139,8 +139,34 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 // comandoCLI cria o processo de uma CLI. É o único lugar que faz isso: no Windows, a CLI roda sem janela de console.
 func comandoCLI(ctx context.Context, comando string, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, comando, args...)
+	cmd.Env = ambienteDaCLI(comando)
 	semJanela(cmd)
 	return cmd
+}
+
+// ambienteDaCLI é o ambiente do app com a pasta da CLI no começo do PATH. O Claude instalado pelo npm do Homebrew
+// é um script "#!/usr/bin/env node", e o node mora na mesma pasta (/opt/homebrew/bin). Aberto pelo Finder, o app
+// não tem essa pasta no PATH, e o script sairia com código 127 (node não encontrado).
+func ambienteDaCLI(comando string) []string {
+	env := os.Environ()
+	if !filepath.IsAbs(comando) {
+		return env
+	}
+	pasta := filepath.Dir(comando)
+	for i, v := range env {
+		chave, valor, ok := strings.Cut(v, "=")
+		if !ok || !strings.EqualFold(chave, "PATH") { // no Windows a chave é "Path"
+			continue
+		}
+		for _, p := range filepath.SplitList(valor) {
+			if p == pasta {
+				return env
+			}
+		}
+		env[i] = chave + "=" + pasta + string(os.PathListSeparator) + valor
+		return env
+	}
+	return append(env, "PATH="+pasta)
 }
 
 const msgCmdInseguro = "esta CLI está instalada como .cmd, e o app não passa o pedido pelo cmd.exe; instale a versão nativa (.exe)"
