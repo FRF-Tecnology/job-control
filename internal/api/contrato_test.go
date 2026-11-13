@@ -251,7 +251,7 @@ func TestRotasDoCodigoEstaoNoContrato(t *testing.T) {
 	for _, modelo := range ordenadas(ops) {
 		exemplos[concreto(modelo)] = true
 	}
-	for _, arq := range []string{"api.go", "ia.go", "candidaturas.go", "dados.go", "envio.go"} {
+	for _, arq := range []string{"api.go", "ia.go", "candidaturas.go", "dados.go", "envio.go", "conta.go"} {
 		b, err := os.ReadFile(arq)
 		if err != nil {
 			t.Fatal(err)

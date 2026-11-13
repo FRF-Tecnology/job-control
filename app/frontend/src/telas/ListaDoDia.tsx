@@ -4,7 +4,7 @@
 // servidor confere uma por uma). Contrato 0.7.0 (PR #102, api/openapi.yaml):
 // POST /api/v1/candidaturas/aprovar-lote {itens: [{id, impressao}]} → {aprovadas: [id], recusadas: [{id, motivo}]}.
 import { useMemo, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 
 type Cand = {
   id: string; plataforma: string; url: string; estado: string; impressao: string; criadaEm: string;
@@ -50,6 +50,7 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
   nome: (c: Cand) => string; plataforma: (p: string) => string; onFeito: () => void; onRevisar?: (id: string) => void;
 }) {
   const app = useApp();
+  const trava = useTrava();
   const [escolha, setEscolha] = useState<Record<string, boolean>>({}); // o que a pessoa marcou ou desmarcou
   const marcado = (c: Cand) => escolha[c.id] ?? !precisaRever(c);
   const [ocupado, setOcupado] = useState(false);
@@ -117,7 +118,7 @@ export function ListaDoDia({ candidaturas, calculadas, limites, nome, plataforma
           <h2 id="lista-do-dia-titulo">Lista do dia</h2>
           <p className="mudo">Revise o resumo, tire o que não quiser e aprove tudo de uma vez. "Ver pacote" mostra o conteúdo inteiro.</p>
         </div>
-        <button className="botao" type="button" disabled={ocupado || !escolhidas.length} onClick={aprovar}>
+        <button className="botao" type="button" {...trava(ocupado || !escolhidas.length)} onClick={aprovar}>
           {`Aprovar a lista do dia (${escolhidas.length})`}
         </button>
       </div>

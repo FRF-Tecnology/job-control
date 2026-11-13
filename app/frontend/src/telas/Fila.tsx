@@ -3,7 +3,7 @@
 // partir do pacote mostrado (RFC 8785 + sha256), para a pessoa aprovar exatamente o que vê.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { grupoADireto, perfilDoPacote } from '../app/preparoAutomatico';
-import { ErroApi, useApp, type Pergunta } from '../app/contexto';
+import { ErroApi, useApp, useTrava, type Pergunta } from '../app/contexto';
 import { impressaoCandidatura, type EstruturaFormulario } from '../app/impressao';
 import { FormularioCand, formularioSemAprovar, type CandFormulario } from './Formulario';
 import { pacoteInicial, perguntasSensiveisDoPerfil, type Conteudo as ConteudoPacote } from '../app/pacote';
@@ -99,6 +99,7 @@ function rotulo(c: Candidatura) {
 
 export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
   const app = useApp();
+  const trava = useTrava();
   const [lista, setLista] = useState<Candidatura[] | null>(null);
   const [limites, setLimites] = useState<Record<string, Limite> | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
@@ -325,7 +326,7 @@ export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
               <li key={v.id} className="pronta">
                 <div className="pronta-topo">
                   <strong>{`${v.empresa} — ${v.titulo}`}</strong>
-                  {preparando !== v.id && <button className="botao p" type="button" data-preparar={v.id} onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
+                  {preparando !== v.id && <button className="botao p" type="button" data-preparar={v.id} {...trava()} onClick={() => { setEditando(null); setPreparando(v.id); }}>Preparar candidatura</button>}
                 </div>
                 {preparando === v.id && (
                   <PacoteForm inicial={pacoteInicial({ idioma: v.idioma, contrato: v.contrato, mercado: mercadoDe(v) }, dono, pdfs)} pdfs={pdfs} perfil={dono}
@@ -367,7 +368,7 @@ export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
                     <FormularioCand c={c as unknown as CandFormulario} ocupado={ocupado} onLer={() => lerFormulario(c)} onResponder={k => responderFormulario(c, k)} />
                   )}
                   {(c.estado === 'preparada' || c.estado === 'aprovada') && (
-                    <div className="acoes"><button className="botao-fantasma p" type="button" data-acao="editar" onClick={() => { setPreparando(null); setEditando(c.id); }}>Editar pacote</button></div>
+                    <div className="acoes"><button className="botao-fantasma p" type="button" data-acao="editar" {...trava()} onClick={() => { setPreparando(null); setEditando(c.id); }}>Editar pacote</button></div>
                   )}
                   <details className="pacote" open={c.estado === 'preparada'}>
                     <summary>Pacote que vai para a vaga</summary>
@@ -407,23 +408,23 @@ export function TelaFila({ jornada = false }: { jornada?: boolean } = {}) {
                   {['preparada', 'aprovada', 'bloqueada', 'falhou', 'incerta'].includes(c.estado) && (
                     <div className="acoes acoes-cand">
                       {c.estado === 'preparada' && (
-                        <button className="botao" type="button" disabled={ocupado || conferida !== 'ok' || (c.plataforma === 'formulario' && formularioSemAprovar(c as unknown as CandFormulario))} onClick={() => aprovar(c)}>Aprovar este pacote</button>
+                        <button className="botao" type="button" {...trava(ocupado || conferida !== 'ok' || (c.plataforma === 'formulario' && formularioSemAprovar(c as unknown as CandFormulario)))} onClick={() => aprovar(c)}>Aprovar este pacote</button>
                       )}
                       {c.estado === 'aprovada' && (
-                        <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => acao(c, 'revogar', 'Aprovação retirada. O pacote voltou para revisão.')}>Tirar aprovação</button>
+                        <button className="botao-fantasma" type="button" {...trava(ocupado)} onClick={() => acao(c, 'revogar', 'Aprovação retirada. O pacote voltou para revisão.')}>Tirar aprovação</button>
                       )}
                       {(c.estado === 'bloqueada' || c.estado === 'incerta') && (
-                        <button className="botao" type="button" disabled={ocupado} onClick={() => concluirManual(c)}>Marcar como enviada</button>
+                        <button className="botao" type="button" {...trava(ocupado)} onClick={() => concluirManual(c)}>Marcar como enviada</button>
                       )}
                       {(c.estado === 'bloqueada' || c.estado === 'falhou' || c.estado === 'incerta') && (
-                        <button className="botao-fantasma" type="button" disabled={ocupado} onClick={() => reabrir(c)}>Reabrir</button>
+                        <button className="botao-fantasma" type="button" {...trava(ocupado)} onClick={() => reabrir(c)}>Reabrir</button>
                       )}
                       {/* Gupy e InHire têm login por empresa: entra-se pela página da vaga (jc-a2y.6.7). */}
                       {envio?.ligado && (c.plataforma === 'gupy' || c.plataforma === 'inhire') && ['preparada', 'aprovada', 'bloqueada'].includes(c.estado) && (
-                        <button className="botao-fantasma" type="button" disabled={ocupado || !!envio.login} onClick={() => entrarPela(c)}>{`Entrar ${NA_PLATAFORMA[c.plataforma]} por esta vaga`}</button>
+                        <button className="botao-fantasma" type="button" {...trava(ocupado || !!envio.login)} onClick={() => entrarPela(c)}>{`Entrar ${NA_PLATAFORMA[c.plataforma]} por esta vaga`}</button>
                       )}
                       {c.estado !== 'incerta' && (
-                        <button className="botao-perigo" type="button" disabled={ocupado} onClick={() => cancelar(c)}>Cancelar candidatura</button>
+                        <button className="botao-perigo" type="button" {...trava(ocupado)} onClick={() => cancelar(c)}>Cancelar candidatura</button>
                       )}
                     </div>
                   )}

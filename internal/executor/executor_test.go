@@ -865,3 +865,24 @@ func TestEtapasDoAoVivo(t *testing.T) {
 		t.Fatal("Etapa nil no padrão")
 	}
 }
+
+// Trava das ações (Task 5): sem poder agir (teste acabou, sem assinatura, sem internet, sem conta), o ciclo não pega
+// candidatura nem abre página; ao voltar a poder, envia. Se passar a false no meio da fila, para antes da próxima.
+func TestNaoEnviaSemPoderAgir(t *testing.T) {
+	s := novoCenario(t, novaPagina(), novaPagina())
+	li := s.aprovada("linkedin", linkLI)
+	gp := s.aprovada("gupy", "https://empresa-teste.gupy.io/jobs/1")
+	pode := false
+	s.x.o.PodeAgir = func() bool { return pode }
+	ds, err := s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 0 || s.nav.abertas != 0 || s.cand(li)["estado"] != "aprovada" {
+		t.Fatalf("travado enviou: %v %v, páginas %d, estado %v", ds, err, s.nav.abertas, s.cand(li)["estado"])
+	}
+	// Libera só para a primeira: depois dela, a trava volta e a segunda fica.
+	vezes := 0
+	s.x.o.PodeAgir = func() bool { vezes++; return vezes <= 2 } // o começo do ciclo e a primeira da fila
+	ds, err = s.x.EnviarAprovadas(context.Background())
+	if err != nil || len(ds) != 1 || ds[0].ID != li || s.cand(gp)["estado"] != "aprovada" {
+		t.Fatalf("parar no meio: %v %v, gupy %v", ds, err, s.cand(gp)["estado"])
+	}
+}

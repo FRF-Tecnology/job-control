@@ -2,7 +2,7 @@
 // (padrão 30), com confirmação. PUT /candidaturas/limites/{plataforma} {limite}, só pela tela. A gravação não muda a
 // /versao, então o cartão usa a resposta do PUT.
 import { useEffect, useRef, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 
 export type Limite = { limite: number; usadas: number; renovaEm: string };
 export const MINIMO = 1, MAXIMO = 40, PADRAO = 30;
@@ -14,6 +14,7 @@ export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo, ap
 }) {
   const sobra = Math.max(0, limite.limite - limite.usadas - aprovadas);
   const app = useApp();
+  const trava = useTrava();
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState(String(limite.limite));
   const [erro, setErro] = useState('');
@@ -69,12 +70,12 @@ export function LimiteCartao({ plataforma, nome, na, limite, renova, onSalvo, ap
           <small id={`${id}-dica`} className="mudo">{`Padrão: ${PADRAO}.`}</small>
           {erro && <p id={`${id}-erro`} className="erro-resposta" role="alert">{erro}</p>}
           <div className="acoes">
-            <button className="botao p" type="submit" disabled={ocupado}>Salvar</button>
+            <button className="botao p" type="submit" {...trava(ocupado)}>Salvar</button>
             <button className="botao-fantasma p" type="button" onClick={fechar}>Cancelar</button>
           </div>
         </form>
       ) : (
-        <div><button ref={botao} className="botao-fantasma p" type="button" onClick={abrir} aria-label={`Ajustar limite ${na}`}>Ajustar limite</button></div>
+        <div><button ref={botao} className="botao-fantasma p" type="button" {...trava()} onClick={abrir} aria-label={`Ajustar limite ${na}`}>Ajustar limite</button></div>
       )}
     </div>
   );

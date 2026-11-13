@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/assistente"
 	"github.com/FRF-Tecnology/job-control/internal/config"
+	"github.com/FRF-Tecnology/job-control/internal/conta"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
@@ -89,7 +91,16 @@ func abrirDoAssistente(ctx context.Context) (*api.API, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return api.Nova(arm, api.Opcoes{Canal: dominio.CanalCLI}), func() { arm.Fechar() }, nil
+	// A trava lê licenca.json a cada chamada, sem rede e sem renovar (só o app renova). Build sem nuvem: sem trava.
+	trava, err := conta.TravaDoBuild(pasta)
+	if err != nil {
+		arm.Fechar()
+		return nil, nil, err
+	}
+	if trava == nil {
+		log.Print(conta.AvisoDesligada) // ruling A11: sem trava, como antes (uma vez: um comando por processo)
+	}
+	return api.Nova(arm, api.Opcoes{Canal: dominio.CanalCLI, PodeAgir: trava}), func() { arm.Fechar() }, nil
 }
 
 // entrada: de onde a confirmação do --substituir é lida (o teste troca).

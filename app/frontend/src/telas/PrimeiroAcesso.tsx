@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { useRascunhoOnboarding, type PDFSalvo, type TentativaExterna } from '../app/rascunhoOnboarding';
 import { Icone } from '../componentes';
 import { NOMES_FOCO } from '../dominio/modelo';
@@ -101,6 +101,7 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
   alternarTema: () => void; concluir: (buscar: boolean) => void;
 }) {
   const app = useApp();
+  const trava = useTrava();
   const [dados, setDados] = useState(() => perfilInicial(app.estado.perfil ?? {}));
   const [curriculo, setCurriculo] = useState<PDFSalvo | null>(null);
   const [nomeSelecionado, setNomeSelecionado] = useState('');
@@ -140,7 +141,7 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
     setDados(antes => ({ ...antes, [chave]: valor })); setErro('');
   }
   async function selecionar(arquivos: ArrayLike<File> | null) {
-    if (extraindo || salvando || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito') return;
+    if (trava.travado || extraindo || salvando || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito') return;
     const versao = ++leitura.current;
     setArrastando(false); setErro(''); setLendo(false); setNomeSelecionado(''); pdfParaRepetir.current = undefined;
     if (!arquivos?.length) return;
@@ -214,7 +215,7 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
   }
   async function salvar(ev: FormEvent) {
     ev.preventDefault();
-    if (enviando.current || !podeRevisar || !curriculo) return;
+    if (enviando.current || !podeRevisar || !curriculo || trava.travado) return;
     const buscar = ((ev.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'buscar';
     const problema = validar(dados);
     if (problema) {
@@ -301,8 +302,8 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
                   <div aria-live="polite"><b>{curriculo?.nomeExibicao ?? 'Arraste seu currículo para cá'}</b>
                     <p>{nomeSelecionado ? `Selecionado: ${nomeSelecionado} · Salvando…` : curriculo ? `Currículo salvo neste perfil · ${Math.max(1, Math.ceil(curriculo.tamanho / 1024))} KB` : 'PDF de até 20 MB'}</p></div>
                   <div className="pa-arquivo-acoes">
-                    <button type="button" className="pa-secundario" disabled={extraindo || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito'} onClick={() => inputPDF.current?.click()}>{curriculo ? 'Trocar PDF' : 'Escolher PDF'}</button>
-                    {curriculo && <button type="button" className="pa-link" disabled={extraindo || lendo || rascunho.situacao==='conflito'} onClick={() => void remover()}>Remover</button>}
+                    <button type="button" className="pa-secundario" {...trava(extraindo || lendo || rascunho.revisao.current == null || rascunho.situacao==='conflito')} onClick={() => inputPDF.current?.click()}>{curriculo ? 'Trocar PDF' : 'Escolher PDF'}</button>
+                    {curriculo && <button type="button" className="pa-link" {...trava(extraindo || lendo || rascunho.situacao==='conflito')} onClick={() => void remover()}>Remover</button>}
                   </div>
                   <input type="file" ref={inputPDF} aria-label="Currículo em PDF" accept=".pdf,application/pdf" hidden onChange={e => { void selecionar(e.target.files); e.target.value = ''; }} />
                 </div>
@@ -314,7 +315,7 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
           <footer className="pa-acoes pa-avancar">
             {sugestoes === null && <p className="pa-nota">Ao preencher com IA, você compartilha o texto profissional do currículo com {provedor || 'seu provedor'} para receber sugestões.</p>}
             {sugestoes === null && <button type="button" className="pa-link pa-manual" disabled={!podeRevisar} onClick={() => void irPara(2)}>Preencher manualmente</button>}
-            <button type="button" className="pa-primario" disabled={!podeRevisar} onClick={() => void preencherComIA()}>
+            <button type="button" className="pa-primario" {...trava(!podeRevisar)} onClick={() => void preencherComIA()}>
               {extraindo ? 'Lendo currículo…' : sugestoes === null ? 'Preencher com IA' : 'Revisar critérios'} <span aria-hidden="true">→</span>
             </button>
           </footer>
@@ -370,8 +371,8 @@ export function PrimeiroAcesso({ alternarTema, concluir }: {
           <footer className="pa-acoes">
             <button type="button" className="pa-link" disabled={salvando} onClick={() => void irPara(1)}><span aria-hidden="true">← </span>Voltar</button>
             <div className="pa-salvar-acoes">
-              <button type="submit" className="pa-secundario" disabled={salvando || !podeRevisar}>Concluir perfil</button>
-              <button type="submit" value="buscar" className="pa-primario" disabled={salvando || !podeRevisar}>{salvando ? 'Salvando…' : 'Salvar e buscar vagas'}</button>
+              <button type="submit" className="pa-secundario" {...trava(salvando || !podeRevisar)}>Concluir perfil</button>
+              <button type="submit" value="buscar" className="pa-primario" {...trava(salvando || !podeRevisar)}>{salvando ? 'Salvando…' : 'Salvar e buscar vagas'}</button>
             </div>
           </footer>
         </form>}

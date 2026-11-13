@@ -55,3 +55,15 @@ func entrarNada(string) error { return ErrSemNavegador }
 func desligado() Controle {
 	return Controle{Parar: nada, Suspender: suspenderNada, FecharNavegador: nada, MostrarEnvio: mostrarNada, Entrar: entrarNada, Janela: janelaNenhuma}
 }
+
+// liberado: a trava das ações para o executor. podeAgir nil: sempre liberado (testes e central-dev sem conta). A real
+// (Conta.PodeAgir) entra na Task 6.
+func liberado(podeAgir func() (bool, string)) func() bool {
+	return func() bool {
+		if podeAgir == nil {
+			return true
+		}
+		pode, _ := podeAgir()
+		return pode
+	}
+}

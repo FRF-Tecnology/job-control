@@ -53,11 +53,19 @@ func main() {
 		}
 	}
 	// Depois de "apagar meus dados", o processo sai (o banco já foi fechado e apagado).
-	opcoes := api.Opcoes{AoApagar: func() { os.Exit(0) }, EnvioLigado: painelDoEnvio}
+	o := api.Opcoes{AoApagar: func() { os.Exit(0) }, EnvioLigado: painelDoEnvio}
 	if pastaTeste != "" {
-		opcoes.Cofre = segredos.Memoria{}
+		o.Cofre = segredos.Memoria{}
 	}
-	apiLocal := api.Nova(arm, opcoes).Handler()
+	// Conta: só com -tags contafalsa (nuvem falsa e a rota de teste do relógio); sem a tag, sem conta (ruling A11).
+	minhaConta, envolver := contaDoDev(pasta)
+	if minhaConta != nil {
+		minhaConta.Iniciar(context.Background())
+		o.Conta, o.PodeAgir = minhaConta, minhaConta.PodeAgir
+		// Nada abre de verdade: o central-dev não abre o navegador do PC (Checkout e login Google da nuvem falsa).
+		o.AbrirNavegador = func(string) error { log.Print("conta: o app abriria o navegador aqui"); return nil }
+	}
+	apiLocal := envolver(api.Nova(arm, o).Handler())
 	arquivos := http.FileServer(http.Dir(telas))
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)

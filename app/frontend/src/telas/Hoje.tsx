@@ -1,6 +1,6 @@
 // Hoje: uma caixa "O que vamos fazer hoje?", o seletor de foco e só o que pede ação (porte de web/telas/hoje.mjs).
 import { useEffect, useRef, useState } from 'react';
-import { useApp, type App } from '../app/contexto';
+import { useApp, useTrava, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
 import { NOMES_EMAIL } from '../dominio/emails';
@@ -35,6 +35,7 @@ const COMECO_ADICIONAR = 'Adiciona a vaga ';
 // segundo clique em "Seus pedidos". Sem IA, ele fica anotado para o assistente (/pedidos).
 export function CaixaPedido({ sugestoes, iaConectada, aoCriar }: { sugestoes: string[]; iaConectada: boolean; aoCriar: (id: string) => void }) {
   const app = useApp();
+  const trava = useTrava();
   const [texto, setTexto] = useState('');
   const entrada = useRef<HTMLInputElement>(null);
   async function enviar(t0: string) {
@@ -42,6 +43,7 @@ export function CaixaPedido({ sugestoes, iaConectada, aoCriar }: { sugestoes: st
     if (!t) return entrada.current?.focus();
     const atalho = ATALHOS.find(([re]) => re.test(normalizar(t)));
     if (atalho && !/\b(busca|aplica|envia|manda|escreve)/.test(normalizar(t))) { location.hash = atalho[1]; return; }
+    if (trava.travado) { app.aviso(trava.frase, true); return; } // ir para uma tela continua; pedir não (ruling A13)
     let criado: { id?: unknown } | null = null;
     const ok = await app.agir(async () => { criado = await app.api('/api/v1/pedidos', 'POST', { texto: t }); },
       iaConectada ? undefined : 'Anotado em Seus pedidos, logo abaixo.');
@@ -55,11 +57,14 @@ export function CaixaPedido({ sugestoes, iaConectada, aoCriar }: { sugestoes: st
     <>
       <form className="caixa-pedido" role="search" onSubmit={ev => { ev.preventDefault(); enviar(texto); }}>
         <span className="caixa-ic" aria-hidden="true"><Icone d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" /></span>
-        <input id="pedido" ref={entrada} type="text" autoComplete="off" placeholder={sugestoes[0] ?? 'Peça qualquer coisa'} aria-label="O que vamos fazer hoje?" value={texto} onChange={e => setTexto(e.target.value)} />
-        <button type="submit" aria-label="Enviar pedido"><Icone d="M12 19V5M5 12l7-7 7 7" /></button>
+        {/* Enter tratado aqui: com a trava, o botão de enviar fica desabilitado e o navegador não envia o formulário
+            sozinho; os atalhos para as telas têm de continuar valendo (só o pedido de escrita trava). */}
+        <input id="pedido" ref={entrada} type="text" autoComplete="off" placeholder={sugestoes[0] ?? 'Peça qualquer coisa'} aria-label="O que vamos fazer hoje?" value={texto} onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); enviar(texto); } }} />
+        <button type="submit" aria-label="Enviar pedido" {...trava()}><Icone d="M12 19V5M5 12l7-7 7 7" /></button>
       </form>
       <div className="sugestoes" aria-label="Sugestões">
-        {sugestoes.map(s => <button key={s} type="button" onClick={() => (s === SUGESTAO_ADICIONAR ? comecar(COMECO_ADICIONAR) : enviar(s))}>{s}</button>)}
+        {sugestoes.map(s => <button key={s} type="button" {...trava()} onClick={() => (s === SUGESTAO_ADICIONAR ? comecar(COMECO_ADICIONAR) : enviar(s))}>{s}</button>)}
       </div>
     </>
   );
@@ -101,11 +106,12 @@ function agruparPendencias(bloqueadas: any[]) {
 
 function AcoesBloqueada({ v }: { v: any }) {
   const app = useApp();
+  const trava = useTrava();
   return (
     <>
       <LinkExterno url={v.link} className="botao p">Abrir vaga</LinkExterno>
-      <button className="botao-fantasma p" type="button" onClick={() => app.mover(v.id, 'enviada', {}, `${v.empresa}: marcada como enviada`)}>Enviei</button>
-      <button className="botao-fantasma p" type="button" onClick={async () => {
+      <button className="botao-fantasma p" type="button" {...trava()} onClick={() => app.mover(v.id, 'enviada', {}, `${v.empresa}: marcada como enviada`)}>Enviei</button>
+      <button className="botao-fantasma p" type="button" {...trava()} onClick={async () => {
         const m = await app.perguntar({ titulo: 'Desistir desta vaga?', opcoes: ['Documento', 'Outro'], campo: 'Motivo', confirmar: 'Pular vaga' });
         if (m) app.mover(v.id, 'pulada', { motivo: m }, 'Vaga pulada');
       }}>Desistir</button>
@@ -118,6 +124,7 @@ const IconeEmail = () => <Icone><rect x="3" y="5" width="18" height="14" rx="2" 
 // Email que chegou e não deu para saber de qual vaga é: a pessoa liga à vaga certa (a etapa muda) ou descarta.
 function EmailSemVaga({ e, opcoes }: { e: any; opcoes: any[] }) {
   const app = useApp();
+  const trava = useTrava();
   const [escolha, setEscolha] = useState('');
   const sel = useRef<HTMLSelectElement>(null);
   const ir = (acao: string, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/emails/${encode(e.idMensagem)}/${acao}`, 'POST', corpo), msg);
@@ -130,8 +137,8 @@ function EmailSemVaga({ e, opcoes }: { e: any; opcoes: any[] }) {
           <option value="">De qual vaga é?</option>
           {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
         </select>
-        <button className="botao p" type="button" onClick={() => { if (!escolha) return sel.current?.focus(); ir('ligar', { vagaId: escolha }, 'Email ligado à vaga'); }}>Ligar</button>
-        <button className="botao-fantasma p" type="button" onClick={() => ir('descartar', {}, 'Email descartado')}>Descartar</button>
+        <button className="botao p" type="button" {...trava()} onClick={() => { if (!escolha) return sel.current?.focus(); ir('ligar', { vagaId: escolha }, 'Email ligado à vaga'); }}>Ligar</button>
+        <button className="botao-fantasma p" type="button" {...trava()} onClick={() => ir('descartar', {}, 'Email descartado')}>Descartar</button>
       </div>
     </li>
   );
@@ -160,6 +167,7 @@ async function mensagemFollowUp(app: App, v: any) {
 
 export function TelaHoje() {
   const app = useApp();
+  const trava = useTrava();
   const { vagas, eventos, perfil } = app.estado;
   const hoje = app.hoje;
   const foco = app.foco;
@@ -295,9 +303,9 @@ export function TelaHoje() {
                   <li key={v.id} className="linha">
                     <LinkVaga v={v} />
                     <div className="acoes">
-                      <button className="botao p" type="button" onClick={() => mensagemFollowUp(app, v)}>Mensagem</button>
-                      <button className="botao-fantasma p" type="button" onClick={() => api(v, { acao: 'feito' }, 'Follow-up registrado')}>Feito</button>
-                      <button className="botao-fantasma p" type="button" onClick={() => api(v, { acao: 'adiar', dias: 3 }, 'Adiado 3 dias')}>+3 dias</button>
+                      <button className="botao p" type="button" {...trava()} onClick={() => mensagemFollowUp(app, v)}>Mensagem</button>
+                      <button className="botao-fantasma p" type="button" {...trava()} onClick={() => api(v, { acao: 'feito' }, 'Follow-up registrado')}>Feito</button>
+                      <button className="botao-fantasma p" type="button" {...trava()} onClick={() => api(v, { acao: 'adiar', dias: 3 }, 'Adiado 3 dias')}>+3 dias</button>
                     </div>
                     <div className="sub">{`Enviada ${haQuanto(v.envio.data, hoje)} pelo ${v.plataforma}${v.followUp.feitos ? `, ${plural(v.followUp.feitos, 'follow-up feito', 'follow-ups feitos')}` : ''}`}</div>
                   </li>

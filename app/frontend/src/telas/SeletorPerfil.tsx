@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import '../estilo/seletor-perfil.css';
 
 export function SeletorPerfil() {
   const { estado, api, recarregar, perguntar } = useApp();
+  const trava = useTrava();
   const ativo = estado.perfilBuscaAtivo ?? 'original';
   const perfis = estado.perfisBusca ?? [{ id: ativo, nome: estado.perfil?.cargo && estado.perfil.cargo !== estado.perfil.nome ? estado.perfil.cargo : 'Perfil principal' }];
   const [criando, abrir] = useState(false);
@@ -46,14 +47,14 @@ export function SeletorPerfil() {
   }
   return <div className="seletor-perfil">
     <label>Perfil de busca
-      <select ref={seletor} value={ativo} disabled={ocupado} onChange={async e => {
+      <select ref={seletor} value={ativo} {...trava(ocupado)} onChange={async e => {
         const destino = e.target.value;
         if (await confirmarTroca()) await salvar('/api/v1/perfis-busca/' + encodeURIComponent(destino) + '/ativar', {});
       }}>
         {perfis.map((p: { id: string; nome: string }) => <option key={p.id} value={p.id}>{p.nome}</option>)}
       </select>
     </label>
-    <button type="button" className="criar-perfil" aria-haspopup="dialog" disabled={ocupado} onClick={async () => {
+    <button type="button" className="criar-perfil" aria-haspopup="dialog" {...trava(ocupado)} onClick={async () => {
       if (!(await confirmarTroca())) return;
       definirCargo(''); definirNome(''); falhar(''); abrir(true);
     }}><span aria-hidden="true">＋</span> Criar perfil</button>
@@ -71,7 +72,7 @@ export function SeletorPerfil() {
         <label>Nome do perfil<input required maxLength={120} value={nome} disabled={ocupado} onChange={e => { definirNome(e.target.value); falhar(''); }} /></label>
         {erro && <p role="alert">{erro}</p>}
         <div><button className="botao-fantasma" type="button" disabled={ocupado} onClick={cancelar}>Cancelar</button>
-          <button type="submit" className="botao" disabled={ocupado}>{ocupado ? 'Criando…' : 'Criar perfil'}</button></div>
+          <button type="submit" className="botao" {...trava(ocupado)}>{ocupado ? 'Criando…' : 'Criar perfil'}</button></div>
       </form>
     </dialog>}
   </div>;

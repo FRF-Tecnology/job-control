@@ -1,7 +1,7 @@
 // Casca da interface: estado, rotas, atualização automática, avisos e diálogos (porte de web/app.mjs).
 import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Contexto, chamarApi, ErroApi, type App as AppApi, type Estado, type Pergunta } from './app/contexto';
-import { grupoADireto, prepararProntas } from './app/preparoAutomatico';
+import { grupoADireto, liberouDepoisDaTrava, prepararProntas } from './app/preparoAutomatico';
 import { Espaco } from './app/Espaco';
 import { encode } from './util';
 import { Dialogo, type PedidoDialogo } from './app/Dialogo';
@@ -22,7 +22,10 @@ import { TelaPerfil } from './telas/Perfil';
 import { TelaConectarIA } from './telas/ConectarIA';
 import { PrimeiroAcesso } from './telas/PrimeiroAcesso';
 import { NavegadorFlutuante } from './telas/NavegadorFlutuante';
-
+import { podeAgir as podeAgirCom, useConta, useFoco } from './app/conta';
+import { FaixaConta } from './telas/FaixaConta';
+import { TelaConta } from './telas/Conta';
+import { TelaAssinatura } from './telas/Assinatura';
 
 // Nome da IA em uso, para o resumo do menu lateral (provedores do GET /ia/config; fora da lista, fica genérico).
 const NOMES_IA: Record<string, string> = {
@@ -33,7 +36,8 @@ const MARCAS_IA: Record<string,string> = {
   'claude-cli':'Claude', anthropic:'Claude', 'codex-cli':'OpenAI', openai:'OpenAI',
   'gemini-cli':'Gemini', google:'Gemini', xai:'Grok',
 };
-type Destino = { rota: string; nome: string; Tela: () => ReactNode };
+// soConta: só aparece entre as ferramentas quando a conta existe neste build (ruling A11).
+type Destino = { rota: string; nome: string; Tela: () => ReactNode; soConta?: boolean };
 const TELAS: Destino[] = [
   {rota:'radar',nome:'Radar de vagas',Tela:TelaRadar},
   {rota:'lista',nome:'Lista do dia',Tela:TelaListaDoDia},
@@ -44,6 +48,7 @@ const TELAS: Destino[] = [
   {rota:'vagas',nome:'Vagas',Tela:TelaVagas}, {rota:'numeros',nome:'Números',Tela:TelaNumeros},
   {rota:'plataformas',nome:'Plataformas',Tela:TelaPlataformas}, {rota:'rodadas',nome:'Rodadas',Tela:TelaRodadas},
   {rota:'regras',nome:'Regras e dados',Tela:TelaPerfil}, {rota:'ia',nome:'Conectar IA',Tela:TelaConectarIA},
+  {rota:'assinatura',nome:'Assinatura',Tela:TelaAssinatura,soConta:true},
 ];
 
 function lerHash() {
@@ -95,6 +100,12 @@ export default function App() {
   const temEstado = useRef(false);
   // Há texto digitado e ainda não salvo (perfil, nota nova, notas da vaga…)? Enquanto houver, nada é redesenhado.
   const sujo = useRef(false);
+  // Conta (Task 7): GET /conta ao abrir, a cada 60 s e depois de um 402. undefined: ainda não sabe (nada aparece).
+  // ativa false (build sem a nuvem, ruling A11): sem porta, sem faixa e sem trava, como antes.
+  const { situacao: conta, reler: releConta, atualizar: atualizarConta } = useConta(chamarApi);
+  const contaAtiva = !!conta?.ativa;
+  const liberado = podeAgirCom(conta);
+  const telas = useMemo(() => TELAS.filter(t => !t.soConta || contaAtiva), [contaAtiva]);
 
   const aviso = useCallback((texto: string, erro = false) => {
     const id = Date.now() + Math.random();
@@ -143,6 +154,8 @@ export default function App() {
   // e aprova na Fila. Uma rodada por vez; cada vaga é tentada uma vez por abertura do app.
   const preparando = useRef(false);
   const tentadas = useRef(new Set<string>());
+  // travadoEm: a versão do estado em que a trava das ações deu 402; nenhum preparo até a licença voltar.
+  const travadoEm = useRef<string | null>(null);
   useEffect(() => {
     if (!estado || fechando.current || preparando.current) return;
     const modoDireto = (estado.perfil as any)?.modo === 'direto';
@@ -153,12 +166,16 @@ export default function App() {
     preparando.current = true;
     (async () => {
       try {
+        if (!(await liberouDepoisDaTrava(chamarApi, travadoEm.current, versao.current))) return;
+        travadoEm.current = null;
         const candidaturas = await chamarApi('/api/v1/candidaturas');
         const r = await prepararProntas(chamarApi, { vagas: estado.vagas ?? [], perfil: estado.perfil, curriculos: estado.curriculos ?? [], perfisBusca: estado.perfisBusca, perfilBuscaAtivo: estado.perfilBuscaAtivo }, candidaturas, tentadas.current);
+        if (r.travado) travadoEm.current = versao.current ?? '';
         if (r.preparadas) aviso(r.preparadas === 1 ? 'Uma candidatura foi preparada sozinha: revise o pacote e aprove na Fila.' : `${r.preparadas} candidaturas foram preparadas sozinhas: revise os pacotes e aprove na Fila.`);
       } catch { /* sem a lista, tenta na próxima leitura */ } finally { preparando.current = false; }
     })();
-  }, [estado, aviso]);
+    // liberado: quando a conta volta a deixar agir (motivo vazio), o preparo pausado pelo 402 tenta de novo.
+  }, [estado, aviso, liberado]);
   // Envio ligado e não pausado aparece no cabeçalho em todas as telas, não só na Fila (nota do CyberSec no #60).
   // Pausar e retomar não mudam a /versao, então a casca lê /envio a cada 5 s e ouve o painel da Fila na hora.
   useEffect(() => {
@@ -204,6 +221,20 @@ export default function App() {
     };
   }, [carregar]);
 
+  // O foco é do perfil de busca ativo (Radar por objetivo).
+  const perfilBuscaAtivo = estado?.perfilBuscaAtivo || 'original';
+  // Foco da busca (ruling A16): com a trava ligada, é só um filtro na tela (sem PATCH); liberado, salva no perfil.
+  const salvarFoco = useCallback(async (foco: string) => {
+    setEstado((e: Estado) => (e ? { ...e, perfil: { ...e.perfil, foco } } : e));
+    try {
+      await chamarApi('/api/v1/perfil?perfilBuscaId=' + encode(perfilBuscaAtivo), 'PATCH', { foco });
+      await carregar(true);
+    } catch (e) {
+      aviso((e as Error).message, true);
+    }
+  }, [carregar, aviso, perfilBuscaAtivo]);
+  const { foco, mudarFoco } = useFoco(estado?.perfil?.foco ?? 'ambos', liberado, salvarFoco);
+
   const app: AppApi | null = useMemo(() => {
     if (!estado) return null;
     const api = chamarApi;
@@ -222,15 +253,12 @@ export default function App() {
       estado,
       conexaoIA: {nome: MARCAS_IA[ia?.provedor ?? ''] ?? 'Provedor', verificada:ia?.conexaoVerificada === true},
       hoje: estado.hoje,
-      foco: estado.perfil?.foco ?? 'ambos',
+      foco,
       rota: tela.rota,
       vaga,
       api,
       agir,
-      async mudarFoco(foco) {
-        if (foco === (estado.perfil?.foco ?? 'ambos')) return;
-        await agir(() => api('/api/v1/perfil?perfilBuscaId='+encode(estado.perfilBuscaAtivo || 'original'), 'PATCH', { foco }));
-      },
+      mudarFoco,
       mover: (id, etapa, extras = {}, mensagem) => agir(() => api(`/api/v1/vagas/${encode(id)}/mover`, 'POST', { etapa, ...extras }), mensagem),
       abrirVaga: id => { location.hash = `#/${tela.rota}/${encode(id)}`; },
       navegar: rota => { location.hash = `#/${rota}`; },
@@ -238,8 +266,11 @@ export default function App() {
       perguntar,
       recarregar: () => carregar(true),
       limpar: () => { sujo.current = false; },
+      podeAgir: liberado,
+      conta,
+      releConta,
     };
-  }, [estado, ia, tela.rota, vaga, aviso, perguntar, carregar]);
+  }, [estado, ia, tela.rota, vaga, aviso, perguntar, carregar, liberado, conta, releConta, foco, mudarFoco]);
 
   // Título, foco e rolagem ao trocar de seção.
   const main = useRef<HTMLElement>(null);
@@ -270,6 +301,19 @@ export default function App() {
     <div className="avisos" aria-live="polite">{avisos.map(a =>
       <div key={a.id} className={`aviso${a.erro ? ' erro' : ''}`} role={a.erro ? 'alert' : 'status'}>{a.texto}</div>)}</div>
   </>;
+  // Porta da conta: com a conta ligada e sem entrada, só a tela Conta, antes do primeiro acesso e de tudo o mais.
+  // Conta ainda não lida (undefined): nada aparece, para o primeiro acesso não piscar antes da porta.
+  const porta = contaAtiva && !conta?.entrada;
+  const entrou = useCallback(async () => { await releConta(); await carregar(true); }, [releConta, carregar]);
+  if (!falha && conta === undefined) return avisosEDialogo;
+  if (!falha && porta) {
+    return <>
+      <main id="conteudo" className="porta-conta" tabIndex={-1} ref={main}>
+        <TelaConta api={chamarApi} aoEntrar={entrou} googleDisponivel={conta?.google_disponivel === true} />
+      </main>
+      {avisosEDialogo}
+    </>;
+  }
   if (primeiroAcesso && app && !falha) {
     const concluir = async (buscar: boolean) => {
       const salvo=await chamarApi('/api/v1/estado');
@@ -277,13 +321,27 @@ export default function App() {
       sujo.current=false; versao.current=salvo.versao;
       setEstado(salvo); app.navegar(buscar ? 'radar?buscar=1' : 'radar');
     };
-    return <><Contexto.Provider value={app}><Protecao chave="primeiro-acesso">
-      <PrimeiroAcesso alternarTema={alternarTema} concluir={concluir} />
-    </Protecao></Contexto.Provider>{avisosEDialogo}</>;
+    // O teste pode acabar no meio do primeiro acesso: o link Assinar da faixa abre a Assinatura aqui mesmo.
+    if (contaAtiva && tela.rota === 'assinatura') {
+      return <><Contexto.Provider value={app}>
+        <main id="conteudo" className="porta-conta" tabIndex={-1} ref={main}>
+          <div className="tela-conta">
+            <FaixaConta situacao={conta} reler={atualizarConta} />
+            <Protecao chave="assinatura"><TelaAssinatura /></Protecao>
+            <p><a href="#/radar">Voltar ao primeiro acesso</a></p>
+          </div>
+        </main>
+      </Contexto.Provider>{avisosEDialogo}</>;
+    }
+    return <><Contexto.Provider value={app}>
+      {contaAtiva && <FaixaConta situacao={conta} reler={atualizarConta} />}
+      <Protecao chave="primeiro-acesso">
+        <PrimeiroAcesso alternarTema={alternarTema} concluir={concluir} />
+      </Protecao></Contexto.Provider>{avisosEDialogo}</>;
   }
   return (
     <>
-      <Espaco rota={tela.rota} titulo={tela.nome} pessoa={estado?.perfil?.nome ?? ''} ferramentas={TELAS.slice(4)}
+      <Espaco rota={tela.rota} titulo={tela.nome} pessoa={estado?.perfil?.nome ?? ''} ferramentas={telas.slice(4)}
         quantidades={quantidades} status={conexao.texto} falha={Boolean(falha)||conexao.estado==='off'}
         envio={envioAtivo} tema={alternarTema} ia={{
           claude:['anthropic','claude-cli'].includes(ia?.provedor ?? ''), verificada:!!ia?.conexaoVerificada,
@@ -294,6 +352,7 @@ export default function App() {
           <div className="convite"><div><strong>{falha.titulo}</strong><p>{falha.texto}</p></div></div>
         ) : app && (
           <Contexto.Provider value={app}>
+            {contaAtiva && <FaixaConta situacao={conta} reler={atualizarConta} />}
             <Protecao chave={tela.rota}>
               {/* Perfil: o formulário recomeça do que está salvo quando os dados mudam (e nada está por salvar). */}
               <Tela key={tela.rota === 'regras' ? `regras-${estado.versao}` : `${tela.rota}-${ativo}`} />

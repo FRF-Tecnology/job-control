@@ -165,6 +165,24 @@ func TestApagarMeusDados(t *testing.T) {
 	}
 }
 
+// Apagar meus dados também tira a conta deste computador (a sessão no cofre e licenca.json), mesmo sem a conta ligada.
+func TestApagarTiraAContaDoComputador(t *testing.T) {
+	cofre := segredos.Memoria{}
+	f := novaPastaFicticia(t, cofre)
+	cofre.Gravar("conta/renovacao", "renovacao-ficticia")
+	os.WriteFile(filepath.Join(f.pasta, "licenca.json"), []byte("{}"), 0o600)
+	res := f.chamar("POST", "/dados/apagar", Objeto{"confirmacao": FraseApagar}, 200)
+	if res["completo"] != true {
+		t.Fatalf("resposta = %v", res)
+	}
+	if _, tem := cofre["conta/renovacao"]; tem {
+		t.Fatal("a sessão da conta ficou no cofre")
+	}
+	if _, err := os.Stat(f.pasta); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("a pasta de dados ainda existe com %v", f.arquivos())
+	}
+}
+
 // Frase errada, campo a mais, assistente e candidatura em enviando: nada muda (pasta e cofre iguais).
 func TestApagarRecusaSemMudarNada(t *testing.T) {
 	f := novaPastaFicticia(t, segredos.Memoria{})

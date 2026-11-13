@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { IconeUI } from '../app/IconeUI';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { SeletorPerfil } from './SeletorPerfil';
 import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
+import { SecaoConta } from './Conta';
 import { lerArquivo } from './PrimeiroAcesso';
 import arteCV from '../../../../site/artes/curriculo-verificado.svg';
 import '../estilo/perfil-espaco.css';
@@ -28,7 +29,7 @@ function Opcoes({titulo,base,valor,mudar}:{titulo:string;base:string[];valor:str
   return <fieldset className="pr-levels pr-wide"><legend>{titulo}</legend><div>{[...new Set([...base,...valor])].map(v=><label key={v}><input type="checkbox" checked={valor.includes(v)} onChange={e=>mudar(e.target.checked?[...valor,v]:valor.filter(x=>x!==v))}/><span>{v}</span></label>)}</div></fieldset>;
 }
 export function PerfilDoEspaco(){
-  const app=useApp(), id=app.estado.perfilBuscaAtivo || 'original';
+  const app=useApp(), id=app.estado.perfilBuscaAtivo || 'original', trava=useTrava();
   const [dados,setDados]=useState(()=>leitura(app.estado.perfil||{})), [sujo,alterado]=useState(false);
   const [salvando,salvarEstado]=useState(false), [erro,falhar]=useState(''), [alterandoIA,alterarIA]=useState(false);
   const conectado=app.conexaoIA?.verificada && !alterandoIA ? app.conexaoIA.nome : '';
@@ -42,7 +43,7 @@ export function PerfilDoEspaco(){
   const set=<K extends keyof typeof dados>(k:K,v:typeof dados[K])=>{setDados(antes=>({...antes,[k]:v}));alterado(true);falhar('')};
   const url='/api/v1/perfil?perfilBuscaId='+encodeURIComponent(id);
   async function salvar(){
-    if(salvando) return;
+    if(salvando||trava.travado) return;
     if(!dados.cargo.trim()){falhar('Informe o cargo que deseja buscar.');document.getElementById('f-cargo')?.focus();return;}
     if(dados.min && dados.max && Number(dados.max)<Number(dados.min)){falhar('O máximo não pode ser menor que o mínimo.');return;}
     salvarEstado(true);falhar('');
@@ -58,7 +59,7 @@ export function PerfilDoEspaco(){
     finally{if(ativa.current) salvarEstado(false)}
   }
   async function selecionar(f?:File){
-    if(!f||cvOcupado)return;
+    if(!f||cvOcupado||trava.travado)return;
     cvFalha('');cvMensagem('');
     if(!/\.pdf$/i.test(f.name)||!f.size||f.size>20*1024*1024){cvFalha('Escolha um PDF de até 20 MB.');return}
     cvOcupar(true);
@@ -107,13 +108,15 @@ export function PerfilDoEspaco(){
       <Cartao titulo="Currículo" icone="file">
         <div className="pr-drop" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();void selecionar(e.dataTransfer.files[0]);}}>
           <img src={arteCV} alt="" width="42" height="42"/><div className="pr-file-meta"><strong>{cv?(/^curriculo-[A-Z2-7]{26,}\.pdf$/.test(cv)?'Currículo do perfil':cv):'Arraste seu currículo para cá'}</strong><small>{cv?'PDF salvo neste computador':'PDF de até 20 MB'}</small></div>
-          <button type="button" className="btn secondary" disabled={cvOcupado} onClick={()=>pdf.current?.click()}>{cvOcupado?'Salvando…':cv?'Trocar PDF':'Escolher PDF'}</button>
+          <button type="button" className="btn secondary" {...trava(cvOcupado)} onClick={()=>pdf.current?.click()}>{cvOcupado?'Salvando…':cv?'Trocar PDF':'Escolher PDF'}</button>
           <input hidden type="file" aria-label="Currículo em PDF" ref={pdf} accept=".pdf,application/pdf" onChange={e=>{void selecionar(e.target.files?.[0]);e.target.value='';}}/>
         </div>{cvErro&&<p role="alert">{cvErro}</p>}{cvStatus&&<p className="pr-connected" role="status">{cvStatus}</p>}
       </Cartao>
     </div></div>
     <form id="form-perfil-ativo" className="pr-footer pr-end" onSubmit={e=>{e.preventDefault();void salvar();}}>
-      {erro&&<p role="alert">{erro}</p>}<button className="btn primary" type="submit" disabled={salvando}>{salvando?'Salvando…':'Salvar perfil'}</button>
+      {erro&&<p role="alert">{erro}</p>}<button className="btn primary" type="submit" {...trava(salvando)}>{salvando?'Salvando…':'Salvar perfil'}</button>
     </form>
+    {/* Conta (sair e excluir): só com a conta ligada neste build e com entrada. */}
+    <SecaoConta />
   </div>;
 }

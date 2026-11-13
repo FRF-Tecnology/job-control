@@ -1,6 +1,6 @@
 // Quadro: colunas por etapa, cartões arrastáveis (porte de web/telas/quadro.mjs).
 import { useRef, useState } from 'react';
-import { useApp, type App } from '../app/contexto';
+import { useApp, useTrava, type App } from '../app/contexto';
 import { MOTIVOS_PULO, MOTIVOS_ENCERRAMENTO, SUB_ETAPAS } from '../dominio/modelo';
 import { dataCurta, nomeEtapa, nomePlataforma, NOMES_SUB } from '../util';
 
@@ -27,6 +27,7 @@ export async function extrasPara(app: App, etapa: string, opcoesPendencia: strin
 
 export function TelaQuadro() {
   const app = useApp();
+  const trava = useTrava();
   const { vagas } = app.estado;
   const arrastada = useRef<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function TelaQuadro() {
     setSobre(null);
     const v = vagas.find((x: any) => x.id === arrastada.current);
     if (!v || v.etapa === etapa) return;
+    if (trava.travado) { app.aviso(trava.frase, true); return; }
     const extras = await extrasPara(app, etapa);
     if (extras) app.mover(v.id, etapa, extras, `${v.empresa}: ${nomeEtapa(etapa)}`);
   };
@@ -46,7 +48,7 @@ export function TelaQuadro() {
   });
 
   const cartao = (v: any) => (
-    <article key={v.id} className={`cartao e-${v.etapa}`} draggable tabIndex={0} aria-label={`${v.empresa}, ${v.titulo}. Enter abre o detalhe.`}
+    <article key={v.id} className={`cartao e-${v.etapa}`} draggable={!trava.travado} tabIndex={0} aria-label={`${v.empresa}, ${v.titulo}. Enter abre o detalhe.`}
       onDragStart={ev => { arrastada.current = v.id; ev.dataTransfer.effectAllowed = 'move'; ev.currentTarget.classList.add('arrastando'); }}
       onDragEnd={ev => ev.currentTarget.classList.remove('arrastando')}
       onClick={() => app.abrirVaga(v.id)}

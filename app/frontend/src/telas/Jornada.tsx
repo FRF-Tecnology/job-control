@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { dataCurta, encode, nomeEtapa, NOMES_SUB } from '../util';
 import { TelaFila } from './Fila';
@@ -21,6 +21,7 @@ function coluna(v: VagaJornada) {
 
 function EditarCartao({ vaga, fechar }: { vaga: VagaJornada; fechar: () => void }) {
   const app = useApp();
+  const trava = useTrava();
   const [etapa, setEtapa] = useState(coluna(vaga));
   const [notas, setNotas] = useState(vaga.notas || '');
   const [ocupado, setOcupado] = useState(false);
@@ -28,7 +29,7 @@ function EditarCartao({ vaga, fechar }: { vaga: VagaJornada; fechar: () => void 
   const eventos = (app.estado.eventos ?? []).filter(e => e.vagaId === vaga.id).slice().reverse()
     .sort((a,b) => (b.data ?? '').localeCompare(a.data ?? ''));
   async function salvar() {
-    if (ocupado) return;
+    if (ocupado || trava.travado) return;
     if (etapa === coluna(vaga) && notas.trim() === (vaga.notas || '')) { fechar(); return; }
     setOcupado(true); setErro('');
     try {
@@ -47,7 +48,7 @@ function EditarCartao({ vaga, fechar }: { vaga: VagaJornada; fechar: () => void 
       <textarea className="j-input" id="j-nota" rows={3} maxLength={1500} value={notas} placeholder="Ex.: combinar horário da entrevista" onChange={ev => setNotas(ev.target.value)} />
       <section className="j-history"><h3>Histórico</h3>{eventos.length ? <ol>{eventos.map(e => <li key={e.id}>{dataCurta(e.data)} · {e.texto || nomeEtapa(e.tipo)}</li>)}</ol> : <p>As próximas atualizações aparecerão aqui.</p>}</section>
       {erro && <p className="j-erro" role="alert">{erro}</p>}
-      <div className="j-editor-actions"><button className="btn secondary" type="button" onClick={fechar}>Fechar</button><button className="btn primary" disabled={ocupado}><IconeUI nome="check" tamanho={16} />Salvar alterações</button></div>
+      <div className="j-editor-actions"><button className="btn secondary" type="button" onClick={fechar}>Fechar</button><button className="btn primary" {...trava(ocupado)}><IconeUI nome="check" tamanho={16} />Salvar alterações</button></div>
     </form></DialogoJornada>;
 }
 

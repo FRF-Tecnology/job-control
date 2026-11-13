@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { LinkExterno } from '../componentes';
 import { foiEnviada } from '../dominio/modelo';
@@ -92,6 +92,7 @@ function Fato({ icone, rotulo, valor }: { icone: string; rotulo: string; valor?:
 function CandidaturaExterna({ vaga, ocupada, gravar }: {
   vaga: Vaga; ocupada: boolean; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void;
 }) {
+  const trava = useTrava();
   const [adiada, adiar] = useState(false);
   const link = safeHref(vaga.link);
   if (foiEnviada(vaga) || vaga.etapa === 'enviada') return <p className="rd-enviada" role="status"><IconeUI nome="check" tamanho={16} />Candidatura enviada</p>;
@@ -101,13 +102,13 @@ function CandidaturaExterna({ vaga, ocupada, gravar }: {
       <p>Conclua a candidatura no site da empresa. Depois, volte aqui e confirme o envio.</p>
       <div className="rd-links">
         <LinkExterno className="btn primary" url={vaga.urlCandidaturaManual ?? link}>Abrir candidatura no navegador</LinkExterno>
-        <button className="btn secondary" type="button" disabled={ocupada} onClick={() => gravar('confirmar-envio-manual')}>Já enviei</button>
+        <button className="btn secondary" type="button" {...trava(ocupada)} onClick={() => gravar('confirmar-envio-manual')}>Já enviei</button>
         <button className="btn quiet" type="button" disabled={ocupada} onClick={() => adiar(true)}>Continuar depois</button>
       </div>
     </>}
   </div>;
   return <div className="rd-links">
-    {link?.startsWith('https://') && <button type="button" className="btn secondary" disabled={ocupada} onClick={() => gravar('iniciar-manual')}>Aplicar na vaga</button>}
+    {link?.startsWith('https://') && <button type="button" className="btn secondary" {...trava(ocupada)} onClick={() => gravar('iniciar-manual')}>Aplicar na vaga</button>}
     <LinkExterno url={link} className="btn quiet" semLink={<span>Anúncio sem link disponível.</span>}>Ler anúncio</LinkExterno>
   </div>;
 }
@@ -116,6 +117,7 @@ function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfaz
   vaga: Vaga; voltar: () => void; revisar: (etapa: 'aplicar' | 'pulada') => void;
   ocupada: boolean; pretensao: Faixa; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void; desfazer: ReactNode;
 }) {
+  const trava = useTrava();
   const [rotuloSalario, valorSalario] = salario(vaga, pretensao);
   const grupo = temNota(vaga.aderencia) ? vaga.aderencia : null;
   const tags = [...new Set([...(vaga.categorias ?? []), ...(vaga.stack ?? []), vaga.nivel, vaga.contrato].filter(Boolean))];
@@ -134,8 +136,8 @@ function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfaz
         : <div className="rd-fact"><dt><IconeUI nome="wallet" tamanho={15} />Salário</dt><dd>{rotuloSalario}</dd></div>}
     </dl>
     {vaga.etapa === 'descoberta' && <div className="rd-actions">
-      <button className="btn primary" type="button" disabled={ocupada} onClick={() => revisar('aplicar')}><IconeUI nome="plus" tamanho={17} />Adicionar à lista</button>
-      <button className="btn quiet rd-skip" type="button" disabled={ocupada} onClick={() => revisar('pulada')}>Pular<IconeUI nome="chevron-right" tamanho={15} /></button>
+      <button className="btn primary" type="button" {...trava(ocupada)} onClick={() => revisar('aplicar')}><IconeUI nome="plus" tamanho={17} />Adicionar à lista</button>
+      <button className="btn quiet rd-skip" type="button" {...trava(ocupada)} onClick={() => revisar('pulada')}>Pular<IconeUI nome="chevron-right" tamanho={15} /></button>
     </div>}
     <div className="rd-analysis">
       <div className="rd-analysis-head"><span className="rd-analysis-name"><IconeUI nome="sparkles" tamanho={16} />Compatibilidade com seu perfil</span>
@@ -164,6 +166,7 @@ function EstadoRadar({ titulo, icone = 'search', mensagem, children }: { titulo:
 function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const app = useApp();
   const { estado } = app;
+  const trava = useTrava();
   const { ocupado: buscando, balanco, erro, buscar, pendentes } = useBuscaDoPerfil(true);
   const [filtro, filtrar] = useState<Filtro>('Recomendadas');
   const [selecao, selecionar] = useState<string | null>(null);
@@ -256,7 +259,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
     });
   }
   const desfazer = pulada && puladas.some(v => v.id === pulada.id) && <div className="rd-undo">
-    <span>Vaga de {pulada.empresa} pulada.</span><button type="button" disabled={ocupada} onClick={() => recuperar([pulada])}>Desfazer</button>
+    <span>Vaga de {pulada.empresa} pulada.</span><button type="button" {...trava(ocupada)} onClick={() => recuperar([pulada])}>Desfazer</button>
   </div>;
   const erroFontes = !todas.length && balanco?.encontradas === 0 && balanco.avisos.length ? balanco.avisos.join(' ') : '';
   const falhaBusca = erro || erroFontes;
@@ -269,7 +272,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
         <div className="hero-profile"><SeletorPerfil /><p>{resumo || 'Defina seu perfil para encontrar oportunidades.'}</p></div>
         {ajuste && <p>{ajuste}</p>}
         <div className="hero-buttons">
-          <button type="button" className="btn primary" disabled={buscando} aria-busy={buscando} onClick={buscar}><IconeUI nome="radar" tamanho={17} />
+          <button type="button" className="btn primary" {...trava(buscando)} aria-busy={buscando} onClick={buscar}><IconeUI nome="radar" tamanho={17} />
             {buscando ? 'Buscando…' : pendentes ? 'Retomar avaliação das vagas' : 'Buscar vagas'}</button>
           <a className="hero-edit" href="#/perfil"><IconeUI nome="sliders" tamanho={15} />Ajustar perfil</a>
         </div>
@@ -293,7 +296,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
           <strong>{recibo.titulo}</strong><span>{recibo.empresa}</span><a className="btn secondary" href="#/quadro">Ver no quadro</a>
         </article>}
         {falhaBusca && <EstadoRadar titulo="A busca foi interrompida" mensagem={falhaBusca}>
-          <button className="btn secondary" type="button" onClick={buscar}>Tentar novamente</button><a className="btn quiet" href="#/ia">Ver conexão da IA</a>
+          <button className="btn secondary" type="button" {...trava()} onClick={buscar}>Tentar novamente</button><a className="btn quiet" href="#/ia">Ver conexão da IA</a>
         </EstadoRadar>}
         {atual ? <div className={`rd-workbench${detalheMovel ? ' rd-show-detail' : ''}`}>
           <ul className="rd-list" aria-label="Vagas para revisão">
@@ -316,7 +319,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
         </> : todas.length ? <>
           <EstadoRadar icone="check" titulo="Você revisou todas as vagas" mensagem="Acompanhe na lista as vagas que você escolheu.">
             <a className="btn primary" href="#/lista">Ver lista</a>
-            {puladas.length > 0 && <button type="button" className="btn secondary" disabled={ocupada} onClick={() => recuperar(puladas)}>Rever vagas puladas</button>}
+            {puladas.length > 0 && <button type="button" className="btn secondary" {...trava(ocupada)} onClick={() => recuperar(puladas)}>Rever vagas puladas</button>}
           </EstadoRadar>{desfazer}
         </> : !falhaBusca && <EstadoRadar titulo={balanco ? 'Nenhuma vaga compatível nesta busca' : 'Nenhuma vaga encontrada'} mensagem="Ajuste suas preferências para ampliar a busca.">
           <a className="btn secondary" href="#/perfil">Ajustar preferências</a>

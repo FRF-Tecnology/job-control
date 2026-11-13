@@ -225,3 +225,59 @@ jobs:
               go install github.com/zricethezav/gitleaks/v8@v8.28.0
           fi
           ./gitleaks git --redact --verbose .
+
+  # Nuvem (contas, licença e assinatura): testes com um Postgres 17 de verdade. Só leitura no token.
+  nuvem:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APPLYER_PG_TESTE: postgres://postgres:teste@localhost:5432/postgres?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - run: go vet ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
+      - run: go test -count=1 ./internal/nuvem/... ./internal/licenca/ ./cmd/nuvem/...
+
+  # Imagem da nuvem (o Docker já vem no runner), só depois dos testes. PR só constrói; push na reescrita-go
+  # também publica no GHCR, com a tag do commit e a da branch. Só este job tem packages: write.
+  nuvem-imagem:
+    needs: nuvem
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Construir a imagem
+        run: docker build -f deploy/nuvem/Dockerfile -t applyer-nuvem .
+      - name: Publicar a imagem no GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/reescrita-go' && github.repository == 'FRF-Tecnology/job-control'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          imagem=ghcr.io/frf-tecnology/applyer-nuvem
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag applyer-nuvem "$imagem:$GITHUB_SHA"
+          docker tag applyer-nuvem "$imagem:reescrita-go"
+          docker push "$imagem:$GITHUB_SHA"
+          docker push "$imagem:reescrita-go"

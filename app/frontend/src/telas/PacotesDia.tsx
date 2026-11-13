@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import type { Conteudo } from '../app/pacote';
 import { perfilDoPacote } from '../app/preparoAutomatico';
@@ -23,6 +23,7 @@ function Revisar({ vaga, c, salvar, devolver, fechar, ocupado }: {
   vaga: VagaJornada; c?: Candidatura; salvar: Dados['salvar']; devolver: () => Promise<void>; fechar: () => void; ocupado: boolean;
 }) {
   const {estado} = useApp();
+  const trava = useTrava();
   const arquivo = c?.conteudo.curriculo.arquivo;
   const exibicao = perfilDoPacote(estado, vaga)?.curriculoExibicao;
   const nomeArquivo = arquivo && exibicao?.arquivo?.split(/[\\/]/).pop() === arquivo ? exibicao.nome || arquivo : arquivo;
@@ -52,14 +53,15 @@ function Revisar({ vaga, c, salvar, devolver, fechar, ocupado }: {
         <dt>Respostas</dt><dd>{c.conteudo.respostas.length ? <ul>{c.conteudo.respostas.map((r,i) => <li key={i}>{r.pergunta} · {r.resposta} ({r.origem})</li>)}</ul> : 'Sem respostas'}</dd>
       </dl><a href={enderecoFila(vaga)}>Abrir pacote na fila</a></details>
     </>}
-    <div className="j-editor-actions">{podeDevolver && <button type="button" className="btn quiet" disabled={ocupado} onClick={() => void devolver()}><IconeUI nome="arrow-left" tamanho={16} />Devolver ao radar</button>}
-      {editavel ? <button type="button" className="btn primary" disabled={ocupado} onClick={() => void guardar()}><IconeUI nome="check" tamanho={16} />Salvar pacote</button>
+    <div className="j-editor-actions">{podeDevolver && <button type="button" className="btn quiet" {...trava(ocupado)} onClick={() => void devolver()}><IconeUI nome="arrow-left" tamanho={16} />Devolver ao radar</button>}
+      {editavel ? <button type="button" className="btn primary" {...trava(ocupado)} onClick={() => void guardar()}><IconeUI nome="check" tamanho={16} />Salvar pacote</button>
         : <a className="btn primary" href={enderecoFila(vaga)}>{c ? 'Ver na fila' : 'Preparar pacote'}</a>}</div>
   </DialogoJornada>;
 }
 
 export function PacotesDia({ candidaturas, calculadas, limites, ocupado, aprovar, revogar, salvar, atualizar, plataforma }: Dados) {
   const app = useApp();
+  const trava = useTrava();
   const [revisao, setRevisao] = useState<{ vaga: VagaJornada; c?: Candidatura } | null>(null);
   const [lote, setLote] = useState(false);
   const [manual, setManual] = useState<VagaJornada | null>(null);
@@ -107,15 +109,15 @@ export function PacotesDia({ candidaturas, calculadas, limites, ocupado, aprovar
     {recibo && <div className="j-receipt" role="status"><IconeUI nome="check" tamanho={20} /><div><b>Envio confirmado</b><p>Candidatura registrada no quadro.</p></div><a className="btn quiet" href="#/quadro">Ver no quadro</a></div>}
     <div className="j-list-layout"><section className="j-list-panel" aria-label="Pacotes para envio">
       <div className="j-panel-heading"><h2>Pacotes para envio <span className="j-count">{itens.length}</span></h2>
-        {itens.length > 1 && itens.some(i => i.c && permiteAprovar(i.c)) && <button className="btn quiet j-small" type="button" onClick={() => setLote(true)}>Aprovar todos</button>}</div>
+        {itens.length > 1 && itens.some(i => i.c && permiteAprovar(i.c)) && <button className="btn quiet j-small" type="button" {...trava()} onClick={() => setLote(true)}>Aprovar todos</button>}</div>
       {itens.length ? <ul className="j-list">{itens.map(({vaga,c}) => <li className="j-row" key={vaga.id}>
         <div className="j-row-top"><TituloVaga vaga={vaga} /><span className={'j-status' + (c?.estado === 'aprovada' ? ' j-approved':'')}><i />{c ? rotulos[c.estado] : 'Para preparar'}</span></div>
         <div className="j-row-actions"><button type="button" className="btn secondary j-small" aria-label={`Revisar pacote de ${vaga.titulo} na ${vaga.empresa}`} onClick={() => setRevisao({vaga,c})}><IconeUI nome="file" tamanho={16} />Revisar pacote</button>
-          {c && ['preparada','aprovada'].includes(c.estado) && <button type="button" className="btn quiet j-small" disabled={emAcao || (c.estado === 'preparada' && !permiteAprovar(c))} aria-pressed={c.estado === 'aprovada'}
+          {c && ['preparada','aprovada'].includes(c.estado) && <button type="button" className="btn quiet j-small" {...trava(emAcao || (c.estado === 'preparada' && !permiteAprovar(c)))} aria-pressed={c.estado === 'aprovada'}
             onClick={() => void (c.estado === 'aprovada' ? revogar(c) : aprovar(c))}><IconeUI nome="check" tamanho={16} />{c.estado === 'aprovada' ? 'Retirar aprovação' : 'Aprovar pacote'}</button>}
           {!c && <a className="btn quiet j-small" href={enderecoFila(vaga)}>Preparar pacote</a>}
           {c && (['preparada','aprovada'].includes(c.estado) || (vaga.aplicacaoManual && c.estado === 'bloqueada')) &&
-            <button type="button" className="btn quiet j-small" disabled={emAcao} onClick={() => void iniciarManual(vaga)}>
+            <button type="button" className="btn quiet j-small" {...trava(emAcao)} onClick={() => void iniciarManual(vaga)}>
               {vaga.aplicacaoManual ? 'Retomar candidatura' : 'Aplicar no site'}</button>}
           {c && ((!vaga.aplicacaoManual && ['bloqueada','incerta','falhou'].includes(c.estado)) || (c.plataforma === 'formulario' && !permiteAprovar(c) && c.estado === 'preparada')) && <a className="btn quiet j-small" href={enderecoFila(vaga)}>Revisar na fila</a>}
         </div></li>)}</ul> : <VazioJornada icone="list" titulo={recibo ? 'Lista concluída' : 'Sua lista está vazia'} texto="Adicione uma vaga no radar para revisar o pacote de candidatura aqui." acao={<BotaoRadar />} />}
@@ -123,14 +125,14 @@ export function PacotesDia({ candidaturas, calculadas, limites, ocupado, aprovar
       <div className="j-ratio"><strong>{prontas}</strong><span>/ {itens.length}</span></div><div className="j-ratio-caption">{prontas === 1 ? 'pacote aprovado' : 'pacotes aprovados'}</div>
       <div className="j-meter" aria-hidden="true"><i style={{width: `${itens.length ? prontas*100/itens.length : 0}%`}} /></div>
       <div className="j-summary-line"><span>Para revisar</span><b>{paraRevisar}</b></div><div className="j-summary-line"><span>Prontos para envio</span><b>{prontas}</b></div>
-      <div className="j-summary-bottom"><button type="button" className="btn primary" disabled={!proxima || emAcao} onClick={() => proxima && void iniciarManual(proxima.vaga)}><IconeUI nome="send" tamanho={16} />
+      <div className="j-summary-bottom"><button type="button" className="btn primary" {...trava(!proxima || emAcao)} onClick={() => proxima && void iniciarManual(proxima.vaga)}><IconeUI nome="send" tamanho={16} />
         {retomada ? 'Retomar candidatura' : 'Aplicar na próxima vaga'}</button>
         <p>Conclua a candidatura no site da empresa e confirme aqui para acompanhar no quadro.</p></div></aside></div>
     {manual && reserva && <DialogoJornada titulo="Candidatura no site da empresa" fechar={fechar}><TituloVaga vaga={manual} />
       <p>Abra a vaga no navegador para enviar sua candidatura. Quando terminar, volte e confirme o envio.</p>
       <LinkExterno url={manual.urlCandidaturaManual} className="btn primary">Abrir candidatura no navegador</LinkExterno>
       <div className="j-editor-actions"><button type="button" className="btn quiet" onClick={fechar}>Continuar depois</button>
-        <button type="button" className="btn secondary" disabled={emAcao} onClick={() => void agirVaga(manual,'confirmar-envio-manual')}><IconeUI nome="check" tamanho={16} />Já enviei</button></div>
+        <button type="button" className="btn secondary" {...trava(emAcao)} onClick={() => void agirVaga(manual,'confirmar-envio-manual')}><IconeUI nome="check" tamanho={16} />Já enviei</button></div>
     </DialogoJornada>}
     {revisao && <Revisar {...revisao} ocupado={emAcao} salvar={salvar} devolver={() => agirVaga(revisao.vaga,'devolver-ao-radar')} fechar={fechar} />}
     {lote && <DialogoJornada titulo="Aprovar pacotes" fechar={fechar}>
