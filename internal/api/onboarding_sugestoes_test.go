@@ -146,3 +146,23 @@ func TestOnboardingSugestaoDependeDaHabilidadeEDoIdiomaCitados(t *testing.T) {
 		}
 	}
 }
+
+// Um currículo com muitas tecnologias virava dezenas de sugestões: no máximo 8 principais e 8 complementares.
+func TestSugestoesDoCVTemNoMaximoOitoPorStack(t *testing.T) {
+	var principais, secundarias []string
+	var itens []any
+	for i := 0; i < 12; i++ {
+		p, s := fmt.Sprintf("Principal%02d", i), fmt.Sprintf("Secundaria%02d", i)
+		principais, secundarias = append(principais, p), append(secundarias, s)
+		itens = append(itens, Objeto{"campo": "stackPrincipal", "valor": p, "evidencia": p}, Objeto{"campo": "stackSecundaria", "valor": s, "evidencia": s})
+	}
+	itens = append(itens, Objeto{"campo": "cargo", "valor": "Engenheira", "evidencia": "Engenheira"})
+	texto := "Engenheira " + strings.Join(principais, " ") + " " + strings.Join(secundarias, " ")
+	conta := map[string]int{}
+	for _, s := range sugestoesComFonte(texto, Objeto{"sugestoes": itens}) {
+		conta[s["campo"].(string)]++
+	}
+	if conta["stackPrincipal"] != maxPorStack || conta["stackSecundaria"] != maxPorStack || conta["cargo"] != 1 {
+		t.Fatalf("esperava %d de cada stack e o cargo: %v", maxPorStack, conta)
+	}
+}

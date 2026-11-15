@@ -52,10 +52,15 @@ func valorExplicito(campo, valor, evidencia string) bool {
 	return expresso != "" && regexp.MustCompile(`\b(?:`+expresso+`)\b`).MatchString(ev)
 }
 
+// maxPorStack é o teto de habilidades principais e de complementares. O pedido à IA já diz o mesmo; aqui é a rede
+// de segurança. Sem limite, um currículo com muitas tecnologias virava ~44 sugestões e a leitura passava de 90 s.
+const maxPorStack = 8
+
 func sugestoesComFonte(texto string, saida Objeto) []Objeto {
 	fonte := strings.Join(strings.Fields(texto), " ")
 	itens := []Objeto{}
 	vistos := map[string]bool{}
+	porCampo := map[string]int{}
 	for _, s := range dominio.ListaDe(saida["sugestoes"]) {
 		item := dominio.ObjetoDe(s)
 		campo, _ := item["campo"].(string)
@@ -75,6 +80,10 @@ func sugestoesComFonte(texto string, saida Objeto) []Objeto {
 		if vistos[chave] {
 			continue
 		}
+		if (campo == "stackPrincipal" || campo == "stackSecundaria") && porCampo[campo] >= maxPorStack {
+			continue
+		}
+		porCampo[campo]++
 		vistos[chave] = true
 		itens = append(itens, Objeto{"campo": campo, "valor": valor, "evidencia": evidencia})
 		if len(itens) >= 32 {
