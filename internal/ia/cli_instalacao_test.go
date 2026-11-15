@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
 func TestClaudeInstalacaoNativaForaDoPath(t *testing.T) {
@@ -152,5 +154,28 @@ func TestClaudeNenhumaInstalacao(t *testing.T) {
 
 	if _, err := localizarCLI("claude"); !errors.Is(err, exec.ErrNotFound) {
 		t.Fatalf("esperava exec.ErrNotFound, veio %v", err)
+	}
+}
+
+// Ler o currículo vai sem raciocínio estendido (MAX_THINKING_TOKENS=0); a triagem continua com ele.
+func TestSoAsFuncoesDeExtracaoVaoSemRaciocinio(t *testing.T) {
+	comCLIFalsa(t, "pensamento")
+	t.Setenv("MAX_THINKING_TOKENS", "") // o ambiente de quem roda o teste não pode decidir
+	casos := map[string]dominio.Objeto{
+		"sugerirPerfilDoCV": {"curriculo": "Desenvolvedora Java"},
+		"triarVaga":         entradaTriagem,
+	}
+	for funcao, entrada := range casos {
+		r, err := chamarClaude(context.Background(), PedidoProvedor{Prompt: MontarPrompt(funcao, entrada)})
+		if err != nil {
+			t.Fatalf("%s: %v", funcao, err)
+		}
+		quer := ""
+		if funcao == "sugerirPerfilDoCV" {
+			quer = "0"
+		}
+		if !strings.Contains(r.Texto, `"pensamento":"`+quer+`"`) {
+			t.Fatalf("%s: MAX_THINKING_TOKENS esperado %q, veio %s", funcao, quer, r.Texto)
+		}
 	}
 }
