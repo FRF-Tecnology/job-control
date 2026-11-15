@@ -247,6 +247,15 @@ func TestLerRespostasDoEmail(t *testing.T) {
 	if v := vagaGp1(t, a); v["etapa"] != "encerrada" {
 		t.Fatalf("depois de confirmar a recusa, etapa %v", v["etapa"])
 	}
+
+	// Descartado também conta como lido: ler de novo não traz o e-mail de volta nem chama a IA.
+	if r := chamar(t, a, "POST", "/emails/"+url.PathEscape("convite@example.com")+"/descartar", Objeto{}, "eu"); r.Status != 200 {
+		t.Fatalf("descartar: %d %v", r.Status, r.Corpo)
+	}
+	r = chamar(t, a, "POST", "/email/ler", Objeto{}, "eu")
+	if res := r.Corpo.(ResultadoLeitura); res.JaLidos != 3 || res.Registrados != 0 || len(prov.chamadas()) != 2 {
+		t.Fatalf("leitura depois de descartar: %+v, IA %d", res, len(prov.chamadas()))
+	}
 }
 
 func TestLerRespostasPedeContaIAEPessoa(t *testing.T) {

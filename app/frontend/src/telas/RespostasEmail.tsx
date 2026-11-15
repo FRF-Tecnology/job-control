@@ -2,8 +2,9 @@
 // /emails/{idMensagem}/confirmar|ligar|descartar). A pessoa pede a leitura; o app lê a caixa conectada, registra as
 // respostas e mostra:
 // - "Para confirmar": recusa, oferta, ou convite de remetente fora do domínio da vaga. A vaga só muda quando a pessoa
-//   confirma; descartar tira da lista sem mexer na vaga.
-// - "Sem vaga": a pessoa diz de qual vaga é (a etapa muda) ou descarta.
+//   confirma; "Não mudar a vaga" (descartar) tira da lista sem mexer na vaga.
+// - "Sem vaga": a pessoa diz de qual vaga é (a etapa muda) ou ignora (descartar).
+// Cada grupo traz uma frase que explica o que os botões fazem. Descartado conta como lido: não volta na próxima leitura.
 // Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
 // o resumo da IA aparece como texto, nunca como link.
 import { useEffect, useState } from 'react';
@@ -59,7 +60,7 @@ function EmailAConfirmar({ e, vaga }: { e: any; vaga: any }) {
       <p className="j-email-linha">{linha(e)}</p>
       <div className="j-email-acoes">
         <button className="btn primary" type="button" onClick={() => ir('confirmar', 'Vaga atualizada')}>{rotuloConfirmar(String(e.proposta?.etapa ?? ''))}</button>
-        <button className="btn secondary" type="button" onClick={() => ir('descartar', 'Email descartado')}>Descartar</button>
+        <button className="btn secondary" type="button" onClick={() => ir('descartar', 'E-mail tirado da lista')}>Não mudar a vaga</button>
       </div>
     </li>
   );
@@ -76,11 +77,11 @@ function EmailSemVaga({ e, opcoes }: { e: any; opcoes: any[] }) {
       <p className="j-email-linha">{[e.de, e.resumo].filter(Boolean).join(' · ')}</p>
       <div className="j-email-acoes">
         <select aria-label={`Vaga do e-mail "${e.assunto}"`} value={escolha} onChange={ev => setEscolha(ev.target.value)}>
-          <option value="">De qual vaga é?</option>
+          <option value="">{opcoes.length ? 'De qual vaga é este e-mail?' : 'Nenhuma vaga para escolher'}</option>
           {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
         </select>
-        <button className="btn primary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'Email ligado à vaga')}>Ligar</button>
-        <button className="btn secondary" type="button" onClick={() => ir('descartar', {}, 'Email descartado')}>Descartar</button>
+        <button className="btn primary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga')}>Ligar à vaga</button>
+        <button className="btn secondary" type="button" onClick={() => ir('descartar', {}, 'E-mail tirado da lista')}>Ignorar e-mail</button>
       </div>
     </li>
   );
@@ -130,15 +131,18 @@ export function RespostasEmail() {
         {conta?.conectada
           ? <p>{lendo ? 'Lendo a caixa de entrada. Pode levar alguns minutos.' : conta.ultimaLeitura ? `Última leitura: ${dataCurta(conta.ultimaLeitura)}. O Applyer só lê: não marca, move, apaga nem envia e-mail.` : 'Na primeira vez, o Applyer lê os últimos 30 dias. Ele só lê: não marca, move, apaga nem envia e-mail.'}</p>
           : conta && <p>Conecte seu e-mail em <a href="#/perfil">Perfil e IA</a> para o Applyer ler as respostas das empresas e atualizar as vagas.</p>}
+        {conta?.conectada && !lendo && <p>Cada e-mail é lido uma vez só: os que já passaram por aqui, até os ignorados, não voltam nas próximas leituras.</p>}
         {feito && <p className="j-email-feito" role="status">{feito}</p>}
         {erro && <p className="j-email-erro" role="alert">{erro}</p>}
       </div>
       {aConfirmar.length > 0 && <>
         <h3 className="j-email-grupo">Para confirmar</h3>
+        <p className="j-email-ajuda">A empresa respondeu sobre uma vaga sua e isso mudaria a etapa dela. Nada muda até você confirmar. Se o e-mail não quer dizer isso, escolha "Não mudar a vaga": ele sai da lista e a vaga fica como está.</p>
         <ul className="j-list">{aConfirmar.map(e => <EmailAConfirmar key={e.idMensagem} e={e} vaga={vagas.find(v => v.id === e.vagaId)} />)}</ul>
       </>}
       {semVaga.length > 0 && <>
         <h3 className="j-email-grupo">Sem vaga</h3>
+        <p className="j-email-ajuda">Parecem respostas de processo seletivo, mas não achei de qual vaga. Se for de uma vaga que está no Applyer, escolha a vaga e clique em "Ligar à vaga": o e-mail fica junto dela e a etapa é atualizada. Se não for (uma candidatura feita fora do app, propaganda, ou eu me enganei), clique em "Ignorar e-mail": ele sai da lista, nada muda e nada é apagado do seu e-mail.</p>
         <ul className="j-list">{semVaga.map(e => <EmailSemVaga key={e.idMensagem} e={e} opcoes={opcoes} />)}</ul>
       </>}
     </section>
