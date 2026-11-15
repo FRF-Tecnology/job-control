@@ -102,6 +102,8 @@ type API struct {
 	janelaApp *JanelaApp
 	// leitorEmail lê a caixa de e-mail por IMAP (email.go); só os testes trocam o Discar.
 	leitorEmail caixa.Leitor
+	// lendoEmail: uma leitura da caixa por vez (POST /email/ler); a segunda recebe 409.
+	lendoEmail sync.Mutex
 }
 
 // Opcoes configura a API.
@@ -478,7 +480,7 @@ var (
 	reVagaID       = regexp.MustCompile(`^/vagas/([^/]+)$`)
 	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z-]+)?$`)
 	rePedido       = regexp.MustCompile(`^/pedidos/([^/]+)/concluir$`)
-	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar)$`)
+	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar|confirmar)$`)
 	rePlataforma   = regexp.MustCompile(`^/plataformas/([^/]+)$`)
 	reRodada       = regexp.MustCompile(`^/rodadas/([^/]+)$`)
 	camposPlatText = []string{"nome", "url", "status", "comoAplicar", "limitacoes", "ultimaVarredura"}
@@ -563,7 +565,7 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
-	if p == "/email/conta" {
+	if p == "/email/conta" || p == "/email/ler" {
 		if r, feito, err := a.rotasEmail(ctx, m, p, c, autor); feito {
 			return r, err
 		}
@@ -714,13 +716,20 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		if err != nil {
 			return Resposta{}, err
 		}
+		// Confirmar a mudança proposta por um e-mail lido pelo app: só a pessoa, pela tela.
+		if g[2] == "confirmar" && (autor != "eu" || a.canal != "") {
+			return Resposta{}, falha(403, msgForaDoAssistente)
+		}
 		var res Objeto
 		err = a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
 			var novo dominio.Estado
 			var err error
-			if g[2] == "ligar" {
+			switch g[2] {
+			case "ligar":
 				novo, res, err = dominio.LigarEmail(e, id, c["vagaId"], a.ctx(e, autor))
-			} else {
+			case "confirmar":
+				novo, res, err = dominio.ConfirmarEmail(e, id, a.ctx(e, autor))
+			default:
 				novo, res, err = dominio.DescartarEmail(e, id)
 			}
 			return novo, err

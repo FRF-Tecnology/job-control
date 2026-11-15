@@ -130,10 +130,23 @@ func (l Leitor) Testar(ctx context.Context, c Conta) error {
 	return cli.Logout()
 }
 
+// Busca diz o que procurar: e-mails cujo remetente, assunto ou corpo contém algum dos trechos (a união das buscas).
+// Tudo vazio = qualquer e-mail. Os trechos vão na busca do servidor; use só ASCII.
+type Busca struct {
+	Remetentes []string
+	Assuntos   []string
+	Corpo      []string
+}
+
 // Ler devolve as mensagens recebidas desde `desde` (o dia, como o IMAP entende) cujo remetente contém um dos
 // trechos de `remetentes` (vazio = qualquer remetente), da mais nova para a mais antiga, no máximo `max`.
 // Não marca nada como lido.
 func (l Leitor) Ler(ctx context.Context, c Conta, desde time.Time, remetentes []string, max int) ([]Mensagem, error) {
+	return l.Buscar(ctx, c, desde, Busca{Remetentes: remetentes}, max)
+}
+
+// Buscar é o Ler com remetente, assunto e corpo. Não marca nada como lido.
+func (l Leitor) Buscar(ctx context.Context, c Conta, desde time.Time, b Busca, max int) ([]Mensagem, error) {
 	cli, err := l.abrir(ctx, c)
 	if err != nil {
 		return nil, err
@@ -141,11 +154,14 @@ func (l Leitor) Ler(ctx context.Context, c Conta, desde time.Time, remetentes []
 	defer cli.Logout()
 
 	uids := map[uint32]bool{}
-	buscar := func(remetente string) error {
+	buscar := func(campo, trecho string) error {
 		crit := imap.NewSearchCriteria()
 		crit.Since = desde
-		if remetente != "" {
-			crit.Header.Add("From", remetente)
+		switch campo {
+		case "From", "Subject":
+			crit.Header.Add(campo, trecho)
+		case "Body":
+			crit.Body = []string{trecho}
 		}
 		achados, err := cli.UidSearch(crit)
 		for _, u := range achados {
@@ -153,12 +169,17 @@ func (l Leitor) Ler(ctx context.Context, c Conta, desde time.Time, remetentes []
 		}
 		return err
 	}
-	if len(remetentes) == 0 {
-		err = buscar("")
+	if len(b.Remetentes)+len(b.Assuntos)+len(b.Corpo) == 0 {
+		err = buscar("", "")
 	}
-	for _, r := range remetentes {
-		if err = buscar(r); err != nil {
-			break
+	for _, grupo := range []struct {
+		campo   string
+		trechos []string
+	}{{"From", b.Remetentes}, {"Subject", b.Assuntos}, {"Body", b.Corpo}} {
+		for _, t := range grupo.trechos {
+			if err == nil {
+				err = buscar(grupo.campo, t)
+			}
 		}
 	}
 	if err != nil {
