@@ -88,6 +88,26 @@ func TestRegistrarEmailLidoSoMudaSozinhoOQueEReversivelEDoDominioDaVaga(t *testi
 	}
 }
 
+// Sem vaga no app: "candidatura recebida" só fica registrada (sem pedir nada); convite pede a vaga.
+func TestRegistrarEmailLidoSemVaga(t *testing.T) {
+	for tipo, status := range map[string]string{"confirmacao": "ignorado", "entrevista": "sem-vaga"} {
+		e, ctx := estadoComVagaEnviada(t)
+		email := emailLido("m-9", "rh@outra.example", "Recebemos sua candidatura - Outra Empresa")
+		email["texto"] = "Olá! Recebemos sua candidatura para Analista na Outra Empresa."
+		novo, r, err := RegistrarEmailLido(e, email, Objeto{"tipo": tipo, "resumo": "resumo"}, ctx)
+		if err != nil {
+			t.Fatalf("%s: %v", tipo, err)
+		}
+		reg := novo.Emails[len(novo.Emails)-1]
+		if r["status"] != status || reg["status"] != status || reg["tipo"] != tipo || etapaDaVaga(novo, "gp-1") != "enviada" {
+			t.Fatalf("%s: resposta %v, registro %v", tipo, r, reg)
+		}
+		if _, r, _ := RegistrarEmailLido(novo, emailLido("m-9", "rh@outra.example", "x"), Objeto{"tipo": tipo}, ctx); r["status"] != "duplicado" {
+			t.Fatalf("%s: repetido = %v", tipo, r["status"])
+		}
+	}
+}
+
 func TestConfirmarEmail(t *testing.T) {
 	e, ctx := estadoComVagaEnviada(t)
 	e, _, err := RegistrarEmailLido(e, emailLido("m-1", "no-reply@gupy.io", "Atualização Acme Pagamentos"), Objeto{"tipo": "rejeicao", "vagaId": "gp-1", "resumo": "não seguiram"}, ctx)

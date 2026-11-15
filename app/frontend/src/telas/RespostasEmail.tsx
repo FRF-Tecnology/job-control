@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { foiEnviada } from '../dominio/modelo';
-import { NOMES_EMAIL } from '../dominio/emails';
+import { NOMES_EMAIL, pedeVaga } from '../dominio/emails';
 import { dataCurta, encode, nomeEtapa, plural } from '../util';
 
 const ROTA_CONTA = '/api/v1/email/conta';
@@ -101,7 +101,7 @@ export function RespostasEmail() {
 
   const emails: any[] = app.estado.emails ?? [];
   const aConfirmar = emails.filter(e => e.status === 'a-confirmar');
-  const semVaga = emails.filter(e => e.status === 'sem-vaga');
+  const semVaga = emails.filter(pedeVaga);
   const vagas: any[] = app.estado.vagas ?? [];
   const opcoes = vagas.filter(v => foiEnviada(v) || ['aplicar', 'bloqueada', 'em-processo', 'oferta'].includes(v.etapa))
     .sort((a, b) => String(a.empresa).localeCompare(String(b.empresa)));

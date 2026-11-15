@@ -72,6 +72,13 @@ describe('Respostas por e-mail', () => {
     expect(screen.getByRole('button', { name: 'Não mudar a vaga' })).toBeTruthy();
   });
 
+  it('candidatura recebida sem vaga não pede nada (registros antigos)', async () => {
+    const email = { idMensagem: 'cr@example.com', status: 'sem-vaga', tipo: 'confirmacao', de: 'rh@empresa.example', assunto: 'Recebemos', resumo: '' };
+    await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email]);
+    expect(screen.queryByText('Sem vaga')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ignorar e-mail' })).toBeNull();
+  });
+
   it('sem vaga: explica os botões, liga só depois de escolher e ignora sem mexer na vaga', async () => {
     const email = { idMensagem: 'sv@example.com', status: 'sem-vaga', tipo: 'entrevista', de: 'rh@empresa.example', assunto: 'Convite', resumo: '' };
     const { chamadas } = await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email], () => ({}));

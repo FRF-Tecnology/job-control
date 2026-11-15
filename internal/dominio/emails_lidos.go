@@ -138,6 +138,9 @@ func RegistrarEmailLido(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, e
 		}
 	}
 	vaga := AcharVagaDoEmail(e.Vagas, email, cls["vagaId"])
+	if vaga == nil && tipo == "confirmacao" {
+		return registrarSemPedir(e, email, cls, ctx)
+	}
 	if vaga == nil || !precisaDaPessoa(tipo, vaga, texto(email["de"])) {
 		return RegistrarEmail(e, email, cls, ctx)
 	}
@@ -158,6 +161,19 @@ func RegistrarEmailLido(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, e
 	novo := e.Clonar()
 	novo.Emails = append(append([]Objeto{}, novo.Emails...), reg)
 	return novo, Objeto{"idMensagem": idMensagem, "status": "a-confirmar", "vagaId": vaga["id"], "transicao": nil}, nil
+}
+
+// registrarSemPedir: "candidatura recebida" sem vaga no app (em geral, candidatura feita fora dele) não muda etapa
+// nenhuma, então não pede nada à pessoa: fica registrada como "ignorado" (o id impede ler de novo) e não entra na lista
+// "sem vaga".
+func registrarSemPedir(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, error) {
+	novo, res, err := RegistrarEmail(e, email, cls, ctx)
+	if err != nil || res["status"] != "sem-vaga" {
+		return novo, res, err
+	}
+	novo.Emails[len(novo.Emails)-1]["status"] = "ignorado"
+	res["status"] = "ignorado"
+	return novo, res, nil
 }
 
 // ConfirmarEmail: a pessoa confirma a mudança proposta de um e-mail "a-confirmar". A mudança é recalculada com a vaga
