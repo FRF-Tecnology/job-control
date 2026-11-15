@@ -21,6 +21,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/busca"
+	"github.com/FRF-Tecnology/job-control/internal/caixa"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
@@ -99,6 +100,8 @@ type API struct {
 	canal string
 	// janelaApp: os ganchos da janela do app de PC; nil fora dele (janela_app.go).
 	janelaApp *JanelaApp
+	// leitorEmail lê a caixa de e-mail por IMAP (email.go); só os testes trocam o Discar.
+	leitorEmail caixa.Leitor
 }
 
 // Opcoes configura a API.
@@ -556,6 +559,12 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 
 	if p == "/app/janela" || p == "/app/janela/padrao" {
 		if r, feito, err := a.rotasJanelaApp(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+
+	if p == "/email/conta" {
+		if r, feito, err := a.rotasEmail(ctx, m, p, c, autor); feito {
 			return r, err
 		}
 	}

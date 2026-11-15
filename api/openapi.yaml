@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.15.0
+  version: 0.16.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -777,13 +777,49 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
         '404': { description: 'Este processo não é o app de PC (não há janela): {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  # Conta de e-mail (IMAP, só leitura): o app lê as respostas das empresas e os alertas de vaga da caixa da pessoa.
+  # A caixa abre com EXAMINE e o corpo é lido com BODY.PEEK[]: nada é marcado como lido, movido, apagado ou enviado.
+  # A senha de app fica no cofre do sistema; nunca volta na resposta nem vai para o log.
+  /email/conta:
+    get:
+      x-so-tela: true
+      summary: 'A conta de e-mail conectada: {conectada, usuario, servidor}. Sem conta (ou sem a senha no cofre), conectada false e os textos vazios. A senha nunca volta'
+      responses:
+        '200': { description: Estado da conta, content: { application/json: { schema: { $ref: '#/components/schemas/ContaEmail' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+    put:
+      x-so-tela: true
+      summary: 'Conecta a caixa de e-mail por IMAP (TLS, porta 993) com uma senha de app (no Gmail: myaccount.google.com/apppasswords; os espaços da senha são ignorados). servidor vazio = deduzido do endereço (Gmail, Outlook/Hotmail, iCloud); outro domínio precisa dele. Antes de gravar, entra e abre a caixa de entrada só para leitura: senha recusada dá 400, servidor fora do ar dá 502, e nada é gravado. Conectar de novo troca a conta'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [usuario, senha]
+              properties:
+                usuario: { type: string, maxLength: 254, description: 'O endereço de e-mail' }
+                senha: { type: string, maxLength: 256, description: 'A senha de app (não a senha da conta)' }
+                servidor: { type: string, maxLength: 253, description: 'Host IMAP, como imap.exemplo.com; vazio = deduzido do endereço' }
+      responses:
+        '200': { description: Conta conferida e gravada, content: { application/json: { schema: { $ref: '#/components/schemas/ContaEmail' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '502': { description: 'O servidor de e-mail não respondeu: {erro}. Nada foi gravado', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+    delete:
+      x-so-tela: true
+      summary: 'Desconecta: apaga a senha do cofre e a conta do banco. Sem conta, responde igual. Para revogar a senha de app no Google, a pessoa a remove em myaccount.google.com/apppasswords'
+      responses:
+        '200': { description: Conta desconectada, content: { application/json: { schema: { $ref: '#/components/schemas/ContaEmail' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.
   /dados/apagar:
     post:
       x-so-tela: true
-      summary: 'Apaga os dados do app neste computador: banco (vagas, fila, perfil, eventos, limites), currículos copiados, backups locais, perfil do navegador e chaves de IA no cofre do sistema. Só esses caminhos, nunca a pasta inteira (CENTRAL_PASTA pode ser uma pasta da pessoa); junção ou link para fora é removido como link. Não apaga o login das CLIs de IA, os arquivos originais dos currículos nem o cache da janela do app (WebView2/WebKit). Depois de responder, o app fecha (fechar sempre true, também na falha parcial); ao abrir de novo, é um usuário novo'
+      summary: 'Apaga os dados do app neste computador: banco (vagas, fila, perfil, eventos, limites), currículos copiados, backups locais, perfil do navegador, chaves de IA e senha de app do e-mail no cofre do sistema. Só esses caminhos, nunca a pasta inteira (CENTRAL_PASTA pode ser uma pasta da pessoa); junção ou link para fora é removido como link. Não apaga o login das CLIs de IA, os arquivos originais dos currículos nem o cache da janela do app (WebView2/WebKit). Depois de responder, o app fecha (fechar sempre true, também na falha parcial); ao abrir de novo, é um usuário novo'
       requestBody:
         required: true
         content:
@@ -1228,7 +1264,7 @@ components:
     ItemApagado:
       type: string
       enum: [banco, curriculos, backups, navegador, chaves, pasta-antiga]
-      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe'
+      description: 'banco = vagas, fila, perfil, eventos, limites e configurações; curriculos = PDFs copiados para a pasta do app; backups = cópias diárias locais; navegador = perfil próprio (sessão das plataformas); chaves = chaves de IA e senha de app do e-mail no cofre do sistema; pasta-antiga (jc-etv.7) = a pasta "Central de Candidaturas" que ficou ao lado da Applyer (as duas existiam): no apagar, o banco, os currículos, os backups e o navegador dela; no sair, o navegador. Só aparece quando ela existe'
     ResultadoApagar:
       type: object
       additionalProperties: false
@@ -1341,6 +1377,14 @@ components:
         erro: { type: string, description: 'Texto pronto para a tela' }
         motivo: { type: string, enum: [enviando, login-aberto, sem-navegador] }
         estado: { type: string, enum: [enviando], description: 'Só com motivo enviando' }
+    ContaEmail:
+      type: object
+      additionalProperties: false
+      required: [conectada, usuario, servidor]
+      properties:
+        conectada: { type: boolean, description: 'Há endereço gravado e senha no cofre' }
+        usuario: { type: string, description: 'O endereço conectado; vazio sem conta' }
+        servidor: { type: string, description: 'O host IMAP usado; vazio sem conta' }
     JanelaApp:
       type: object
       additionalProperties: false
