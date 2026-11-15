@@ -138,11 +138,14 @@ ok = true só se não houver problemas. Valores sempre como texto.`,
       vagaId: { type: ['string', 'null'] },
       resumo: texto,
       proximoPasso: texto,
+      empresa: texto,
+      cargo: texto,
     }, ['tipo', 'vagaId', 'resumo']),
     sistema: `Você classifica emails de processos seletivos.
 tipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.
 vagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.
-resumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.`,
+resumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.
+empresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.`,
     mensagem: e => `Email:\n${json(e.email)}\n\nVagas em andamento:\n${json(e.vagas.map(v => ({ id: v.id, empresa: v.empresa, titulo: v.titulo })))}`,
   },
 

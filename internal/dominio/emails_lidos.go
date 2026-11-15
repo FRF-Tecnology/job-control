@@ -1,6 +1,9 @@
 package dominio
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"sort"
 	"strings"
 )
@@ -138,8 +141,8 @@ func RegistrarEmailLido(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, e
 		}
 	}
 	vaga := AcharVagaDoEmail(e.Vagas, email, cls["vagaId"])
-	if vaga == nil && tipo == "confirmacao" {
-		return registrarSemPedir(e, email, cls, ctx)
+	if vaga == nil {
+		return registrarSemVaga(e, email, cls, ctx)
 	}
 	if vaga == nil || !precisaDaPessoa(tipo, vaga, texto(email["de"])) {
 		return RegistrarEmail(e, email, cls, ctx)
@@ -163,16 +166,95 @@ func RegistrarEmailLido(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, e
 	return novo, Objeto{"idMensagem": idMensagem, "status": "a-confirmar", "vagaId": vaga["id"], "transicao": nil}, nil
 }
 
-// registrarSemPedir: "candidatura recebida" sem vaga no app (em geral, candidatura feita fora dele) não muda etapa
-// nenhuma, então não pede nada à pessoa: fica registrada como "ignorado" (o id impede ler de novo) e não entra na lista
-// "sem vaga".
-func registrarSemPedir(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, error) {
+// registrarSemVaga: e-mail lido pelo app sem vaga no Applyer (em geral, candidatura feita fora dele).
+//   - "candidatura recebida" e recusa não mudariam etapa nenhuma que importe: ficam registradas como "ignorado" (o id
+//     impede ler de novo) e não pedem nada à pessoa;
+//   - convite, teste e oferta ficam "sem-vaga", com a sugestão de empresa e cargo que a IA tirou do e-mail, para a
+//     pessoa ligar a uma vaga ou criar a vaga (CriarVagaDoEmail).
+func registrarSemVaga(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, error) {
 	novo, res, err := RegistrarEmail(e, email, cls, ctx)
 	if err != nil || res["status"] != "sem-vaga" {
 		return novo, res, err
 	}
-	novo.Emails[len(novo.Emails)-1]["status"] = "ignorado"
-	res["status"] = "ignorado"
+	reg := novo.Emails[len(novo.Emails)-1]
+	switch texto(cls["tipo"]) {
+	case "confirmacao", "rejeicao":
+		reg["status"] = "ignorado"
+		res["status"] = "ignorado"
+	default:
+		sug := Objeto{}
+		if v := TextoDeSugestao(cls["empresa"]); v != "" {
+			sug["empresa"] = v
+		}
+		if v := TextoDeSugestao(cls["cargo"]); v != "" {
+			sug["cargo"] = v
+		}
+		if len(sug) > 0 {
+			reg["sugestao"] = sug
+		}
+	}
+	return novo, res, nil
+}
+
+// TextoDeSugestao limpa o que a IA (ou a pessoa) diz ser a empresa ou o cargo: uma linha, até 120 caracteres, sem
+// link e sem <>. Vazio quando não sobra nada ou quando parece link.
+func TextoDeSugestao(x any) string {
+	s := aparar(strings.Join(strings.Fields(texto(x)), " "))
+	s = strings.NewReplacer("<", "", ">", "").Replace(s)
+	if l := strings.ToLower(s); strings.Contains(l, "http") || strings.Contains(l, "www.") {
+		return ""
+	}
+	return cortarJS(s, 120)
+}
+
+// CriarVagaDoEmail: a pessoa cria a vaga de um e-mail "sem vaga" (candidatura feita fora do app) e liga o e-mail a
+// ela. A vaga entra como enviada, na data do e-mail, e o e-mail aplica a etapa (convite e teste: em processo; oferta:
+// oferta). Se já existe vaga com a mesma empresa e cargo, liga a ela em vez de criar outra.
+func CriarVagaDoEmail(e Estado, idMensagem, empresa, cargo any, ctx Ctx) (Estado, Objeto, error) {
+	var reg Objeto
+	for _, x := range e.Emails {
+		if igual(x["idMensagem"], idMensagem) {
+			reg = x
+		}
+	}
+	if reg == nil {
+		return e, nil, &ErroNaoEncontrado{"email não encontrado: " + jsString(idMensagem)}
+	}
+	if !igual(reg["status"], "sem-vaga") {
+		return e, nil, validacao("este email não está esperando uma vaga")
+	}
+	emp, carg := TextoDeSugestao(empresa), TextoDeSugestao(cargo)
+	erros := []string{}
+	if emp == "" {
+		erros = append(erros, "informe a empresa")
+	}
+	if carg == "" {
+		erros = append(erros, "informe o cargo")
+	}
+	if len(erros) > 0 {
+		return e, nil, &ErroValidacao{erros}
+	}
+	data := texto(reg["data"])
+	if !EhDataISO(data) {
+		data = ctx.Agora
+	}
+	vaga := Objeto{
+		"id": "email-" + ChaveEmpresa(emp) + "-" + hashCurto(texto(idMensagem)), "empresa": emp, "titulo": carg,
+		"etapa": "enviada", "envio": Objeto{"data": data}, "notas": "Criada a partir de um e-mail (candidatura feita fora do Applyer).",
+	}
+	novo, criada, err := AdicionarVaga(e, vaga, ctx, false)
+	var dup *ErroDuplicata
+	if errors.As(err, &dup) {
+		return LigarEmail(e, idMensagem, dup.Existente["id"], ctx)
+	}
+	if err != nil {
+		return e, nil, err
+	}
+	novo, res, err := LigarEmail(novo, idMensagem, criada["id"], ctx)
+	if err != nil {
+		return e, nil, err
+	}
+	res["criada"] = true
 	return novo, res, nil
 }
 
@@ -214,4 +296,9 @@ func ConfirmarEmail(e Estado, idMensagem any, ctx Ctx) (Estado, Objeto, error) {
 		return e, nil, err
 	}
 	return novo, Objeto{"idMensagem": idMensagem, "status": "ligado", "vagaId": reg["vagaId"], "transicao": transicao}, nil
+}
+
+func hashCurto(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:4])
 }

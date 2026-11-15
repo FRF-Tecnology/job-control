@@ -70,6 +70,9 @@ func (p *iaDoEmail) Chamar(_ context.Context, pedido ia.PedidoProvedor) (ia.Resp
 	case strings.Contains(pedido.Prompt.Mensagem, "Atualização"):
 		// Recusa com link e marcação no resumo: o app limpa.
 		saida = Objeto{"tipo": "rejeicao", "vagaId": "gp-1", "resumo": "Não seguiram. Veja https://golpe.example/x <b>já</b>"}
+	case strings.Contains(pedido.Prompt.Mensagem, "Teste técnico"):
+		// Vaga que não está no app: a IA sugere empresa e cargo (com marcação, que o app limpa).
+		saida = Objeto{"tipo": "teste", "vagaId": nil, "resumo": "Teste técnico", "empresa": "Beta <i>Tech</i>", "cargo": "Backend Sênior"}
 	case strings.Contains(pedido.Prompt.Mensagem, "Convite"):
 		saida = Objeto{"tipo": "entrevista", "vagaId": "gp-1", "resumo": "Convite para conversar", "proximoPasso": "Escolher um horário"}
 	}
@@ -287,6 +290,48 @@ func TestLerRespostasPedeContaIAEPessoa(t *testing.T) {
 	// Corpo com campo: 400.
 	if r := chamar(t, a, "POST", "/email/ler", Objeto{"desde": "2020-01-01"}, "eu"); r.Status != 400 {
 		t.Fatalf("campo a mais: %d", r.Status)
+	}
+}
+
+// Teste de uma vaga que não está no app: fica "sem vaga" com a sugestão da IA; criar a vaga é só da pessoa, pela tela.
+func TestCriarVagaDeEmailLido(t *testing.T) {
+	leitor := leitorComEmails(t, mensagemDeTeste("desafio", "Recrutamento <noreply@mailer.example>", "Teste técnico - processo seletivo",
+		"Mon, 09 Nov 2026 12:00:00 +0000", "Olá! Segue o teste técnico do processo seletivo."))
+	a, _ := apiDeLeitura(t, leitor, true, true)
+	if r := chamar(t, a, "POST", "/email/ler", Objeto{}, "eu"); r.Status != 200 || r.Corpo.(ResultadoLeitura).SemVaga != 1 {
+		t.Fatalf("ler: %d %+v", r.Status, r.Corpo)
+	}
+	e, _ := a.arm.Carregar(context.Background())
+	var reg Objeto
+	for _, x := range e.Emails {
+		if x["status"] == "sem-vaga" {
+			reg = x
+		}
+	}
+	if reg == nil || dominio.ObjetoDe(reg["sugestao"])["empresa"] != "Beta iTech/i" || dominio.ObjetoDe(reg["sugestao"])["cargo"] != "Backend Sênior" {
+		t.Fatalf("registro: %v", reg)
+	}
+	caminho := "/emails/" + url.PathEscape(dominio.Texto(reg["idMensagem"])) + "/criar-vaga"
+	corpo := Objeto{"empresa": "Beta Tech", "cargo": "Backend Sênior"}
+	if r := chamar(t, a, "POST", caminho, corpo, "claude"); r.Status != 403 {
+		t.Fatalf("criar pelo assistente: %d", r.Status)
+	}
+	if r := chamar(t, a, "POST", caminho, Objeto{"empresa": "", "cargo": "Backend"}, "eu"); r.Status != 400 {
+		t.Fatalf("sem empresa: %d", r.Status)
+	}
+	r := chamar(t, a, "POST", caminho, corpo, "eu")
+	if r.Status != 200 {
+		t.Fatalf("criar: %d %v", r.Status, r.Corpo)
+	}
+	e, _ = a.arm.Carregar(context.Background())
+	var v Objeto
+	for _, x := range e.Vagas {
+		if x["id"] == r.Corpo.(Objeto)["vagaId"] {
+			v = x
+		}
+	}
+	if v == nil || v["empresa"] != "Beta Tech" || v["etapa"] != "em-processo" || v["subEtapa"] != "teste" {
+		t.Fatalf("vaga: %v", v)
 	}
 }
 

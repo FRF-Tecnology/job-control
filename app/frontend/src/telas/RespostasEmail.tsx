@@ -1,9 +1,10 @@
-// "Respostas por e-mail", no Quadro de candidaturas (api/openapi.yaml 0.17.0, rotas /email/conta, /email/ler e
-// /emails/{idMensagem}/confirmar|ligar|descartar). A pessoa pede a leitura; o app lê a caixa conectada, registra as
+// "Respostas por e-mail", no Quadro de candidaturas (api/openapi.yaml 0.18.0, rotas /email/conta, /email/ler e
+// /emails/{idMensagem}/confirmar|ligar|descartar|criar-vaga). A pessoa pede a leitura; o app lê a caixa conectada, registra as
 // respostas e mostra:
 // - "Para confirmar": recusa, oferta, ou convite de remetente fora do domínio da vaga. A vaga só muda quando a pessoa
 //   confirma; "Não mudar a vaga" (descartar) tira da lista sem mexer na vaga.
-// - "Sem vaga": a pessoa diz de qual vaga é (a etapa muda) ou ignora (descartar).
+// - "Sem vaga" (só convite, teste e oferta): a pessoa cria a vaga com a empresa e o cargo sugeridos (rota criar-vaga),
+//   diz de qual vaga é (a etapa muda) ou ignora (descartar).
 // Cada grupo traz uma frase que explica o que os botões fazem. Descartado conta como lido: não volta na próxima leitura.
 // Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
 // o resumo da IA aparece como texto, nunca como link.
@@ -66,21 +67,40 @@ function EmailAConfirmar({ e, vaga }: { e: any; vaga: any }) {
   );
 }
 
+// Vaga que não está no app (em geral, candidatura feita fora dele): a pessoa confere a empresa e o cargo que a IA
+// tirou do e-mail e cria a vaga, que entra no Quadro na etapa do e-mail; ou liga a uma vaga que já está no app; ou
+// ignora.
+const destino = (tipo: string) => tipo === 'oferta' ? 'Oferta' : 'Em processo';
+const sugestao = (e: any, k: string) => typeof e?.sugestao?.[k] === 'string' ? e.sugestao[k] : '';
+
 function EmailSemVaga({ e, opcoes }: { e: any; opcoes: any[] }) {
   const app = useApp();
   const [escolha, setEscolha] = useState('');
+  const [empresa, setEmpresa] = useState(() => sugestao(e, 'empresa'));
+  const [cargo, setCargo] = useState(() => sugestao(e, 'cargo'));
   const ir = (acao: string, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/emails/${encode(e.idMensagem)}/${acao}`, 'POST', corpo), msg);
+  const id = encode(e.idMensagem);
+  const podeCriar = empresa.trim() !== '' && cargo.trim() !== '';
   return (
     <li className="j-row">
       <span className="j-company">{NOMES_EMAIL[e.tipo] ?? 'Email'}</span>
       <h3 className="j-email-titulo">{e.assunto || '(sem assunto)'}</h3>
       <p className="j-email-linha">{[e.de, e.resumo].filter(Boolean).join(' · ')}</p>
+      <form className="j-email-criar" onSubmit={ev => { ev.preventDefault(); if (podeCriar) void ir('criar-vaga', { empresa: empresa.trim(), cargo: cargo.trim() }, `Vaga criada no Quadro, em ${destino(e.tipo)}`); }}>
+        <label htmlFor={`empresa-${id}`}>Empresa</label>
+        <input id={`empresa-${id}`} type="text" maxLength={120} autoComplete="off" value={empresa} placeholder="Nome da empresa" onChange={ev => setEmpresa(ev.target.value)} />
+        <label htmlFor={`cargo-${id}`}>Cargo</label>
+        <input id={`cargo-${id}`} type="text" maxLength={120} autoComplete="off" value={cargo} placeholder="Título da vaga" onChange={ev => setCargo(ev.target.value)} />
+        <button className="btn primary" type="submit" disabled={!podeCriar}>Criar vaga</button>
+      </form>
       <div className="j-email-acoes">
-        <select aria-label={`Vaga do e-mail "${e.assunto}"`} value={escolha} onChange={ev => setEscolha(ev.target.value)}>
-          <option value="">{opcoes.length ? 'De qual vaga é este e-mail?' : 'Nenhuma vaga para escolher'}</option>
-          {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
-        </select>
-        <button className="btn primary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga')}>Ligar à vaga</button>
+        {opcoes.length > 0 && <>
+          <select aria-label={`Vaga do e-mail "${e.assunto}"`} value={escolha} onChange={ev => setEscolha(ev.target.value)}>
+            <option value="">Ou é de uma vaga que já está no app?</option>
+            {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
+          </select>
+          <button className="btn secondary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga')}>Ligar à vaga</button>
+        </>}
         <button className="btn secondary" type="button" onClick={() => ir('descartar', {}, 'E-mail tirado da lista')}>Ignorar e-mail</button>
       </div>
     </li>
@@ -142,7 +162,7 @@ export function RespostasEmail() {
       </>}
       {semVaga.length > 0 && <>
         <h3 className="j-email-grupo">Sem vaga</h3>
-        <p className="j-email-ajuda">Parecem respostas de processo seletivo, mas não achei de qual vaga. Se for de uma vaga que está no Applyer, escolha a vaga e clique em "Ligar à vaga": o e-mail fica junto dela e a etapa é atualizada. Se não for (uma candidatura feita fora do app, propaganda, ou eu me enganei), clique em "Ignorar e-mail": ele sai da lista, nada muda e nada é apagado do seu e-mail.</p>
+        <p className="j-email-ajuda">Convites, testes e ofertas de vagas que não estão no Applyer (em geral, candidaturas feitas fora dele). Confira a empresa e o cargo que tirei do e-mail e clique em "Criar vaga": ela entra no Quadro na etapa certa, com o e-mail junto. Se não interessa acompanhar (ou eu me enganei), clique em "Ignorar e-mail": ele sai da lista e nada é apagado do seu e-mail. Confirmações de candidatura e recusas de vagas que não estão no app não aparecem aqui.</p>
         <ul className="j-list">{semVaga.map(e => <EmailSemVaga key={e.idMensagem} e={e} opcoes={opcoes} />)}</ul>
       </>}
     </section>

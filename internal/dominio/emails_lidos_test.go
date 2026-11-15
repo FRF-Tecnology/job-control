@@ -2,6 +2,7 @@ package dominio
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -90,11 +91,11 @@ func TestRegistrarEmailLidoSoMudaSozinhoOQueEReversivelEDoDominioDaVaga(t *testi
 
 // Sem vaga no app: "candidatura recebida" só fica registrada (sem pedir nada); convite pede a vaga.
 func TestRegistrarEmailLidoSemVaga(t *testing.T) {
-	for tipo, status := range map[string]string{"confirmacao": "ignorado", "entrevista": "sem-vaga"} {
+	for tipo, status := range map[string]string{"confirmacao": "ignorado", "rejeicao": "ignorado", "entrevista": "sem-vaga", "teste": "sem-vaga"} {
 		e, ctx := estadoComVagaEnviada(t)
 		email := emailLido("m-9", "rh@outra.example", "Recebemos sua candidatura - Outra Empresa")
 		email["texto"] = "Olá! Recebemos sua candidatura para Analista na Outra Empresa."
-		novo, r, err := RegistrarEmailLido(e, email, Objeto{"tipo": tipo, "resumo": "resumo"}, ctx)
+		novo, r, err := RegistrarEmailLido(e, email, Objeto{"tipo": tipo, "resumo": "resumo", "empresa": " Outra   Empresa ", "cargo": "Analista <b>Go</b>"}, ctx)
 		if err != nil {
 			t.Fatalf("%s: %v", tipo, err)
 		}
@@ -102,9 +103,86 @@ func TestRegistrarEmailLidoSemVaga(t *testing.T) {
 		if r["status"] != status || reg["status"] != status || reg["tipo"] != tipo || etapaDaVaga(novo, "gp-1") != "enviada" {
 			t.Fatalf("%s: resposta %v, registro %v", tipo, r, reg)
 		}
+		// Só quem pede a vaga guarda a sugestão da IA, já limpa.
+		sug := ObjetoDe(reg["sugestao"])
+		if status == "sem-vaga" && (sug["empresa"] != "Outra Empresa" || sug["cargo"] != "Analista bGo/b") {
+			t.Fatalf("%s: sugestão %v", tipo, reg["sugestao"])
+		}
+		if status == "ignorado" && reg["sugestao"] != nil {
+			t.Fatalf("%s: guardou sugestão sem pedir vaga", tipo)
+		}
 		if _, r, _ := RegistrarEmailLido(novo, emailLido("m-9", "rh@outra.example", "x"), Objeto{"tipo": tipo}, ctx); r["status"] != "duplicado" {
 			t.Fatalf("%s: repetido = %v", tipo, r["status"])
 		}
+	}
+}
+
+func TestTextoDeSugestao(t *testing.T) {
+	for entrada, quer := range map[any]string{
+		"  Acme \n Pagamentos ": "Acme Pagamentos", "<script>x</script>": "scriptx/script", "https://golpe.example": "",
+		"veja www.golpe.example": "", nil: "", strings.Repeat("a", 200): strings.Repeat("a", 120),
+	} {
+		if got := TextoDeSugestao(entrada); got != quer {
+			t.Errorf("TextoDeSugestao(%q) = %q, queria %q", entrada, got, quer)
+		}
+	}
+}
+
+// Convite de vaga que não está no app: a pessoa cria a vaga, que entra em processo e fica ligada ao e-mail.
+func TestCriarVagaDoEmail(t *testing.T) {
+	semVaga := func(t *testing.T, tipo string) (Estado, Ctx) {
+		e, ctx := estadoComVagaEnviada(t)
+		email := emailLido("m-5", "noreply@mailer.example", "Convite: entrevista para Backend Sênior")
+		email["texto"], email["data"] = "Queremos conversar com você sobre a vaga.", "2026-11-08T09:00:00Z"
+		e, r, err := RegistrarEmailLido(e, email, Objeto{"tipo": tipo, "resumo": "convite"}, ctx)
+		if err != nil || r["status"] != "sem-vaga" {
+			t.Fatalf("preparar: %v %v", r, err)
+		}
+		return e, ctx
+	}
+
+	e, ctx := semVaga(t, "entrevista")
+	novo, r, err := CriarVagaDoEmail(e, "m-5", "Beta Tech", "Backend Sênior", ctx)
+	if err != nil || r["criada"] != true || r["status"] != "ligado" {
+		t.Fatalf("criar: %v %v", r, err)
+	}
+	var v Objeto
+	for _, x := range novo.Vagas {
+		if x["id"] == r["vagaId"] {
+			v = x
+		}
+	}
+	if v == nil || v["empresa"] != "Beta Tech" || v["titulo"] != "Backend Sênior" || v["etapa"] != "em-processo" ||
+		v["subEtapa"] != "entrevista-rh" || ObjetoDe(v["envio"])["data"] != "2026-11-08" {
+		t.Fatalf("vaga criada: %v", v)
+	}
+	if reg := novo.Emails[len(novo.Emails)-1]; reg["status"] != "ligado" || reg["vagaId"] != v["id"] {
+		t.Fatalf("e-mail: %v", reg)
+	}
+	if len(e.Vagas) != 1 {
+		t.Fatal("mexeu no estado antigo")
+	}
+	// De novo: o e-mail já não espera vaga.
+	if _, _, err := CriarVagaDoEmail(novo, "m-5", "Beta Tech", "Backend Sênior", ctx); err == nil {
+		t.Fatal("criou duas vezes")
+	}
+
+	// Já existe vaga com a mesma empresa e cargo: liga a ela, sem criar outra.
+	e, ctx = semVaga(t, "teste")
+	novo, r, err = CriarVagaDoEmail(e, "m-5", "Acme Pagamentos", "Desenvolvedor Go", ctx)
+	if err != nil || r["vagaId"] != "gp-1" || r["criada"] != nil || len(novo.Vagas) != 1 || etapaDaVaga(novo, "gp-1") != "em-processo" {
+		t.Fatalf("duplicada: %v %v, %d vagas", r, err, len(novo.Vagas))
+	}
+
+	// Empresa ou cargo vazios (ou só um link) e e-mail desconhecido: nada muda.
+	e, ctx = semVaga(t, "entrevista")
+	for _, c := range [][2]string{{"", "Backend"}, {"Beta", " "}, {"https://golpe.example", "Backend"}} {
+		if _, _, err := CriarVagaDoEmail(e, "m-5", c[0], c[1], ctx); !ehValidacao(err) {
+			t.Fatalf("%q: %v", c, err)
+		}
+	}
+	if _, _, err := CriarVagaDoEmail(e, "nao-existe", "Beta", "Backend", ctx); !EhNaoEncontrado(err) {
+		t.Fatalf("desconhecido: %v", err)
 	}
 }
 
@@ -152,4 +230,9 @@ func TestVagasCandidatasDoEmail(t *testing.T) {
 	if c := VagasCandidatasDoEmail(e.Vagas, semEmpresa); len(c) != 0 {
 		t.Fatalf("e-mail sem a empresa trouxe candidatas: %v", c)
 	}
+}
+
+func ehValidacao(err error) bool {
+	var ev *ErroValidacao
+	return errors.As(err, &ev)
 }

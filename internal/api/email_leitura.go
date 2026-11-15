@@ -251,6 +251,10 @@ func (a *API) lerRespostasEmail(ctx context.Context, c Objeto) (Resposta, error)
 			if p := textoDaIA(saida["proximoPasso"]); p != "" && p != nil {
 				cls["proximoPasso"] = p
 			}
+			// Sugestão para criar a vaga quando ela não está no app (o domínio limpa e só guarda se ficar sem vaga).
+			if saida["vagaId"] == nil {
+				cls["empresa"], cls["cargo"] = saida["empresa"], saida["cargo"]
+			}
 		}
 		var res Objeto
 		err := a.gravar(ctx, func(atual dominio.Estado) (dominio.Estado, error) {

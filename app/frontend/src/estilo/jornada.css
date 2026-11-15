@@ -212,3 +212,7 @@ textarea.j-input { resize: vertical; min-height: 76px; }
 .j-email-titulo { margin: 3px 0 4px; font-size: 15px; line-height: 1.35; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .j-email-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
 .j-email-acoes select { min-height: 36px; width: min(100%, 420px); }
+.j-email-criar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: center; margin-top: 12px; max-width: 520px; }
+.j-email-criar label { font-size: 13px; color: var(--muted); }
+.j-email-criar input { min-height: 36px; width: 100%; }
+.j-email-criar button { grid-column: 2; justify-self: start; }

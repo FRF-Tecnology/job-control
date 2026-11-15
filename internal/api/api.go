@@ -480,7 +480,7 @@ var (
 	reVagaID       = regexp.MustCompile(`^/vagas/([^/]+)$`)
 	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z-]+)?$`)
 	rePedido       = regexp.MustCompile(`^/pedidos/([^/]+)/concluir$`)
-	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar|confirmar)$`)
+	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar|confirmar|criar-vaga)$`)
 	rePlataforma   = regexp.MustCompile(`^/plataformas/([^/]+)$`)
 	reRodada       = regexp.MustCompile(`^/rodadas/([^/]+)$`)
 	camposPlatText = []string{"nome", "url", "status", "comoAplicar", "limitacoes", "ultimaVarredura"}
@@ -716,8 +716,8 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		if err != nil {
 			return Resposta{}, err
 		}
-		// Confirmar a mudança proposta por um e-mail lido pelo app: só a pessoa, pela tela.
-		if g[2] == "confirmar" && (autor != "eu" || a.canal != "") {
+		// Confirmar a mudança proposta por um e-mail lido pelo app, ou criar a vaga dele: só a pessoa, pela tela.
+		if (g[2] == "confirmar" || g[2] == "criar-vaga") && (autor != "eu" || a.canal != "") {
 			return Resposta{}, falha(403, msgForaDoAssistente)
 		}
 		var res Objeto
@@ -729,6 +729,8 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 				novo, res, err = dominio.LigarEmail(e, id, c["vagaId"], a.ctx(e, autor))
 			case "confirmar":
 				novo, res, err = dominio.ConfirmarEmail(e, id, a.ctx(e, autor))
+			case "criar-vaga":
+				novo, res, err = dominio.CriarVagaDoEmail(e, id, c["empresa"], c["cargo"], a.ctx(e, autor))
 			default:
 				novo, res, err = dominio.DescartarEmail(e, id)
 			}

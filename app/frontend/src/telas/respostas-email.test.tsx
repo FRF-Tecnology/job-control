@@ -1,6 +1,6 @@
-// "Respostas por e-mail" (contrato 0.17.0) com a API interceptada: sem conta, convite para conectar; ler manda o POST
+// "Respostas por e-mail" (contrato 0.18.0) com a API interceptada: sem conta, convite para conectar; ler manda o POST
 // vazio, mostra o resumo em frases fixas e recarrega; recusas por motivo têm frase fixa; a recusa a confirmar manda o
-// POST confirmar e o rótulo diz o que muda; sem vaga explica os botões, liga e ignora. Dados fictícios.
+// POST confirmar e o rótulo diz o que muda; sem vaga explica os botões, cria a vaga com a sugestão, liga e ignora. Dados fictícios.
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, ErroApi, type App } from '../app/contexto';
@@ -72,8 +72,8 @@ describe('Respostas por e-mail', () => {
     expect(screen.getByRole('button', { name: 'Não mudar a vaga' })).toBeTruthy();
   });
 
-  it('candidatura recebida sem vaga não pede nada (registros antigos)', async () => {
-    const email = { idMensagem: 'cr@example.com', status: 'sem-vaga', tipo: 'confirmacao', de: 'rh@empresa.example', assunto: 'Recebemos', resumo: '' };
+  it.each(['confirmacao', 'rejeicao'])('%s sem vaga não pede nada (registros antigos)', async tipo => {
+    const email = { idMensagem: 'cr@example.com', status: 'sem-vaga', tipo, de: 'rh@empresa.example', assunto: 'Recebemos', resumo: '' };
     await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email]);
     expect(screen.queryByText('Sem vaga')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ignorar e-mail' })).toBeNull();
@@ -82,7 +82,7 @@ describe('Respostas por e-mail', () => {
   it('sem vaga: explica os botões, liga só depois de escolher e ignora sem mexer na vaga', async () => {
     const email = { idMensagem: 'sv@example.com', status: 'sem-vaga', tipo: 'entrevista', de: 'rh@empresa.example', assunto: 'Convite', resumo: '' };
     const { chamadas } = await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email], () => ({}));
-    expect(screen.getByText(/não achei de qual vaga/)).toBeTruthy();
+    expect(screen.getByText(/vagas que não estão no Applyer/)).toBeTruthy();
     expect(screen.getByText(/não voltam nas próximas leituras/)).toBeTruthy();
     const ligar = screen.getByRole('button', { name: 'Ligar à vaga' }) as HTMLButtonElement;
     expect(ligar.disabled).toBe(true);
@@ -91,5 +91,27 @@ describe('Respostas por e-mail', () => {
     expect(chamadas.at(-1)).toEqual({ rota: '/api/v1/emails/sv%40example.com/ligar', metodo: 'POST', corpo: { vagaId: 'gp-1' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ignorar e-mail' })); });
     expect(chamadas.at(-1)).toEqual({ rota: '/api/v1/emails/sv%40example.com/descartar', metodo: 'POST', corpo: {} });
+  });
+
+  it('sem vaga: cria a vaga com a empresa e o cargo sugeridos, que a pessoa pode corrigir', async () => {
+    const email = { idMensagem: 'cv@example.com', status: 'sem-vaga', tipo: 'teste', de: 'noreply@mailer.example', assunto: 'Teste técnico', resumo: '',
+      sugestao: { empresa: 'Beta Tech', cargo: 'Backend Sênior' } };
+    const { chamadas } = await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email], () => ({}));
+    expect((screen.getByLabelText('Empresa') as HTMLInputElement).value).toBe('Beta Tech');
+    expect((screen.getByLabelText('Cargo') as HTMLInputElement).value).toBe('Backend Sênior');
+    fireEvent.change(screen.getByLabelText('Cargo'), { target: { value: ' Backend Sênior Go ' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Criar vaga' })); });
+    expect(chamadas.at(-1)).toEqual({ rota: '/api/v1/emails/cv%40example.com/criar-vaga', metodo: 'POST', corpo: { empresa: 'Beta Tech', cargo: 'Backend Sênior Go' } });
+  });
+
+  it('sem sugestão: criar só depois de preencher', async () => {
+    const email = { idMensagem: 'ss@example.com', status: 'sem-vaga', tipo: 'entrevista', de: 'rh@x.example', assunto: 'Convite', resumo: '' };
+    await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email]);
+    const criar = screen.getByRole('button', { name: 'Criar vaga' }) as HTMLButtonElement;
+    expect(criar.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Empresa'), { target: { value: 'Gama' } });
+    expect(criar.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Cargo'), { target: { value: 'Dev' } });
+    expect(criar.disabled).toBe(false);
   });
 });
