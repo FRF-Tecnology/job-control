@@ -141,6 +141,9 @@ func init() {
 			os.Exit(0)
 		}
 		fmt.Print(`{"type":"result","subtype":"success","is_error":false,"result":"","structured_output":{"decisao":"pular","aderencia":"C","motivo":"sênior"},"usage":{"input_tokens":3,"cache_read_input_tokens":100,"output_tokens":20}}`)
+	case "pensamento": // devolve o que chegou em MAX_THINKING_TOKENS
+		b, _ := json.Marshal(map[string]any{"type": "result", "is_error": false, "result": "", "structured_output": map[string]string{"pensamento": os.Getenv("MAX_THINKING_TOKENS")}})
+		fmt.Print(string(b))
 	case "erro":
 		fmt.Print(`{"type":"result","subtype":"error","is_error":true,"result":"Not logged in · Please run /login"}`)
 	case "lixo":
