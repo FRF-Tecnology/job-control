@@ -64,7 +64,7 @@ func novaPastaFicticiaEm(t *testing.T, cofre segredos.Cofre, pasta string) *past
 		os.MkdirAll(filepath.Dir(filepath.Join(f.pasta, arq)), 0o700)
 		os.WriteFile(filepath.Join(f.pasta, arq), []byte("ficticio"), 0o600)
 	}
-	for _, p := range comChave {
+	for _, p := range cofreDoApp() {
 		cofre.Gravar(p, "chave-ficticia-"+p+"-1234")
 	}
 	// Grava algo no banco (vaga fictícia) para o banco ter dados de verdade.
@@ -111,9 +111,12 @@ func (f *pastaFicticia) arquivos() []string {
 	return l
 }
 
+// cofreDoApp: tudo o que o app guarda no cofre (chaves de IA e a senha de app do e-mail).
+func cofreDoApp() []string { return append(append([]string{}, comChave...), chaveCofreEmail) }
+
 func (f *pastaFicticia) chaves() int {
 	n := 0
-	for _, p := range comChave {
+	for _, p := range cofreDoApp() {
 		if c, _ := f.cofre.Ler(p); c != "" {
 			n++
 		}
@@ -202,7 +205,7 @@ func TestApagarRecusaSemMudarNada(t *testing.T) {
 	if depois := f.arquivos(); strings.Join(depois, ",") != strings.Join(antes, ",") {
 		t.Fatalf("a pasta mudou:\nantes  %v\ndepois %v", antes, depois)
 	}
-	if f.chaves() != len(comChave) || f.parou.Load() != 1 || f.suspendeu.Load() != 1 || f.suspenso.Load() != 0 || f.fechou.Load() != 0 {
+	if f.chaves() != len(cofreDoApp()) || f.parou.Load() != 1 || f.suspendeu.Load() != 1 || f.suspenso.Load() != 0 || f.fechou.Load() != 0 {
 		t.Fatalf("chaves %d, parou %d, suspendeu %d (preso %d), fechou %d", f.chaves(), f.parou.Load(), f.suspendeu.Load(), f.suspenso.Load(), f.fechou.Load())
 	}
 	select {
@@ -230,7 +233,7 @@ func TestSairDasPlataformas(t *testing.T) {
 	if got := strings.Join(f.arquivos(), ","); !strings.Contains(got, "curriculos/cv-pt.pdf") || !strings.Contains(got, "backups/") || !strings.Contains(got, "central.db") {
 		t.Fatalf("saiu demais: %v", got)
 	}
-	if f.chaves() != len(comChave) {
+	if f.chaves() != len(cofreDoApp()) {
 		t.Fatal("as chaves saíram")
 	}
 	f.chamar("GET", "/vagas/li-1", nil, 200) // o app continua com os dados

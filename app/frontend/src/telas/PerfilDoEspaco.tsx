@@ -4,6 +4,7 @@ import { useApp } from '../app/contexto';
 import { SeletorPerfil } from './SeletorPerfil';
 import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
+import { ContaEmail } from './ContaEmail';
 import { lerArquivo } from './PrimeiroAcesso';
 import arteCV from '../../../../site/artes/curriculo-verificado.svg';
 import '../estilo/perfil-espaco.css';
@@ -119,6 +120,7 @@ export function PerfilDoEspaco(){
     </div><div className="pr-stack"><section ref={ia} tabIndex={-1} aria-label="Configuração de IA">
       <Cartao titulo="Conexão de IA" icone="sparkles">{conectado?<><p className={'pr-connected pr-marca-ia '+(marcaIA[conectado]||'')}>{marcaIA[conectado]&&<span aria-hidden="true" className="pa-logotipo"/>}{conectado} conectado</p><button type="button" className="btn secondary" onClick={()=>alterarIA(true)}>Alterar conexão</button></>:
         <ConexaoOnboarding aoConectar={()=>alterarIA(false)}/>}</Cartao></section>
+      <ContaEmail/>
       <Cartao titulo="Currículo" icone="file">
         <div className="pr-drop" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();void selecionar(e.dataTransfer.files[0]);}}>
           <img src={arteCV} alt="" width="42" height="42"/><div className="pr-file-meta"><strong>{cv?(/^curriculo-[A-Z2-7]{26,}\.pdf$/.test(cv)?'Currículo do perfil':cv):'Arraste seu currículo para cá'}</strong><small>{cv?'PDF salvo neste computador':'PDF de até 20 MB'}</small></div>

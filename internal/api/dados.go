@@ -218,9 +218,9 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	a.apagando = true
 	res := ResultadoApagar{Apagado: []string{}, Faltou: []string{}, Fechar: true}
 
-	// 2) Chaves de IA no cofre do sistema (a que já não existe conta como apagada).
+	// 2) Chaves de IA e a senha de app do e-mail no cofre do sistema (a que já não existe conta como apagada).
 	var errChaves error
-	for _, p := range comChave {
+	for _, p := range append(append([]string{}, comChave...), chaveCofreEmail) {
 		if err := a.cofre.Apagar(p); err != nil {
 			errChaves = err
 		}
