@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.18.0
+  version: 0.19.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -835,7 +835,7 @@ paths:
   /email/ler:
     post:
       x-so-tela: true
-      summary: 'Lê as respostas das empresas na caixa conectada (só leitura) desde a última leitura (ou 30 dias), até 50 e-mails e 30 chamadas de IA por vez. Na ordem: já registrado pula; e-mail de segurança da conta ou de dinheiro sai antes da IA e não fica guardado; fora do pré-filtro fica só o id; o resto vai à IA (classificarEmail) com só o endereço do remetente, o assunto e um trecho de até 300 caracteres, com links, endereços e números mascarados, e só as vagas candidatas. Recusa e oferta, e convite ou teste de remetente fora do domínio da vaga, ficam a-confirmar; convite e teste do domínio da vaga mudam a vaga (em-processo com pendência). Responde só contagens. ultimaLeitura só avança quando nada ficou pendente nem falhou'
+      summary: 'Lê as respostas das empresas na caixa conectada (só leitura) desde a última leitura (ou 30 dias), até 50 e-mails e 30 chamadas de IA por vez. Na ordem: já registrado pula; e-mail de segurança da conta ou de dinheiro sai antes da IA e não fica guardado; fora do pré-filtro fica só o id; o resto vai à IA (classificarEmail) com só o endereço do remetente, o assunto e um trecho de até 300 caracteres, com links, endereços e números mascarados, e só as vagas candidatas. Recusa e oferta, e convite ou teste de remetente fora do domínio da vaga, ficam a-confirmar; convite e teste do domínio da vaga mudam a vaga (em-processo com pendência). Alertas de vaga (remetentes fechados do LinkedIn e do Indeed, da última semana, até 30 por leitura) não vão para a IA: as vagas saem dos links, com o link refeito pelo id da vaga, e entram no Radar do perfil de busca ativo com avaliação pendente (até 60 por leitura; o mesmo anúncio já no app fica de fora); do alerta fica só o id. Responde só contagens. ultimaLeitura só avança quando nada ficou pendente nem falhou'
       requestBody:
         required: true
         content:
@@ -1423,7 +1423,7 @@ components:
     ResultadoLeituraEmail:
       type: object
       additionalProperties: false
-      required: [lidos, jaLidos, sensiveis, ignorados, registrados, mudaram, aConfirmar, semVaga, pendentes, falhas, ultimaLeitura]
+      required: [lidos, jaLidos, sensiveis, ignorados, registrados, mudaram, aConfirmar, semVaga, pendentes, falhas, alertas, vagasNoRadar, ultimaLeitura]
       properties:
         lidos: { type: integer, description: 'E-mails que a busca trouxe' }
         jaLidos: { type: integer }
@@ -1435,6 +1435,8 @@ components:
         semVaga: { type: integer }
         pendentes: { type: integer, description: 'Passaram do limite desta leitura; a próxima lê' }
         falhas: { type: integer, description: 'A IA falhou ou o e-mail não passou na validação; a próxima leitura tenta de novo' }
+        alertas: { type: integer, description: 'Alertas de vaga do LinkedIn e do Indeed lidos (sem IA; só o id fica guardado)' }
+        vagasNoRadar: { type: integer, description: 'Vagas novas que os alertas puseram no Radar, com avaliação pendente' }
         ultimaLeitura: { type: string }
     ErroEmail:
       type: object

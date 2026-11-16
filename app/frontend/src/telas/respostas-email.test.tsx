@@ -1,4 +1,4 @@
-// "Respostas por e-mail" (contrato 0.18.0) com a API interceptada: sem conta, convite para conectar; ler manda o POST
+// "Respostas por e-mail" (contrato 0.19.0) com a API interceptada: sem conta, convite para conectar; ler manda o POST
 // vazio, mostra o resumo em frases fixas e recarrega; recusas por motivo têm frase fixa; a recusa a confirmar manda o
 // POST confirmar e o rótulo diz o que muda; sem vaga explica os botões, cria a vaga com a sugestão, liga e ignora. Dados fictícios.
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -47,6 +47,14 @@ describe('Respostas por e-mail', () => {
     expect(screen.getByRole('status').textContent).toBe(resumoDaLeitura(contagem));
     expect(screen.getByRole('status').textContent).toMatch(/1 vaga mudou de etapa, 1 resposta para você confirmar, 1 resposta sem vaga/);
     expect(recarregar).toHaveBeenCalled();
+  });
+
+  it('alertas: conta as vagas novas e leva ao Radar', async () => {
+    await montar({ conectada: true, ultimaLeitura: '2026-11-09' }, [], () => ({ ...contagem, registrados: 0, mudaram: 0, aConfirmar: 0, semVaga: 0, sensiveis: 0, alertas: 2, vagasNoRadar: 3 }));
+    expect(screen.queryByRole('link', { name: 'Ver as vagas no Radar' })).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ler respostas do e-mail' })); });
+    expect(screen.getByRole('status').textContent).toBe('Pronto. Nenhuma resposta nova. 3 vagas novas dos alertas do LinkedIn e do Indeed entraram no Radar.');
+    expect(screen.getByRole('link', { name: 'Ver as vagas no Radar' }).getAttribute('href')).toBe('#/radar');
   });
 
   it.each([
