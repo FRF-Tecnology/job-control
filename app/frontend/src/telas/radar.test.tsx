@@ -87,6 +87,39 @@ describe('Radar de vagas', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/O LinkedIn pediu login/);
     expect(document.body.textContent).not.toContain('texto do servidor');
   });
+  it('preencher no site da empresa: abre, mostra o domínio, só preenche depois de conferido', async () => {
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true, plataforma: 'linkedin', link: 'https://www.linkedin.com/jobs/view/1/' };
+    const api = vi.fn(async (rota: string, _m?: string, corpo?: any) => {
+      if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+      if (rota.endsWith('/preencher') && !corpo?.dominio) return { dominio: 'carreiras.acme.example' };
+      return { preenchidos: 4, anexou: true, faltando: 2 };
+    });
+    montar([reservada], api);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+    expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/abrir-para-preencher', 'POST', {});
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+    expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/preencher', 'POST', {});
+    const conferir = screen.getByRole('group', { name: 'Conferir o site' });
+    expect(within(conferir).getByText('carreiras.acme.example')).toBeTruthy();
+    expect(api).toHaveBeenCalledTimes(2); // nada preenchido antes de conferir
+    await act(async () => { fireEvent.click(within(conferir).getByRole('button', { name: 'Preencher' })); });
+    expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/preencher', 'POST', { dominio: 'carreiras.acme.example' });
+    expect(screen.getByRole('status').textContent).toMatch(/Preenchi 4 campos e anexei o currículo\. 2 campos obrigatórios ficaram para você/);
+    expect(screen.getByRole('button', { name: 'Já enviei' })).toBeTruthy();
+  });
+  it('preencher: ainda no LinkedIn, frase fixa sem o texto do servidor', async () => {
+    const { ErroApi } = await import('../app/contexto');
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true };
+    const api = vi.fn(async (rota: string) => {
+      if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+      throw new ErroApi('texto do servidor', 409, { erro: 'texto do servidor', motivo: 'sem-site' });
+    });
+    montar([reservada], api);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+    expect(screen.getByRole('status').textContent).toMatch(/ainda está no LinkedIn/);
+    expect(document.body.textContent).not.toContain('texto do servidor');
+  });
   it('abre com os critérios salvos e pede a primeira busca só ao clicar', async () => {
     const api = vi.fn().mockResolvedValue({ encontradas: 0, novas: 0, grupos: { A: 0, B: 0, C: 0 }, avisos: [], pendentes: 0, puladas: 0 });
     montar([], api);

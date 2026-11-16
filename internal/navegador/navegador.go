@@ -50,7 +50,11 @@ type Navegador struct {
 	querVisivel  bool            // "Ver o envio" ligado pela pessoa (começa false a cada abertura do app)
 	visivelAgora bool            // o navegador aberto agora tem janela
 	loginCtx     context.Context // navegador da janela de login da pessoa; enquanto vivo, nenhuma página do envio abre
-	abertas      int             // páginas do envio abertas agora
+	// preencherCtx: a janela "Preencher no site da empresa" (preencher.go). Também é loginCtx: trava o envio igual.
+	preencherCtx   context.Context
+	pastaPreencher string          // a cópia do currículo da janela de preenchimento; apagada quando ela fecha
+	abaPreencher   context.Context // a aba da vaga na janela de preenchimento (onde o site da empresa abre)
+	abertas        int             // páginas do envio abertas agora
 	// aoFecharLogin roda quando a PESSOA fecha a janela de login (não quando o app fecha o navegador): as plataformas
 	// em precisa-entrar podem voltar (jc-a2y.6.11).
 	aoFecharLogin func()
@@ -266,7 +270,7 @@ func (n *Navegador) Fechar() {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.fecharSemTrava()
-	n.loginCtx = nil
+	n.loginCtx, n.preencherCtx = nil, nil
 }
 
 func (n *Navegador) fecharSemTrava() {

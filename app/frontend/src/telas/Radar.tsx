@@ -106,6 +106,71 @@ function Fato({ icone, rotulo, valor }: { icone: string; rotulo: string; valor?:
   return <div className="rd-fact"><dt><IconeUI nome={icone} tamanho={15} />{rotulo}</dt><dd>{valor || 'Não informado'}</dd></div>;
 }
 
+// "Preencher no site da empresa" (contrato 0.21.0): frases fixas por motivo; o domínio vem da página e aparece
+// como texto, para a pessoa conferir antes de o app preencher.
+const motivosPreencher: Record<string, string> = {
+  'sem-site': 'A janela ainda está no LinkedIn. Clique em Candidatar-se lá e tente de novo.',
+  'sem-janela': 'A janela do app foi fechada. Abra a vaga de novo.',
+  'site-mudou': 'A página mudou de site depois que você conferiu. Confira de novo.',
+  'curriculo-mudou': 'O currículo mudou depois que você aplicou. Aplique de novo na vaga.',
+  'login-aberto': 'Já há uma janela do app aberta. Feche-a antes.',
+  enviando: 'Há uma candidatura sendo enviada agora. Espere terminar.',
+  'sem-navegador': 'Não achei Chrome, Edge nem Brave neste computador.',
+};
+export function explicarPreencher(e: unknown) {
+  if (e instanceof ErroApi && e.status === 404) return 'Esta versão do app não abre o site da empresa.';
+  const motivo = e instanceof ErroApi ? e.dados?.motivo : undefined;
+  return motivosPreencher[motivo] ?? 'Não deu para usar a janela agora. Tente de novo.';
+}
+const resumoPreencher = (r: { preenchidos?: number; anexou?: boolean; faltando?: number }) => {
+  const partes = [`Preenchi ${plural(r.preenchidos ?? 0, 'campo', 'campos')}`];
+  if (r.anexou) partes.push('anexei o currículo');
+  let t = partes.join(' e ') + '.';
+  if (r.faltando) t += ` ${plural(r.faltando, 'campo obrigatório ficou', 'campos obrigatórios ficaram')} para você.`;
+  return t + ' Confira tudo, avance e envie no site. Depois, clique em Já enviei.';
+};
+
+function PreencherNoSite({ vaga }: { vaga: Vaga }) {
+  const app = useApp();
+  const [etapa, mudar] = useState<'inicio' | 'aberta' | 'conferir' | 'feito'>('inicio');
+  const [dominio, guardar] = useState('');
+  const [aviso, avisar] = useState('');
+  const [ocupado, ocupar] = useState(false);
+  const rota = (acao: string) => `/api/v1/vagas/${encode(vaga.id)}/${acao}`;
+  const fazer = async (fn: () => Promise<void>) => {
+    if (ocupado) return;
+    ocupar(true); avisar('');
+    try { await fn(); } catch (e) { avisar(explicarPreencher(e)); } finally { ocupar(false); }
+  };
+  const abrir = () => fazer(async () => { await app.api(rota('abrir-para-preencher'), 'POST', {}); mudar('aberta'); });
+  const verSite = () => fazer(async () => {
+    const r = await app.api(rota('preencher'), 'POST', {});
+    guardar(typeof r?.dominio === 'string' ? r.dominio : ''); mudar('conferir');
+  });
+  const preencher = () => fazer(async () => {
+    const r = await app.api(rota('preencher'), 'POST', { dominio });
+    avisar(resumoPreencher(r ?? {})); mudar('feito');
+  });
+  return <div className="rd-preencher">
+    {etapa === 'inicio' && <>
+      <p>Ou deixe o app abrir a vaga numa janela dele e preencher o que souber no site da empresa. Ele nunca envia: quem envia é você.</p>
+      <button className="btn secondary" type="button" disabled={ocupado} onClick={abrir}>Abrir e preencher no app</button>
+    </>}
+    {(etapa === 'aberta' || etapa === 'feito') && <>
+      <p>A vaga abriu numa janela do app. Se o site da empresa não abrir sozinho, clique em Candidatar-se lá. Quando o formulário aparecer, volte aqui.</p>
+      <button className="btn secondary" type="button" disabled={ocupado} onClick={verSite}>Preencher esta página</button>
+    </>}
+    {etapa === 'conferir' && <div role="group" aria-label="Conferir o site">
+      <p>Preencher em <strong>{dominio}</strong>? Confira se é mesmo o site da empresa antes de continuar.</p>
+      <div className="rd-links">
+        <button className="btn primary" type="button" disabled={ocupado} onClick={preencher}>Preencher</button>
+        <button className="btn quiet" type="button" disabled={ocupado} onClick={() => mudar('aberta')}>Não é este site</button>
+      </div>
+    </div>}
+    {aviso && <p role="status">{aviso}</p>}
+  </div>;
+}
+
 function CandidaturaExterna({ vaga, ocupada, gravar }: {
   vaga: Vaga; ocupada: boolean; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void;
 }) {
@@ -121,6 +186,7 @@ function CandidaturaExterna({ vaga, ocupada, gravar }: {
         <button className="btn secondary" type="button" disabled={ocupada} onClick={() => gravar('confirmar-envio-manual')}>Já enviei</button>
         <button className="btn quiet" type="button" disabled={ocupada} onClick={() => adiar(true)}>Continuar depois</button>
       </div>
+      <PreencherNoSite vaga={vaga} />
     </>}
   </div>;
   return <div className="rd-links">
