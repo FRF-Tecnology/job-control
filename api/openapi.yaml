@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.16.0
+  version: 0.18.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -362,7 +362,26 @@ paths:
     get: { summary: 'Emails registrados (?status=, ?vaga=)' }
     post: { summary: '{email, classificacao} ou {lista: [...]}: acha a vaga e muda a etapa; repetido não duplica' }
   /emails/{idMensagem}/ligar: { post: { summary: 'Liga um email sem vaga: {vagaId}' } }
-  /emails/{idMensagem}/descartar: { post: { summary: Tira da lista "sem vaga" } }
+  /emails/{idMensagem}/descartar: { post: { summary: 'Tira da lista "sem vaga" ou "a-confirmar" (a vaga não muda)' } }
+  /emails/{idMensagem}/confirmar:
+    post:
+      x-so-tela: true
+      summary: 'A pessoa confirma a mudança proposta por um e-mail "a-confirmar" (lido pelo app: recusa, oferta, ou convite de remetente fora do domínio da vaga). A mudança é recalculada com a vaga de agora; se ela já andou, 409 {motivo: vaga-mudou} e nada muda'
+      responses:
+        '200': { description: 'Mudança aplicada: {idMensagem, status: ligado, vagaId, transicao}' }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Email ou vaga não encontrado: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+        '409': { description: 'A vaga já mudou desde o e-mail: {erro, motivo: vaga-mudou}', content: { application/json: { schema: { $ref: '#/components/schemas/ErroEmail' } } } }
+  /emails/{idMensagem}/criar-vaga:
+    post:
+      x-so-tela: true
+      summary: 'A pessoa cria a vaga de um e-mail "sem vaga" (candidatura feita fora do app) e liga o e-mail a ela: {empresa, cargo}. A vaga entra como enviada na data do e-mail, e o e-mail aplica a etapa (convite e teste: em-processo; oferta: oferta). Se já existe vaga com a mesma empresa e cargo, liga a ela. O e-mail lido pelo app pode trazer sugestao {empresa?, cargo?} tirada pela IA; a tela mostra para a pessoa conferir'
+      responses:
+        '200': { description: 'Vaga criada (ou a existente) e e-mail ligado: {idMensagem, status: ligado, vagaId, transicao, criada?}' }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '404': { description: 'Email não encontrado: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   /curriculos: { get: { summary: PDFs na pasta de currículos } }
   /primeiros-passos: { get: { summary: Checklist da primeira vez } }
   /validar: { get: { summary: Confere todos os dados } }
@@ -813,6 +832,21 @@ paths:
       responses:
         '200': { description: Conta desconectada, content: { application/json: { schema: { $ref: '#/components/schemas/ContaEmail' } } } }
         '403': { $ref: '#/components/responses/SoTela' }
+  /email/ler:
+    post:
+      x-so-tela: true
+      summary: 'Lê as respostas das empresas na caixa conectada (só leitura) desde a última leitura (ou 30 dias), até 50 e-mails e 30 chamadas de IA por vez. Na ordem: já registrado pula; e-mail de segurança da conta ou de dinheiro sai antes da IA e não fica guardado; fora do pré-filtro fica só o id; o resto vai à IA (classificarEmail) com só o endereço do remetente, o assunto e um trecho de até 300 caracteres, com links, endereços e números mascarados, e só as vagas candidatas. Recusa e oferta, e convite ou teste de remetente fora do domínio da vaga, ficam a-confirmar; convite e teste do domínio da vaga mudam a vaga (em-processo com pendência). Responde só contagens. ultimaLeitura só avança quando nada ficou pendente nem falhou'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+      responses:
+        '200': { description: Contagens da leitura, content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoLeituraEmail' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { description: 'Não leu: {erro, motivo}. sem-conta (conecte o e-mail), sem-ia (conecte uma IA), senha (o e-mail recusou a senha de app), lendo (já há uma leitura)', content: { application/json: { schema: { $ref: '#/components/schemas/ErroEmail' } } } }
+        '502': { description: 'O servidor de e-mail não respondeu: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
   # Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49). Só a tela; nada vai para a nuvem. Recusa com 409 se
   # há candidatura em enviando (o executor está numa página). Itens de uma lista fechada, sem caminho nem texto do
   # sistema na resposta nem no log.
@@ -1380,11 +1414,34 @@ components:
     ContaEmail:
       type: object
       additionalProperties: false
-      required: [conectada, usuario, servidor]
+      required: [conectada, usuario, servidor, ultimaLeitura]
       properties:
         conectada: { type: boolean, description: 'Há endereço gravado e senha no cofre' }
         usuario: { type: string, description: 'O endereço conectado; vazio sem conta' }
         servidor: { type: string, description: 'O host IMAP usado; vazio sem conta' }
+        ultimaLeitura: { type: string, description: 'AAAA-MM-DD da última leitura completa; vazio se ainda não leu' }
+    ResultadoLeituraEmail:
+      type: object
+      additionalProperties: false
+      required: [lidos, jaLidos, sensiveis, ignorados, registrados, mudaram, aConfirmar, semVaga, pendentes, falhas, ultimaLeitura]
+      properties:
+        lidos: { type: integer, description: 'E-mails que a busca trouxe' }
+        jaLidos: { type: integer }
+        sensiveis: { type: integer, description: 'Segurança da conta ou dinheiro: descartados antes da IA, sem guardar nada' }
+        ignorados: { type: integer, description: 'Fora do processo seletivo: só o id fica guardado' }
+        registrados: { type: integer }
+        mudaram: { type: integer, description: 'Vagas que mudaram de etapa' }
+        aConfirmar: { type: integer, description: 'Esperando a pessoa confirmar' }
+        semVaga: { type: integer }
+        pendentes: { type: integer, description: 'Passaram do limite desta leitura; a próxima lê' }
+        falhas: { type: integer, description: 'A IA falhou ou o e-mail não passou na validação; a próxima leitura tenta de novo' }
+        ultimaLeitura: { type: string }
+    ErroEmail:
+      type: object
+      required: [erro, motivo]
+      properties:
+        erro: { type: string }
+        motivo: { type: string, enum: [sem-conta, sem-ia, senha, lendo, vaga-mudou] }
     JanelaApp:
       type: object
       additionalProperties: false

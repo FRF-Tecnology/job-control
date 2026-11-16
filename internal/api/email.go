@@ -26,11 +26,16 @@ type contaEmail struct {
 
 func (a *API) rotasEmail(ctx context.Context, m, p string, c Objeto, autor string) (Resposta, bool, error) {
 	conta := p == "/email/conta" && (m == "GET" || m == "PUT" || m == "DELETE")
-	if !conta {
+	ler := p == "/email/ler" && m == "POST"
+	if !conta && !ler {
 		return Resposta{}, false, nil
 	}
 	if autor != "eu" || a.canal != "" {
 		return Resposta{}, true, falha(403, msgForaDoAssistente)
+	}
+	if ler {
+		r, err := a.lerRespostasEmail(ctx, c)
+		return r, true, err
 	}
 	switch m {
 	case "GET":
@@ -58,7 +63,11 @@ func (a *API) estadoEmail(ctx context.Context) (Resposta, error) {
 	if !conectada {
 		conta = contaEmail{}
 	}
-	return ok(Objeto{"conectada": conectada, "usuario": conta.Usuario, "servidor": conta.Servidor})
+	ultima := ""
+	if conectada {
+		ultima = a.ultimaLeituraEmail(ctx)
+	}
+	return ok(Objeto{"conectada": conectada, "usuario": conta.Usuario, "servidor": conta.Servidor, "ultimaLeitura": ultima})
 }
 
 // conectarEmail confere a conta no servidor (entra e abre a caixa só para leitura) antes de gravar.
@@ -98,7 +107,11 @@ func (a *API) conectarEmail(ctx context.Context, c Objeto) (Resposta, error) {
 	if err := a.arm.GravarMeta(ctx, chaveMetaEmail, contaEmail{Usuario: usuario, Servidor: host}); err != nil {
 		return Resposta{}, err
 	}
-	return ok(Objeto{"conectada": true, "usuario": usuario, "servidor": host})
+	// Conta nova (ou a mesma de novo): a próxima leitura volta a olhar os últimos dias.
+	if err := a.arm.GravarMeta(ctx, chaveMetaLeitura, leituraEmail{}); err != nil {
+		return Resposta{}, err
+	}
+	return ok(Objeto{"conectada": true, "usuario": usuario, "servidor": host, "ultimaLeitura": ""})
 }
 
 // desconectarEmail apaga a senha do cofre e a conta do banco. Sem conta, não faz nada (e responde igual).
@@ -109,5 +122,8 @@ func (a *API) desconectarEmail(ctx context.Context) (Resposta, error) {
 	if err := a.arm.GravarMeta(ctx, chaveMetaEmail, contaEmail{}); err != nil {
 		return Resposta{}, err
 	}
-	return ok(Objeto{"conectada": false, "usuario": "", "servidor": ""})
+	if err := a.arm.GravarMeta(ctx, chaveMetaLeitura, leituraEmail{}); err != nil {
+		return Resposta{}, err
+	}
+	return ok(Objeto{"conectada": false, "usuario": "", "servidor": "", "ultimaLeitura": ""})
 }
