@@ -220,3 +220,19 @@ textarea.j-input { resize: vertical; min-height: 76px; }
 .j-board-grid + .j-email { margin: 18px 0 0; }
 .j-email-criar .j-email-acoes { grid-column: 1 / -1; margin-top: 4px; }
 .j-email-iguais { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+/* Rodada do LinkedIn: o "play" da Lista do dia. */
+.j-rodada { margin: 0 0 18px; padding: 18px var(--j-space); border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(105deg, color-mix(in srgb, #0a66c2 14%, var(--surface)), var(--surface) 60%); }
+.j-rodada-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.j-rodada h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.j-rodada-marca { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; background: #0a66c2; color: #fff; font: 700 13px/1 system-ui, sans-serif; }
+.j-rodada-topo p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 60ch; }
+.j-rodada-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.j-rodada-numeros { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.j-rodada-numeros li { border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--panel, transparent); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.j-rodada-numeros b { font-size: 20px; line-height: 1.1; }
+.j-rodada-numeros span { color: var(--muted); font-size: 12px; }
+.j-rodada-agora, .j-rodada-lista, .j-rodada-nota, .j-rodada-aviso { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.j-rodada-agora strong { color: var(--text); }
+.j-rodada-aviso { color: var(--text); }
+@media (max-width: 760px) { .j-rodada-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
