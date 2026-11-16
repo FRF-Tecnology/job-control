@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -190,4 +191,62 @@ func TestSiteNacional(t *testing.T) {
 			t.Errorf("siteNacional(%q) = %v", host, !quer)
 		}
 	}
+}
+
+// Fechar a janela sem sair do navegador (no Mac, o botão vermelho ou ⌘W deixam o processo aberto, sem janela): o app
+// percebe, fecha o navegador e solta o login e o envio. Antes, o botão "Entrar" ficava travado.
+func TestFecharAJanelaSoltaOLogin(t *testing.T) {
+	srv := &servidorFicticio{}
+	srv.Server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<!doctype html><html><body>Entrar</body></html>`)
+	}))
+	t.Cleanup(srv.Close)
+	n := navegadorDeTeste(t, srv, t.TempDir())
+	n.extrasDeTeste = append(n.extrasDeTeste, chromedp.Flag("headless", "new"))
+	var avisos atomic.Int32
+	n.QuandoFecharLogin(func() { avisos.Add(1) })
+	antes := intervaloVigia
+	intervaloVigia = 300 * time.Millisecond
+	t.Cleanup(func() { intervaloVigia = antes })
+
+	for _, abrir := range []func() error{
+		func() error { return n.AbrirLogin("https://www.linkedin.com/login") },
+		func() error { return n.AbrirParaPreencher("https://www.linkedin.com/jobs/view/1/") },
+	} {
+		if err := abrir(); err != nil {
+			t.Fatal(err)
+		}
+		if !n.Ocupado() {
+			t.Fatal("a janela devia travar o envio")
+		}
+		n.mu.Lock()
+		navCtx := n.navCtx
+		n.mu.Unlock()
+		time.Sleep(time.Second) // as abas existem
+		// A pessoa fecha a janela: todas as abas fecham, o navegador continua de pé.
+		alvos, err := chromedp.Targets(navCtx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, a := range alvos {
+			if a.Type == "page" {
+				_, _ = chromedp.CallBrowser(navCtx, target.CloseTarget, target.CloseTargetParams{TargetID: a.TargetID})
+			}
+		}
+		fim := time.Now().Add(10 * time.Second)
+		for n.Ocupado() && time.Now().Before(fim) {
+			time.Sleep(100 * time.Millisecond)
+		}
+		if n.Ocupado() {
+			t.Fatal("a janela fechou e o app continuou achando que estava aberta")
+		}
+		// E dá para abrir de novo.
+	}
+	if avisos.Load() < 1 {
+		t.Error("o envio não foi avisado de que o login fechou")
+	}
+	if err := n.AbrirLogin("https://www.linkedin.com/login"); err != nil {
+		t.Fatalf("abrir de novo: %v", err)
+	}
+	n.Fechar()
 }

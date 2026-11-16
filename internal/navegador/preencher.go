@@ -87,6 +87,7 @@ func (n *Navegador) AbrirParaPreencher(endereco string) error {
 	}
 	n.pastaPreencher = pasta
 	n.abrirAbaSemTrava(navCtx, endereco, false)
+	go n.vigiarJanela(navCtx)
 	go func() {
 		<-navCtx.Done() // a pessoa fechou a janela, ou o app fechou o navegador
 		n.mu.Lock()

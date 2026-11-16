@@ -217,6 +217,47 @@ func (n *Navegador) Estado() (visivel, login bool) {
 // emLogin: a janela de login está aberta (o navegador dela ainda vive). Chame com n.mu.
 func (n *Navegador) emLogin() bool { return n.loginCtx != nil && n.loginCtx.Err() == nil }
 
+// vigiarJanela: no Mac, fechar a janela (botão vermelho, ⌘W) não fecha o navegador: o processo fica aberto, sem
+// janela, e o app continuava achando que a janela de login estava aberta (o botão "Entrar" e o envio travavam). Sem
+// nenhuma aba de página em duas olhadas seguidas, o app fecha o navegador, como se a pessoa tivesse saído dele.
+func (n *Navegador) vigiarJanela(navCtx context.Context) {
+	semJanela := 0
+	for {
+		select {
+		case <-navCtx.Done():
+			return
+		case <-time.After(intervaloVigia):
+		}
+		c, cancelar := context.WithTimeout(navCtx, 3*time.Second)
+		alvos, err := chromedp.Targets(c)
+		cancelar()
+		if err != nil {
+			continue // o navegador ainda subindo ou já saindo: a próxima olhada decide
+		}
+		paginas := 0
+		for _, a := range alvos {
+			if a.Type == "page" {
+				paginas++
+			}
+		}
+		if paginas > 0 {
+			semJanela = 0
+			continue
+		}
+		if semJanela++; semJanela >= 2 {
+			n.mu.Lock()
+			if n.navCtx == navCtx {
+				n.fecharSemTrava() // cancela navCtx: quem espera por ele limpa o login e avisa
+			}
+			n.mu.Unlock()
+			return
+		}
+	}
+}
+
+// intervaloVigia: de quanto em quanto tempo o app confere se a janela do navegador ainda existe.
+var intervaloVigia = 1500 * time.Millisecond
+
 // Ocupado: a pessoa está com a janela de login aberta. O executor não pega candidatura enquanto isso.
 func (n *Navegador) Ocupado() bool {
 	_, login := n.Estado()
@@ -241,6 +282,7 @@ func (n *Navegador) AbrirLogin(endereco string) error {
 	}
 	navCtx := n.navCtx
 	n.loginCtx = navCtx
+	go n.vigiarJanela(navCtx)
 	go func() {
 		// Usa a aba que o navegador já abriu (sem uma segunda aba em branco). Erro de carga não fecha a janela.
 		ctx, cancelar := context.WithTimeout(navCtx, 2*time.Minute)

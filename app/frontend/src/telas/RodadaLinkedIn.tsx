@@ -78,11 +78,13 @@ export function RodadaLinkedIn({ candidaturas, calculadas, limites, nome, atuali
     window.addEventListener(EVENTO_ENVIO, ouvir);
     return () => window.removeEventListener(EVENTO_ENVIO, ouvir);
   }, []);
+  // Também com a janela de login aberta: quando a pessoa fecha, o botão volta sozinho.
+  const login = !!envio?.login;
   useEffect(() => {
-    if (!rodando) return;
-    const t = window.setInterval(() => void ler(), 4000);
+    if (!rodando && !login) return;
+    const t = window.setInterval(() => void ler(), login ? 2000 : 4000);
     return () => window.clearInterval(t);
-  }, [rodando, ler]);
+  }, [rodando, login, ler]);
 
   const doLinkedIn = candidaturas.some(c => c.plataforma === 'linkedin');
   if (!doLinkedIn && !envio?.ligado) return null;
@@ -118,7 +120,7 @@ export function RodadaLinkedIn({ candidaturas, calculadas, limites, nome, atuali
   }
   async function entrar() {
     setOcupado(true);
-    try { setEnvio(await entrarNavegador(app, { plataforma: 'linkedin' })); app.aviso('Janela do LinkedIn aberta. Entre com a sua conta e feche a janela; a rodada espera.'); }
+    try { setEnvio(await entrarNavegador(app, { plataforma: 'linkedin' })); app.aviso('Abri o navegador do Applyer, separado do seu (pode parecer o mesmo, mas é outro perfil). Entre no LinkedIn nele e feche a janela quando terminar.'); }
     catch (e) { app.aviso((e as Error).message || 'Não deu para abrir a janela do LinkedIn.', true); }
     finally { setOcupado(false); }
   }
@@ -129,7 +131,7 @@ export function RodadaLinkedIn({ candidaturas, calculadas, limites, nome, atuali
   let aviso = '';
   if (!envio) aviso = 'Lendo o envio…';
   else if (!envio.ligado) aviso = 'Esta versão do app não envia sozinha: use "Aplicar no site" em cada vaga.';
-  else if (envio.login) aviso = 'A janela de login está aberta. Entre no LinkedIn e feche a janela para a rodada começar.';
+  else if (envio.login) aviso = 'O navegador do Applyer está aberto para você entrar no LinkedIn. É um navegador separado do seu, com perfil próprio: entre nele e feche a janela. Se já fechou, espere alguns segundos.';
   else if (sessaoCaiu) aviso = 'A sessão do LinkedIn caiu. Entre de novo para a rodada continuar.';
   else if (paradaHoje) aviso = 'O LinkedIn ficou parado por hoje (aviso na conta, captcha ou limite de páginas). Volta amanhã.';
   else if (!aComecar && !rodando) aviso = plano.revisar || plano.conferindo ? 'Nenhum pacote pronto: os que estão na lista precisam de revisão.' : 'Adicione vagas do LinkedIn no Radar para montar a rodada.';

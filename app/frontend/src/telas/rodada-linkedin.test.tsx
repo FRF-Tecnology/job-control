@@ -107,6 +107,23 @@ describe('RodadaLinkedIn', () => {
     expect(await screen.findByText(/Adicione vagas do LinkedIn no Radar/)).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Começar rodada' }) as HTMLButtonElement).disabled).toBe(true);
   });
+  it('janela de login aberta: explica que é o navegador do app e, quando ela fecha, o botão volta sozinho', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      let estado: object = envio({ login: true });
+      const atualizar = vi.fn(async () => {});
+      const api = vi.fn(async (rota: string) => rota === '/api/v1/envio' ? estado : {});
+      const app = { api, aviso: vi.fn(), hoje: HOJE, estado: {} } as unknown as App;
+      render(<Contexto.Provider value={app}><RodadaLinkedIn candidaturas={[cand('a')]} calculadas={calculadas([cand('a')])}
+        limites={{ linkedin: { limite: 30, usadas: 0, renovaEm: '' } }} nome={c => c.id} atualizar={atualizar} /></Contexto.Provider>);
+      expect(await screen.findByText(/navegador separado do seu/)).toBeTruthy();
+      expect((screen.getByRole('button', { name: 'Começar rodada (1)' }) as HTMLButtonElement).disabled).toBe(true);
+      estado = envio(); // a pessoa fechou a janela
+      await act(async () => { vi.advanceTimersByTime(2100); });
+      await act(async () => {});
+      expect((screen.getByRole('button', { name: 'Começar rodada (1)' }) as HTMLButtonElement).disabled).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
   it('sem o envio neste build: não começa e diz o caminho', async () => {
     montar([cand('a')], envio({ ligado: false }));
     expect(await screen.findByText(/não envia sozinha/)).toBeTruthy();
