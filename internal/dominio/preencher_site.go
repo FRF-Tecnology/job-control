@@ -21,6 +21,9 @@ func ConteudoAssistido(perfil, pacote Objeto) Objeto {
 			contato[k] = s
 		}
 	}
+	if tel := TelefoneCompleto(perfil); tel != "" {
+		contato["telefone"] = tel // com o código do país: o preenchimento tira quando o site pede o código à parte
+	}
 	if local := LocalDoPerfil(perfil); local != "" {
 		contato["local"] = local // "Recife, PE": para o campo que pede cidade e estado juntos
 	}

@@ -3,6 +3,7 @@ import { IconeUI } from '../app/IconeUI';
 import { useApp } from '../app/contexto';
 import { SeletorPerfil } from './SeletorPerfil';
 import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
+import { DDI } from '../dominio/ddi';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
 import { ContaEmail } from './ContaEmail';
 import { lerArquivo } from './PrimeiroAcesso';
@@ -31,10 +32,24 @@ function cidadeSeparada(p:any):[string,string]{
   const m=/^(.+?)\s*(?:,|-|–|\/)\s*([A-Za-z]{2})$/.exec(cidade);
   return m?[m[1],m[2].toUpperCase()]:[cidade,''];
 }
+// O telefone em duas partes: o país do código (a sigla, porque vários países usam +1) e o número. Perfis antigos
+// guardavam só o número, às vezes já com o "+": o código é tirado do começo (o mais longo que existir).
+const codigosDDI=[...new Set(Object.values(DDI))].sort((a,b)=>b.length-a.length);
+const opcoesDDI:[string,string][]=paises.filter(([s])=>DDI[s]).map(([s,n])=>[s,`${DDI[s]} ${n}`]);
+function telefoneSeparado(p:any):[string,string]{
+  const tel=texto(p.telefone).trim(), casa=texto(p.paisResidencia)||'BR';
+  const paisDoCodigo=(ddi:string)=>DDI[casa]===ddi?casa:(DDI.BR===ddi?'BR':Object.keys(DDI).find(s=>DDI[s]===ddi)??casa);
+  if(texto(p.ddi)) return [paisDoCodigo(texto(p.ddi)),tel];
+  if(tel.startsWith('+')){
+    const ddi=codigosDDI.find(c=>tel.replace(/[\s().-]/g,'').startsWith(c));
+    if(ddi) return [paisDoCodigo(ddi),tel.slice(tel.indexOf(ddi.slice(1))+ddi.length-1).replace(/^[\s.-]+/,'')];
+  }
+  return [DDI[casa]?casa:'BR',tel];
+}
 function leitura(p:any){
   const f=p.filtros||{}, faixa=p.faixaSalarial ?? {min:p.pretensaoUSD, moeda:p.pretensaoUSD?'USD':moedaDoMercado(p.foco,'USD')};
-  const [primeiroNome,sobrenome]=nomeSeparado(p), [cidade,estado]=cidadeSeparada(p);
-  return {nome:texto(p.nome), primeiroNome, sobrenome, email:texto(p.email), telefone:texto(p.telefone), cidade, estado, paisResidencia:texto(p.paisResidencia)||'BR', linkedin:texto(p.linkedin), github:texto(p.github), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
+  const [primeiroNome,sobrenome]=nomeSeparado(p), [cidade,estado]=cidadeSeparada(p), [paisTelefone,telefone]=telefoneSeparado(p);
+  return {nome:texto(p.nome), primeiroNome, sobrenome, email:texto(p.email), paisTelefone, telefone, cidade, estado, paisResidencia:texto(p.paisResidencia)||'BR', linkedin:texto(p.linkedin), github:texto(p.github), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
     paisTrabalho:texto(p.paisTrabalho), cidadeTrabalho:texto(p.cidadeTrabalho),
     titulos:lista(p.titulosEquivalentes).join(', '),
     principal:lista(p.stackPrincipal).join(', '), secundaria:lista(p.stackSecundaria).join(', '),
@@ -84,7 +99,7 @@ export function PerfilDoEspaco(){
     salvarEstado(true);falhar('');
     try {
       await app.api(url,'PATCH',{nome:[dados.primeiroNome.trim(),dados.sobrenome.trim()].filter(Boolean).join(' '),primeiroNome:dados.primeiroNome.trim(),sobrenome:dados.sobrenome.trim(),
-        email:dados.email.trim(),telefone:dados.telefone.trim(),cidade:dados.cidade.trim(),estado:dados.estado.trim(),paisResidencia:dados.paisResidencia,linkedin:dados.linkedin.trim(),github:dados.github.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
+        email:dados.email.trim(),ddi:DDI[dados.paisTelefone]??'',telefone:dados.telefone.trim(),cidade:dados.cidade.trim(),estado:dados.estado.trim(),paisResidencia:dados.paisResidencia,linkedin:dados.linkedin.trim(),github:dados.github.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
         paisTrabalho:dados.paisTrabalho, cidadeTrabalho:dados.cidadeTrabalho.trim(),
         titulosEquivalentes:separar(dados.titulos),
         stackPrincipal:separar(dados.principal),stackSecundaria:separar(dados.secundaria),
@@ -106,7 +121,7 @@ export function PerfilDoEspaco(){
     }catch(e){if(ativa.current)cvFalha((e as Error).message||'Não foi possível salvar o PDF.')}
     finally{if(ativa.current)cvOcupar(false)}
   }
-  type Campo='nome'|'primeiroNome'|'sobrenome'|'estado'|'paisResidencia'|'email'|'telefone'|'cidade'|'linkedin'|'github'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
+  type Campo='paisTelefone'|'nome'|'primeiroNome'|'sobrenome'|'estado'|'paisResidencia'|'email'|'telefone'|'cidade'|'linkedin'|'github'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
   function campo(k:Campo,label:string,op?:{lista?:[string,string][];wide?:boolean;tipo?:'number';dica?:string}){
     return <div className={'pr-field'+(op?.wide?' pr-wide':'')}><label htmlFor={'f-'+k}>{label}</label>{op?.lista?
       <select form="form-perfil-ativo" id={'f-'+k} value={dados[k]} onChange={e=>set(k,e.target.value)}>{op.lista.map(([v,r])=><option key={v} value={v}>{r}</option>)}</select>:
@@ -122,7 +137,12 @@ export function PerfilDoEspaco(){
       <Cartao titulo="Dados de contato" icone="profile"><div className="pr-fields">
         <p className="pr-wide pr-nota">Vão no pacote de cada candidatura e no "Preencher no site da empresa". Valem para todos os perfis de busca. Deixe em branco o que não quer mandar.</p>
         {campo('primeiroNome','Nome',{dica:'Ex.: Maria Clara'})}{campo('sobrenome','Sobrenome',{dica:'Ex.: Souza Lima'})}
-        {campo('email','E-mail',{dica:'nome@exemplo.com'})}{campo('telefone','Telefone',{dica:'Com DDD, ex.: (11) 91234-5678'})}
+        {campo('email','E-mail',{dica:'nome@exemplo.com'})}
+        <div className="pr-field"><label htmlFor="f-telefone">Telefone</label><div className="pr-telefone">
+          <select form="form-perfil-ativo" id="f-paisTelefone" aria-label="Código do país do telefone" value={dados.paisTelefone} onChange={e=>set('paisTelefone',e.target.value)}>
+            {opcoesDDI.map(([s,r])=><option key={s} value={s}>{r}</option>)}</select>
+          <input id="f-telefone" form="form-perfil-ativo" type="tel" maxLength={40} autoComplete="tel-national" placeholder={dados.paisTelefone==='BR'?'DDD e número, ex.: 11 91234-5678':'Número, sem o código do país'} value={dados.telefone} onChange={e=>set('telefone',e.target.value)}/>
+        </div></div>
         {campo('paisResidencia','País onde você mora',{lista:[['','Selecione'],...paises]})}
         {noBrasil ? campo('estado','Estado',{lista:[['','Selecione o estado'],...(geo?.ESTADOS ?? (dados.estado?[[dados.estado,dados.estado] as [string,string]]:[]))]}) : campo('estado','Estado ou província')}
         <div className="pr-field pr-wide"><label htmlFor="f-cidade">Cidade</label>

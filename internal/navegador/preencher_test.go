@@ -138,3 +138,14 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 	}
 	t.Fatal("a cópia do currículo ficou depois de fechar a janela")
 }
+
+func TestSiteNacional(t *testing.T) {
+	for host, quer := range map[string]bool{
+		"carreiras.empresa.com.br": true, "empresa.gupy.io": true, "gupy.io": true,
+		"boards.greenhouse.io": false, "jobs.lever.co": false, "golpe-gupy.io": false, "brasil.example": false,
+	} {
+		if siteNacional(host) != quer {
+			t.Errorf("siteNacional(%q) = %v", host, !quer)
+		}
+	}
+}

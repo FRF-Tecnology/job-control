@@ -114,3 +114,48 @@ func TestPlanejarAssistidoNomeCidadeEstadoSeparados(t *testing.T) {
 		t.Errorf("perfil antigo: %v", plano)
 	}
 }
+
+func TestTelefoneComESemCodigoDoPais(t *testing.T) {
+	for tel, quer := range map[string]string{
+		"+55 34 99999-0000": "34 99999-0000",
+		"+351 912 345 678":  "912 345 678",
+		"34 99999-0000":     "34 99999-0000",
+		"+5534999990000":    "+5534999990000", // sem separador não dá para saber onde o código acaba
+		"":                  "",
+	} {
+		if got := telefoneSemDDI(tel); got != quer {
+			t.Errorf("telefoneSemDDI(%q) = %q, quer %q", tel, got, quer)
+		}
+	}
+	perfil := dominio.Objeto{"ddi": "+55", "telefone": "34 99999-0000"}
+	conteudo := dominio.ConteudoAssistido(perfil, nil)
+	tel := Campo{ID: "t", Tipo: CampoTelefone, Rotulo: "Phone"}
+	ddi := Campo{ID: "d", Tipo: CampoDDI, Rotulo: "Country code"}
+	valorDe := func(plano []Preenchimento, id string) string {
+		for _, p := range plano {
+			if p.Campo.ID == id {
+				return p.Valor
+			}
+		}
+		return ""
+	}
+	// Site de fora, sem campo de código: o número completo.
+	if p, _ := PlanejarAssistido(conteudo, perfil, []Campo{tel}, false); valorDe(p, "t") != "+55 34 99999-0000" {
+		t.Errorf("site de fora: %v", p)
+	}
+	// Com o campo do código: cada um no seu.
+	if p, _ := PlanejarAssistido(conteudo, perfil, []Campo{ddi, tel}, false); valorDe(p, "t") != "34 99999-0000" || valorDe(p, "d") != "+55" {
+		t.Errorf("com código à parte: %v", p)
+	}
+	// Site brasileiro: o número nacional.
+	nacional := maps.Clone(conteudo)
+	nacional["siteNacional"] = true
+	if p, _ := PlanejarAssistido(nacional, perfil, []Campo{tel}, false); valorDe(p, "t") != "34 99999-0000" {
+		t.Errorf("site brasileiro: %v", p)
+	}
+	// O envio (LinkedIn) também: o código no seletor, o número sem ele.
+	plano, motivo := planejar(dominio.Objeto{"contato": dominio.Objeto{"telefone": "+55 34 99999-0000"}}, []Campo{ddi, tel})
+	if motivo != "" || len(plano) != 2 || plano[0].valor != "+55" || plano[1].valor != "34 99999-0000" {
+		t.Errorf("envio: %+v %q", plano, motivo)
+	}
+}

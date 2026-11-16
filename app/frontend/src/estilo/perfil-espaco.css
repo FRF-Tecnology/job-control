@@ -123,3 +123,8 @@
 .pr-nota { margin: -4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
 /* Grupos de opções do perfil: o vidro que todo fieldset ganha (estilo.css) desenhava uma moldura por cima do título. */
 .pr-levels, .pr-pay { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-radius: 0; }
+/* Telefone: o código do país (seletor estreito, mostra o país e o código) e o número. */
+.pr-telefone { display: grid; grid-template-columns: minmax(0, 6.6rem) minmax(0, 1fr); gap: 6px; }
+.pr-telefone select, .pr-telefone input { display: block; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background-color: var(--pr-fill); color: var(--text); padding: 9px 11px; height: 39px; font: inherit; font-size: .86rem; }
+.pr-telefone select { cursor: pointer; padding-right: 6px; text-overflow: ellipsis; }
+.pr-telefone input::placeholder { color: var(--muted); opacity: .82; }

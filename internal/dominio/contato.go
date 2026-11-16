@@ -2,6 +2,7 @@ package dominio
 
 import (
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -9,7 +10,22 @@ import (
 // "Preencher no site da empresa"). Trocar de perfil de busca nunca troca o contato.
 // nome é o nome completo (a tela junta primeiroNome e sobrenome ao salvar); cidade é só a cidade, e estado é a sigla
 // (no Brasil) ou o nome do estado/província (fora dele); paisResidencia é o código de duas letras.
-var CamposDeContato = []string{"nome", "primeiroNome", "sobrenome", "email", "telefone", "cidade", "estado", "paisResidencia", "linkedin", "github"}
+var CamposDeContato = []string{"nome", "primeiroNome", "sobrenome", "email", "ddi", "telefone", "cidade", "estado", "paisResidencia", "linkedin", "github"}
+
+var reDDI = regexp.MustCompile(`^\+[1-9][0-9]{0,3}$`)
+
+// DDIValido: o código de discagem do país, como "+55" ou "+351".
+func DDIValido(s string) bool { return reDDI.MatchString(s) }
+
+// TelefoneCompleto junta o código do país ao número ("+55 34 99999-0000"). O perfil guarda os dois separados
+// (ddi e telefone); perfis antigos têm só o telefone, às vezes já com o "+".
+func TelefoneCompleto(perfil Objeto) string {
+	tel, ddi := strings.TrimSpace(texto(perfil["telefone"])), strings.TrimSpace(texto(perfil["ddi"]))
+	if tel == "" || strings.HasPrefix(tel, "+") || !DDIValido(ddi) {
+		return tel
+	}
+	return ddi + " " + tel
+}
 
 // LocalDoPerfil junta cidade e estado para um campo só ("Recife, PE"). Perfis antigos guardavam tudo em cidade.
 func LocalDoPerfil(perfil Objeto) string {

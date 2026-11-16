@@ -84,6 +84,9 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 		}
 	}
 	primeiro, sobrenome := nomeESobrenome(perfil)
+	// O código do país sai do número quando a página tem um campo para ele, ou num site brasileiro (o número
+	// nacional, como nos formulários daqui). Nos outros sites, o número vai completo, com o "+55".
+	semDDI := temCampoDDI(campos) || conteudo["siteNacional"] == true
 	contato := dominio.ObjetoDe(conteudo["contato"])
 	for _, c := range campos {
 		if c.Preenchido {
@@ -125,6 +128,8 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 			valor, motivo = valorDoCampo(conteudo, c)
 			if motivo != "" {
 				valor = "" // sensível ou sem resposta: a pessoa preenche
+			} else if c.Tipo == CampoTelefone && semDDI {
+				valor = telefoneSemDDI(valor)
 			}
 		}
 		if strings.TrimSpace(valor) == "" {

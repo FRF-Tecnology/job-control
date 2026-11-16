@@ -94,3 +94,29 @@ func TestLocalEValidacaoDoContato(t *testing.T) {
 		t.Errorf("país com duas letras: %v", e)
 	}
 }
+
+func TestTelefoneCompleto(t *testing.T) {
+	for _, c := range []struct {
+		perfil Objeto
+		quer   string
+	}{
+		{Objeto{"ddi": "+55", "telefone": "34 99999-0000"}, "+55 34 99999-0000"},
+		{Objeto{"ddi": "+351", "telefone": "912 345 678"}, "+351 912 345 678"},
+		{Objeto{"telefone": "34 99999-0000"}, "34 99999-0000"},                   // perfil antigo: o envio assume +55
+		{Objeto{"ddi": "+55", "telefone": "+1 415 555 0000"}, "+1 415 555 0000"}, // já veio com o código
+		{Objeto{"ddi": "55", "telefone": "34 99999-0000"}, "34 99999-0000"},      // código fora do formato: não inventa
+		{Objeto{"ddi": "+55"}, ""},
+	} {
+		if got := TelefoneCompleto(c.perfil); got != c.quer {
+			t.Errorf("TelefoneCompleto(%v) = %q, quer %q", c.perfil, got, c.quer)
+		}
+	}
+	if e := ValidarPerfil(map[string]any{"ddi": "+55"}); len(e) != 0 {
+		t.Errorf("ddi certo: %v", e)
+	}
+	for _, ruim := range []string{"55", "+0", "+12345", "+5a"} {
+		if e := ValidarPerfil(map[string]any{"ddi": ruim}); len(e) != 1 {
+			t.Errorf("ddi %q: %v", ruim, e)
+		}
+	}
+}

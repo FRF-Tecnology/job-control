@@ -35,6 +35,9 @@ export function pacoteInicial(vaga: VagaBase, perfil: any, pdfs: PDF[]): Conteud
   // dos formulários costuma pedir. Perfis antigos já guardavam tudo na cidade.
   const cidade = texto(perfil?.cidade), estado = texto(perfil?.estado);
   if (cidade && estado && !cidade.toLowerCase().endsWith(estado.toLowerCase())) contato.cidade = `${cidade}, ${estado}`;
+  // O telefone vai com o código do país ("+55 34 9…"): o envio separa quando o formulário pede o código à parte.
+  const ddi = texto(perfil?.ddi), tel = texto(perfil?.telefone);
+  if (tel && !tel.startsWith('+') && /^\+[1-9]\d{0,3}$/.test(ddi)) contato.telefone = `${ddi} ${tel}`;
 
   let pretensao: Conteudo['pretensao'] = null;
   const usd = numero(perfil?.pretensaoUSD), pj = numero(perfil?.pretensaoPJ), clt = numero(perfil?.pretensaoCLT);

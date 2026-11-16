@@ -125,3 +125,22 @@ it('fora do Brasil o estado é texto livre e não há lista de cidades', () => {
   expect(screen.getByLabelText('Estado ou província')).toHaveProperty('value', 'Lisboa');
   expect(document.getElementById('cidades-do-estado')).toBeNull();
 });
+it('telefone: código do país num seletor e o número à parte; número antigo com "+" é separado', async () => {
+  const api = montarCom({ telefone: '+351 912 345 678', paisResidencia: 'BR' });
+  const ddi = screen.getByLabelText('Código do país do telefone') as HTMLSelectElement;
+  expect(ddi.value).toBe('PT');
+  expect(ddi.options[ddi.selectedIndex].text).toBe('+351 Portugal');
+  expect(screen.getByLabelText('Telefone')).toHaveProperty('value', '912 345 678');
+  fireEvent.change(ddi, { target: { value: 'BR' } });
+  fireEvent.change(screen.getByLabelText('Telefone'), { target: { value: '34 99999-0000' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/perfil?perfilBuscaId=original', 'PATCH',
+    expect.objectContaining({ ddi: '+55', telefone: '34 99999-0000' })));
+});
+it('telefone sem código guardado: o país onde mora (e o +1 dos Estados Unidos não vira Canadá)', () => {
+  montarCom({ telefone: '415 555 0000', paisResidencia: 'US' });
+  expect((screen.getByLabelText('Código do país do telefone') as HTMLSelectElement).value).toBe('US');
+  cleanup();
+  montarCom({ telefone: '415 555 0000', ddi: '+1', paisResidencia: 'US' });
+  expect((screen.getByLabelText('Código do país do telefone') as HTMLSelectElement).value).toBe('US');
+});

@@ -3,6 +3,7 @@ package navegador
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -218,6 +219,9 @@ func (n *Navegador) PreencherSite(ctx context.Context, dominioConferido string, 
 			}
 		}
 	}
+	// Site brasileiro: o telefone vai no formato nacional (sem o "+55"), como os formulários daqui pedem.
+	conteudo = maps.Clone(conteudo)
+	conteudo["siteNacional"] = siteNacional(host)
 	plano, faltando := executor.PlanejarAssistido(conteudo, perfil, campos, copia != "")
 	var r ResultadoPreenchimento
 	r.Faltando = faltando
@@ -246,4 +250,9 @@ func (n *Navegador) PreencherSite(ctx context.Context, dominioConferido string, 
 		}
 	}
 	return r, nil
+}
+
+// siteNacional: o domínio é brasileiro (.br) ou de um sistema de vagas brasileiro.
+func siteNacional(host string) bool {
+	return host == "br" || strings.HasSuffix(host, ".br") || host == "gupy.io" || strings.HasSuffix(host, ".gupy.io")
 }
