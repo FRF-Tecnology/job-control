@@ -8,6 +8,8 @@ import { encode } from '../util';
 import type { Candidatura } from './Fila';
 import type { Limite } from './LimiteDiario';
 import { ListaDoDia } from './ListaDoDia';
+import { RodadaLinkedIn } from './RodadaLinkedIn';
+import { RodadaSites } from './RodadaSites';
 import { BotaoRadar, CabecalhoJornada, DialogoJornada, TituloVaga, VazioJornada, type VagaJornada } from './JornadaUI';
 
 type Dados = {
@@ -105,6 +107,9 @@ export function PacotesDia({ candidaturas, calculadas, limites, ocupado, aprovar
   return <section className="j-page">
     <CabecalhoJornada titulo="Lista do dia" descricao="Revise os pacotes das vagas que você escolheu no radar." acao={itens.length ? <BotaoRadar /> : null} />
     {recibo && <div className="j-receipt" role="status"><IconeUI nome="check" tamanho={20} /><div><b>Envio confirmado</b><p>Candidatura registrada no quadro.</p></div><a className="btn quiet" href="#/quadro">Ver no quadro</a></div>}
+    <RodadaLinkedIn candidaturas={candidaturas} calculadas={calculadas} limites={limites} atualizar={atualizar}
+      nome={c => {const v = vagas.find(x => x.id === c.vagaId) ?? (app.estado.vagas ?? []).find((x: VagaJornada) => x.id === c.vagaId); return v ? `${v.empresa} — ${v.titulo}` : 'uma vaga';}} />
+    <RodadaSites candidaturas={candidaturas} atualizar={atualizar} />
     <div className="j-list-layout"><section className="j-list-panel" aria-label="Pacotes para envio">
       <div className="j-panel-heading"><h2>Pacotes para envio <span className="j-count">{itens.length}</span></h2>
         {itens.length > 1 && itens.some(i => i.c && permiteAprovar(i.c)) && <button className="btn quiet j-small" type="button" onClick={() => setLote(true)}>Aprovar todos</button>}</div>

@@ -60,7 +60,7 @@ describe('Apagar meus dados', () => {
     const status = screen.getByRole('status');
     expect(within(status).getByText('Parte dos dados foi apagada. O app vai fechar.')).toBeTruthy();
     expect(within(status).getByText('Não deu para apagar tudo. Ficou:')).toBeTruthy();
-    expect(within(status).getAllByRole('listitem').map(li => li.textContent)).toEqual(['As chaves de IA guardadas no cofre do sistema']);
+    expect(within(status).getAllByRole('listitem').map(li => li.textContent)).toEqual(['As chaves de IA, a senha do e-mail e o CPF guardados no cofre do sistema']);
   });
 
   it('pasta antiga que não deu para apagar (faltou pasta-antiga, #113) aparece com a frase fixa', async () => {
@@ -82,7 +82,7 @@ describe('Apagar meus dados', () => {
     expect(screen.getByText(/Não apaga: o login das ferramentas de IA .*, os PDFs originais que você copiou, os dados da Central antiga \(pasta dados\/\) e o cache da janela do app\./)).toBeTruthy();
     expect((campo() as HTMLInputElement).value).toBe(''); // nunca vem preenchido
     expect(screen.getByText('Antes, feche a CLI e o assistente (MCP) do Applyer')).toBeTruthy();
-    for (const t of ['As vagas, a fila de candidaturas, o perfil, o histórico, os limites e as configurações', 'As chaves de IA guardadas no cofre do sistema', 'O login nas plataformas (navegador do app)'])
+    for (const t of ['As vagas, a fila de candidaturas, o perfil, o histórico, os limites e as configurações', 'As chaves de IA, a senha do e-mail e o CPF guardados no cofre do sistema', 'O login nas plataformas (navegador do app)'])
       expect(screen.getByText(t)).toBeTruthy();
   });
 

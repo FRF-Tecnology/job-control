@@ -1,4 +1,4 @@
-// "Respostas por e-mail", no Quadro de candidaturas (api/openapi.yaml 0.18.0, rotas /email/conta, /email/ler e
+// "Respostas por e-mail", no Quadro de candidaturas (api/openapi.yaml 0.19.0, rotas /email/conta, /email/ler e
 // /emails/{idMensagem}/confirmar|ligar|descartar|criar-vaga). A pessoa pede a leitura; o app lê a caixa conectada, registra as
 // respostas e mostra:
 // - "Para confirmar": recusa, oferta, ou convite de remetente fora do domínio da vaga. A vaga só muda quando a pessoa
@@ -6,7 +6,8 @@
 // - "Sem vaga" (só convite, teste e oferta): a pessoa cria a vaga com a empresa e o cargo sugeridos (rota criar-vaga),
 //   diz de qual vaga é (a etapa muda) ou ignora (descartar).
 // Cada grupo traz uma frase que explica o que os botões fazem. Descartado conta como lido: não volta na próxima leitura.
-// Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
+// Alertas de vaga do LinkedIn e do Indeed viram vagas no Radar (com avaliação pendente); o resumo conta quantas e
+// leva ao Radar. Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
 // o resumo da IA aparece como texto, nunca como link.
 import { useEffect, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
@@ -18,7 +19,7 @@ import { dataCurta, encode, nomeEtapa, plural } from '../util';
 const ROTA_CONTA = '/api/v1/email/conta';
 const ROTA_LER = '/api/v1/email/ler';
 
-type Resultado = { registrados: number; mudaram: number; aConfirmar: number; semVaga: number; pendentes: number; falhas: number; sensiveis: number };
+type Resultado = { registrados: number; mudaram: number; aConfirmar: number; semVaga: number; pendentes: number; falhas: number; sensiveis: number; vagasNoRadar?: number };
 
 // O que a leitura fez, em frases curtas.
 export function resumoDaLeitura(r: Resultado): string {
@@ -29,6 +30,7 @@ export function resumoDaLeitura(r: Resultado): string {
   const outras = r.registrados - r.mudaram - r.aConfirmar - r.semVaga;
   if (outras > 0) partes.push(`${plural(outras, 'resposta registrada', 'respostas registradas')} sem mudança`);
   let texto = partes.length ? `Pronto: ${partes.join(', ')}.` : 'Pronto. Nenhuma resposta nova.';
+  if (r.vagasNoRadar) texto += ` ${plural(r.vagasNoRadar, 'vaga nova dos alertas do LinkedIn e do Indeed entrou', 'vagas novas dos alertas do LinkedIn e do Indeed entraram')} no Radar.`;
   if (r.sensiveis) texto += ` ${plural(r.sensiveis, 'e-mail de segurança ou de banco ficou', 'e-mails de segurança ou de banco ficaram')} de fora, sem ir para a IA.`;
   if (r.pendentes) texto += ' Ainda há e-mails para ler: clique de novo.';
   if (r.falhas) texto += ` A IA não conseguiu ler ${plural(r.falhas, 'e-mail', 'e-mails')}; a próxima leitura tenta de novo.`;
@@ -72,37 +74,69 @@ function EmailAConfirmar({ e, vaga }: { e: any; vaga: any }) {
 // ignora.
 const destino = (tipo: string) => tipo === 'oferta' ? 'Oferta' : 'Em processo';
 const sugestao = (e: any, k: string) => typeof e?.sugestao?.[k] === 'string' ? e.sugestao[k] : '';
+// O cargo é só o título: sem o código da vaga no começo ("[Job-123]") nem o local no fim (", Brazil"). Vale para as
+// sugestões guardadas antes de a leitura limpar isso (dominio.CargoSemLocal faz o mesmo no servidor).
+export function cargoSemLocal(s: string) {
+  let c = s.replace(/^\s*[[(](job|vaga|req|ref)?[\s#:-]*[A-Za-z0-9-]*\d[A-Za-z0-9-]*[\])]\s*/i, '');
+  const local = /\s*(,|-|–|\||\/)\s*(brazil|brasil|remote|remoto|latam|worldwide|híbrido|hibrido)(\s*\(?(remote|remoto)\)?)?\s*$/i;
+  while (local.test(c)) c = c.replace(local, '');
+  return c.trim();
+}
+// E-mails iguais (mesmo remetente e assunto: os lembretes de um mesmo teste) viram um cartão só.
+export function agruparIguais(emails: any[]): any[][] {
+  const grupos = new Map<string, any[]>();
+  for (const e of emails) {
+    const chave = `${String(e.de ?? '').toLowerCase()}|${String(e.assunto ?? '').trim().toLowerCase()}|${e.tipo}`;
+    grupos.set(chave, [...(grupos.get(chave) ?? []), e]);
+  }
+  return [...grupos.values()];
+}
 
-function EmailSemVaga({ e, opcoes }: { e: any; opcoes: any[] }) {
+function EmailSemVaga({ grupo, opcoes }: { grupo: any[]; opcoes: any[] }) {
   const app = useApp();
+  const e = grupo[0], outros = grupo.slice(1);
   const [escolha, setEscolha] = useState('');
+  const [criando, setCriando] = useState(false);
   const [empresa, setEmpresa] = useState(() => sugestao(e, 'empresa'));
-  const [cargo, setCargo] = useState(() => sugestao(e, 'cargo'));
-  const ir = (acao: string, corpo: object, msg: string) => app.agir(() => app.api(`/api/v1/emails/${encode(e.idMensagem)}/${acao}`, 'POST', corpo), msg);
+  const [cargo, setCargo] = useState(() => cargoSemLocal(sugestao(e, 'cargo')));
+  const rota = (x: any, acao: string) => `/api/v1/emails/${encode(x.idMensagem)}/${acao}`;
+  // A ação vai para o e-mail do cartão; os iguais saem da lista junto (ligados à mesma vaga, ou ignorados).
+  const ir = (acao: string, corpo: object, msg: string, comOsOutros: 'ligar' | 'descartar') => app.agir(async () => {
+    const r = await app.api(rota(e, acao), 'POST', corpo);
+    for (const x of outros) await app.api(rota(x, comOsOutros), 'POST', comOsOutros === 'ligar' ? corpo : {});
+    return r;
+  }, msg);
   const id = encode(e.idMensagem);
   const podeCriar = empresa.trim() !== '' && cargo.trim() !== '';
+  const sugerida = [sugestao(e, 'empresa'), cargoSemLocal(sugestao(e, 'cargo'))].filter(Boolean).join(' — ');
   return (
     <li className="j-row">
       <span className="j-company">{NOMES_EMAIL[e.tipo] ?? 'Email'}</span>
       <h3 className="j-email-titulo">{e.assunto || '(sem assunto)'}</h3>
       <p className="j-email-linha">{[e.de, e.resumo].filter(Boolean).join(' · ')}</p>
-      <form className="j-email-criar" onSubmit={ev => { ev.preventDefault(); if (podeCriar) void ir('criar-vaga', { empresa: empresa.trim(), cargo: cargo.trim() }, `Vaga criada no Quadro, em ${destino(e.tipo)}`); }}>
-        <label htmlFor={`empresa-${id}`}>Empresa</label>
-        <input id={`empresa-${id}`} type="text" maxLength={120} autoComplete="off" value={empresa} placeholder="Nome da empresa" onChange={ev => setEmpresa(ev.target.value)} />
-        <label htmlFor={`cargo-${id}`}>Cargo</label>
-        <input id={`cargo-${id}`} type="text" maxLength={120} autoComplete="off" value={cargo} placeholder="Título da vaga" onChange={ev => setCargo(ev.target.value)} />
-        <button className="btn primary" type="submit" disabled={!podeCriar}>Criar vaga</button>
-      </form>
-      <div className="j-email-acoes">
-        {opcoes.length > 0 && <>
-          <select aria-label={`Vaga do e-mail "${e.assunto}"`} value={escolha} onChange={ev => setEscolha(ev.target.value)}>
-            <option value="">Ou é de uma vaga que já está no app?</option>
-            {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
-          </select>
-          <button className="btn secondary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga')}>Ligar à vaga</button>
-        </>}
-        <button className="btn secondary" type="button" onClick={() => ir('descartar', {}, 'E-mail tirado da lista')}>Ignorar e-mail</button>
-      </div>
+      {outros.length > 0 && <p className="j-email-iguais">{`Mais ${plural(outros.length, 'e-mail igual', 'e-mails iguais')} (mesmo remetente e assunto): o que você fizer aqui vale para todos.`}</p>}
+      {criando
+        ? <form className="j-email-criar" onSubmit={ev => { ev.preventDefault(); if (podeCriar) void ir('criar-vaga', { empresa: empresa.trim(), cargo: cargo.trim() }, `Vaga criada no Quadro, em ${destino(e.tipo)}`, 'descartar'); }}>
+          <label htmlFor={`empresa-${id}`}>Empresa</label>
+          <input id={`empresa-${id}`} type="text" maxLength={120} autoComplete="off" value={empresa} placeholder="Nome da empresa" onChange={ev => setEmpresa(ev.target.value)} />
+          <label htmlFor={`cargo-${id}`}>Cargo</label>
+          <input id={`cargo-${id}`} type="text" maxLength={120} autoComplete="off" value={cargo} placeholder="Título da vaga" onChange={ev => setCargo(ev.target.value)} />
+          <div className="j-email-acoes">
+            <button className="btn primary" type="submit" disabled={!podeCriar}>Criar vaga</button>
+            <button className="btn quiet" type="button" onClick={() => setCriando(false)}>Cancelar</button>
+          </div>
+        </form>
+        : <div className="j-email-acoes">
+          <button className="btn primary" type="button" aria-expanded={false} onClick={() => setCriando(true)}>{sugerida ? `Criar vaga: ${sugerida}…` : 'Criar vaga…'}</button>
+          {opcoes.length > 0 && <>
+            <select aria-label={`Vaga do e-mail "${e.assunto}"`} value={escolha} onChange={ev => setEscolha(ev.target.value)}>
+              <option value="">Ou é de uma vaga que já está no app?</option>
+              {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
+            </select>
+            <button className="btn secondary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga', 'ligar')}>Ligar à vaga</button>
+          </>}
+          <button className="btn secondary" type="button" onClick={() => ir('descartar', {}, outros.length ? 'E-mails tirados da lista' : 'E-mail tirado da lista', 'descartar')}>{outros.length ? 'Ignorar e-mails' : 'Ignorar e-mail'}</button>
+        </div>}
     </li>
   );
 }
@@ -112,6 +146,7 @@ export function RespostasEmail() {
   const [conta, setConta] = useState<{ conectada: boolean; ultimaLeitura: string } | null>(null);
   const [lendo, setLendo] = useState(false);
   const [feito, setFeito] = useState('');
+  const [noRadar, setNoRadar] = useState(0);
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -130,10 +165,11 @@ export function RespostasEmail() {
 
   async function ler() {
     if (lendo) return;
-    setLendo(true); setErro(''); setFeito('');
+    setLendo(true); setErro(''); setFeito(''); setNoRadar(0);
     try {
       const r = await app.api(ROTA_LER, 'POST', {});
       setFeito(resumoDaLeitura(r));
+      setNoRadar(Number(r?.vagasNoRadar) || 0);
       if (r?.ultimaLeitura) setConta(c => c ? { ...c, ultimaLeitura: r.ultimaLeitura } : c);
       await app.recarregar();
     } catch (e) { setErro(explicar(e)); }
@@ -153,6 +189,7 @@ export function RespostasEmail() {
           : conta && <p>Conecte seu e-mail em <a href="#/perfil">Perfil e IA</a> para o Applyer ler as respostas das empresas e atualizar as vagas.</p>}
         {conta?.conectada && !lendo && <p>Cada e-mail é lido uma vez só: os que já passaram por aqui, até os ignorados, não voltam nas próximas leituras.</p>}
         {feito && <p className="j-email-feito" role="status">{feito}</p>}
+        {feito && noRadar > 0 && <p><a href="#/radar">Ver as vagas no Radar</a> (em "A conferir"; a próxima busca avalia cada uma).</p>}
         {erro && <p className="j-email-erro" role="alert">{erro}</p>}
       </div>
       {aConfirmar.length > 0 && <>
@@ -162,8 +199,8 @@ export function RespostasEmail() {
       </>}
       {semVaga.length > 0 && <>
         <h3 className="j-email-grupo">Sem vaga</h3>
-        <p className="j-email-ajuda">Convites, testes e ofertas de vagas que não estão no Applyer (em geral, candidaturas feitas fora dele). Confira a empresa e o cargo que tirei do e-mail e clique em "Criar vaga": ela entra no Quadro na etapa certa, com o e-mail junto. Se não interessa acompanhar (ou eu me enganei), clique em "Ignorar e-mail": ele sai da lista e nada é apagado do seu e-mail. Confirmações de candidatura e recusas de vagas que não estão no app não aparecem aqui.</p>
-        <ul className="j-list">{semVaga.map(e => <EmailSemVaga key={e.idMensagem} e={e} opcoes={opcoes} />)}</ul>
+        <p className="j-email-ajuda">Convites, testes e ofertas de vagas que não estão no Applyer (em geral, candidaturas feitas fora dele). Clique em "Criar vaga", confira a empresa e o cargo que tirei do e-mail e crie: a vaga entra no Quadro na etapa certa, com o e-mail junto. Se não interessa acompanhar (ou eu me enganei), clique em "Ignorar e-mail": ele sai da lista e nada é apagado do seu e-mail. Confirmações de candidatura e recusas de vagas que não estão no app não aparecem aqui.</p>
+        <ul className="j-list">{agruparIguais(semVaga).map(g => <EmailSemVaga key={g[0].idMensagem} grupo={g} opcoes={opcoes} />)}</ul>
       </>}
     </section>
   );

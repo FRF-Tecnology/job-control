@@ -35,3 +35,5 @@
 :root[data-tema="claro"] .espaco .btn.primary{background:#c1b3ff;color:#221931}
 @media(max-width: 780px){.espaco .barra-opcoes{gap:.3rem}.espaco .status-dados{max-width:110px}.espaco .rail{z-index:16}.espaco #nav-scrim{z-index:15}}
 @media(pointer:coarse),(max-width:780px){.espaco :is(.btn,.nav-link,.demo-control,.icon-btn,.hero-edit),.espaco #ferramentas-menu :is(a,button){min-height:44px}.espaco .icon-btn{min-width:44px}}
+/* Os botões de fechar/minimizar da janela (macOS) ficam no canto de cima: o logo começa abaixo deles. */
+.espaco .rail{padding-top:52px}.espaco .wordmark{margin-bottom:38px}

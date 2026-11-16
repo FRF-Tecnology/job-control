@@ -12,7 +12,7 @@ func IniciarManualRadar(e Estado, id string, pacote Objeto, agora time.Time, ctx
 	if v == nil {
 		return e, nil, &ErroNaoEncontrado{"vaga não encontrada"}
 	}
-	if FoiEnviada(v) || (v["etapa"] != "descoberta" && v["etapa"] != "aplicar") {
+	if FoiEnviada(v) || (v["etapa"] != "descoberta" && v["etapa"] != "aplicar" && !(v["etapa"] == "bloqueada" && bloqueadaPorSiteExterno(e, id))) {
 		return e, nil, &ErroConflito{Msg: "esta vaga não está disponível no Radar"}
 	}
 	if !URLDaPlataforma(PlataformaDaVaga(v), texto(v["link"])) {
@@ -35,7 +35,11 @@ func IniciarManualRadar(e Estado, id string, pacote Objeto, agora time.Time, ctx
 			return e, v, nil
 		}
 		linkAtual := texto(v["link"])
-		if (c.Estado != CandPreparada && c.Estado != CandAprovada) || (c.URL != linkAtual && !MesmaVaga(c.Plataforma, c.URL, linkAtual)) {
+		// Também a que o envio parou porque a vaga leva ao site da empresa (sem Candidatura simplificada): é
+		// exatamente o caso de seguir à mão (a "Rodada dos sites das empresas").
+		reservavel := c.Estado == CandPreparada || c.Estado == CandAprovada ||
+			(c.Estado == CandBloqueada && c.Bloqueio != nil && c.Bloqueio.Motivo == "site-externo")
+		if !reservavel || (c.URL != linkAtual && !MesmaVaga(c.Plataforma, c.URL, linkAtual)) {
 			return e, nil, &ErroConflito{Msg: "já existe uma candidatura para esta vaga; confira a Fila"}
 		}
 		break
@@ -98,6 +102,18 @@ func ConfirmarManualRadar(e Estado, id string, agora time.Time, ctx Ctx) (Estado
 		}
 	}
 	return e, nil, &ErroConflito{Msg: "inicie a candidatura no Radar antes de confirmar o envio"}
+}
+
+// bloqueadaPorSiteExterno: a candidatura ativa da vaga parou porque o "Candidatar-se" leva ao site da empresa.
+func bloqueadaPorSiteExterno(e Estado, vagaID string) bool {
+	for _, o := range e.Candidaturas {
+		if o["vagaId"] != vagaID || o["estado"] == CandCancelada {
+			continue
+		}
+		c, err := candidaturaDe(o)
+		return err == nil && c.Estado == CandBloqueada && c.Bloqueio != nil && c.Bloqueio.Motivo == "site-externo"
+	}
+	return false
 }
 
 func limparIntencaoRadar(e Estado, c Candidatura, guardarRecibo bool) {

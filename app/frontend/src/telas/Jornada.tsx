@@ -59,7 +59,6 @@ export function TelaQuadroCandidaturas() {
     .sort((a,b) => (b.atualizadoEm ?? '').localeCompare(a.atualizadoEm ?? ''));
   return <section className="j-page">
     <CabecalhoJornada titulo="Quadro de candidaturas" descricao="Acompanhe as conversas, registre atualizações e mova cada vaga de etapa." acao={<BotaoRadar />} />
-    <RespostasEmail />
     {!vagas.length && <div className="j-board-empty"><VazioJornada icone="board" titulo="Comece pela lista do dia" texto="Depois que um envio é confirmado, a candidatura aparece na primeira coluna."
       acao={<a className="btn secondary" href="#/lista"><IconeUI nome="list" tamanho={16} />Abrir lista do dia</a>} /></div>}
     <div className="j-board-grid">{colunas.map(c => {
@@ -73,6 +72,8 @@ export function TelaQuadroCandidaturas() {
             {detalhe && <span className="j-card-meta"><IconeUI nome={v.notas ? 'edit' : 'map-pin'} tamanho={13} /><span>{detalhe}</span></span>}</button>;
         }) : <div className="j-stage-empty">Nenhuma candidatura</div>}</div></section>;
     })}</div>
+    {/* As respostas por e-mail vêm depois das colunas: o quadro é o principal desta tela. */}
+    <RespostasEmail />
     {aberta && <EditarCartao vaga={aberta} fechar={() => {app.limpar(); setAberta(null);}} />}
   </section>;
 }

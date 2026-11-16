@@ -121,3 +121,26 @@
 }
 /* Aviso curto abaixo do e-mail e do telefone. */
 .pr-nota { margin: -4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+/* Grupos de opções do perfil: o vidro que todo fieldset ganha (estilo.css) desenhava uma moldura por cima do título. */
+.pr-levels, .pr-pay { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-radius: 0; }
+/* Telefone: o código do país (seletor estreito, mostra o país e o código) e o número. */
+.pr-telefone { display: grid; grid-template-columns: minmax(0, 6.6rem) minmax(0, 1fr); gap: 6px; }
+.pr-telefone select, .pr-telefone input { display: block; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background-color: var(--pr-fill); color: var(--text); padding: 9px 11px; height: 39px; font: inherit; font-size: .86rem; }
+.pr-telefone select { cursor: pointer; padding-right: 6px; text-overflow: ellipsis; }
+.pr-telefone input::placeholder { color: var(--muted); opacity: .82; }
+/* CPF: salvo (só a máscara) ou o campo com o botão próprio. */
+.pr-cpf-salvo, .pr-cpf-novo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pr-cpf-salvo span { font-size: .86rem; color: var(--text); }
+.pr-cpf-novo input { flex: 1 1 12rem; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background-color: var(--pr-fill); color: var(--text); padding: 9px 11px; height: 39px; font: inherit; font-size: .86rem; }
+.pr-cpf-novo input[aria-invalid=true] { border-color: var(--pr-alert); }
+.pr-cpf .pr-nota { margin: 2px 0 0; }
+.pr-cpf .pr-erro { margin: 0; color: var(--pr-alert, #ff8a8a); font-size: .82rem; }
+.pr-cpf-auto { display: inline-flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--text); cursor: pointer; margin-top: 2px; }
+.pr-cpf-auto input { width: 16px; height: 16px; accent-color: var(--lilac); }
+/* No celular (toque), o alvo de toque mínimo é 44 px (jc-a2y.39): o telefone e o CPF também. */
+@media (pointer: coarse), (max-width: 780px) {
+  .pr-telefone select, .pr-telefone input, .pr-cpf-novo input, #f-cidade { height: auto; min-height: 44px; }
+  /* No celular, a coluna é estreita: o telefone ocupa a linha toda, senão o número fica com 50 px. */
+  .pr-campo-telefone { grid-column: 1 / -1; }
+  .pr-cpf-auto { min-height: 44px; }
+}

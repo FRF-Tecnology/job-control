@@ -618,8 +618,12 @@ type acao struct {
 // devolve o motivo e nada é preenchido.
 func planejar(conteudo dominio.Objeto, campos []Campo) ([]acao, string) {
 	var plano []acao
+	ddiAParte := temCampoDDI(campos)
 	for _, campo := range campos {
 		valor, motivo := valorDoCampo(conteudo, campo)
+		if campo.Tipo == CampoTelefone && ddiAParte {
+			valor = telefoneSemDDI(valor) // o código do país vai no campo dele, não repetido no número
+		}
 		switch {
 		case motivo != "":
 			return nil, motivo
@@ -671,6 +675,30 @@ func esperados(tipo, valor string) []string {
 		return []string{todos, strings.TrimPrefix(todos, ddi)} // com e sem o código do país
 	}
 	return []string{todos, ddi + todos}
+}
+
+// temCampoDDI: a página pede o código do país num campo à parte (o seletor de país do telefone).
+func temCampoDDI(campos []Campo) bool {
+	for _, c := range campos {
+		if c.Tipo == CampoDDI {
+			return true
+		}
+	}
+	return false
+}
+
+// telefoneSemDDI: o número sem o código do país ("+55 34 99999-0000" dá "34 99999-0000"). Sem código que dê para
+// separar, o número fica como está.
+func telefoneSemDDI(tel string) string {
+	tel = strings.TrimSpace(tel)
+	if !strings.HasPrefix(tel, "+") {
+		return tel
+	}
+	ddi := ddiDoTelefone(tel)
+	if ddi == "" {
+		return tel
+	}
+	return strings.TrimLeft(strings.TrimPrefix(tel, ddi), " -.")
 }
 
 // ddiDoTelefone: o código do país do telefone do pacote. "+55 11 9..." dá "+55". Sem "+", o número é nacional e o

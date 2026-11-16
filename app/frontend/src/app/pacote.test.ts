@@ -30,6 +30,18 @@ describe('pacoteInicial', () => {
     expect(p.pretensao).toEqual({ valor: 3500, moeda: 'USD', tipo: 'contractor' });
   });
 
+  it('cidade e estado separados no perfil vão juntos no contato; perfil antigo fica como está', () => {
+    const pdfs = [{ nome: 'cv.pdf' }];
+    expect(pacoteInicial({}, { cidade: 'Recife', estado: 'PE' }, pdfs).contato).toEqual({ cidade: 'Recife, PE' });
+    expect(pacoteInicial({}, { cidade: 'Recife, PE', estado: 'PE' }, pdfs).contato).toEqual({ cidade: 'Recife, PE' });
+    expect(pacoteInicial({}, { cidade: 'Lisboa' }, pdfs).contato).toEqual({ cidade: 'Lisboa' });
+  });
+  it('telefone vai com o código do país; número antigo, como está', () => {
+    const pdfs = [{ nome: 'cv.pdf' }];
+    expect(pacoteInicial({}, { ddi: '+55', telefone: '34 99999-0000' }, pdfs).contato).toEqual({ telefone: '+55 34 99999-0000' });
+    expect(pacoteInicial({}, { telefone: '34 99999-0000' }, pdfs).contato).toEqual({ telefone: '34 99999-0000' });
+    expect(pacoteInicial({}, { ddi: '+55', telefone: '+1 415 555 0000' }, pdfs).contato).toEqual({ telefone: '+1 415 555 0000' });
+  });
   it('contrato PJ usa a pretensão PJ', () => {
     expect(pacoteInicial({ contrato: 'PJ', mercado: 'nacional' }, PERFIL, PDFS).pretensao).toEqual({ valor: 9000, moeda: 'BRL', tipo: 'PJ' });
   });

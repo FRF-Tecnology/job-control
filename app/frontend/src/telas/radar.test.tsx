@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, type App } from '../app/contexto';
-import { TelaRadar } from './Radar';
+import { TelaRadar, descricaoParaLer } from './Radar';
 import { intervaloDaBusca } from './BuscaDoPerfil';
 
 const abrir = vi.hoisted(() => vi.fn());
@@ -25,7 +25,7 @@ function montar(vagas: any[], api = vi.fn(), estadoExtra = {}) {
         Object.assign(vagas.find(v => v.id === id), extras, { etapa });
         atualizar(n => n + 1);
         return true;
-      }, recarregar: async () => atualizar(n => n + 1) } as unknown as App;
+      }, recarregar: async () => atualizar(n => n + 1), aviso: vi.fn() } as unknown as App;
     return <Contexto.Provider value={app}><TelaRadar /></Contexto.Provider>;
   }
   return render(<Banco />);
@@ -61,6 +61,106 @@ describe('Radar de vagas', () => {
     expect(within(linhaHF).getByText('HF')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name:'A conferir' }));
     expect(screen.getByRole('button', { name: /Oficina Engenharia outra/ }).querySelector('img')).toBeNull();
+  });
+  it('vaga de alerta sem descrição: lê a vaga com um clique e recarrega', async () => {
+    const alerta = { id: 'linkedin-4012345678', empresa: 'Acme', titulo: 'Engenheira Java', etapa: 'descoberta', plataforma: 'linkedin',
+      triagemBusca: 'pendente', publicadaEm: '2026-11-11', fonteBusca: 'Alerta do LinkedIn (e-mail)', link: 'https://www.linkedin.com/jobs/view/4012345678/' };
+    const api = vi.fn(async () => { Object.assign(alerta, { descricao: 'Java e Spring.', triagemBusca: 'classificada', aderencia: 'B', radarVersao: 1, radarClasse: 'conferir' }); return { avaliada: true }; });
+    montar([alerta, { ...vaga('gp', 'B'), plataforma: 'gupy' }], api);
+    fireEvent.click(screen.getByRole('button', { name: 'A conferir' }));
+    fireEvent.click(screen.getByRole('button', { name: /Acme Engenheira Java/ }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ler a descrição da vaga' })); });
+    expect(api).toHaveBeenCalledWith('/api/v1/vagas/linkedin-4012345678/ler-descricao', 'POST', {});
+    expect(screen.getByText('Java e Spring.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ler a descrição da vaga' })).toBeNull();
+    // Vaga que não é do LinkedIn não oferece o botão.
+    fireEvent.click(screen.getByRole('button', { name: /Empresa gp/ }));
+    expect(screen.queryByRole('button', { name: 'Ler a descrição da vaga' })).toBeNull();
+  });
+  it('ler a descrição: recusa com frase fixa, sem o texto do servidor', async () => {
+    const { ErroApi } = await import('../app/contexto');
+    const alerta = { id: 'linkedin-1', empresa: 'Acme', titulo: 'Engenheira Java', etapa: 'descoberta', plataforma: 'linkedin', triagemBusca: 'pendente', publicadaEm: '2026-11-11' };
+    const api = vi.fn(async () => { throw new ErroApi('texto do servidor', 409, { erro: 'texto do servidor', motivo: 'login' }); });
+    montar([alerta], api);
+    fireEvent.click(screen.getByRole('button', { name: 'A conferir' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ler a descrição da vaga' })); });
+    expect(screen.getByRole('alert').textContent).toMatch(/O LinkedIn pediu login/);
+    expect(document.body.textContent).not.toContain('texto do servidor');
+  });
+  it('preencher no site da empresa: abre, mostra o domínio, só preenche depois de conferido', async () => {
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true, plataforma: 'linkedin', link: 'https://www.linkedin.com/jobs/view/1/' };
+    const api = vi.fn(async (rota: string, _m?: string, corpo?: any) => {
+      if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+      if (rota.endsWith('/preencher') && !corpo?.dominio) return { dominio: 'carreiras.acme.example' };
+      return { preenchidos: 4, anexou: true, faltando: 2 };
+    });
+    montar([reservada], api);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+    expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/abrir-para-preencher', 'POST', {});
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+    expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/preencher', 'POST', {});
+    const conferir = screen.getByRole('group', { name: 'Conferir o site' });
+    expect(within(conferir).getByText('carreiras.acme.example')).toBeTruthy();
+    expect(api).toHaveBeenCalledTimes(2); // nada preenchido antes de conferir
+    await act(async () => { fireEvent.click(within(conferir).getByRole('button', { name: 'Preencher' })); });
+    expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/preencher', 'POST', { dominio: 'carreiras.acme.example' });
+    expect(screen.getByRole('status').textContent).toMatch(/Preenchi 4 campos e anexei o currículo\. 2 campos obrigatórios ficaram para você/);
+    expect(screen.getByRole('button', { name: 'Já enviei' })).toBeTruthy();
+  });
+  it('preencher: o site pede CPF; com CPF salvo, só vai depois de confirmar; sem, avisa onde salvar', async () => {
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true, plataforma: 'linkedin', link: 'https://www.linkedin.com/jobs/view/1/' };
+    for (const salvo of [true, false]) {
+      const api = vi.fn(async (rota: string, _m?: string, corpo?: any) => {
+        if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+        if (rota.endsWith('/preencher') && !corpo?.dominio) return { dominio: 'carreiras.acme.com.br' };
+        if (corpo?.cpf) return { preenchidos: 1, anexou: false, faltando: 0 };
+        return { preenchidos: 4, anexou: true, faltando: 1, pedeCPF: 1, cpfSalvo: salvo };
+      });
+      montar([reservada], api);
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+      await act(async () => { fireEvent.click(within(screen.getByRole('group', { name: 'Conferir o site' })).getByRole('button', { name: 'Preencher' })); });
+      expect(api.mock.calls.some(([, , c]) => (c as any)?.cpf)).toBe(false); // o CPF nunca vai sem o clique
+      if (salvo) {
+        const pergunta = screen.getByRole('group', { name: 'Preencher o CPF' });
+        expect(within(pergunta).getByText('carreiras.acme.com.br')).toBeTruthy();
+        await act(async () => { fireEvent.click(within(pergunta).getByRole('button', { name: 'Preencher CPF' })); });
+        expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/preencher', 'POST', { dominio: 'carreiras.acme.com.br', cpf: true });
+        expect(screen.getByRole('status').textContent).toMatch(/Preenchi o CPF/);
+        expect(screen.queryByRole('group', { name: 'Preencher o CPF' })).toBeNull();
+      } else {
+        expect(screen.queryByRole('button', { name: 'Preencher CPF' })).toBeNull();
+        expect(screen.getByRole('link', { name: 'Perfil e IA' }).getAttribute('href')).toBe('#/perfil');
+      }
+      cleanup();
+    }
+  });
+  it('preencher com o CPF automático: o resumo diz que o CPF foi e nada é perguntado', async () => {
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true, plataforma: 'linkedin', link: 'https://www.linkedin.com/jobs/view/1/' };
+    const api = vi.fn(async (rota: string, _m?: string, corpo?: any) => {
+      if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+      if (rota.endsWith('/preencher') && !corpo?.dominio) return { dominio: 'carreiras.acme.com.br' };
+      return { preenchidos: 5, anexou: true, faltando: 0, comCPF: true };
+    });
+    montar([reservada], api);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+    await act(async () => { fireEvent.click(within(screen.getByRole('group', { name: 'Conferir o site' })).getByRole('button', { name: 'Preencher' })); });
+    expect(screen.getByRole('status').textContent).toMatch(/^Preenchi 5 campos, incluindo o CPF, e anexei o currículo\./);
+    expect(screen.queryByRole('group', { name: 'Preencher o CPF' })).toBeNull();
+  });
+  it('preencher: ainda no LinkedIn, frase fixa sem o texto do servidor', async () => {
+    const { ErroApi } = await import('../app/contexto');
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true };
+    const api = vi.fn(async (rota: string) => {
+      if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+      throw new ErroApi('texto do servidor', 409, { erro: 'texto do servidor', motivo: 'sem-site' });
+    });
+    montar([reservada], api);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+    expect(screen.getByRole('status').textContent).toMatch(/ainda está no LinkedIn/);
+    expect(document.body.textContent).not.toContain('texto do servidor');
   });
   it('abre com os critérios salvos e pede a primeira busca só ao clicar', async () => {
     const api = vi.fn().mockResolvedValue({ encontradas: 0, novas: 0, grupos: { A: 0, B: 0, C: 0 }, avisos: [], pendentes: 0, puladas: 0 });
@@ -300,5 +400,14 @@ describe('Radar de vagas', () => {
     montar([],api);
     fireEvent.click(screen.getByRole('button',{name:'Buscar vagas'}));
     await screen.findByRole('heading',{name:'Nenhuma vaga compatível nesta busca'});
+  });
+
+  it('descrição guardada no teto termina na última palavra inteira, com reticências', () => {
+    const cortada = ('palavra '.repeat(750) + 'applicable legally p').slice(-6000);
+    expect([...cortada]).toHaveLength(6000);
+    const lida = descricaoParaLer(cortada);
+    expect(lida.endsWith('legally…')).toBe(true);
+    expect(descricaoParaLer('Texto curto.')).toBe('Texto curto.');
+    expect(descricaoParaLer('x'.repeat(5999) + '…')).toBe('x'.repeat(5999) + '…');
   });
 });

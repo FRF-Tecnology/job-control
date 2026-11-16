@@ -220,7 +220,7 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 
 	// 2) Chaves de IA e a senha de app do e-mail no cofre do sistema (a que já não existe conta como apagada).
 	var errChaves error
-	for _, p := range append(append([]string{}, comChave...), chaveCofreEmail) {
+	for _, p := range append(append([]string{}, comChave...), chaveCofreEmail, chaveCofreCPF) {
 		if err := a.cofre.Apagar(p); err != nil {
 			errChaves = err
 		}

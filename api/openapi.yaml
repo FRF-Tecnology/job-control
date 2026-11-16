@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.18.0
+  version: 0.22.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -250,6 +250,38 @@ paths:
     post:
       x-so-tela: true
       summary: 'Registra o envio que a pessoa confirmou na plataforma externa. Atualiza a vaga, a candidatura e o histórico uma vez; exige a intenção pendente ou um recibo já concluído.'
+  /vagas/{id}/ler-descricao:
+    post:
+      x-so-tela: true
+      summary: 'Ler a descrição da vaga: abre a vaga do Radar (descoberta, LinkedIn) no navegador do envio, com a sessão da pessoa, sem interagir, e grava a descrição (uma linha, até 6000 caracteres, sem <>). A página tem de parar na mesma vaga. Depois, a IA avalia a vaga na hora com a triagem da busca; sem IA, com busca em andamento ou com falha da IA, a vaga fica pendente. Responde {vaga, avaliada}. 409 {erro, motivo}: login, sem-descricao, fora (a página não parou na vaga), fora-do-radar, plataforma (não é do LinkedIn), vaga-mudou, enviando, login-aberto, falhou. 404 sem o envio neste build.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+  /vagas/{id}/abrir-para-preencher:
+    post:
+      x-so-tela: true
+      summary: 'Preencher no site da empresa (docs/propostas/preencher-site-externo.md), passo 1: para a vaga reservada com "Aplicar na vaga" (aplicacaoManual, em aplicar), abre a vaga numa janela VISÍVEL do navegador do app, com a sessão da pessoa, e tenta clicar em "Candidatar-se" (o site da empresa abre na mesma aba). Enquanto a janela está aberta, nenhum envio automático abre página (a mesma trava da janela de login). Responde {aberta: true}. 409 {erro, motivo}: sem-reserva, sem-endereco, login-aberto, enviando, sem-navegador, falhou. 404 sem o envio neste build.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+  /vagas/{id}/preencher:
+    post:
+      x-so-tela: true
+      summary: 'Preencher no site da empresa, passo 2. Sem dominio: devolve {dominio}, o domínio da aba do site da empresa, para a pessoa conferir (nada é preenchido). Com dominio: confere de novo que a aba está nesse domínio e preenche o que reconhece com o contato do perfil, as respostas padrão de mesmo texto e o currículo da reserva (conferido pelo sha256; a cópia é apagada quando a janela fecha). Nunca sobrescreve campo já preenchido, nunca preenche campo sensível (senha, documento, dado bancário; CPF só no passo 3), nunca marca caixa nem aceita termos, nunca avança nem envia. Responde {preenchidos, anexou, faltando} (faltando: obrigatórios em branco); num site brasileiro (.br, Gupy) com campo de CPF em branco, também {pedeCPF: quantos, cpfSalvo}; com o CPF automático ligado, o CPF vai já neste passo e a resposta traz comCPF. Passo 3, com cpf: true (docs/propostas/cpf-no-preencher.md): preenche SÓ os campos de CPF com o CPF do cofre, só em site brasileiro; 409 sem-cpf sem CPF salvo. 409 {erro, motivo}: sem-reserva, sem-janela, sem-site, site-mudou, curriculo-mudou, sem-cpf, falhou. 404 sem o envio neste build.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                dominio: { type: string, maxLength: 253, description: 'O domínio que a tela mostrou e a pessoa conferiu' }
+                cpf: { type: boolean, enum: [true], description: 'Preencher só o CPF salvo, depois de a pessoa confirmar neste domínio' }
   /ia/detectar:
     post:
       x-so-tela: true
@@ -799,6 +831,54 @@ paths:
   # Conta de e-mail (IMAP, só leitura): o app lê as respostas das empresas e os alertas de vaga da caixa da pessoa.
   # A caixa abre com EXAMINE e o corpo é lido com BODY.PEEK[]: nada é marcado como lido, movido, apagado ou enviado.
   # A senha de app fica no cofre do sistema; nunca volta na resposta nem vai para o log.
+  /perfil/cpf:
+    get:
+      x-so-tela: true
+      summary: 'O CPF da pessoa, só mascarado: {salvo, mascarado} (***.456.789-**). Fica no cofre do sistema, nunca no banco, no log, na IA ou no assistente (docs/propostas/cpf-no-preencher.md)'
+      responses:
+        '200': { description: Estado do CPF, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+    put:
+      x-so-tela: true
+      summary: 'Grava o CPF no cofre do sistema, se os dígitos verificadores conferem. Responde só a máscara'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [cpf]
+              properties:
+                cpf: { type: string, maxLength: 20, description: 'Os 11 números, com ou sem pontuação' }
+      responses:
+        '200': { description: CPF gravado, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+    patch:
+      x-so-tela: true
+      summary: 'Liga ou desliga "Preencher o CPF sem perguntar": com true, o CPF salvo vai junto no Preencher de site brasileiro (só nos campos de CPF), sem o passo 3. Preferência no banco; o CPF continua só no cofre. 409 sem-cpf para ligar sem CPF salvo'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [automatico]
+              properties:
+                automatico: { type: boolean }
+      responses:
+        '200': { description: Preferência gravada, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/Erro' }
+    delete:
+      x-so-tela: true
+      summary: 'Apaga o CPF do cofre e desliga o automático'
+      responses:
+        '200': { description: CPF apagado, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
   /email/conta:
     get:
       x-so-tela: true
@@ -835,7 +915,7 @@ paths:
   /email/ler:
     post:
       x-so-tela: true
-      summary: 'Lê as respostas das empresas na caixa conectada (só leitura) desde a última leitura (ou 30 dias), até 50 e-mails e 30 chamadas de IA por vez. Na ordem: já registrado pula; e-mail de segurança da conta ou de dinheiro sai antes da IA e não fica guardado; fora do pré-filtro fica só o id; o resto vai à IA (classificarEmail) com só o endereço do remetente, o assunto e um trecho de até 300 caracteres, com links, endereços e números mascarados, e só as vagas candidatas. Recusa e oferta, e convite ou teste de remetente fora do domínio da vaga, ficam a-confirmar; convite e teste do domínio da vaga mudam a vaga (em-processo com pendência). Responde só contagens. ultimaLeitura só avança quando nada ficou pendente nem falhou'
+      summary: 'Lê as respostas das empresas na caixa conectada (só leitura) desde a última leitura (ou 30 dias), até 50 e-mails e 30 chamadas de IA por vez. Na ordem: já registrado pula; e-mail de segurança da conta ou de dinheiro sai antes da IA e não fica guardado; fora do pré-filtro fica só o id; o resto vai à IA (classificarEmail) com só o endereço do remetente, o assunto e um trecho de até 300 caracteres, com links, endereços e números mascarados, e só as vagas candidatas. Recusa e oferta, e convite ou teste de remetente fora do domínio da vaga, ficam a-confirmar; convite e teste do domínio da vaga mudam a vaga (em-processo com pendência). Alertas de vaga (remetentes fechados do LinkedIn e do Indeed, da última semana, até 30 por leitura) não vão para a IA: as vagas saem dos links, com o link refeito pelo id da vaga, e entram no Radar do perfil de busca ativo com avaliação pendente (até 60 por leitura; o mesmo anúncio já no app fica de fora); do alerta fica só o id. Responde só contagens. ultimaLeitura só avança quando nada ficou pendente nem falhou'
       requestBody:
         required: true
         content:
@@ -1411,6 +1491,14 @@ components:
         erro: { type: string, description: 'Texto pronto para a tela' }
         motivo: { type: string, enum: [enviando, login-aberto, sem-navegador] }
         estado: { type: string, enum: [enviando], description: 'Só com motivo enviando' }
+    EstadoCPF:
+      type: object
+      additionalProperties: false
+      required: [salvo]
+      properties:
+        salvo: { type: boolean }
+        mascarado: { type: string, description: 'Só o miolo: ***.456.789-**' }
+        automatico: { type: boolean, description: 'Preencher o CPF sem perguntar (só em site brasileiro)' }
     ContaEmail:
       type: object
       additionalProperties: false
@@ -1423,7 +1511,7 @@ components:
     ResultadoLeituraEmail:
       type: object
       additionalProperties: false
-      required: [lidos, jaLidos, sensiveis, ignorados, registrados, mudaram, aConfirmar, semVaga, pendentes, falhas, ultimaLeitura]
+      required: [lidos, jaLidos, sensiveis, ignorados, registrados, mudaram, aConfirmar, semVaga, pendentes, falhas, alertas, vagasNoRadar, ultimaLeitura]
       properties:
         lidos: { type: integer, description: 'E-mails que a busca trouxe' }
         jaLidos: { type: integer }
@@ -1435,6 +1523,8 @@ components:
         semVaga: { type: integer }
         pendentes: { type: integer, description: 'Passaram do limite desta leitura; a próxima lê' }
         falhas: { type: integer, description: 'A IA falhou ou o e-mail não passou na validação; a próxima leitura tenta de novo' }
+        alertas: { type: integer, description: 'Alertas de vaga do LinkedIn e do Indeed lidos (sem IA; só o id fica guardado)' }
+        vagasNoRadar: { type: integer, description: 'Vagas novas que os alertas puseram no Radar, com avaliação pendente' }
         ultimaLeitura: { type: string }
     ErroEmail:
       type: object

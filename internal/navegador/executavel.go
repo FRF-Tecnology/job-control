@@ -10,10 +10,11 @@ import (
 	"runtime"
 )
 
-// ErrSemNavegador: nenhum Chrome nem Edge nos locais conhecidos.
-var ErrSemNavegador = errors.New("Chrome ou Edge não encontrado nos locais de instalação")
+// ErrSemNavegador: nenhum Chrome, Edge nem Brave nos locais conhecidos.
+var ErrSemNavegador = errors.New("Chrome, Edge ou Brave não encontrado nos locais de instalação")
 
-// locaisDoNavegador é a lista fixa de onde procurar, na ordem: Chrome e depois Edge. Não usa PATH nem configuração
+// locaisDoNavegador é a lista fixa de onde procurar, na ordem: Chrome, Edge e Brave (também Chromium, com o mesmo
+// DevTools; entra por último, para quem não tem os outros dois). Não usa PATH nem configuração
 // da pessoa; no Windows, só as pastas de programas do sistema e a instalação por usuário (pasta local do usuário).
 func locaisDoNavegador(goos string, env func(string) string, home, local string) []string {
 	var l []string
@@ -30,6 +31,11 @@ func locaisDoNavegador(goos string, env func(string) string, home, local string)
 				l = append(l, filepath.Join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
 			}
 		}
+		for _, base := range []string{pf, pf86, local} {
+			if base != "" {
+				l = append(l, filepath.Join(base, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"))
+			}
+		}
 	case "darwin":
 		apps := []string{"/Applications"}
 		if home != "" {
@@ -40,6 +46,9 @@ func locaisDoNavegador(goos string, env func(string) string, home, local string)
 		}
 		for _, a := range apps {
 			l = append(l, filepath.Join(a, "Microsoft Edge.app", "Contents", "MacOS", "Microsoft Edge"))
+		}
+		for _, a := range apps {
+			l = append(l, filepath.Join(a, "Brave Browser.app", "Contents", "MacOS", "Brave Browser"))
 		}
 	default: // Linux: só para desenvolvimento e CI
 		l = append(l, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome",

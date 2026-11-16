@@ -78,7 +78,7 @@ func jobicyPorTermo(ctx context.Context, c *http.Client, termo, geo string) ([]d
 			if j.ID <= 0 || titulo == "" || empresa == "" || !linkDaFonte(j.URL, "jobicy.com") {
 				continue
 			}
-			v := dominio.Objeto{"id": "jobicy-" + strconv.FormatInt(j.ID, 10), "titulo": titulo, "empresa": empresa, "fonteBusca": "Jobicy", "link": j.URL, "fonteURL": j.URL, "plataforma": "externo", "mercado": "internacional", "modelo": "Remoto", "local": texto(j.JobGeo, 500), "descricao": texto(j.JobDescription, 6000), "contrato": strings.Join(j.JobType, ", "), "nivel": texto(j.JobLevel, 100), "categorias": j.JobIndustry}
+			v := dominio.Objeto{"id": "jobicy-" + strconv.FormatInt(j.ID, 10), "titulo": titulo, "empresa": empresa, "fonteBusca": "Jobicy", "link": j.URL, "fonteURL": j.URL, "plataforma": "externo", "mercado": "internacional", "modelo": "Remoto", "local": texto(j.JobGeo, 500), "descricao": textoDaDescricao(j.JobDescription), "contrato": strings.Join(j.JobType, ", "), "nivel": nivelDoJobicy(j.JobLevel), "categorias": j.JobIndustry}
 			if pub, err := time.Parse(time.RFC3339, j.PubDate); err == nil {
 				v["publicadaEm"] = pub.UTC().Format(time.RFC3339)
 			}
@@ -102,4 +102,12 @@ func jobicyPorTermo(ctx context.Context, c *http.Client, termo, geo string) ([]d
 		params.Set("cursor", pagina.NextCursor)
 	}
 	return vagas, nil
+}
+
+// nivelDoJobicy: "Any" é o "qualquer nível" do Jobicy, não um nível (a tela mostrava como etiqueta).
+func nivelDoJobicy(s string) string {
+	if s = texto(s, 100); strings.EqualFold(s, "any") {
+		return ""
+	}
+	return s
 }

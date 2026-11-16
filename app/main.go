@@ -93,6 +93,11 @@ func main() {
 		AvisoPasta: abertura.Aviso,
 		// Leitura de formulários (jc-a2y.7.2): nil no build padrão (a rota dá 404).
 		LerFormulario: controleEnvio.LerFormulario,
+		LerDescricao:  controleEnvio.LerDescricao,
+		// Preencher no site da empresa: nil no build padrão (as rotas dão 404).
+		AbrirParaPreencher: controleEnvio.AbrirParaPreencher,
+		SiteParaPreencher:  controleEnvio.SiteParaPreencher,
+		PreencherSite:      controleEnvio.PreencherSite,
 		// Janela do app (Perfil): segundo plano e voltar ao tamanho padrão.
 		JanelaApp: controle.ganchos(),
 	})

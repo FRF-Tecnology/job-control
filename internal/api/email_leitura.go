@@ -7,12 +7,15 @@ import (
 	"errors"
 	"html"
 	"log"
+	"maps"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/FRF-Tecnology/job-control/internal/busca"
 	"github.com/FRF-Tecnology/job-control/internal/caixa"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
@@ -25,6 +28,10 @@ import (
 //     endereços mascarados; das vagas, só as candidatas;
 //   - recusa e oferta (e convite de outro domínio) ficam "a-confirmar" (dominio.RegistrarEmailLido);
 //   - o log leva só contagens.
+//
+// Alertas de vaga (LinkedIn e Indeed, remetentes da lista fechada de busca.FonteDoAlerta) não vão para a IA: as vagas
+// saem do link (busca.VagasDoAlerta) e entram no Radar como "avaliação pendente"; a próxima busca as avalia. Do
+// alerta fica guardado só o id.
 
 const (
 	chaveMetaLeitura    = "email-leitura" // {ultimaLeitura: AAAA-MM-DD}
@@ -34,7 +41,14 @@ const (
 	diasPrimeiraLeitura = 30
 	tetoTrecho          = 300
 	tetoTextoLocal      = 20000 // o texto inteiro só serve para achar a vaga, aqui no computador
+	// Alertas: só os da última semana (vaga de alerta mais velha que isso costuma já ter fechado) e um teto de vagas
+	// novas por leitura, para o Radar não encher (a IA avalia dez por rodada).
+	maxAlertasPorLeitura = 30
+	diasDeAlerta         = 7
+	maxVagasDeAlerta     = 60
 )
+
+var buscaAlertas = caixa.Busca{Remetentes: []string{"jobalerts-noreply@linkedin.com", "jobs-listings@linkedin.com", "indeed.com"}}
 
 // O que procurar no servidor: plataformas de vaga e testes no remetente, palavras de processo no assunto e no corpo.
 var buscaRespostas = caixa.Busca{
@@ -129,6 +143,8 @@ type ResultadoLeitura struct {
 	Registrados   int    `json:"registrados"`
 	Pendentes     int    `json:"pendentes"`
 	Falhas        int    `json:"falhas"`
+	Alertas       int    `json:"alertas"`      // alertas de vaga lidos
+	VagasNoRadar  int    `json:"vagasNoRadar"` // vagas novas que os alertas puseram no Radar
 	UltimaLeitura string `json:"ultimaLeitura"`
 }
 
@@ -195,6 +211,15 @@ func (a *API) lerRespostasEmail(ctx context.Context, c Objeto) (Resposta, error)
 	prazo, cancelar := context.WithTimeout(ctx, prazoLeituraEmail)
 	defer cancelar()
 	msgs, err := a.leitorEmail.Buscar(prazo, conta, desde, buscaRespostas, maxEmailsPorLeitura)
+	if err == nil {
+		desdeAlerta, _ := time.Parse("2006-01-02", hoje)
+		if desdeAlerta = desdeAlerta.AddDate(0, 0, -diasDeAlerta); desdeAlerta.Before(desde) {
+			desdeAlerta = desde
+		}
+		var alertas []caixa.Mensagem
+		alertas, err = a.leitorEmail.Buscar(prazo, conta, desdeAlerta, buscaAlertas, maxAlertasPorLeitura)
+		msgs = juntarMensagens(msgs, alertas)
+	}
 	switch {
 	case errors.Is(err, caixa.ErrSenha):
 		return Resposta{}, &dominio.ErroConflito{Msg: "o e-mail recusou a senha de app: conecte de novo em Perfil e IA", Motivo: "senha"}
@@ -214,6 +239,8 @@ func (a *API) lerRespostasEmail(ctx context.Context, c Objeto) (Resposta, error)
 	}
 
 	r := ResultadoLeitura{Lidos: len(msgs)}
+	limiteAlerta, _ := time.Parse("2006-01-02", hoje)
+	limiteAlerta = limiteAlerta.AddDate(0, 0, -diasDeAlerta)
 	chamadas := 0
 	for _, m := range msgs {
 		id := idDoEmail(m)
@@ -222,6 +249,31 @@ func (a *API) lerRespostasEmail(ctx context.Context, c Objeto) (Resposta, error)
 			continue
 		}
 		de := caixa.SoEndereco(m.De)
+		if fonte := busca.FonteDoAlerta(de); fonte != "" {
+			// O corpo de um alerta é uma lista de vagas (e pode citar "banco" como empresa): o filtro de sensíveis
+			// olha só o assunto. Nada do alerta vai para a IA.
+			if reSensivel.MatchString(m.Assunto) {
+				r.Sensiveis++
+				continue
+			}
+			var vagas []Objeto
+			if !m.Data.Before(limiteAlerta) && r.VagasNoRadar < maxVagasDeAlerta {
+				vagas = busca.VagasDoAlerta(fonte, m.Texto, m.HTML)
+			}
+			novas := 0
+			err := a.gravar(ctx, func(atual dominio.Estado) (dominio.Estado, error) {
+				novo, n, err := a.registrarAlerta(atual, id, m.Data, vagas, maxVagasDeAlerta-r.VagasNoRadar)
+				novas, e = n, novo
+				return novo, err
+			})
+			if err != nil {
+				return Resposta{}, err
+			}
+			registrados[id] = true
+			r.Alertas++
+			r.VagasNoRadar += novas
+			continue
+		}
 		texto := textoDoEmail(m)
 		if sensivel(de, m.Assunto, texto) {
 			r.Sensiveis++
@@ -294,9 +346,65 @@ func (a *API) lerRespostasEmail(ctx context.Context, c Objeto) (Resposta, error)
 		}
 		r.UltimaLeitura = hoje
 	}
-	log.Printf("email: lidos %d, ja-lidos %d, sensiveis %d, ignorados %d, registrados %d, mudaram %d, a-confirmar %d, sem-vaga %d, pendentes %d, falhas %d",
-		r.Lidos, r.JaLidos, r.Sensiveis, r.Ignorados, r.Registrados, r.Mudaram, r.AConfirmar, r.SemVaga, r.Pendentes, r.Falhas)
+	log.Printf("email: lidos %d, ja-lidos %d, sensiveis %d, ignorados %d, registrados %d, mudaram %d, a-confirmar %d, sem-vaga %d, pendentes %d, falhas %d, alertas %d, vagas-no-radar %d",
+		r.Lidos, r.JaLidos, r.Sensiveis, r.Ignorados, r.Registrados, r.Mudaram, r.AConfirmar, r.SemVaga, r.Pendentes, r.Falhas, r.Alertas, r.VagasNoRadar)
 	return ok(r)
+}
+
+// juntarMensagens: as respostas e os alertas, sem repetir o mesmo e-mail.
+func juntarMensagens(listas ...[]caixa.Mensagem) []caixa.Mensagem {
+	vistos := map[string]bool{}
+	var saida []caixa.Mensagem
+	for _, l := range listas {
+		for _, m := range l {
+			if id := idDoEmail(m); !vistos[id] {
+				vistos[id] = true
+				saida = append(saida, m)
+			}
+		}
+	}
+	return saida
+}
+
+// registrarAlerta põe no Radar do perfil de busca ativo as vagas do alerta que ainda não estão no app (o mesmo
+// anúncio em qualquer etapa, de qualquer perfil, fica de fora) e guarda só o id do e-mail. As vagas entram como
+// "avaliação pendente", com a data do alerta como publicação: a próxima busca as avalia como as dos sites.
+func (a *API) registrarAlerta(e dominio.Estado, id string, data time.Time, vagas []Objeto, resta int) (dominio.Estado, int, error) {
+	ativo := e.PerfilBuscaAtivo()
+	cx := a.ctx(e, "claude")
+	novas := 0
+	for _, bruta := range vagas {
+		if novas >= resta {
+			break
+		}
+		dados := maps.Clone(bruta)
+		anuncio := dominio.Texto(dados["id"])
+		dados["anuncioId"], dados["perfilBuscaId"] = anuncio, ativo
+		if ativo != dominio.PerfilOriginal {
+			dados["id"] = ativo + "-" + anuncio
+		}
+		if !data.IsZero() {
+			dados["publicadaEm"] = data.Format("2006-01-02")
+		}
+		dados["triagemBusca"] = "pendente"
+		if slices.ContainsFunc(e.Vagas, func(v Objeto) bool { return busca.MesmoAnuncio(v, dados) }) || dominio.AnuncioReservado(e, dados) != nil {
+			continue
+		}
+		novo, _, err := dominio.AdicionarVaga(e, dados, cx, true)
+		if err != nil {
+			var d *dominio.ErroDuplicata
+			var invalida *dominio.ErroValidacao
+			if errors.As(err, &d) || errors.As(err, &invalida) {
+				continue
+			}
+			return e, 0, err
+		}
+		e = novo
+		novas++
+	}
+	// Só o id do alerta: sem remetente, assunto nem texto.
+	novo, _, err := dominio.RegistrarEmail(e, Objeto{"idMensagem": id, "data": data.Format(time.RFC3339)}, Objeto{"tipo": "outro"}, a.ctx(e, "eu"))
+	return novo, novas, err
 }
 
 // tipoDeFalhaEmail: só a classe da falha vai para o log (o texto do erro pode trazer o servidor e o endereço).

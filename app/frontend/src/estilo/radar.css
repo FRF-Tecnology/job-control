@@ -56,7 +56,7 @@
 .rd-analysis p { color: var(--text); margin: 8px 0 0; }
 .rd-description { margin-top: 19px; }
 .rd-description h4 { font-size: 14px; line-height: 1.35; margin: 0; font-weight: 650; }
-.rd-description p { margin: 5px 0 0; color: var(--muted); }
+.rd-description p { margin: 5px 0 0; color: var(--muted); white-space: pre-line; }
 .rd-tags { list-style: none; flex-wrap: wrap; gap: 5px; margin: 13px 0 0; padding: 0; }
 .rd-tags li { border: 1px solid var(--line); color: var(--muted); background: var(--panel); padding: 4px 8px; border-radius: 6px; line-height: 1.25; font-size: 11px; }
 .rd-actions { flex-wrap: wrap; gap: 9px; padding-top: 17px; margin-top: 18px; border-top: 1px solid var(--line); }
@@ -186,6 +186,10 @@
 .rd-manual p { margin: 5px 0 10px; font-size: 13px; }
 .rd-conferir { margin-top: 11px; color: var(--text); font-size: 13px; }
 .rd-conferir ul { padding-left: 18px; margin: 3px 0; }
+.rd-ler-descricao { margin-top: 12px; display: grid; gap: 8px; justify-items: start; }
+.rd-ler-descricao p { margin: 0; font-size: 13px; color: var(--muted, var(--text)); }
+.rd-preencher { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border, rgba(127,127,127,.25)); display: grid; gap: 8px; justify-items: start; }
+.rd-preencher p { margin: 0; font-size: 13px; }
 .rd-conexao, .rd-balanco { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
 .rd-balanco summary { cursor: pointer; width: fit-content; }
 .rd-empty + .rd-workbench { margin-top: 12px; }
@@ -216,4 +220,8 @@
     align-items: center;
     min-height: 44px;
   }
+}
+/* A lista é longa e a página rola: o detalhe da vaga aberta acompanha, e rola por dentro se for maior que a tela. */
+@media (min-width: 761px) {
+  .rd-workbench .rd-detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; }
 }
