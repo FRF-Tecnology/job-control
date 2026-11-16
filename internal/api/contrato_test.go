@@ -284,7 +284,7 @@ func TestRotasDoCodigoEstaoNoContrato(t *testing.T) {
 	}
 }
 
-func TestSessaoDoNodeBateComContrato(t *testing.T) {
+func TestSessaoGravadaBateComContrato(t *testing.T) {
 	ops := lerContrato(t)
 	b, err := os.ReadFile("testdata/golden-api.json")
 	if err != nil {
@@ -313,10 +313,10 @@ func TestSessaoDoNodeBateComContrato(t *testing.T) {
 		inexistente := c.Resposta.Status == 404 && corpo != nil && corpo["erro"] == "rota não encontrada"
 		noContrato := ops.tem(p, strings.ToUpper(c.Metodo))
 		if inexistente && noContrato {
-			t.Errorf("%s %s: o Node não conhece, mas está no contrato", c.Metodo, p)
+			t.Errorf("%s %s: a sessão gravada dá 404, mas está no contrato", c.Metodo, p)
 		}
 		if !inexistente && !noContrato {
-			t.Errorf("%s %s: o Node atende, mas não está no contrato", c.Metodo, p)
+			t.Errorf("%s %s: a sessão gravada atende, mas não está no contrato", c.Metodo, p)
 		}
 	}
 }

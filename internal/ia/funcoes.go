@@ -10,7 +10,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// funcoes.json é gerado do Node (ferramentas/gerar-golden-ia.mjs): contratos e instruções de cada função.
+// funcoes.json: contratos e instruções de cada função. Nasceu do Node e agora é do Go: edite aqui e regrave o golden (go test ./internal/ia -atualizar).
 //
 //go:embed funcoes.json
 var funcoesJSON []byte

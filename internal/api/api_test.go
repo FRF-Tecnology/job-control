@@ -14,6 +14,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
+	"github.com/FRF-Tecnology/job-control/internal/golden"
 )
 
 func TestMain(m *testing.M) {
@@ -50,10 +51,17 @@ type chamadaGolden struct {
 	} `json:"resposta"`
 }
 
-// A sessão de testdata/golden-api.json foi gravada contra a API Node (ferramentas/gerar-golden-api.mjs).
-// A API Go, partindo de um banco vazio, precisa responder igual em cada chamada.
-func TestGoldenDaApiNode(t *testing.T) {
-	b, err := os.ReadFile("testdata/golden-api.json")
+const caminhoGoldenAPI = "testdata/golden-api.json"
+
+// A sessão de testdata/golden-api.json nasceu da API Node e agora é do Go:
+// partindo de um banco vazio, a API responde igual em cada chamada. Mudou uma resposta de propósito?
+// go test ./internal/api -run Golden -atualizar, e confira o diff.
+func TestGoldenDaApi(t *testing.T) {
+	var doc *golden.Obj
+	if *golden.Atualizar {
+		doc = golden.Ler(t, caminhoGoldenAPI)
+	}
+	b, err := os.ReadFile(caminhoGoldenAPI)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,26 +90,38 @@ func TestGoldenDaApiNode(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: erro inesperado: %v", nome, err)
 		}
-		if r.Status != c.Resposta.Status {
-			t.Fatalf("%s: status %d; Node deu %d (corpo Go: %s)", nome, r.Status, c.Resposta.Status, emJSON(r.Corpo))
-		}
 		tipo := ""
 		if c.Resposta.Tipo != nil {
 			tipo = *c.Resposta.Tipo
 		}
-		if r.Tipo != tipo || !reflect.DeepEqual(r.Cabecalhos, c.Resposta.Cabecalhos) && !(len(r.Cabecalhos) == 0 && len(c.Resposta.Cabecalhos) == 0) {
-			t.Fatalf("%s: tipo/cabeçalhos %q %v; Node deu %q %v", nome, r.Tipo, r.Cabecalhos, tipo, c.Resposta.Cabecalhos)
-		}
 		got := normal(r.Corpo)
-		if c.Caminho == Prefixo+"/estado" && c.Metodo == "GET" {
-			// Recursos da janela Go posteriores ao retrato fixo do Node.
-			delete(got.(map[string]any), "onboardingConcluido")
-			delete(got.(map[string]any), "perfilBuscaAtivo")
-			delete(got.(map[string]any), "perfisBusca")
+		dif := ""
+		switch {
+		case r.Status != c.Resposta.Status:
+			dif = fmt.Sprintf("%s: status %d; o golden diz %d (corpo Go: %s)", nome, r.Status, c.Resposta.Status, emJSON(r.Corpo))
+		case r.Tipo != tipo || !reflect.DeepEqual(r.Cabecalhos, c.Resposta.Cabecalhos) && !(len(r.Cabecalhos) == 0 && len(c.Resposta.Cabecalhos) == 0):
+			dif = fmt.Sprintf("%s: tipo/cabeçalhos %q %v; o golden diz %q %v", nome, r.Tipo, r.Cabecalhos, tipo, c.Resposta.Cabecalhos)
+		case !reflect.DeepEqual(got, c.Resposta.Corpo):
+			dif = fmt.Sprintf("%s: corpo diferente do golden\nGo:     %s\ngolden: %s", nome, cortar(emJSON(got)), cortar(emJSON(c.Resposta.Corpo)))
 		}
-		if !reflect.DeepEqual(got, c.Resposta.Corpo) {
-			t.Fatalf("%s: corpo diferente do Node\nGo:   %s\nNode: %s", nome, cortar(emJSON(got)), cortar(emJSON(c.Resposta.Corpo)))
+		if dif == "" {
+			continue
 		}
+		if doc == nil {
+			t.Fatal(dif + "\n(se a mudança é de propósito: go test ./internal/api -run Golden -atualizar)")
+		}
+		resp := doc.Item("chamadas", i).Get("resposta").(*golden.Obj)
+		resp.Set("status", json.Number(fmt.Sprint(r.Status)))
+		resp.Trocar("corpo", got)
+		if r.Tipo == "" {
+			resp.Set("tipo", nil)
+		} else {
+			resp.Set("tipo", r.Tipo)
+		}
+		resp.Trocar("cabecalhos", r.Cabecalhos)
+	}
+	if doc != nil {
+		golden.Gravar(t, caminhoGoldenAPI, doc)
 	}
 }
 

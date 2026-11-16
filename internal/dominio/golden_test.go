@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 	_ "time/tzdata" // o fuso de São Paulo precisa existir mesmo no CI
+
+	"github.com/FRF-Tecnology/job-control/internal/golden"
 )
 
-// Os casos de testdata/golden.json foram gravados rodando o domínio Node (nucleo/) com
-// ferramentas/gerar-golden-dominio.mjs. Cada um precisa dar exatamente a mesma resposta no Go.
-// Incluem todos os cenários de testes/nucleo.test.mjs e das regras de testes/emails.test.mjs.
+// Os casos de testdata/golden.json nasceram do domínio Node (nucleo/), com todos os cenários de
+// testes/nucleo.test.mjs e das regras de testes/emails.test.mjs. Agora são do Go: regra mudou de propósito,
+// regrave com -atualizar (pacote internal/golden) e confira o diff.
 
 type erroGolden struct {
 	Tipo     string   `json:"tipo"`
@@ -219,36 +221,75 @@ func tipoDoErro(err error) string {
 	return fmt.Sprintf("%T", err)
 }
 
-func TestGoldenDoNode(t *testing.T) {
+const caminhoGolden = "testdata/golden.json"
+
+// Mudou uma regra de propósito? go test ./internal/dominio -run Golden -atualizar, e confira o diff.
+func TestGolden(t *testing.T) {
 	g := carregarGolden(t)
-	for _, c := range g.Casos {
+	var doc *golden.Obj
+	if *golden.Atualizar {
+		doc = golden.Ler(t, caminhoGolden)
+	}
+	for i, c := range g.Casos {
 		t.Run(c.Funcao+"/"+c.Nome, func(t *testing.T) {
 			antes := paraJSON(t, c.Args)
 			r, err := executar(t, c, g.Sufixo)
 			if !reflect.DeepEqual(paraJSON(t, c.Args), antes) {
 				t.Fatal("a função alterou a entrada")
 			}
-			if c.Erro != nil {
-				if err == nil {
-					t.Fatalf("queria erro %s %q; veio sucesso: %s", c.Erro.Tipo, c.Erro.Mensagem, resumir(t, r))
-				}
-				if tipoDoErro(err) != c.Erro.Tipo || err.Error() != c.Erro.Mensagem {
-					t.Fatalf("erro = %s %q; queria %s %q", tipoDoErro(err), err.Error(), c.Erro.Tipo, c.Erro.Mensagem)
-				}
-				var v *ErroValidacao
-				if errors.As(err, &v) && !reflect.DeepEqual(v.Erros, c.Erro.Erros) {
-					t.Fatalf("erros = %q; queria %q", v.Erros, c.Erro.Erros)
-				}
+			dif := compararCaso(t, c, r, err)
+			if dif == "" {
 				return
 			}
-			if err != nil {
-				t.Fatalf("erro inesperado: %v", err)
+			if doc == nil {
+				t.Fatalf("%s\n(se a mudança é de propósito: go test ./internal/dominio -run Golden -atualizar)", dif)
 			}
-			if got := paraJSON(t, r); !reflect.DeepEqual(got, c.Resultado) {
-				t.Fatalf("diferente do Node:\n%s", diferenca(t, got, c.Resultado, ""))
+			caso := doc.Item("casos", i)
+			if err != nil {
+				caso.Del("resultado")
+				caso.Set("erro", erroParaGolden(err))
+			} else {
+				caso.Del("erro")
+				caso.Trocar("resultado", paraJSON(t, r))
 			}
 		})
 	}
+	if doc != nil {
+		golden.Gravar(t, caminhoGolden, doc)
+	}
+}
+
+// compararCaso devolve "" quando a saída bate com o golden, ou o que difere.
+func compararCaso(t *testing.T, c casoGolden, r any, err error) string {
+	if c.Erro != nil {
+		if err == nil {
+			return fmt.Sprintf("queria erro %s %q; veio sucesso: %s", c.Erro.Tipo, c.Erro.Mensagem, resumir(t, r))
+		}
+		if tipoDoErro(err) != c.Erro.Tipo || err.Error() != c.Erro.Mensagem {
+			return fmt.Sprintf("erro = %s %q; queria %s %q", tipoDoErro(err), err.Error(), c.Erro.Tipo, c.Erro.Mensagem)
+		}
+		var v *ErroValidacao
+		if errors.As(err, &v) && !reflect.DeepEqual(v.Erros, c.Erro.Erros) {
+			return fmt.Sprintf("erros = %q; queria %q", v.Erros, c.Erro.Erros)
+		}
+		return ""
+	}
+	if err != nil {
+		return fmt.Sprintf("erro inesperado: %v", err)
+	}
+	if got := paraJSON(t, r); !reflect.DeepEqual(got, c.Resultado) {
+		return "diferente do golden:\n" + diferenca(t, got, c.Resultado, "")
+	}
+	return ""
+}
+
+func erroParaGolden(err error) *golden.Obj {
+	var erros any
+	var v *ErroValidacao
+	if errors.As(err, &v) {
+		erros = golden.Valor(v.Erros)
+	}
+	return golden.NovoObj("tipo", tipoDoErro(err), "mensagem", err.Error(), "erros", erros)
 }
 
 func resumir(t *testing.T, v any) string {
@@ -259,7 +300,7 @@ func resumir(t *testing.T, v any) string {
 	return string(b)
 }
 
-// diferenca mostra o primeiro caminho em que Go e Node discordam.
+// diferenca mostra o primeiro caminho em que o Go e o golden discordam.
 func diferenca(t *testing.T, go_, node any, caminho string) string {
 	if reflect.DeepEqual(go_, node) {
 		return ""
@@ -289,5 +330,5 @@ func diferenca(t *testing.T, go_, node any, caminho string) string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s:\n  Go:   %s\n  Node: %s", caminho, resumir(t, go_), resumir(t, node))
+	return fmt.Sprintf("%s:\n  Go:   %s\n  golden: %s", caminho, resumir(t, go_), resumir(t, node))
 }

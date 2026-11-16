@@ -10,7 +10,7 @@ Meta da vez: veja o topo do docs/status.md. O que não serve à meta está conge
 - Mensagem com até 80 palavras: tarefa, pronto (link do PR e uma linha) ou bloqueio. A evidência vai no PR.
 - Sem confirmação de leitura e sem aviso de "estou parado".
 - Nunca leia o api/openapi.yaml inteiro: busque a rota com grep ou `graphify query`.
-- Regra nova nasce só no Go. O Node (nucleo/, servidor/) é só leitura; os golden atuais são retrato fixo.
+- Regra nova nasce só no Go. O Node (nucleo/, servidor/) é só leitura. Os golden são do Go: mudou uma regra de propósito, `go test ./internal/<pacote> -atualizar` (dominio, ia ou api) e confira o diff.
 - Beads: `bd` em `~/gt/job_control`, com `--actor "<seu nome>"`, sem `--force`.
 
 ## Revisão por risco

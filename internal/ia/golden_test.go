@@ -12,10 +12,52 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	gold "github.com/FRF-Tecnology/job-control/internal/golden"
 )
 
-// testdata/golden-ia.json foi gravado da IA do Node (ferramentas/gerar-golden-ia.mjs).
-// Prompts, guarda e pedidos dos provedores em Go precisam bater com ele.
+// testdata/golden-ia.json nasceu da IA do Node e agora é do Go.
+// Mudou uma regra, um prompt ou a validação de propósito? go test ./internal/ia -atualizar, e confira o diff.
+// Regrava regras, prompts, entradas e guarda. Pedidos, erros HTTP e custos dos provedores seguem o formato
+// das APIs de fora e não são regravados.
+
+const caminhoGoldenIA = "testdata/golden-ia.json"
+
+// docIA é o golden aberto para regravar (só com -atualizar); o TestMain grava no fim.
+var docIA *gold.Obj
+
+// regravar devolve o golden aberto para trocar o que mudou, ou nil sem -atualizar.
+func regravar(t *testing.T) *gold.Obj {
+	t.Helper()
+	if !*gold.Atualizar {
+		return nil
+	}
+	if docIA == nil {
+		docIA = gold.Ler(t, caminhoGoldenIA)
+	}
+	return docIA
+}
+
+func erroParaGolden(err error) any {
+	var e *ErroIA
+	if !errors.As(err, &e) {
+		return gold.NovoObj("tipo", fmt.Sprintf("%T", err), "mensagem", err.Error())
+	}
+	var regra, erros any
+	if e.Regra != "" {
+		regra = e.Regra
+	}
+	if e.Erros != nil {
+		erros = gold.Valor(e.Erros)
+	}
+	o := gold.NovoObj("tipo", e.Tipo, "mensagem", e.Mensagem, "regra", regra, "erros", erros)
+	if e.Reintentavel {
+		o.Set("reintentavel", true)
+	}
+	return o
+}
+
+const dicaAtualizar = "\n(se a mudança é de propósito: go test ./internal/ia -atualizar)"
 
 type erroGolden struct {
 	Tipo         string   `json:"tipo"`
@@ -94,7 +136,14 @@ func TestMain(m *testing.M) {
 	if err := json.Unmarshal(b, &golden); err != nil {
 		panic(err)
 	}
-	os.Exit(m.Run())
+	codigo := m.Run()
+	if docIA != nil {
+		if err := gold.GravarArquivo(caminhoGoldenIA, docIA); err != nil {
+			panic(err)
+		}
+		fmt.Println("golden regravado:", caminhoGoldenIA, "(confira o diff no git)")
+	}
+	os.Exit(codigo)
 }
 
 func paraJSON(v any) any {
@@ -106,51 +155,87 @@ func paraJSON(v any) any {
 
 func conferirErro(t *testing.T, err error, g *erroGolden) {
 	t.Helper()
+	if d := erroDifere(err, g); d != "" {
+		t.Fatal(d)
+	}
+}
+
+// erroDifere devolve "" quando o erro bate com o golden, ou o que difere.
+func erroDifere(err error, g *erroGolden) string {
 	var e *ErroIA
 	if !errors.As(err, &e) {
-		t.Fatalf("queria ErroIA %s %q; veio %v", g.Tipo, g.Mensagem, err)
+		return fmt.Sprintf("queria ErroIA %s %q; veio %v", g.Tipo, g.Mensagem, err)
 	}
 	if e.Tipo != g.Tipo || e.Mensagem != g.Mensagem {
-		t.Fatalf("erro = %s %q\n  queria %s %q", e.Tipo, e.Mensagem, g.Tipo, g.Mensagem)
+		return fmt.Sprintf("erro = %s %q\n  queria %s %q", e.Tipo, e.Mensagem, g.Tipo, g.Mensagem)
 	}
 	if g.Regra != nil && e.Regra != *g.Regra {
-		t.Fatalf("regra = %q; queria %q", e.Regra, *g.Regra)
+		return fmt.Sprintf("regra = %q; queria %q", e.Regra, *g.Regra)
 	}
 	if g.Erros != nil && !reflect.DeepEqual(e.Erros, g.Erros) {
-		t.Fatalf("erros = %q\n  queria %q", e.Erros, g.Erros)
+		return fmt.Sprintf("erros = %q\n  queria %q", e.Erros, g.Erros)
 	}
 	if g.Reintentavel != nil && e.Reintentavel != *g.Reintentavel {
-		t.Fatalf("reintentável = %v; queria %v", e.Reintentavel, *g.Reintentavel)
+		return fmt.Sprintf("reintentável = %v; queria %v", e.Reintentavel, *g.Reintentavel)
 	}
+	return ""
 }
 
 func TestRegrasNaMesmaOrdem(t *testing.T) {
-	if len(Regras) != len(golden.Regras) {
-		t.Fatalf("%d regras; o Node tem %d", len(Regras), len(golden.Regras))
+	dif := len(Regras) != len(golden.Regras)
+	for i := 0; !dif && i < len(Regras); i++ {
+		dif = Regras[i].ID != golden.Regras[i].ID
 	}
-	for i, r := range golden.Regras {
-		if Regras[i].ID != r.ID {
-			t.Errorf("regra %d = %s; queria %s", i, Regras[i].ID, r.ID)
+	if !dif {
+		return
+	}
+	doc := regravar(t)
+	if doc == nil {
+		var ids []string
+		for _, r := range golden.Regras {
+			ids = append(ids, r.ID)
 		}
+		t.Fatalf("regras do Go fora da ordem do golden\n  golden: %v"+dicaAtualizar, ids)
 	}
+	lista := []any{}
+	for _, r := range Regras {
+		var funcoes any = "*"
+		if len(r.Funcoes) > 0 {
+			funcoes = gold.Valor(r.Funcoes)
+		}
+		lista = append(lista, gold.NovoObj("id", r.ID, "funcoes", funcoes, "descricao", r.Descricao))
+	}
+	doc.Set("regras", lista)
 }
 
-func TestPromptsIguaisAoNode(t *testing.T) {
-	for _, c := range golden.Prompts {
+func TestPrompts(t *testing.T) {
+	for i, c := range golden.Prompts {
 		t.Run(c.ID, func(t *testing.T) {
 			if err := ValidarEntrada(c.Funcao, c.Entrada); err != nil {
 				t.Fatalf("entrada recusada: %v", err)
 			}
 			p := MontarPrompt(c.Funcao, c.Entrada)
-			if p.Sistema != c.Prompt.Sistema {
-				t.Fatalf("sistema diferente:\n%s", diferencaTexto(p.Sistema, c.Prompt.Sistema))
+			dif := ""
+			switch {
+			case p.Sistema != c.Prompt.Sistema:
+				dif = "sistema diferente:\n" + diferencaTexto(p.Sistema, c.Prompt.Sistema)
+			case p.Mensagem != c.Prompt.Mensagem:
+				dif = "mensagem diferente:\n" + diferencaTexto(p.Mensagem, c.Prompt.Mensagem)
+			case !reflect.DeepEqual(paraJSON(p.Esquema), paraJSON(c.Prompt.Esquema)) || p.NomeEsquema != c.Prompt.NomeEsquema:
+				dif = "esquema diferente"
 			}
-			if p.Mensagem != c.Prompt.Mensagem {
-				t.Fatalf("mensagem diferente:\n%s", diferencaTexto(p.Mensagem, c.Prompt.Mensagem))
+			if dif == "" {
+				return
 			}
-			if !reflect.DeepEqual(paraJSON(p.Esquema), paraJSON(c.Prompt.Esquema)) || p.NomeEsquema != c.Prompt.NomeEsquema {
-				t.Fatal("esquema diferente")
+			doc := regravar(t)
+			if doc == nil {
+				t.Fatal(dif + dicaAtualizar)
 			}
+			pr := doc.Item("prompts", i).Get("prompt").(*gold.Obj)
+			pr.Set("sistema", p.Sistema)
+			pr.Set("mensagem", p.Mensagem)
+			pr.Trocar("esquema", p.Esquema)
+			pr.Set("nomeEsquema", p.NomeEsquema)
 		})
 	}
 }
@@ -159,34 +244,63 @@ func TestEntradasInvalidas(t *testing.T) {
 	for i, c := range golden.Entradas {
 		t.Run(fmt.Sprintf("%d-%s", i, c.Funcao), func(t *testing.T) {
 			err := ValidarEntrada(c.Funcao, c.Entrada)
-			if c.Erro == nil {
-				if err != nil {
-					t.Fatalf("queria aceitar; veio %v", err)
-				}
+			dif := ""
+			switch {
+			case c.Erro == nil && err != nil:
+				dif = fmt.Sprintf("queria aceitar; veio %v", err)
+			case c.Erro != nil:
+				dif = erroDifere(err, c.Erro)
+			}
+			if dif == "" {
 				return
 			}
-			conferirErro(t, err, c.Erro)
+			doc := regravar(t)
+			if doc == nil {
+				t.Fatal(dif + dicaAtualizar)
+			}
+			item := doc.Item("entradas", i)
+			if err == nil {
+				item.Del("erro")
+			} else {
+				item.Set("erro", erroParaGolden(err))
+			}
 		})
 	}
 }
 
-func TestGuardaIgualAoNode(t *testing.T) {
+func TestGuarda(t *testing.T) {
 	for i, c := range golden.Guarda {
 		t.Run(fmt.Sprintf("%03d-%s", i, c.Funcao), func(t *testing.T) {
 			saida, aplicadas, err := Guardar(c.Funcao, golden.EntradasGuarda[c.Entrada], c.Bruto)
-			if c.Erro != nil {
-				conferirErro(t, err, c.Erro)
+			dif := ""
+			switch {
+			case c.Erro != nil:
+				dif = erroDifere(err, c.Erro)
+			case err != nil:
+				dif = fmt.Sprintf("erro inesperado: %v\nbruto: %s", err, c.Bruto)
+			case !reflect.DeepEqual(paraJSON(saida), paraJSON(c.Resultado.Saida)):
+				dif = fmt.Sprintf("saída diferente\nGo:     %v\ngolden: %v\nbruto: %s", paraJSON(saida), c.Resultado.Saida, c.Bruto)
+			case !reflect.DeepEqual(aplicadas, c.Resultado.Aplicadas) && !(len(aplicadas) == 0 && len(c.Resultado.Aplicadas) == 0):
+				dif = fmt.Sprintf("regras aplicadas = %v; queria %v", aplicadas, c.Resultado.Aplicadas)
+			}
+			if dif == "" {
 				return
 			}
+			doc := regravar(t)
+			if doc == nil {
+				t.Fatal(dif + dicaAtualizar)
+			}
+			item := doc.Item("guarda", i)
 			if err != nil {
-				t.Fatalf("erro inesperado: %v\nbruto: %s", err, c.Bruto)
+				item.Del("resultado")
+				item.Set("erro", erroParaGolden(err))
+				return
 			}
-			if !reflect.DeepEqual(paraJSON(saida), paraJSON(c.Resultado.Saida)) {
-				t.Fatalf("saída diferente\nGo:   %v\nNode: %v\nbruto: %s", paraJSON(saida), c.Resultado.Saida, c.Bruto)
+			if aplicadas == nil {
+				aplicadas = []string{}
 			}
-			if !reflect.DeepEqual(aplicadas, c.Resultado.Aplicadas) && !(len(aplicadas) == 0 && len(c.Resultado.Aplicadas) == 0) {
-				t.Fatalf("regras aplicadas = %v; queria %v", aplicadas, c.Resultado.Aplicadas)
-			}
+			item.Del("erro")
+			item.Trocar("resultado", Objeto{"saida": saida, "aplicadas": aplicadas})
 		})
 	}
 }

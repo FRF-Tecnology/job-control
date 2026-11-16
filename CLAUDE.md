@@ -99,7 +99,7 @@ Rules:
 
 O app novo (Applyer, Wails v3) e as regras do time ficam no **`AGENTS.md`**: mapa do código, comandos de build e teste, revisão por risco e o que é "pronto". A meta da vez fica no topo do `docs/status.md`.
 
-- O Node (`nucleo/`, `servidor/`) está congelado e só é lido. Regra nova nasce só no Go; os golden atuais (`internal/*/testdata/golden*.json`) são retrato fixo.
+- O Node (`nucleo/`, `servidor/`) está congelado e só é lido. Regra nova nasce só no Go. Os golden (`internal/*/testdata/golden*.json`) são do Go: mudou uma regra de propósito, rode `go test ./internal/<pacote> -atualizar` (dominio, ia ou api) e confira o diff.
 - Nomes internos ainda com "central" (`central.exe`, `cmd/central-*`, `central.db`, MCP "central") só mudam pelo `docs/propostas/applyer-nomes-internos.md`. Nas telas e textos, use Applyer.
 - Avaliação de IA: `go run ./cmd/central-cli avaliar --provedor claude-cli --limite 3 --saida r.json`; pontue com `node ferramentas/cli.mjs avaliar --respostas r.json --modelo <nome>` numa pasta de teste.
 
