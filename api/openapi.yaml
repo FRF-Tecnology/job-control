@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.20.0
+  version: 0.21.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -259,6 +259,28 @@ paths:
         content:
           application/json:
             schema: { type: object, additionalProperties: false, maxProperties: 0 }
+  /vagas/{id}/abrir-para-preencher:
+    post:
+      x-so-tela: true
+      summary: 'Preencher no site da empresa (docs/propostas/preencher-site-externo.md), passo 1: para a vaga reservada com "Aplicar na vaga" (aplicacaoManual, em aplicar), abre a vaga numa janela VISÍVEL do navegador do app, com a sessão da pessoa, e tenta clicar em "Candidatar-se" (o site da empresa abre na mesma aba). Enquanto a janela está aberta, nenhum envio automático abre página (a mesma trava da janela de login). Responde {aberta: true}. 409 {erro, motivo}: sem-reserva, sem-endereco, login-aberto, enviando, sem-navegador, falhou. 404 sem o envio neste build.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
+  /vagas/{id}/preencher:
+    post:
+      x-so-tela: true
+      summary: 'Preencher no site da empresa, passo 2. Sem dominio: devolve {dominio}, o domínio da aba do site da empresa, para a pessoa conferir (nada é preenchido). Com dominio: confere de novo que a aba está nesse domínio e preenche o que reconhece com o contato do perfil, as respostas padrão de mesmo texto e o currículo da reserva (conferido pelo sha256; a cópia é apagada quando a janela fecha). Nunca sobrescreve campo já preenchido, nunca preenche campo sensível (senha, CPF, documento, dado bancário), nunca marca caixa nem aceita termos, nunca avança nem envia. Responde {preenchidos, anexou, faltando} (faltando: obrigatórios em branco). 409 {erro, motivo}: sem-reserva, sem-janela, sem-site, site-mudou, curriculo-mudou, falhou. 404 sem o envio neste build.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                dominio: { type: string, maxLength: 253, description: 'O domínio que a tela mostrou e a pessoa conferiu' }
   /ia/detectar:
     post:
       x-so-tela: true

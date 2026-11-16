@@ -97,5 +97,39 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 			defer ciclo.Unlock()
 			return nav.LerDescricao(ctx, plataforma, endereco)
 		},
+		AbrirParaPreencher: func(endereco string) error {
+			ciclo.Lock() // o ciclo atual termina antes, como no login
+			defer ciclo.Unlock()
+			return erroDoPreencher(nav.AbrirParaPreencher(endereco))
+		},
+		SiteParaPreencher: func(ctx context.Context) (string, error) {
+			h, err := nav.SiteParaPreencher(ctx)
+			return h, erroDoPreencher(err)
+		},
+		PreencherSite: func(ctx context.Context, dominioConferido string, conteudo, perfil dominio.Objeto, nomeCurriculo string, curriculo []byte) (Preenchidos, error) {
+			r, err := nav.PreencherSite(ctx, dominioConferido, conteudo, perfil, nomeCurriculo, curriculo)
+			return r, erroDoPreencher(err)
+		},
 	}
+}
+
+// erroDoPreencher troca os erros do navegador pelos erros fixos da tela; o resto segue (a API loga só o tipo).
+func erroDoPreencher(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, navegador.ErrLoginAberto):
+		return ErrLoginAberto
+	case errors.Is(err, navegador.ErrEmUso):
+		return ErrEnviando
+	case errors.Is(err, navegador.ErrSemJanela):
+		return ErrSemJanela
+	case errors.Is(err, navegador.ErrSemSite):
+		return ErrSemSite
+	case errors.Is(err, navegador.ErrSiteMudou):
+		return ErrSiteMudou
+	case errors.Is(err, navegador.ErrSemNavegador):
+		return ErrSemNavegador
+	}
+	return err
 }

@@ -38,7 +38,15 @@ type Controle struct {
 	AoVivo          *aovivo.AoVivo
 	LerFormulario   func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
 	LerDescricao    func(ctx context.Context, plataforma, endereco string) (texto, bloqueio string, err error)
+	// Preencher no site da empresa (docs/propostas/preencher-site-externo.md): abrir a vaga numa janela visível,
+	// dizer o domínio da aba do site e preencher depois que a pessoa conferiu. nil sem o envio (as rotas dão 404).
+	AbrirParaPreencher func(endereco string) error
+	SiteParaPreencher  func(ctx context.Context) (string, error)
+	PreencherSite      func(ctx context.Context, dominioConferido string, conteudo, perfil dominio.Objeto, nomeCurriculo string, curriculo []byte) (Preenchidos, error)
 }
+
+// Preenchidos: o resultado do preenchimento no site da empresa (o tipo do domínio).
+type Preenchidos = dominio.ResultadoPreenchimento
 
 func nada()                                {}
 func suspenderNada() func()                { return nada }
@@ -47,9 +55,13 @@ func janelaNenhuma() (visivel, login bool) { return false, false }
 
 // Erros de Entrar: textos fixos para a tela (409), sem o erro do sistema, que pode trazer caminho.
 var (
-	ErrSemNavegador = &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome ou Edge) neste computador", Motivo: "sem-navegador"}
+	ErrSemNavegador = &dominio.ErroConflito{Msg: "não deu para abrir o navegador (Chrome, Edge ou Brave) neste computador", Motivo: "sem-navegador"}
 	ErrLoginAberto  = &dominio.ErroConflito{Msg: "já há uma janela de login aberta: entre por ela ou feche-a antes", Motivo: "login-aberto"}
 	ErrEnviando     = &dominio.ErroConflito{Msg: "há uma candidatura sendo enviada agora; espere terminar", Estado: dominio.CandEnviando, Motivo: "enviando"}
+	// Preencher no site da empresa.
+	ErrSemJanela = &dominio.ErroConflito{Msg: "abra a vaga para preencher antes", Motivo: "sem-janela"}
+	ErrSemSite   = &dominio.ErroConflito{Msg: "a janela ainda não está no site da empresa: clique em Candidatar-se na vaga", Motivo: "sem-site"}
+	ErrSiteMudou = &dominio.ErroConflito{Msg: "a página mudou de site depois que você conferiu; confira de novo", Motivo: "site-mudou"}
 )
 
 func entrarNada(string) error { return ErrSemNavegador }
