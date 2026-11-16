@@ -12,11 +12,13 @@ import (
 func TestLocaisDoNavegador(t *testing.T) {
 	env := map[string]string{"ProgramFiles": `C:\Program Files`, "ProgramFiles(x86)": `C:\Program Files (x86)`, "PATH": `C:\malicioso`}
 	l := locaisDoNavegador("windows", func(k string) string { return env[k] }, `C:\Users\teste`, `C:\Users\teste\AppData\Local`)
-	if len(l) != 6 || !strings.HasSuffix(l[0], filepath.Join("Google", "Chrome", "Application", "chrome.exe")) || !strings.HasSuffix(l[5], "msedge.exe") {
+	if len(l) != 9 || !strings.HasSuffix(l[0], filepath.Join("Google", "Chrome", "Application", "chrome.exe")) || !strings.HasSuffix(l[5], "msedge.exe") || !strings.HasSuffix(l[8], "brave.exe") {
 		t.Fatalf("windows = %v", l)
 	}
 	mac := locaisDoNavegador("darwin", func(string) string { return "" }, "/Users/teste", "")
-	if len(mac) != 4 || mac[0] != filepath.Join("/Applications", "Google Chrome.app", "Contents", "MacOS", "Google Chrome") || !strings.Contains(mac[3], "Microsoft Edge") {
+	// Brave por último: Chrome e Edge continuam na frente para quem tem.
+	if len(mac) != 6 || mac[0] != filepath.Join("/Applications", "Google Chrome.app", "Contents", "MacOS", "Google Chrome") || !strings.Contains(mac[3], "Microsoft Edge") ||
+		mac[4] != filepath.Join("/Applications", "Brave Browser.app", "Contents", "MacOS", "Brave Browser") {
 		t.Fatalf("macOS = %v", mac)
 	}
 	for _, goos := range []string{"windows", "darwin", "linux"} {

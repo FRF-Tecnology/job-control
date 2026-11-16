@@ -110,8 +110,8 @@ func TestLerDescricaoDaVaga(t *testing.T) {
 	if r.Status != 200 {
 		t.Fatalf("ler: %d %v", r.Status, r.Corpo)
 	}
-	if res := r.Corpo.(Objeto); res["avaliada"] != true {
-		t.Fatalf("não avaliou: %v", res)
+	if res := r.Corpo.(Objeto); res["avaliada"] != true || res["vaga"].(Objeto)["aderencia"] != "B" {
+		t.Fatalf("não avaliou ou devolveu a vaga de antes da nota: %v", res)
 	}
 	if ultimo := leitor.pedidos[len(leitor.pedidos)-1]; ultimo != "linkedin https://www.linkedin.com/jobs/view/4012345678/" {
 		t.Fatalf("abriu %q", ultimo)

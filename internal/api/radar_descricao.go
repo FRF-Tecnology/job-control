@@ -131,7 +131,15 @@ func (a *API) lerDescricaoDaVaga(ctx context.Context, id string, c Objeto, autor
 		return Resposta{}, err
 	}
 	log.Printf("radar: descrição lida (%d caracteres)", len([]rune(descricao)))
-	return ok(Objeto{"vaga": gravada, "avaliada": a.avaliarVagaDoRadar(ctx, gravada, assinatura)})
+	avaliada := a.avaliarVagaDoRadar(ctx, gravada, assinatura)
+	if e, err := a.arm.Carregar(ctx); err == nil { // a vaga como ficou depois da nota
+		for _, v := range e.Vagas {
+			if v["id"] == id {
+				gravada = v
+			}
+		}
+	}
+	return ok(Objeto{"vaga": gravada, "avaliada": avaliada})
 }
 
 // avaliarVagaDoRadar: a triagem da busca para uma vaga só. Sem IA, com uma busca em andamento ou com falha da IA, a
