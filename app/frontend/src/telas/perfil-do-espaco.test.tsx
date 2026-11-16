@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Contexto, type App } from '../app/contexto';
-import { PerfilDoEspaco } from './PerfilDoEspaco';
+import { PerfilDoEspaco, nomeDoCofre } from './PerfilDoEspaco';
 
 afterEach(cleanup);
 function montar(verificada: boolean) {
@@ -188,4 +188,9 @@ it('CPF salvo: a caixinha liga o preenchimento sem perguntar', async () => {
   expect(api).toHaveBeenLastCalledWith('/api/v1/perfil/cpf', 'PATCH', { automatico: true });
   expect((screen.getByRole('checkbox', { name: 'Preencher o CPF sem perguntar' }) as HTMLInputElement).checked).toBe(true);
   expect(screen.getByText(/junto com o resto, depois que você confere o site/)).toBeTruthy();
+});
+it('o texto do CPF diz o cofre de cada sistema', () => {
+  expect(nomeDoCofre('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/131.0')).toBe('no Gerenciador de Credenciais do Windows');
+  expect(nomeDoCofre('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15')).toBe('nas Chaves do Mac');
+  expect(nomeDoCofre('Mozilla/5.0 (X11; Linux x86_64)')).toBe('no cofre do sistema');
 });
