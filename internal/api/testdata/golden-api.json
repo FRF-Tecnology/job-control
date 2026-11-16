@@ -44,6 +44,17 @@
        "rota": "#/plataformas",
        "botao": "Ver plataformas"
       }
+     ],
+     "onboardingConcluido": false,
+     "perfilBuscaAtivo": "original",
+     "perfisBusca": [
+      {
+       "cargo": null,
+       "curriculos": null,
+       "id": "original",
+       "nome": "Perfil principal",
+       "perfilPacote": {}
+      }
      ]
     },
     "tipo": null,
@@ -3093,6 +3104,29 @@
        "texto": "Abra o Claude Code nesta pasta e digite /rodada. Ele busca, filtra e mostra as vagas aqui para você decidir.",
        "rota": "#/plataformas",
        "botao": "Ver plataformas"
+      }
+     ],
+     "onboardingConcluido": false,
+     "perfilBuscaAtivo": "original",
+     "perfisBusca": [
+      {
+       "cargo": "Desenvolvedora front-end React",
+       "curriculos": null,
+       "id": "original",
+       "nome": "Desenvolvedora front-end React",
+       "perfilPacote": {
+        "nome": "Ana Teste",
+        "respostasPadrao": [
+         {
+          "pergunta": "anos com react?",
+          "resposta": "5"
+         },
+         {
+          "pergunta": "Inglês?",
+          "resposta": "Avançado"
+         }
+        ]
+       }
       }
      ]
     },

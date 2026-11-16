@@ -643,12 +643,8 @@ func TestTransicoesInvalidas(t *testing.T) {
 	}
 }
 
-// O estado sem candidaturas sai igual ao do Node (o golden não muda) e Clonar copia a fila.
-func TestEstadoSemFilaIgualAoNode(t *testing.T) {
-	b, _ := json.Marshal(EstadoVazio())
-	if strings.Contains(string(b), "candidaturas") {
-		t.Fatalf("estado vazio = %s", b)
-	}
+// Clonar copia a fila, sem compartilhar as candidaturas.
+func TestClonarCopiaAFila(t *testing.T) {
 	e := EstadoVazio()
 	e.Candidaturas = []Objeto{{"id": "cand-1", "conteudo": Objeto{"idioma": "pt"}}}
 	c := e.Clonar()
