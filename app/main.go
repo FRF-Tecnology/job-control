@@ -93,6 +93,7 @@ func main() {
 		AvisoPasta: abertura.Aviso,
 		// Leitura de formulários (jc-a2y.7.2): nil no build padrão (a rota dá 404).
 		LerFormulario: controleEnvio.LerFormulario,
+		LerDescricao:  controleEnvio.LerDescricao,
 		// Janela do app (Perfil): segundo plano e voltar ao tamanho padrão.
 		JanelaApp: controle.ganchos(),
 	})

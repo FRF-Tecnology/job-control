@@ -96,6 +96,8 @@ type API struct {
 	avisoPasta      string                       // aviso da pasta de dados nesta abertura (jc-etv.14)
 	// lerFormulario (jc-a2y.7.2): o leitor do executor; nil fora do app com envio (404).
 	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// lerDescricao: abre a vaga do Radar no navegador do envio e lê a descrição; nil fora do app com envio (404).
+	lerDescricao func(ctx context.Context, plataforma, endereco string) (texto, bloqueio string, err error)
 	// canal (jc-a2y.7.4): mcp ou cli numa API do assistente; vazio na do app. Fixado na criação (Opcoes.Canal).
 	canal string
 	// janelaApp: os ganchos da janela do app de PC; nil fora dele (janela_app.go).
@@ -133,6 +135,8 @@ type Opcoes struct {
 	// LerFormulario (jc-a2y.7.2): lê a estrutura do formulário no navegador do envio, sem interagir. Só o app com o
 	// envio passa; sem ele, POST /candidaturas/{id}/ler-formulario dá 404.
 	LerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// LerDescricao: "Ler a descrição da vaga" no Radar, no navegador do envio, sem interagir.
+	LerDescricao func(ctx context.Context, plataforma, endereco string) (texto, bloqueio string, err error)
 	// AvisoPasta: o aviso da pasta de dados nesta abertura (config.Abertura.Aviso, jc-etv.7): pasta-antiga-ficou,
 	// migracao-adiada ou vazio. GET /dados/pasta mostra à tela, sem caminho.
 	AvisoPasta string
@@ -196,7 +200,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp, consultarVagas: busca.Consultar}
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, lerDescricao: o.LerDescricao, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp, consultarVagas: busca.Consultar}
 }
 
 // erroApi vira uma resposta com status e corpo prontos.
@@ -1047,6 +1051,8 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 		return vaga, err
 	}
 	switch {
+	case m == "POST" && acao == "/ler-descricao":
+		return a.lerDescricaoDaVaga(ctx, id, c, autor)
 	case m == "POST" && acao == "/devolver-ao-radar":
 		if err := soCampos(c); err != nil {
 			return Resposta{}, err

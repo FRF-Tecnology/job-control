@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { useApp } from '../app/contexto';
+import { ErroApi, useApp } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { LinkExterno } from '../componentes';
 import { foiEnviada } from '../dominio/modelo';
@@ -12,7 +12,7 @@ import { MarcaEmpresa } from '../app/MarcaEmpresa';
 import '../estilo/radar.css';
 
 type Vaga = {
-  id: string; anuncioId?: string; perfilBuscaId?: string; titulo: string; empresa: string; etapa: string; link?: string;
+  id: string; anuncioId?: string; perfilBuscaId?: string; titulo: string; empresa: string; etapa: string; link?: string; plataforma?: string;
   local?: string; modelo?: string; nivel?: string; contrato?: string; descricao?: string; categorias?: string[]; stack?: string[];
   periodoSalario?: string; moeda?: string; salarioMin?: number; salarioMax?: number; salario?: string;
   salarioUSDMensal?: number; salarioUSDMin?: number; salarioUSDMax?: number;
@@ -32,6 +32,21 @@ const afinidade: Record<Nota, string> = { A: 'Alta compatibilidade', B: 'Compati
 const mercados: Record<string, string> = { nacional: 'Vagas do Brasil', internacional: 'Vagas do exterior', ambos: 'Vagas do Brasil e do exterior' };
 const temNota = (nota?: string): nota is Nota => notas.includes(nota as Nota);
 const ordem = (v: Vaga) => temNota(v.aderencia) ? notas.indexOf(v.aderencia) : notas.length;
+// "Ler a descrição da vaga" (contrato 0.20.0): frases fixas pelo motivo; nenhum texto do servidor na tela.
+const motivosDescricao: Record<string, string> = {
+  login: 'O LinkedIn pediu login. Entre nas plataformas pelo painel de Envio, na Lista do dia, e tente de novo.',
+  'sem-descricao': 'A página da vaga abriu, mas não achei a descrição. Abra a vaga no LinkedIn para ler.',
+  fora: 'A página não abriu nesta vaga. Ela pode ter saído do ar.',
+  enviando: 'Há uma candidatura sendo enviada agora. Espere terminar e tente de novo.',
+  'login-aberto': 'Feche a janela de login antes de ler a vaga.',
+};
+export function explicarDescricao(e: unknown) {
+  if (e instanceof ErroApi && e.status === 404) return 'Esta versão do app não abre vagas no navegador.';
+  const motivo = e instanceof ErroApi ? e.dados?.motivo : undefined;
+  return motivosDescricao[motivo] ?? 'Não deu para ler a vaga agora. Tente de novo.';
+}
+const podeLerDescricao = (v: Vaga) => v.etapa === 'descoberta' && !v.descricao && v.plataforma === 'linkedin';
+
 const pequena = () => window.matchMedia?.('(max-width: 760px)').matches ?? false;
 
 function dataDoAnuncio(data: string | undefined, fimDoDia = false) {
@@ -114,8 +129,8 @@ function CandidaturaExterna({ vaga, ocupada, gravar }: {
   </div>;
 }
 
-function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfazer }: {
-  vaga: Vaga; voltar: () => void; revisar: (etapa: 'aplicar' | 'pulada') => void;
+function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfazer, lerDescricao, lendo }: {
+  vaga: Vaga; voltar: () => void; revisar: (etapa: 'aplicar' | 'pulada') => void; lerDescricao: () => void; lendo: boolean;
   ocupada: boolean; pretensao: Faixa; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void; desfazer: ReactNode;
 }) {
   const [rotuloSalario, valorSalario] = salario(vaga, pretensao);
@@ -146,6 +161,11 @@ function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfaz
       {vaga.radarMotivo && vaga.motivoClaude && vaga.motivoClaude !== vaga.radarMotivo && <p>{vaga.motivoClaude}</p>}
       {vaga.triagemDecisao === 'pular' && vaga.triagemMotivoPulo && <p><strong>A IA sugere pular</strong> · {vaga.triagemMotivoPulo}</p>}
       {!!vaga.triagemConferir?.length && <div className="rd-conferir"><strong>Pontos a conferir</strong><ul>{vaga.triagemConferir.map((p, i) => <li key={i}>{p}</li>)}</ul></div>}
+      {podeLerDescricao(vaga) && <div className="rd-ler-descricao">
+        <p>Esta vaga veio de um alerta, sem a descrição. O app abre a vaga no LinkedIn com a sua conta, só para ler, e a IA avalia de novo.</p>
+        <button className="btn secondary" type="button" disabled={ocupada} aria-busy={lendo} onClick={lerDescricao}>
+          <IconeUI nome="search" tamanho={15} />{lendo ? 'Lendo a vaga…' : 'Ler a descrição da vaga'}</button>
+      </div>}
     </div>
     {vaga.descricao && <div className="rd-description"><h4>Sobre a vaga</h4><p>{vaga.descricao}</p></div>}
     {!!tags.length && <ul className="rd-tags" aria-label="Competências e requisitos">{tags.map(tag => <li key={tag}>{tag}</li>)}</ul>}
@@ -174,6 +194,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const [pulada, lembrarPulo] = useState<Vaga | null>(null);
   const [ocupada, ocupar] = useState(false);
   const [erroAcao, falhar] = useState('');
+  const [lendoDescricao, lerAgora] = useState(false);
   const emCurso = useRef(false);
   const regiao = useRef<HTMLElement>(null);
   const focoPendente = useRef<'detalhe' | 'linha' | null>(null);
@@ -263,6 +284,19 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
       await app.recarregar();
     });
   }
+  function lerDescricao() {
+    if (!atual || emCurso.current) return;
+    const id = atual.id;
+    emCurso.current = true; ocupar(true); lerAgora(true); falhar('');
+    void (async () => {
+      try {
+        const r = await app.api(`/api/v1/vagas/${encode(id)}/ler-descricao`, 'POST', {});
+        await app.recarregar();
+        app.aviso(r?.avaliada ? 'Descrição lida e vaga avaliada de novo.' : 'Descrição lida. A próxima busca avalia a vaga.');
+      } catch (e) { falhar(explicarDescricao(e)); }
+      finally { emCurso.current = false; ocupar(false); lerAgora(false); }
+    })();
+  }
   const desfazer = pulada && puladas.some(v => v.id === pulada.id) && <div className="rd-undo">
     <span>Vaga de {pulada.empresa} pulada.</span><button type="button" disabled={ocupada} onClick={() => recuperar([pulada])}>Desfazer</button>
   </div>;
@@ -317,7 +351,8 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
               </span>
             </button></li>)}
           </ul>
-          <VagaDoRadar key={atual.id} vaga={atual} pretensao={pretensao} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer} />
+          <VagaDoRadar key={atual.id} vaga={atual} pretensao={pretensao} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer}
+            lerDescricao={lerDescricao} lendo={lendoDescricao} />
         </div> : semNotaA ? <>
           <EstadoRadar titulo="Nenhuma vaga com nota A nesta busca" mensagem={textoSemNotaA}>{verAConferir}</EstadoRadar>
           {desfazer}

@@ -408,12 +408,7 @@ func (a *API) buscarETriar(ctx context.Context, esperado string) (Resposta, erro
 			nota, err = triagem.AvaliarRadar(porVaga, motor, e.Perfil, v)
 			venceuDaVaga = errors.Is(porVaga.Err(), context.DeadlineExceeded) && rodada.Err() == nil
 			cancelarVaga()
-			if nota.Aderencia == "A" && v["radarClasse"] != "forte" {
-				nota.Aderencia = "B"
-			}
-			if nota.Decisao == "pular" && nota.Aderencia != "" {
-				nota.Aderencia = "C"
-			}
+			nota = ajustarNota(v, nota)
 		}
 		if ctx.Err() != nil {
 			return Resposta{}, ctx.Err()

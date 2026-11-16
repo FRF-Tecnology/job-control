@@ -26,6 +26,8 @@ import (
 //   - AoVivo (jc-a2y.6.9): o último quadro da aba do envio e a etapa, só em memória. nil sem o envio (a rota dá 404).
 //   - LerFormulario (jc-a2y.7.2): lê a estrutura de um formulário sem interagir, depois do ciclo atual do executor.
 //     nil sem o envio (a rota dá 404).
+//   - LerDescricao: abre a página de uma vaga do Radar e lê a descrição, sem interagir, depois do ciclo atual. nil
+//     sem o envio (a rota dá 404).
 type Controle struct {
 	Parar           func()
 	Suspender       func() (soltar func())
@@ -35,6 +37,7 @@ type Controle struct {
 	Janela          func() (visivel, login bool)
 	AoVivo          *aovivo.AoVivo
 	LerFormulario   func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	LerDescricao    func(ctx context.Context, plataforma, endereco string) (texto, bloqueio string, err error)
 }
 
 func nada()                                {}

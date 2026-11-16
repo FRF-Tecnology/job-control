@@ -186,6 +186,8 @@
 .rd-manual p { margin: 5px 0 10px; font-size: 13px; }
 .rd-conferir { margin-top: 11px; color: var(--text); font-size: 13px; }
 .rd-conferir ul { padding-left: 18px; margin: 3px 0; }
+.rd-ler-descricao { margin-top: 12px; display: grid; gap: 8px; justify-items: start; }
+.rd-ler-descricao p { margin: 0; font-size: 13px; color: var(--muted, var(--text)); }
 .rd-conexao, .rd-balanco { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
 .rd-balanco summary { cursor: pointer; width: fit-content; }
 .rd-empty + .rd-workbench { margin-top: 12px; }

@@ -89,5 +89,13 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 			defer ciclo.Unlock()
 			return nav.LerFormulario(ctx, endereco)
 		},
+		// Ler a descrição de uma vaga do Radar: como o LerFormulario, nunca no meio de um envio.
+		LerDescricao: func(ctx context.Context, plataforma, endereco string) (string, string, error) {
+			if !ciclo.TryLock() {
+				return "", "", ErrEnviando
+			}
+			defer ciclo.Unlock()
+			return nav.LerDescricao(ctx, plataforma, endereco)
+		},
 	}
 }

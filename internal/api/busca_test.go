@@ -21,6 +21,7 @@ import (
 type provedorDaRodada struct {
 	chamadas int
 	falhar   bool
+	ultima   string
 }
 
 func TestTrocarCriteriosInvalidaTodaRodadaERespeitaEdicaoConcorrente(t *testing.T) {
@@ -74,6 +75,7 @@ func TestTrocarCriteriosInvalidaTodaRodadaERespeitaEdicaoConcorrente(t *testing.
 func (*provedorDaRodada) Nome() string { return "anthropic" }
 func (p *provedorDaRodada) Chamar(_ context.Context, req ia.PedidoProvedor) (ia.RespostaProvedor, error) {
 	p.chamadas++
+	p.ultima = req.Prompt.Mensagem
 	if p.falhar {
 		return ia.RespostaProvedor{}, errors.New("provedor indisponível")
 	}
