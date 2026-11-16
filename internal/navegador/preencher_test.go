@@ -50,6 +50,10 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 			fmt.Fprint(w, vagaLinkedInExterna)
 		case host == "carreiras.empresa-ficticia.test" && r.Method == "GET" && r.URL.Path == "/vaga/1":
 			fmt.Fprint(w, formularioDaEmpresa)
+		case host == "www.linkedin.com" && strings.TrimSuffix(r.URL.Path, "/") == "/jobs/view/9100000002":
+			fmt.Fprint(w, strings.ReplaceAll(vagaLinkedInExterna, "https://carreiras.empresa-ficticia.test/vaga/1", "https://jobs.outra-empresa.test/vaga/2"))
+		case host == "jobs.outra-empresa.test" && r.Method == "GET":
+			fmt.Fprint(w, `<!doctype html><html><body><label for="e2">Email</label><input id="e2"></body></html>`)
 		case host == "carreiras.empresa-ficticia.test" && r.Method == "POST":
 			envios.Add(1)
 			fmt.Fprint(w, "recebido")
@@ -122,6 +126,43 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 	if envios.Load() != 0 {
 		t.Fatal("o app enviou o formulário")
+	}
+
+	// A rodada passa para a próxima vaga: a mesma janela abre a vaga nova numa aba nova e fecha as outras (a vaga
+	// anterior e o site dela), para o app nunca preencher o site errado.
+	if err := n.AbrirParaPreencher("https://www.linkedin.com/jobs/view/9100000002/"); err != nil {
+		t.Fatalf("próxima vaga com a janela aberta: %v", err)
+	}
+	var host2 string
+	for fim := time.Now().Add(30 * time.Second); time.Now().Before(fim) && host2 == ""; time.Sleep(300 * time.Millisecond) {
+		if h, err := n.SiteParaPreencher(ctx); err == nil && h != host {
+			host2 = h
+		}
+	}
+	if host2 != "jobs.outra-empresa.test" {
+		t.Fatalf("o site da vaga nova não abriu: %q", host2)
+	}
+	n.mu.Lock()
+	navCtx := n.navCtx
+	n.mu.Unlock()
+	for fim := time.Now().Add(10 * time.Second); ; time.Sleep(200 * time.Millisecond) {
+		alvos, err := chromedp.Targets(navCtx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		velha := false
+		for _, a := range alvos {
+			velha = velha || a.Type == "page" && (strings.Contains(a.URL, "empresa-ficticia") || strings.Contains(a.URL, "9100000001"))
+		}
+		if !velha {
+			break
+		}
+		if time.Now().After(fim) {
+			t.Fatal("a aba da vaga anterior ficou aberta")
+		}
+	}
+	if _, err := n.PreencherSite(ctx, host, conteudo, perfil, "", nil); !errors.Is(err, ErrSiteMudou) && !errors.Is(err, ErrSemSite) {
+		t.Fatalf("preencheu o site da vaga anterior: %v", err)
 	}
 
 	// A cópia do currículo some quando a janela fecha.

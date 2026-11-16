@@ -134,7 +134,7 @@ export function explicarPreencher(e: unknown) {
   const motivo = e instanceof ErroApi ? e.dados?.motivo : undefined;
   return motivosPreencher[motivo] ?? 'Não deu para usar a janela agora. Tente de novo.';
 }
-const resumoPreencher = (r: { preenchidos?: number; anexou?: boolean; faltando?: number; comCPF?: boolean }) => {
+export const resumoPreencher = (r: { preenchidos?: number; anexou?: boolean; faltando?: number; comCPF?: boolean }) => {
   let t = `Preenchi ${plural(r.preenchidos ?? 0, 'campo', 'campos')}`;
   if (r.comCPF) t += r.anexou ? ', incluindo o CPF, e anexei o currículo.' : ', incluindo o CPF.';
   else t += r.anexou ? ' e anexei o currículo.' : '.';

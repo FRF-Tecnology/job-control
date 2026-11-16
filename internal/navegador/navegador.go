@@ -54,7 +54,8 @@ type Navegador struct {
 	preencherCtx   context.Context
 	pastaPreencher string          // a cópia do currículo da janela de preenchimento; apagada quando ela fecha
 	abaPreencher   context.Context // a aba da vaga na janela de preenchimento (onde o site da empresa abre)
-	abertas        int             // páginas do envio abertas agora
+	fecharAba      context.CancelFunc
+	abertas        int // páginas do envio abertas agora
 	// aoFecharLogin roda quando a PESSOA fecha a janela de login (não quando o app fecha o navegador): as plataformas
 	// em precisa-entrar podem voltar (jc-a2y.6.11).
 	aoFecharLogin func()

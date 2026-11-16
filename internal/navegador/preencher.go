@@ -61,6 +61,12 @@ var hostLinkedInPreencher = regexp.MustCompile(`^(www\.|[a-z]{2}\.)?linkedin\.co
 func (n *Navegador) AbrirParaPreencher(endereco string) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	// A janela de preenchimento já está aberta (a rodada dos sites passou para a próxima vaga): a vaga nova abre numa
+	// aba nova da mesma janela e as outras abas fecham, para o app nunca preencher o site da vaga anterior.
+	if n.preencherCtx != nil && n.preencherCtx.Err() == nil && n.preencherCtx == n.navCtx {
+		n.abrirAbaSemTrava(n.navCtx, endereco, true)
+		return nil
+	}
 	if n.emLogin() {
 		return ErrLoginAberto
 	}
@@ -80,17 +86,53 @@ func (n *Navegador) AbrirParaPreencher(endereco string) error {
 		return err
 	}
 	n.pastaPreencher = pasta
-	// Uma aba nova, como as do envio: a primeira aba do navegador perde a conexão do DevTools quando a página troca
-	// de site (o processo do site muda), e o app não conseguiria mais ler nem preencher.
-	aba, _ := chromedp.NewContext(navCtx) // vive o tempo da janela
-	n.abaPreencher = aba
+	n.abrirAbaSemTrava(navCtx, endereco, false)
+	go func() {
+		<-navCtx.Done() // a pessoa fechou a janela, ou o app fechou o navegador
+		n.mu.Lock()
+		if n.navCtx == navCtx {
+			n.fecharSemTrava()
+		}
+		if n.loginCtx == navCtx {
+			n.loginCtx = nil
+		}
+		if n.preencherCtx == navCtx {
+			n.preencherCtx, n.abaPreencher, n.fecharAba = nil, nil, nil
+		}
+		if n.pastaPreencher == pasta {
+			n.pastaPreencher = ""
+		}
+		n.mu.Unlock()
+		_ = os.RemoveAll(pasta) // a cópia do currículo some com a janela
+	}()
+	return nil
+}
+
+// abrirAbaSemTrava abre a vaga numa aba nova da janela e tenta clicar em "Candidatar-se". Uma aba nova, como as do
+// envio: a primeira aba do navegador perde a conexão do DevTools quando a página troca de site (o processo do site
+// muda), e o app não conseguiria mais ler nem preencher. fecharOutras: as outras abas (a vaga anterior, o site dela,
+// popups) fecham assim que a nova existe. Chamar com n.mu travado.
+func (n *Navegador) abrirAbaSemTrava(navCtx context.Context, endereco string, fecharOutras bool) {
+	aba, fechar := chromedp.NewContext(navCtx) // vive até a próxima vaga ou o fim da janela
+	n.abaPreencher, n.fecharAba = aba, fechar
 	go func() {
 		if err := chromedp.Do(aba); err != nil {
 			return
 		}
-		if c := chromedp.FromContext(aba); c != nil && c.Target != nil {
-			_, _ = chromedp.CallBrowser(aba, target.ActivateTarget, target.ActivateTargetParams{TargetID: c.Target.TargetID})
+		c := chromedp.FromContext(aba)
+		if c == nil || c.Target == nil {
+			return
 		}
+		if fecharOutras {
+			if alvos, err := chromedp.Targets(aba); err == nil {
+				for _, a := range alvos {
+					if a.Type == "page" && a.TargetID != c.Target.TargetID {
+						_, _ = chromedp.CallBrowser(aba, target.CloseTarget, target.CloseTargetParams{TargetID: a.TargetID})
+					}
+				}
+			}
+		}
+		_, _ = chromedp.CallBrowser(aba, target.ActivateTarget, target.ActivateTargetParams{TargetID: c.Target.TargetID})
 		ctx, cancelar := context.WithTimeout(aba, 2*time.Minute)
 		defer cancelar()
 		if _, err := chromedp.Run(ctx, chromedp.Navigate(endereco)); err != nil {
@@ -104,25 +146,6 @@ func (n *Navegador) AbrirParaPreencher(endereco string) error {
 			time.Sleep(time.Second)
 		}
 	}()
-	go func() {
-		<-navCtx.Done() // a pessoa fechou a janela, ou o app fechou o navegador
-		n.mu.Lock()
-		if n.navCtx == navCtx {
-			n.fecharSemTrava()
-		}
-		if n.loginCtx == navCtx {
-			n.loginCtx = nil
-		}
-		if n.preencherCtx == navCtx {
-			n.preencherCtx, n.abaPreencher = nil, nil
-		}
-		if n.pastaPreencher == pasta {
-			n.pastaPreencher = ""
-		}
-		n.mu.Unlock()
-		_ = os.RemoveAll(pasta) // a cópia do currículo some com a janela
-	}()
-	return nil
 }
 
 // abaDoSite acha a aba da janela de preenchimento que está fora do LinkedIn (a última, se houver mais de uma).
