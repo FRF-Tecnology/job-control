@@ -22,6 +22,9 @@ const (
 	CampoSobrenome    = "sobrenome"
 	CampoLinkedIn     = "linkedin"
 	CampoGitHub       = "github"
+	CampoEstado       = "estado"
+	CampoPais         = "pais"
+	CampoLocal        = "local" // cidade e estado num campo só ("Localização", "Location")
 )
 
 var (
@@ -30,13 +33,18 @@ var (
 	rotuloSobrenome    = regexp.MustCompile(`sobrenome|ultimo nome|last name|surname|family name|apellido`)
 	rotuloLinkedIn     = regexp.MustCompile(`linkedin`)
 	rotuloGitHub       = regexp.MustCompile(`github`)
+	rotuloEstado       = regexp.MustCompile(`^(estado|uf|state|province|provincia|state/province|estado/provincia|region|regiao)$`)
+	rotuloPais         = regexp.MustCompile(`^(pais|country|pais de residencia|country of residence|pais onde mora)$`)
+	rotuloLocal        = regexp.MustCompile(`localizacao|location|onde (voce )?mora|where do you live|cidade e estado|city and state|city, state`)
 )
 
-// Preenchimento é uma ação do preenchimento assistido.
+// Preenchimento é uma ação do preenchimento assistido. Alternativas: outros jeitos de escrever o mesmo valor, para
+// uma lista de opções que não tenha o primeiro ("Pernambuco" ou "PE"; "Brasil" ou "Brazil").
 type Preenchimento struct {
-	Campo  Campo
-	Valor  string
-	Anexar bool
+	Campo        Campo
+	Valor        string
+	Alternativas []string
+	Anexar       bool
 }
 
 // tipoAssistido refina o tipo do classificador do envio para os campos de site próprio. temSobrenome: a página tem
@@ -44,8 +52,10 @@ type Preenchimento struct {
 func tipoAssistido(c Campo, temSobrenome bool) string {
 	rotulo := strings.TrimSpace(strings.TrimRight(dominio.Normalizar(c.Rotulo), " *:"))
 	switch {
+	case c.Tipo == CampoCidade && rotuloLocal.MatchString(rotulo):
+		return CampoLocal
 	case c.Tipo != CampoPergunta && c.Tipo != CampoNome && c.Tipo != CampoOutro:
-		return c.Tipo // e-mail, telefone, currículo, sensíveis...: o classificador do envio decide
+		return c.Tipo // e-mail, telefone, cidade, currículo, sensíveis...: o classificador do envio decide
 	case rotuloSobrenome.MatchString(rotulo):
 		return CampoSobrenome
 	case rotuloPrimeiroNome.MatchString(rotulo), temSobrenome && rotuloSoNome.MatchString(rotulo):
@@ -54,6 +64,12 @@ func tipoAssistido(c Campo, temSobrenome bool) string {
 		return CampoLinkedIn
 	case rotuloGitHub.MatchString(rotulo):
 		return CampoGitHub
+	case rotuloEstado.MatchString(rotulo):
+		return CampoEstado
+	case rotuloPais.MatchString(rotulo):
+		return CampoPais
+	case rotuloLocal.MatchString(rotulo):
+		return CampoLocal
 	}
 	return c.Tipo
 }
@@ -67,12 +83,14 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 			temSobrenome = true
 		}
 	}
-	nome := strings.Fields(dominio.Texto(perfil["nome"]))
+	primeiro, sobrenome := nomeESobrenome(perfil)
+	contato := dominio.ObjetoDe(conteudo["contato"])
 	for _, c := range campos {
 		if c.Preenchido {
 			continue // a página já trouxe: fica como está
 		}
 		var valor string
+		var alternativas []string
 		switch tipoAssistido(c, temSobrenome) {
 		case CampoCurriculo:
 			if temCurriculo {
@@ -80,12 +98,21 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 				continue
 			}
 		case CampoPrimeiroNome:
-			if len(nome) > 0 {
-				valor = nome[0]
-			}
+			valor = primeiro
 		case CampoSobrenome:
-			if len(nome) > 1 {
-				valor = strings.Join(nome[1:], " ")
+			valor = sobrenome
+		case CampoLocal:
+			valor = dominio.Texto(contato["local"])
+		case CampoEstado:
+			uf := dominio.Texto(contato["estado"])
+			if nome := dominio.EstadosDoBrasil[uf]; nome != "" && dominio.Texto(contato["paisResidencia"]) == "BR" {
+				valor, alternativas = nome, []string{uf}
+			} else {
+				valor = uf
+			}
+		case CampoPais:
+			if dominio.Texto(contato["paisResidencia"]) == "BR" {
+				valor, alternativas = "Brasil", []string{"Brazil", "BR"}
 			}
 		case CampoLinkedIn:
 			valor = linkPublico(perfil["linkedin"], "linkedin.com")
@@ -106,9 +133,22 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 			}
 			continue
 		}
-		plano = append(plano, Preenchimento{Campo: c, Valor: valor})
+		plano = append(plano, Preenchimento{Campo: c, Valor: valor, Alternativas: alternativas})
 	}
 	return plano, faltando
+}
+
+// nomeESobrenome: os campos separados do perfil; perfis antigos só têm o nome completo (primeira palavra e o resto).
+func nomeESobrenome(perfil dominio.Objeto) (string, string) {
+	primeiro, sobrenome := strings.TrimSpace(dominio.Texto(perfil["primeiroNome"])), strings.TrimSpace(dominio.Texto(perfil["sobrenome"]))
+	if primeiro != "" || sobrenome != "" {
+		return primeiro, sobrenome
+	}
+	nome := strings.Fields(dominio.Texto(perfil["nome"]))
+	if len(nome) == 0 {
+		return "", ""
+	}
+	return nome[0], strings.Join(nome[1:], " ")
 }
 
 // linkPublico: o endereço do perfil da pessoa, só se for https no site esperado (nunca outro texto).

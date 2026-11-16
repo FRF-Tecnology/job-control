@@ -82,8 +82,9 @@ it('com faixa salva, trocar o mercado não mexe na moeda', () => {
 it('dados de contato: grava cidade, LinkedIn e GitHub e recusa link de outro site', async () => {
   const api = montarCom({ nome: 'Fulana Exemplo' });
   expect(screen.getByRole('heading', { name: 'Dados de contato' })).toBeTruthy();
-  expect(screen.getByLabelText('Nome completo')).toHaveProperty('value', 'Fulana Exemplo');
-  fireEvent.change(screen.getByLabelText('Cidade onde você mora'), { target: { value: 'Recife, PE' } });
+  expect(screen.getByLabelText('Nome')).toHaveProperty('value', 'Fulana');
+  expect(screen.getByLabelText('Sobrenome')).toHaveProperty('value', 'Exemplo');
+  fireEvent.change(screen.getByLabelText('Cidade'), { target: { value: 'Recife' } });
   fireEvent.change(screen.getByLabelText('LinkedIn'), { target: { value: 'https://golpe.example/linkedin.com' } });
   fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
   expect((await screen.findByRole('alert')).textContent).toMatch(/perfil no LinkedIn/);
@@ -95,5 +96,32 @@ it('dados de contato: grava cidade, LinkedIn e GitHub e recusa link de outro sit
   fireEvent.change(screen.getByLabelText('GitHub'), { target: { value: 'https://github.com/fulana' } });
   fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
   await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/perfil?perfilBuscaId=original', 'PATCH',
-    expect.objectContaining({ nome: 'Fulana Exemplo', cidade: 'Recife, PE', linkedin: 'linkedin.com/in/fulana', github: 'https://github.com/fulana' })));
+    expect.objectContaining({ nome: 'Fulana Exemplo', primeiroNome: 'Fulana', sobrenome: 'Exemplo', cidade: 'Recife', paisResidencia: 'BR',
+      linkedin: 'linkedin.com/in/fulana', github: 'https://github.com/fulana' })));
+});
+it('nome e sobrenome separados; estado da lista e cidades do estado; perfil antigo é separado', async () => {
+  const api = montarCom({ nome: 'Maria Clara Souza', cidade: 'Recife, PE' });
+  // perfil antigo: primeira palavra e o resto; a sigla no fim da cidade vira o estado
+  expect(screen.getByLabelText('Nome')).toHaveProperty('value', 'Maria');
+  expect(screen.getByLabelText('Sobrenome')).toHaveProperty('value', 'Clara Souza');
+  expect(screen.getByLabelText('Cidade')).toHaveProperty('value', 'Recife');
+  const estado = await waitFor(() => { const e = screen.getByLabelText('Estado') as HTMLSelectElement; expect(e.options.length).toBe(28); return e; });
+  expect(estado.value).toBe('PE');
+  expect([...estado.options].find(o => o.value === 'PE')?.text).toBe('Pernambuco');
+  const lista = document.getElementById('cidades-do-estado')!;
+  expect([...lista.querySelectorAll('option')].some(o => o.value === 'Olinda')).toBe(true);
+  expect([...lista.querySelectorAll('option')].some(o => o.value === 'Campinas')).toBe(false);
+  fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Maria Clara' } });
+  fireEvent.change(screen.getByLabelText('Sobrenome'), { target: { value: 'Souza' } });
+  fireEvent.change(estado, { target: { value: 'SP' } });
+  expect([...document.getElementById('cidades-do-estado')!.querySelectorAll('option')].some(o => o.value === 'Campinas')).toBe(true);
+  fireEvent.change(screen.getByLabelText('Cidade'), { target: { value: 'Campinas' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/perfil?perfilBuscaId=original', 'PATCH',
+    expect.objectContaining({ nome: 'Maria Clara Souza', primeiroNome: 'Maria Clara', sobrenome: 'Souza', cidade: 'Campinas', estado: 'SP', paisResidencia: 'BR' })));
+});
+it('fora do Brasil o estado é texto livre e não há lista de cidades', () => {
+  montarCom({ paisResidencia: 'PT', estado: 'Lisboa', cidade: 'Lisboa' });
+  expect(screen.getByLabelText('Estado ou província')).toHaveProperty('value', 'Lisboa');
+  expect(document.getElementById('cidades-do-estado')).toBeNull();
 });

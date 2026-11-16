@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"maps"
+	"strings"
 	"testing"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
@@ -75,5 +77,40 @@ func TestLinkPublico(t *testing.T) {
 		if got := linkPublico(v, "linkedin.com"); got != quer {
 			t.Errorf("linkPublico(%q) = %q, quer %q", v, got, quer)
 		}
+	}
+}
+
+func TestPlanejarAssistidoNomeCidadeEstadoSeparados(t *testing.T) {
+	perfil := dominio.Objeto{"nome": "Maria Clara Souza Ficticia", "primeiroNome": "Maria Clara", "sobrenome": "Souza Ficticia",
+		"cidade": "Recife", "estado": "PE", "paisResidencia": "BR"}
+	campos := []Campo{
+		{ID: "1", Tipo: CampoPergunta, Rotulo: "First name"},
+		{ID: "2", Tipo: CampoPergunta, Rotulo: "Last name"},
+		{ID: "3", Tipo: CampoNome, Rotulo: "Nome completo"},
+		{ID: "4", Tipo: CampoCidade, Rotulo: "Cidade"},
+		{ID: "5", Tipo: CampoPergunta, Rotulo: "Estado"},
+		{ID: "6", Tipo: CampoOutro, Rotulo: "Country"},
+		{ID: "7", Tipo: CampoCidade, Rotulo: "Location"},
+		{ID: "8", Tipo: CampoPergunta, Rotulo: "Estado civil"}, // não é o estado onde mora
+	}
+	plano, _ := PlanejarAssistido(dominio.ConteudoAssistido(perfil, nil), perfil, campos, false)
+	type v struct {
+		valor string
+		alt   string
+	}
+	quer := map[string]v{"1": {"Maria Clara", ""}, "2": {"Souza Ficticia", ""}, "3": {"Maria Clara Souza Ficticia", ""},
+		"4": {"Recife", ""}, "5": {"Pernambuco", "PE"}, "6": {"Brasil", "Brazil BR"}, "7": {"Recife, PE", ""}}
+	got := map[string]v{}
+	for _, p := range plano {
+		got[p.Campo.ID] = v{p.Valor, strings.Join(p.Alternativas, " ")}
+	}
+	if !maps.Equal(got, quer) {
+		t.Errorf("plano:\n%v\nquer\n%v", got, quer)
+	}
+	// Perfil antigo, só com o nome completo e a cidade junto do estado: o nome é dividido na primeira palavra.
+	antigo := dominio.Objeto{"nome": "Fulana de Tal", "cidade": "Recife, PE"}
+	plano, _ = PlanejarAssistido(dominio.ConteudoAssistido(antigo, nil), antigo, campos[:2], false)
+	if len(plano) != 2 || plano[0].Valor != "Fulana" || plano[1].Valor != "de Tal" {
+		t.Errorf("perfil antigo: %v", plano)
 	}
 }

@@ -31,6 +31,10 @@ export function pacoteInicial(vaga: VagaBase, perfil: any, pdfs: PDF[]): Conteud
 
   const contato: Record<string, string> = {};
   for (const c of CAMPOS_CONTATO) if (texto(perfil?.[c])) contato[c] = texto(perfil[c]);
+  // O perfil guarda cidade e estado separados; o pacote leva os dois juntos ("Recife, PE"), como o campo de cidade
+  // dos formulários costuma pedir. Perfis antigos já guardavam tudo na cidade.
+  const cidade = texto(perfil?.cidade), estado = texto(perfil?.estado);
+  if (cidade && estado && !cidade.toLowerCase().endsWith(estado.toLowerCase())) contato.cidade = `${cidade}, ${estado}`;
 
   let pretensao: Conteudo['pretensao'] = null;
   const usd = numero(perfil?.pretensaoUSD), pj = numero(perfil?.pretensaoPJ), clt = numero(perfil?.pretensaoCLT);

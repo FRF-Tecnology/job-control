@@ -7,7 +7,21 @@ import (
 
 // Dados de contato da pessoa: os mesmos em todos os perfis de busca (vão no pacote de cada candidatura e no
 // "Preencher no site da empresa"). Trocar de perfil de busca nunca troca o contato.
-var CamposDeContato = []string{"nome", "email", "telefone", "cidade", "linkedin", "github"}
+// nome é o nome completo (a tela junta primeiroNome e sobrenome ao salvar); cidade é só a cidade, e estado é a sigla
+// (no Brasil) ou o nome do estado/província (fora dele); paisResidencia é o código de duas letras.
+var CamposDeContato = []string{"nome", "primeiroNome", "sobrenome", "email", "telefone", "cidade", "estado", "paisResidencia", "linkedin", "github"}
+
+// LocalDoPerfil junta cidade e estado para um campo só ("Recife, PE"). Perfis antigos guardavam tudo em cidade.
+func LocalDoPerfil(perfil Objeto) string {
+	cidade, estado := strings.TrimSpace(texto(perfil["cidade"])), strings.TrimSpace(texto(perfil["estado"]))
+	switch {
+	case cidade == "":
+		return estado
+	case estado == "" || strings.HasSuffix(Normalizar(cidade), Normalizar(estado)):
+		return cidade
+	}
+	return cidade + ", " + estado
+}
 
 // LinkDePerfil devolve o endereço do perfil público da pessoa (LinkedIn, GitHub) em https, ou "" se não for um
 // endereço desse site. Aceita sem o "https://" ("linkedin.com/in/fulana"). O host tem de ser o site ou um subdomínio

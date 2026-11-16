@@ -227,6 +227,12 @@ func (n *Navegador) PreencherSite(ctx context.Context, dominioConferido string, 
 			err = p.Anexar(ctx, a.Campo, copia)
 		} else {
 			err = p.Preencher(ctx, a.Campo, a.Valor)
+			for _, alt := range a.Alternativas { // a lista do site não tem o primeiro jeito: tenta os outros
+				if !errors.Is(err, executor.ErrSemOpcao) {
+					break
+				}
+				err = p.Preencher(ctx, a.Campo, alt)
+			}
 		}
 		switch {
 		case err == nil && a.Anexar:

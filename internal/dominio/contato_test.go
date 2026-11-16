@@ -62,3 +62,35 @@ func TestContatoIgualEmTodosOsPerfis(t *testing.T) {
 		t.Errorf("perfil IA: %v", ia)
 	}
 }
+
+func TestLocalEValidacaoDoContato(t *testing.T) {
+	for _, c := range []struct {
+		perfil Objeto
+		quer   string
+	}{
+		{Objeto{"cidade": "Recife", "estado": "PE"}, "Recife, PE"},
+		{Objeto{"cidade": "Recife, PE", "estado": "PE"}, "Recife, PE"}, // perfil antigo já com o estado
+		{Objeto{"cidade": "Lisboa"}, "Lisboa"},
+		{Objeto{"estado": "PE"}, "PE"},
+		{Objeto{}, ""},
+	} {
+		if got := LocalDoPerfil(c.perfil); got != c.quer {
+			t.Errorf("LocalDoPerfil(%v) = %q, quer %q", c.perfil, got, c.quer)
+		}
+	}
+	if len(EstadosDoBrasil) != 27 || EstadosDoBrasil["PE"] != "Pernambuco" || EstadosDoBrasil["DF"] != "Distrito Federal" {
+		t.Errorf("estados: %d", len(EstadosDoBrasil))
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "BR", "estado": "PE", "primeiroNome": "Fulana", "sobrenome": "de Tal"}); len(e) != 0 {
+		t.Errorf("contato certo: %v", e)
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "BR", "estado": "Pernambuco"}); len(e) != 1 {
+		t.Errorf("no Brasil o estado vem da lista: %v", e)
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "PT", "estado": "Lisboa"}); len(e) != 0 {
+		t.Errorf("fora do Brasil o estado é livre: %v", e)
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "Brasil"}); len(e) != 1 {
+		t.Errorf("país com duas letras: %v", e)
+	}
+}

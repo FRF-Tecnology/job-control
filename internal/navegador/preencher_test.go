@@ -32,6 +32,7 @@ const formularioDaEmpresa = `<!doctype html><html><body><h1>Trabalhe conosco</h1
 <label for="em">Email *</label><input id="em" type="email" name="em" required>
 <label for="ph">Phone</label><input id="ph" type="tel" name="ph">
 <label for="li">LinkedIn Profile</label><input id="li" name="li">
+<label for="uf">State</label><select id="uf" name="uf"><option value="">Select</option><option>PE</option><option>SP</option></select>
 <label for="cpf">CPF *</label><input id="cpf" name="cpf" required>
 <label for="cv">Resume/CV *</label><input id="cv" type="file" name="cv" required>
 <label for="sal">Pretensão salarial *</label><input id="sal" name="sal" required>
@@ -89,8 +90,9 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 		t.Fatalf("a aba da empresa não abriu: %q", host)
 	}
 
-	perfil := dominio.Objeto{"nome": "Fulana de Tal", "email": "fulana@example.com", "telefone": "+55 11 90000-0000", "linkedin": "https://www.linkedin.com/in/fulana-ficticia"}
-	conteudo := dominio.Objeto{"contato": dominio.Objeto{"nome": "Fulana de Tal", "email": "fulana@example.com", "telefone": "+55 11 90000-0000"}}
+	perfil := dominio.Objeto{"nome": "Fulana de Tal", "email": "fulana@example.com", "telefone": "+55 11 90000-0000", "linkedin": "https://www.linkedin.com/in/fulana-ficticia",
+		"estado": "PE", "paisResidencia": "BR"}
+	conteudo := dominio.ConteudoAssistido(perfil, nil)
 	pdf := []byte("%PDF-1.4\nCurrículo fictício\n%%EOF\n")
 
 	// Domínio diferente do conferido: nada é preenchido.
@@ -101,19 +103,19 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Preenchidos != 5 || !r.Anexou || r.Faltando != 3 {
-		t.Fatalf("resultado %+v; quer 5 campos, currículo e 3 em branco (CPF, pretensão, termos)", r)
+	if r.Preenchidos != 6 || !r.Anexou || r.Faltando != 3 {
+		t.Fatalf("resultado %+v; quer 6 campos (o estado pela sigla: a lista não tem Pernambuco), currículo e 3 em branco (CPF, pretensão, termos)", r)
 	}
 
 	// Confere a página: o que foi, o que ficou em branco, e que nada foi enviado.
 	n.mu.Lock()
 	aba := n.abaPreencher // o site da empresa abriu na própria aba da vaga
 	n.mu.Unlock()
-	valores, err := chromedp.Run(aba, chromedp.Evaluate[string](`[fn.value, ln.value, em.value, ph.value, li.value, cpf.value, sal.value, String(termos.checked), String(cv.files.length)].join('|')`))
+	valores, err := chromedp.Run(aba, chromedp.Evaluate[string](`[fn.value, ln.value, em.value, ph.value, li.value, uf.value, cpf.value, sal.value, String(termos.checked), String(cv.files.length)].join('|')`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if valores != "Fulana|de Tal|fulana@example.com|+55 11 90000-0000|https://www.linkedin.com/in/fulana-ficticia|||false|1" {
+	if valores != "Fulana|de Tal|fulana@example.com|+55 11 90000-0000|https://www.linkedin.com/in/fulana-ficticia|PE|||false|1" {
 		t.Errorf("página: %s", valores)
 	}
 	time.Sleep(500 * time.Millisecond)

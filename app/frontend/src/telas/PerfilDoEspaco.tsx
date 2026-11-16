@@ -19,9 +19,22 @@ const emailValido=(v:string)=>!v.trim()||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.tri
 // O endereço do perfil no site (com ou sem https://), no próprio site ou num subdomínio dele, com o caminho do perfil.
 // A mesma regra do servidor (dominio.LinkDePerfil).
 export const linkDoSite=(v:string,site:string)=>!v.trim()||new RegExp(`^(https?://)?([a-z0-9-]+\\.)*${site.replace('.','\\.')}/[^\\s<>"']+$`,'i').test(v.trim());
+// Perfis antigos: só o nome completo (primeira palavra e o resto) e a cidade com o estado junto ("Recife, PE").
+function nomeSeparado(p:any):[string,string]{
+  if(texto(p.primeiroNome)||texto(p.sobrenome)) return [texto(p.primeiroNome),texto(p.sobrenome)];
+  const partes=texto(p.nome).trim().split(/\s+/).filter(Boolean);
+  return [partes[0]??'',partes.slice(1).join(' ')];
+}
+function cidadeSeparada(p:any):[string,string]{
+  const cidade=texto(p.cidade).trim();
+  if(texto(p.estado)) return [cidade,texto(p.estado)];
+  const m=/^(.+?)\s*(?:,|-|–|\/)\s*([A-Za-z]{2})$/.exec(cidade);
+  return m?[m[1],m[2].toUpperCase()]:[cidade,''];
+}
 function leitura(p:any){
   const f=p.filtros||{}, faixa=p.faixaSalarial ?? {min:p.pretensaoUSD, moeda:p.pretensaoUSD?'USD':moedaDoMercado(p.foco,'USD')};
-  return {nome:texto(p.nome), email:texto(p.email), telefone:texto(p.telefone), cidade:texto(p.cidade), linkedin:texto(p.linkedin), github:texto(p.github), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
+  const [primeiroNome,sobrenome]=nomeSeparado(p), [cidade,estado]=cidadeSeparada(p);
+  return {nome:texto(p.nome), primeiroNome, sobrenome, email:texto(p.email), telefone:texto(p.telefone), cidade, estado, paisResidencia:texto(p.paisResidencia)||'BR', linkedin:texto(p.linkedin), github:texto(p.github), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
     paisTrabalho:texto(p.paisTrabalho), cidadeTrabalho:texto(p.cidadeTrabalho),
     titulos:lista(p.titulosEquivalentes).join(', '),
     principal:lista(p.stackPrincipal).join(', '), secundaria:lista(p.stackSecundaria).join(', '),
@@ -37,6 +50,10 @@ function Opcoes({titulo,base,valor,mudar}:{titulo:string;base:string[];valor:str
 export function PerfilDoEspaco(){
   const app=useApp(), id=app.estado.perfilBuscaAtivo || 'original';
   const [dados,setDados]=useState(()=>leitura(app.estado.perfil||{})), [sujo,alterado]=useState(false);
+  // Estados e cidades do IBGE: um módulo à parte, carregado só nesta tela.
+  const [geo,setGeo]=useState<typeof import('../dominio/municipios')|null>(null);
+  useEffect(()=>{let vivo=true;void import('../dominio/municipios').then(m=>{if(vivo)setGeo(m)});return()=>{vivo=false}},[]);
+  const noBrasil=dados.paisResidencia==='BR', cidades=noBrasil&&geo&&dados.estado?geo.cidadesDoEstado(dados.estado):[];
   const [salvando,salvarEstado]=useState(false), [erro,falhar]=useState(''), [alterandoIA,alterarIA]=useState(false);
   const conectado=app.conexaoIA?.verificada && !alterandoIA ? app.conexaoIA.nome : '';
   const [cvStatus,cvMensagem]=useState(''), [cvOcupado,cvOcupar]=useState(false), [cvErro,cvFalha]=useState('');
@@ -66,7 +83,8 @@ export function PerfilDoEspaco(){
     if(!linkDoSite(dados.github,'github.com')){falhar('Informe o endereço do seu perfil no GitHub, como github.com/seu-usuario.');document.getElementById('f-github')?.focus();return;}
     salvarEstado(true);falhar('');
     try {
-      await app.api(url,'PATCH',{nome:dados.nome.trim(),email:dados.email.trim(),telefone:dados.telefone.trim(),cidade:dados.cidade.trim(),linkedin:dados.linkedin.trim(),github:dados.github.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
+      await app.api(url,'PATCH',{nome:[dados.primeiroNome.trim(),dados.sobrenome.trim()].filter(Boolean).join(' '),primeiroNome:dados.primeiroNome.trim(),sobrenome:dados.sobrenome.trim(),
+        email:dados.email.trim(),telefone:dados.telefone.trim(),cidade:dados.cidade.trim(),estado:dados.estado.trim(),paisResidencia:dados.paisResidencia,linkedin:dados.linkedin.trim(),github:dados.github.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
         paisTrabalho:dados.paisTrabalho, cidadeTrabalho:dados.cidadeTrabalho.trim(),
         titulosEquivalentes:separar(dados.titulos),
         stackPrincipal:separar(dados.principal),stackSecundaria:separar(dados.secundaria),
@@ -88,7 +106,7 @@ export function PerfilDoEspaco(){
     }catch(e){if(ativa.current)cvFalha((e as Error).message||'Não foi possível salvar o PDF.')}
     finally{if(ativa.current)cvOcupar(false)}
   }
-  type Campo='nome'|'email'|'telefone'|'cidade'|'linkedin'|'github'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
+  type Campo='nome'|'primeiroNome'|'sobrenome'|'estado'|'paisResidencia'|'email'|'telefone'|'cidade'|'linkedin'|'github'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
   function campo(k:Campo,label:string,op?:{lista?:[string,string][];wide?:boolean;tipo?:'number';dica?:string}){
     return <div className={'pr-field'+(op?.wide?' pr-wide':'')}><label htmlFor={'f-'+k}>{label}</label>{op?.lista?
       <select form="form-perfil-ativo" id={'f-'+k} value={dados[k]} onChange={e=>set(k,e.target.value)}>{op.lista.map(([v,r])=><option key={v} value={v}>{r}</option>)}</select>:
@@ -103,8 +121,15 @@ export function PerfilDoEspaco(){
     <div className="pr-edit-grid"><div className="pr-stack">
       <Cartao titulo="Dados de contato" icone="profile"><div className="pr-fields">
         <p className="pr-wide pr-nota">Vão no pacote de cada candidatura e no "Preencher no site da empresa". Valem para todos os perfis de busca. Deixe em branco o que não quer mandar.</p>
-        {campo('nome','Nome completo',{dica:'Como deve aparecer na candidatura'})}{campo('email','E-mail',{dica:'nome@exemplo.com'})}
-        {campo('telefone','Telefone',{dica:'Com DDD, ex.: (11) 91234-5678'})}{campo('cidade','Cidade onde você mora',{dica:'Ex.: Recife, PE'})}
+        {campo('primeiroNome','Nome',{dica:'Ex.: Maria Clara'})}{campo('sobrenome','Sobrenome',{dica:'Ex.: Souza Lima'})}
+        {campo('email','E-mail',{dica:'nome@exemplo.com'})}{campo('telefone','Telefone',{dica:'Com DDD, ex.: (11) 91234-5678'})}
+        {campo('paisResidencia','País onde você mora',{lista:[['','Selecione'],...paises]})}
+        {noBrasil ? campo('estado','Estado',{lista:[['','Selecione o estado'],...(geo?.ESTADOS ?? (dados.estado?[[dados.estado,dados.estado] as [string,string]]:[]))]}) : campo('estado','Estado ou província')}
+        <div className="pr-field pr-wide"><label htmlFor="f-cidade">Cidade</label>
+          <input id="f-cidade" form="form-perfil-ativo" maxLength={120} autoComplete="off" list={cidades.length?'cidades-do-estado':undefined}
+            placeholder={noBrasil && !dados.estado ? 'Escolha o estado para ver as cidades' : 'Comece a digitar o nome da cidade'} value={dados.cidade} onChange={e=>set('cidade',e.target.value)}/>
+          {cidades.length>0 && <datalist id="cidades-do-estado">{cidades.map(c=><option key={c} value={c}/>)}</datalist>}
+        </div>
         {campo('linkedin','LinkedIn',{dica:'linkedin.com/in/seu-nome'})}{campo('github','GitHub',{dica:'github.com/seu-usuario'})}
       </div></Cartao>
       <Cartao titulo="Perfil profissional" icone="user"><div className="pr-fields">

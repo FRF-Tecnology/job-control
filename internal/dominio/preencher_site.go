@@ -16,10 +16,13 @@ type ResultadoPreenchimento struct {
 // da candidatura reservada.
 func ConteudoAssistido(perfil, pacote Objeto) Objeto {
 	contato := Objeto{}
-	for _, k := range []string{"nome", "email", "telefone", "cidade"} {
+	for _, k := range CamposDeContato {
 		if s := strings.TrimSpace(texto(perfil[k])); s != "" {
 			contato[k] = s
 		}
+	}
+	if local := LocalDoPerfil(perfil); local != "" {
+		contato["local"] = local // "Recife, PE": para o campo que pede cidade e estado juntos
 	}
 	return Objeto{"contato": contato, "respostas": lista(perfil["respostasPadrao"]), "curriculo": pacote["curriculo"]}
 }
