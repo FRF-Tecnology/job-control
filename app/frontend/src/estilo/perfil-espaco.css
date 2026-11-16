@@ -128,3 +128,10 @@
 .pr-telefone select, .pr-telefone input { display: block; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background-color: var(--pr-fill); color: var(--text); padding: 9px 11px; height: 39px; font: inherit; font-size: .86rem; }
 .pr-telefone select { cursor: pointer; padding-right: 6px; text-overflow: ellipsis; }
 .pr-telefone input::placeholder { color: var(--muted); opacity: .82; }
+/* CPF: salvo (só a máscara) ou o campo com o botão próprio. */
+.pr-cpf-salvo, .pr-cpf-novo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pr-cpf-salvo span { font-size: .86rem; color: var(--text); }
+.pr-cpf-novo input { flex: 1 1 12rem; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background-color: var(--pr-fill); color: var(--text); padding: 9px 11px; height: 39px; font: inherit; font-size: .86rem; }
+.pr-cpf-novo input[aria-invalid=true] { border-color: var(--pr-alert); }
+.pr-cpf .pr-nota { margin: 2px 0 0; }
+.pr-cpf .pr-erro { margin: 0; color: var(--pr-alert, #ff8a8a); font-size: .82rem; }

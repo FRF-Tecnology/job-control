@@ -220,11 +220,19 @@ func (n *Navegador) PreencherSite(ctx context.Context, dominioConferido string, 
 		}
 	}
 	// Site brasileiro: o telefone vai no formato nacional (sem o "+55"), como os formulários daqui pedem.
+	// CPF só em site brasileiro: fora dele, o que veio é descartado e nada é oferecido.
 	conteudo = maps.Clone(conteudo)
-	conteudo["siteNacional"] = siteNacional(host)
+	nacional := siteNacional(host)
+	conteudo["siteNacional"] = nacional
+	if !nacional {
+		delete(conteudo, "cpf")
+	}
 	plano, faltando := executor.PlanejarAssistido(conteudo, perfil, campos, copia != "")
 	var r ResultadoPreenchimento
 	r.Faltando = faltando
+	if nacional && dominio.Texto(conteudo["cpf"]) == "" {
+		r.PedeCPF = executor.CamposDeCPF(campos)
+	}
 	for _, a := range plano {
 		var err error
 		if a.Anexar {

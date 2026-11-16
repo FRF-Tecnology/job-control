@@ -16,6 +16,7 @@ import (
 // "Preencher no site da empresa" com a janela falsa. Dados fictícios.
 
 type janelaDePreencher struct {
+	pedeCPF  int
 	abertas  []string
 	host     string
 	conteudo Objeto
@@ -39,7 +40,10 @@ func (j *janelaDePreencher) preencher(_ context.Context, dom string, conteudo, p
 		return dominio.ResultadoPreenchimento{}, &dominio.ErroConflito{Msg: "mudou", Motivo: "site-mudou"}
 	}
 	j.conteudo, j.perfil, j.cv, j.pdf = conteudo, perfil, nome, pdf
-	return dominio.ResultadoPreenchimento{Preenchidos: 4, Anexou: true, Faltando: 2}, nil
+	if conteudo["soCPF"] == true {
+		return dominio.ResultadoPreenchimento{Preenchidos: 1}, nil
+	}
+	return dominio.ResultadoPreenchimento{Preenchidos: 4, Anexou: true, Faltando: 2, PedeCPF: j.pedeCPF}, nil
 }
 
 func apiDePreencher(t *testing.T, j *janelaDePreencher) *API {
@@ -117,7 +121,7 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 	if r.Status != 200 {
 		t.Fatalf("preencher: %d %v", r.Status, r.Corpo)
 	}
-	if res := r.Corpo.(dominio.ResultadoPreenchimento); res.Preenchidos != 4 || !res.Anexou || res.Faltando != 2 {
+	if res := r.Corpo.(Objeto); res["preenchidos"] != 4 || res["anexou"] != true || res["faltando"] != 2 || res["pedeCPF"] != nil {
 		t.Fatalf("resultado: %+v", res)
 	}
 	contato := dominio.ObjetoDe(j.conteudo["contato"])

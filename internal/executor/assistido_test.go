@@ -159,3 +159,34 @@ func TestTelefoneComESemCodigoDoPais(t *testing.T) {
 		t.Errorf("envio: %+v %q", plano, motivo)
 	}
 }
+
+func TestPlanejarAssistidoCPF(t *testing.T) {
+	perfil := dominio.Objeto{"nome": "Fulana de Tal", "email": "fulana@example.com"}
+	campos := []Campo{
+		{ID: "n", Tipo: CampoNome, Rotulo: "Nome"},
+		{ID: "c", Tipo: "cpf", Rotulo: "CPF *", Obrigatorio: true},
+		{ID: "j", Tipo: "cpf", Rotulo: "CPF/CNPJ"},              // pode ser de empresa: nunca
+		{ID: "s", Tipo: "cpf", Rotulo: "SSN"},                   // outro documento: nunca
+		{ID: "p", Tipo: "cpf", Rotulo: "CPF", Preenchido: true}, // a página já trouxe: fica
+	}
+	if CamposDeCPF(campos) != 1 {
+		t.Errorf("campos de CPF: %d", CamposDeCPF(campos))
+	}
+	// Sem o CPF (primeiro passo): o CPF fica em branco e conta como faltando.
+	plano, faltando := PlanejarAssistido(dominio.ConteudoAssistido(perfil, nil), perfil, campos, false)
+	for _, p := range plano {
+		if p.Campo.ID != "n" {
+			t.Errorf("preencheu %s no primeiro passo", p.Campo.ID)
+		}
+	}
+	if faltando != 1 {
+		t.Errorf("faltando: %d", faltando)
+	}
+	// Com o CPF confirmado (segundo passo): só o campo de CPF.
+	conteudo := dominio.ConteudoAssistido(perfil, nil)
+	conteudo["cpf"], conteudo["soCPF"] = "529.982.247-25", true
+	plano, _ = PlanejarAssistido(conteudo, perfil, campos, true)
+	if len(plano) != 1 || plano[0].Campo.ID != "c" || plano[0].Valor != "529.982.247-25" {
+		t.Errorf("segundo passo: %+v", plano)
+	}
+}

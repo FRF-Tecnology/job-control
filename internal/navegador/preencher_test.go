@@ -93,6 +93,7 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 	perfil := dominio.Objeto{"nome": "Fulana de Tal", "email": "fulana@example.com", "telefone": "+55 11 90000-0000", "linkedin": "https://www.linkedin.com/in/fulana-ficticia",
 		"estado": "PE", "paisResidencia": "BR"}
 	conteudo := dominio.ConteudoAssistido(perfil, nil)
+	conteudo["cpf"] = "529.982.247-25" // de teste: o site não é brasileiro, então é descartado
 	pdf := []byte("%PDF-1.4\nCurrículo fictício\n%%EOF\n")
 
 	// Domínio diferente do conferido: nada é preenchido.
@@ -103,7 +104,7 @@ func TestPreencherSiteDaEmpresa(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Preenchidos != 6 || !r.Anexou || r.Faltando != 3 {
+	if r.Preenchidos != 6 || !r.Anexou || r.Faltando != 3 || r.PedeCPF != 0 {
 		t.Fatalf("resultado %+v; quer 6 campos (o estado pela sigla: a lista não tem Pernambuco), currículo e 3 em branco (CPF, pretensão, termos)", r)
 	}
 

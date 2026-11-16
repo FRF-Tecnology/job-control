@@ -10,6 +10,8 @@ type ResultadoPreenchimento struct {
 	Preenchidos int  `json:"preenchidos"`
 	Anexou      bool `json:"anexou"`
 	Faltando    int  `json:"faltando"`
+	// PedeCPF: campos de CPF que ficaram em branco num site brasileiro; a tela pergunta se preenche (com o CPF salvo).
+	PedeCPF int `json:"pedeCPF,omitempty"`
 }
 
 // ConteudoAssistido monta o pacote do preenchimento: o contato do perfil e as respostas padrão, mais o currículo

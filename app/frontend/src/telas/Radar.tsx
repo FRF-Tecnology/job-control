@@ -117,7 +117,7 @@ function Fato({ icone, rotulo, valor }: { icone: string; rotulo: string; valor?:
   return <div className="rd-fact"><dt><IconeUI nome={icone} tamanho={15} />{rotulo}</dt><dd>{valor || 'Não informado'}</dd></div>;
 }
 
-// "Preencher no site da empresa" (contrato 0.21.0): frases fixas por motivo; o domínio vem da página e aparece
+// "Preencher no site da empresa" (contrato 0.22.0): frases fixas por motivo; o domínio vem da página e aparece
 // como texto, para a pessoa conferir antes de o app preencher.
 const motivosPreencher: Record<string, string> = {
   'sem-site': 'A janela ainda está no LinkedIn. Clique em Candidatar-se lá e tente de novo.',
@@ -127,6 +127,7 @@ const motivosPreencher: Record<string, string> = {
   'login-aberto': 'Já há uma janela do app aberta. Feche-a antes.',
   enviando: 'Há uma candidatura sendo enviada agora. Espere terminar.',
   'sem-navegador': 'Não achei Chrome, Edge nem Brave neste computador.',
+  'sem-cpf': 'Salve seu CPF em Perfil e IA antes.',
 };
 export function explicarPreencher(e: unknown) {
   if (e instanceof ErroApi && e.status === 404) return 'Esta versão do app não abre o site da empresa.';
@@ -146,6 +147,8 @@ function PreencherNoSite({ vaga }: { vaga: Vaga }) {
   const [etapa, mudar] = useState<'inicio' | 'aberta' | 'conferir' | 'feito'>('inicio');
   const [dominio, guardar] = useState('');
   const [aviso, avisar] = useState('');
+  // O site pede CPF (só em site brasileiro): a tela pergunta antes; o CPF só vai com o clique da pessoa.
+  const [cpf, pedirCPF] = useState<{ campos: number; salvo: boolean } | null>(null);
   const [ocupado, ocupar] = useState(false);
   const rota = (acao: string) => `/api/v1/vagas/${encode(vaga.id)}/${acao}`;
   const fazer = async (fn: () => Promise<void>) => {
@@ -155,12 +158,18 @@ function PreencherNoSite({ vaga }: { vaga: Vaga }) {
   };
   const abrir = () => fazer(async () => { await app.api(rota('abrir-para-preencher'), 'POST', {}); mudar('aberta'); });
   const verSite = () => fazer(async () => {
+    pedirCPF(null);
     const r = await app.api(rota('preencher'), 'POST', {});
     guardar(typeof r?.dominio === 'string' ? r.dominio : ''); mudar('conferir');
   });
   const preencher = () => fazer(async () => {
     const r = await app.api(rota('preencher'), 'POST', { dominio });
     avisar(resumoPreencher(r ?? {})); mudar('feito');
+    pedirCPF(Number(r?.pedeCPF) > 0 ? { campos: Number(r.pedeCPF), salvo: r?.cpfSalvo === true } : null);
+  });
+  const preencherCPF = () => fazer(async () => {
+    await app.api(rota('preencher'), 'POST', { dominio, cpf: true });
+    pedirCPF(null); avisar('Preenchi o CPF. Confira tudo, avance e envie no site. Depois, clique em Já enviei.');
   });
   return <div className="rd-preencher">
     {etapa === 'inicio' && <>
@@ -179,6 +188,15 @@ function PreencherNoSite({ vaga }: { vaga: Vaga }) {
       </div>
     </div>}
     {aviso && <p role="status">{aviso}</p>}
+    {etapa === 'feito' && cpf && (cpf.salvo
+      ? <div role="group" aria-label="Preencher o CPF">
+        <p>Este formulário pede CPF. Preencher o seu CPF em <strong>{dominio}</strong>? Só confirme se tem certeza de que é o site da empresa: CPF é o dado que os golpes de vaga falsa mais procuram.</p>
+        <div className="rd-links">
+          <button className="btn secondary" type="button" disabled={ocupado} onClick={preencherCPF}>Preencher CPF</button>
+          <button className="btn quiet" type="button" disabled={ocupado} onClick={() => pedirCPF(null)}>Eu digito</button>
+        </div>
+      </div>
+      : <p>Este formulário pede CPF. Digite no site, ou salve seu CPF em <a href="#/perfil">Perfil e IA</a> para o app oferecer da próxima vez.</p>)}
   </div>;
 }
 

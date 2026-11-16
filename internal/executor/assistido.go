@@ -88,9 +88,23 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 	// nacional, como nos formulários daqui). Nos outros sites, o número vai completo, com o "+55".
 	semDDI := temCampoDDI(campos) || conteudo["siteNacional"] == true
 	contato := dominio.ObjetoDe(conteudo["contato"])
+	// CPF: só quando a pessoa confirmou naquele site (conteudo["cpf"], já formatado). Nesse segundo passo, só os
+	// campos de CPF; no primeiro, o CPF nunca entra.
+	cpf, soCPF := dominio.Texto(conteudo["cpf"]), conteudo["soCPF"] == true
 	for _, c := range campos {
 		if c.Preenchido {
 			continue // a página já trouxe: fica como está
+		}
+		if dominio.RotuloDeCPF(c.Rotulo) {
+			if cpf != "" {
+				plano = append(plano, Preenchimento{Campo: c, Valor: cpf})
+			} else if c.Obrigatorio {
+				faltando++
+			}
+			continue
+		}
+		if soCPF {
+			continue
 		}
 		var valor string
 		var alternativas []string
@@ -141,6 +155,17 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 		plano = append(plano, Preenchimento{Campo: c, Valor: valor, Alternativas: alternativas})
 	}
 	return plano, faltando
+}
+
+// CamposDeCPF conta os campos de CPF que a página deixou em branco (a tela pergunta se preenche).
+func CamposDeCPF(campos []Campo) int {
+	n := 0
+	for _, c := range campos {
+		if !c.Preenchido && dominio.RotuloDeCPF(c.Rotulo) {
+			n++
+		}
+	}
+	return n
 }
 
 // nomeESobrenome: os campos separados do perfil; perfis antigos só têm o nome completo (primeira palavra e o resto).

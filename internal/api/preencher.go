@@ -15,7 +15,9 @@ import (
 //   - POST /vagas/{id}/abrir-para-preencher {}: abre a vaga numa janela visível do navegador do app e tenta clicar em
 //     "Candidatar-se", que leva ao site da empresa;
 //   - POST /vagas/{id}/preencher {}: devolve {dominio}, o domínio da aba do site, para a pessoa conferir;
-//   - POST /vagas/{id}/preencher {dominio}: preenche, se a aba ainda está nesse domínio, e devolve só números.
+//   - POST /vagas/{id}/preencher {dominio}: preenche, se a aba ainda está nesse domínio, e devolve só números. Num site
+//     brasileiro com campo de CPF, a resposta traz pedeCPF e cpfSalvo, e a tela pergunta;
+//   - POST /vagas/{id}/preencher {dominio, cpf: true}: preenche só o CPF salvo (cofre), nesse domínio.
 // O app nunca avança nem envia: a pessoa revisa, envia no site e usa "Já enviei" (confirmar-envio-manual).
 
 func (a *API) vagaReservada(ctx context.Context, id string) (dominio.Estado, Objeto, error) {
@@ -77,7 +79,7 @@ func (a *API) preencherSiteDaVaga(ctx context.Context, id string, c Objeto, auto
 	if err := a.conferirPreencher(autor); err != nil {
 		return Resposta{}, err
 	}
-	if err := soCampos(c, "dominio"); err != nil {
+	if err := soCampos(c, "dominio", "cpf"); err != nil {
 		return Resposta{}, err
 	}
 	e, v, err := a.vagaReservada(ctx, id)
@@ -117,12 +119,31 @@ func (a *API) preencherSiteDaVaga(ctx context.Context, id string, c Objeto, auto
 		nome, bytes = dominio.Texto(cv["arquivo"]), b
 	}
 	conteudo := dominio.ConteudoAssistido(e.Perfil, pacote)
+	querCPF, temCPF := c["cpf"], false
+	if querCPF != nil && querCPF != true {
+		return Resposta{}, erroCampo("cpf: true para preencher o CPF salvo")
+	}
+	cpf, err := a.cpfSalvo()
+	if err != nil {
+		return Resposta{}, err
+	}
+	temCPF = cpf != ""
+	if querCPF == true {
+		if !temCPF {
+			return Resposta{}, &dominio.ErroConflito{Msg: "salve seu CPF em Perfil e IA antes", Motivo: "sem-cpf"}
+		}
+		conteudo["cpf"], conteudo["soCPF"] = dominio.FormatarCPF(cpf), true
+	}
 	r, err := a.preencherSite(ctx, dom, conteudo, e.Perfil, nome, bytes)
 	if err != nil {
 		return Resposta{}, erroDoPreencher(err)
 	}
-	log.Printf("preencher: %d campo(s), currículo %t, %d obrigatório(s) em branco", r.Preenchidos, r.Anexou, r.Faltando) // só números
-	return ok(r)
+	log.Printf("preencher: %d campo(s), currículo %t, %d obrigatório(s) em branco, cpf %t", r.Preenchidos, r.Anexou, r.Faltando, querCPF == true) // só números
+	res := Objeto{"preenchidos": r.Preenchidos, "anexou": r.Anexou, "faltando": r.Faltando}
+	if r.PedeCPF > 0 {
+		res["pedeCPF"], res["cpfSalvo"] = r.PedeCPF, temCPF
+	}
+	return ok(res)
 }
 
 // erroDoPreencher: os erros fixos do envio passam; o resto vira uma frase fixa (o log leva só o tipo).

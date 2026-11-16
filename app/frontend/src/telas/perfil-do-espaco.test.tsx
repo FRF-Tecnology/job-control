@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Contexto, type App } from '../app/contexto';
 import { PerfilDoEspaco } from './PerfilDoEspaco';
 
@@ -143,4 +143,32 @@ it('telefone sem código guardado: o país onde mora (e o +1 dos Estados Unidos 
   cleanup();
   montarCom({ telefone: '415 555 0000', ddi: '+1', paisResidencia: 'US' });
   expect((screen.getByLabelText('Código do país do telefone') as HTMLSelectElement).value).toBe('US');
+});
+it('CPF: rota e botão próprios, confere os dígitos, mostra só a máscara e nunca vai com o perfil', async () => {
+  const cpf = '529.982.247-25'; // gerado para teste
+  const api = vi.fn(async (path: string, metodo?: string, _corpo?: unknown) => {
+    if (path === '/api/v1/ia') return { provedor: 'claude-cli', configurada: true, chaves: {}, clis: [] };
+    if (path === '/api/v1/perfil/cpf') return metodo === 'PUT' ? { salvo: true, mascarado: '***.982.247-**' } : metodo === 'DELETE' ? { salvo: false } : { salvo: false };
+    return {};
+  });
+  const app = { estado: { perfilBuscaAtivo: 'original', perfisBusca: [], perfil: { cargo: 'Java Engineer' } }, api,
+    limpar: vi.fn(), recarregar: vi.fn(), aviso: vi.fn(), conexaoIA: { nome: 'Claude', verificada: true } } as unknown as App;
+  render(<Contexto.Provider value={app}><PerfilDoEspaco /></Contexto.Provider>);
+  const campo = await screen.findByLabelText('CPF');
+  fireEvent.change(campo, { target: { value: '529.982.247-24' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar CPF' }));
+  expect((await screen.findByRole('alert')).textContent).toMatch(/11 números/);
+  expect(api.mock.calls.some(([, m]) => m === 'PUT')).toBe(false);
+  fireEvent.change(campo, { target: { value: cpf } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Salvar CPF' })); });
+  expect(api).toHaveBeenCalledWith('/api/v1/perfil/cpf', 'PUT', { cpf });
+  expect(screen.getByText('***.982.247-**')).toBeTruthy();
+  expect(screen.queryByLabelText('CPF')).toBeNull(); // o número digitado saiu da tela
+  // Salvar o perfil não leva o CPF.
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
+  await waitFor(() => expect(api.mock.calls.some(([p, m]) => p.startsWith('/api/v1/perfil?') && m === 'PATCH')).toBe(true));
+  expect(JSON.stringify(api.mock.calls.filter(([p]) => p.startsWith('/api/v1/perfil?')))).not.toMatch(/982/);
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Apagar' })); });
+  expect(api).toHaveBeenLastCalledWith('/api/v1/perfil/cpf', 'DELETE');
+  expect(screen.getByLabelText('CPF')).toBeTruthy();
 });

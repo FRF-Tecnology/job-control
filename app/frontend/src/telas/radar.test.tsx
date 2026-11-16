@@ -107,6 +107,34 @@ describe('Radar de vagas', () => {
     expect(screen.getByRole('status').textContent).toMatch(/Preenchi 4 campos e anexei o currículo\. 2 campos obrigatórios ficaram para você/);
     expect(screen.getByRole('button', { name: 'Já enviei' })).toBeTruthy();
   });
+  it('preencher: o site pede CPF; com CPF salvo, só vai depois de confirmar; sem, avisa onde salvar', async () => {
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true, plataforma: 'linkedin', link: 'https://www.linkedin.com/jobs/view/1/' };
+    for (const salvo of [true, false]) {
+      const api = vi.fn(async (rota: string, _m?: string, corpo?: any) => {
+        if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+        if (rota.endsWith('/preencher') && !corpo?.dominio) return { dominio: 'carreiras.acme.com.br' };
+        if (corpo?.cpf) return { preenchidos: 1, anexou: false, faltando: 0 };
+        return { preenchidos: 4, anexou: true, faltando: 1, pedeCPF: 1, cpfSalvo: salvo };
+      });
+      montar([reservada], api);
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+      await act(async () => { fireEvent.click(within(screen.getByRole('group', { name: 'Conferir o site' })).getByRole('button', { name: 'Preencher' })); });
+      expect(api.mock.calls.some(([, , c]) => (c as any)?.cpf)).toBe(false); // o CPF nunca vai sem o clique
+      if (salvo) {
+        const pergunta = screen.getByRole('group', { name: 'Preencher o CPF' });
+        expect(within(pergunta).getByText('carreiras.acme.com.br')).toBeTruthy();
+        await act(async () => { fireEvent.click(within(pergunta).getByRole('button', { name: 'Preencher CPF' })); });
+        expect(api).toHaveBeenLastCalledWith('/api/v1/vagas/ext/preencher', 'POST', { dominio: 'carreiras.acme.com.br', cpf: true });
+        expect(screen.getByRole('status').textContent).toMatch(/Preenchi o CPF/);
+        expect(screen.queryByRole('group', { name: 'Preencher o CPF' })).toBeNull();
+      } else {
+        expect(screen.queryByRole('button', { name: 'Preencher CPF' })).toBeNull();
+        expect(screen.getByRole('link', { name: 'Perfil e IA' }).getAttribute('href')).toBe('#/perfil');
+      }
+      cleanup();
+    }
+  });
   it('preencher: ainda no LinkedIn, frase fixa sem o texto do servidor', async () => {
     const { ErroApi } = await import('../app/contexto');
     const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true };

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.21.0
+  version: 0.22.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -271,7 +271,7 @@ paths:
   /vagas/{id}/preencher:
     post:
       x-so-tela: true
-      summary: 'Preencher no site da empresa, passo 2. Sem dominio: devolve {dominio}, o domínio da aba do site da empresa, para a pessoa conferir (nada é preenchido). Com dominio: confere de novo que a aba está nesse domínio e preenche o que reconhece com o contato do perfil, as respostas padrão de mesmo texto e o currículo da reserva (conferido pelo sha256; a cópia é apagada quando a janela fecha). Nunca sobrescreve campo já preenchido, nunca preenche campo sensível (senha, CPF, documento, dado bancário), nunca marca caixa nem aceita termos, nunca avança nem envia. Responde {preenchidos, anexou, faltando} (faltando: obrigatórios em branco). 409 {erro, motivo}: sem-reserva, sem-janela, sem-site, site-mudou, curriculo-mudou, falhou. 404 sem o envio neste build.'
+      summary: 'Preencher no site da empresa, passo 2. Sem dominio: devolve {dominio}, o domínio da aba do site da empresa, para a pessoa conferir (nada é preenchido). Com dominio: confere de novo que a aba está nesse domínio e preenche o que reconhece com o contato do perfil, as respostas padrão de mesmo texto e o currículo da reserva (conferido pelo sha256; a cópia é apagada quando a janela fecha). Nunca sobrescreve campo já preenchido, nunca preenche campo sensível (senha, documento, dado bancário; CPF só no passo 3), nunca marca caixa nem aceita termos, nunca avança nem envia. Responde {preenchidos, anexou, faltando} (faltando: obrigatórios em branco); num site brasileiro (.br, Gupy) com campo de CPF em branco, também {pedeCPF: quantos, cpfSalvo}. Passo 3, com cpf: true (docs/propostas/cpf-no-preencher.md): preenche SÓ os campos de CPF com o CPF do cofre, só em site brasileiro; 409 sem-cpf sem CPF salvo. 409 {erro, motivo}: sem-reserva, sem-janela, sem-site, site-mudou, curriculo-mudou, sem-cpf, falhou. 404 sem o envio neste build.'
       requestBody:
         required: true
         content:
@@ -281,6 +281,7 @@ paths:
               additionalProperties: false
               properties:
                 dominio: { type: string, maxLength: 253, description: 'O domínio que a tela mostrou e a pessoa conferiu' }
+                cpf: { type: boolean, enum: [true], description: 'Preencher só o CPF salvo, depois de a pessoa confirmar neste domínio' }
   /ia/detectar:
     post:
       x-so-tela: true
@@ -830,6 +831,36 @@ paths:
   # Conta de e-mail (IMAP, só leitura): o app lê as respostas das empresas e os alertas de vaga da caixa da pessoa.
   # A caixa abre com EXAMINE e o corpo é lido com BODY.PEEK[]: nada é marcado como lido, movido, apagado ou enviado.
   # A senha de app fica no cofre do sistema; nunca volta na resposta nem vai para o log.
+  /perfil/cpf:
+    get:
+      x-so-tela: true
+      summary: 'O CPF da pessoa, só mascarado: {salvo, mascarado} (***.456.789-**). Fica no cofre do sistema, nunca no banco, no log, na IA ou no assistente (docs/propostas/cpf-no-preencher.md)'
+      responses:
+        '200': { description: Estado do CPF, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
+    put:
+      x-so-tela: true
+      summary: 'Grava o CPF no cofre do sistema, se os dígitos verificadores conferem. Responde só a máscara'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [cpf]
+              properties:
+                cpf: { type: string, maxLength: 20, description: 'Os 11 números, com ou sem pontuação' }
+      responses:
+        '200': { description: CPF gravado, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+    delete:
+      x-so-tela: true
+      summary: 'Apaga o CPF do cofre'
+      responses:
+        '200': { description: CPF apagado, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '403': { $ref: '#/components/responses/SoTela' }
   /email/conta:
     get:
       x-so-tela: true
@@ -1442,6 +1473,13 @@ components:
         erro: { type: string, description: 'Texto pronto para a tela' }
         motivo: { type: string, enum: [enviando, login-aberto, sem-navegador] }
         estado: { type: string, enum: [enviando], description: 'Só com motivo enviando' }
+    EstadoCPF:
+      type: object
+      additionalProperties: false
+      required: [salvo]
+      properties:
+        salvo: { type: boolean }
+        mascarado: { type: string, description: 'Só o miolo: ***.456.789-**' }
     ContaEmail:
       type: object
       additionalProperties: false

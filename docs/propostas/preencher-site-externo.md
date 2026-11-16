@@ -46,7 +46,9 @@ Entra um **caminho separado**, iniciado pela pessoa, que só **preenche**. Quem 
 
 **O que o app nunca faz:**
 - sobrescrever campo que a página trouxe preenchido;
-- preencher campo sensível (senha, CPF, RG, documento, dado bancário; a lista do `MotivoDoRotulo` e do detector);
+- preencher campo sensível (senha, RG, documento, dado bancário; a lista do `MotivoDoRotulo` e do detector). O CPF
+  é a exceção desde o contrato 0.22.0: só em site brasileiro e só depois de a pessoa confirmar naquele domínio
+  (cpf-no-preencher.md);
 - marcar caixa (termos, newsletter, "seguir");
 - preencher pretensão (a moeda e o período variam por site);
 - **avançar ou enviar**. Nenhum clique no formulário: o único clique do app é o "Candidatar-se" do LinkedIn.

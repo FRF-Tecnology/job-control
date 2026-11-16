@@ -577,6 +577,11 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
+	if p == "/perfil/cpf" && (m == "GET" || m == "PUT" || m == "DELETE") {
+		r, err := a.rotaCPF(m, c, autor)
+		return r, err
+	}
+
 	if p == "/email/conta" || p == "/email/ler" {
 		if r, feito, err := a.rotasEmail(ctx, m, p, c, autor); feito {
 			return r, err
