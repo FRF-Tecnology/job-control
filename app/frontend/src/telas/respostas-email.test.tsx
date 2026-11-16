@@ -4,7 +4,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, ErroApi, type App } from '../app/contexto';
-import { RespostasEmail, resumoDaLeitura } from './RespostasEmail';
+import { RespostasEmail, agruparIguais, cargoSemLocal, resumoDaLeitura } from './RespostasEmail';
 
 afterEach(cleanup);
 
@@ -105,6 +105,8 @@ describe('Respostas por e-mail', () => {
     const email = { idMensagem: 'cv@example.com', status: 'sem-vaga', tipo: 'teste', de: 'noreply@mailer.example', assunto: 'Teste técnico', resumo: '',
       sugestao: { empresa: 'Beta Tech', cargo: 'Backend Sênior' } };
     const { chamadas } = await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email], () => ({}));
+    expect(screen.queryByLabelText('Empresa')).toBeNull(); // o formulário só abre quando a pessoa pede
+    fireEvent.click(screen.getByRole('button', { name: 'Criar vaga: Beta Tech — Backend Sênior…' }));
     expect((screen.getByLabelText('Empresa') as HTMLInputElement).value).toBe('Beta Tech');
     expect((screen.getByLabelText('Cargo') as HTMLInputElement).value).toBe('Backend Sênior');
     fireEvent.change(screen.getByLabelText('Cargo'), { target: { value: ' Backend Sênior Go ' } });
@@ -115,11 +117,39 @@ describe('Respostas por e-mail', () => {
   it('sem sugestão: criar só depois de preencher', async () => {
     const email = { idMensagem: 'ss@example.com', status: 'sem-vaga', tipo: 'entrevista', de: 'rh@x.example', assunto: 'Convite', resumo: '' };
     await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [email]);
+    fireEvent.click(screen.getByRole('button', { name: 'Criar vaga…' }));
     const criar = screen.getByRole('button', { name: 'Criar vaga' }) as HTMLButtonElement;
     expect(criar.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText('Empresa'), { target: { value: 'Gama' } });
     expect(criar.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText('Cargo'), { target: { value: 'Dev' } });
     expect(criar.disabled).toBe(false);
+  });
+
+  it('e-mails iguais viram um cartão; ignorar e criar valem para todos', async () => {
+    const lembrete = (n: number) => ({ idMensagem: `l${n}@example.com`, status: 'sem-vaga', tipo: 'teste', de: 'no-reply@teste.example', assunto: 'Reminder about your assessment', resumo: `lembrete ${n}`,
+      sugestao: { empresa: 'Delta', cargo: '[Job-77] Dev Go, Brazil' } });
+    const { chamadas } = await montar({ conectada: true, ultimaLeitura: '2026-11-10' }, [lembrete(1), lembrete(2), lembrete(3)], () => ({}));
+    expect(screen.getAllByRole('heading', { name: 'Reminder about your assessment' })).toHaveLength(1);
+    expect(screen.getByText(/Mais 2 e-mails iguais/)).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ignorar e-mails' })); });
+    expect(chamadas.filter(c => c.metodo === 'POST').map(c => c.rota)).toEqual(['l1', 'l2', 'l3'].map(i => `/api/v1/emails/${i}%40example.com/descartar`));
+    chamadas.length = 0;
+    fireEvent.click(screen.getByRole('button', { name: 'Criar vaga: Delta — Dev Go…' }));
+    expect((screen.getByLabelText('Cargo') as HTMLInputElement).value).toBe('Dev Go');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Criar vaga' })); });
+    expect(chamadas.map(c => [c.rota, c.corpo])).toEqual([
+      ['/api/v1/emails/l1%40example.com/criar-vaga', { empresa: 'Delta', cargo: 'Dev Go' }],
+      ['/api/v1/emails/l2%40example.com/descartar', {}],
+      ['/api/v1/emails/l3%40example.com/descartar', {}],
+    ]);
+  });
+
+  it('agrupa só remetente, assunto e tipo iguais; o cargo perde código e local', () => {
+    const e = (de: string, assunto: string, tipo = 'teste') => ({ de, assunto, tipo });
+    expect(agruparIguais([e('a@x', 'Teste'), e('A@X', ' teste '), e('b@x', 'Teste'), e('a@x', 'Teste', 'oferta')]).map(g => g.length)).toEqual([2, 1, 1]);
+    expect(cargoSemLocal('[Job-32191] Senior Backend IA Developer, Brazil')).toBe('Senior Backend IA Developer');
+    expect(cargoSemLocal('Engenheira iOS | Brasil (Remoto)')).toBe('Engenheira iOS');
+    expect(cargoSemLocal('Pessoa Dev (Pleno)')).toBe('Pessoa Dev (Pleno)');
   });
 });

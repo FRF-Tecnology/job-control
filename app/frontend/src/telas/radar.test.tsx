@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Contexto, type App } from '../app/contexto';
-import { TelaRadar } from './Radar';
+import { TelaRadar, descricaoParaLer } from './Radar';
 import { intervaloDaBusca } from './BuscaDoPerfil';
 
 const abrir = vi.hoisted(() => vi.fn());
@@ -358,5 +358,14 @@ describe('Radar de vagas', () => {
     montar([],api);
     fireEvent.click(screen.getByRole('button',{name:'Buscar vagas'}));
     await screen.findByRole('heading',{name:'Nenhuma vaga compatível nesta busca'});
+  });
+
+  it('descrição guardada no teto termina na última palavra inteira, com reticências', () => {
+    const cortada = ('palavra '.repeat(750) + 'applicable legally p').slice(-6000);
+    expect([...cortada]).toHaveLength(6000);
+    const lida = descricaoParaLer(cortada);
+    expect(lida.endsWith('legally…')).toBe(true);
+    expect(descricaoParaLer('Texto curto.')).toBe('Texto curto.');
+    expect(descricaoParaLer('x'.repeat(5999) + '…')).toBe('x'.repeat(5999) + '…');
   });
 });

@@ -117,7 +117,7 @@ func TestLerDescricaoDaVaga(t *testing.T) {
 		t.Fatalf("abriu %q", ultimo)
 	}
 	v := vagaDoRadar(t, a, "linkedin-4012345678")
-	if v["descricao"] != "Sobre a vaga: Go, scriptx/script PostgreSQL e Kubernetes." {
+	if v["descricao"] != "Sobre a vaga:\n\nGo, scriptx/script PostgreSQL e Kubernetes." {
 		t.Errorf("descrição: %q", v["descricao"])
 	}
 	if v["triagemBusca"] == "pendente" || v["aderencia"] != "B" || v["etapa"] != "descoberta" || prov.chamadas != 1 {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"strings"
 
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/triagem"
@@ -16,7 +15,8 @@ import (
 //   - Só a pessoa, um clique por vaga (o produto é copiloto: nada abre o LinkedIn sozinho).
 //   - Só vaga do Radar (descoberta), do LinkedIn, com o endereço da vaga na plataforma; a página tem de parar na
 //     mesma vaga (senão, 409 com o motivo).
-//   - O texto da página é de terceiro: uma linha, até 6000 caracteres, sem <>. Não vai para o log.
+//   - O texto da página é de terceiro: até 6000 caracteres (cortado no fim de uma palavra), sem <>, com os
+//     parágrafos. Não vai para o log.
 
 const tetoDescricao = 6000
 
@@ -26,8 +26,7 @@ var msgsDescricao = map[string]string{
 }
 
 func limparDescricao(s string) string {
-	s = strings.Join(strings.Fields(strings.NewReplacer("<", "", ">", "").Replace(s)), " ")
-	return cortarRunas(s, tetoDescricao)
+	return dominio.TextoLongo(s, tetoDescricao)
 }
 
 // ajustarNota: as regras da busca para a nota da IA (A só com evidência forte; pular é C).

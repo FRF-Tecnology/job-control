@@ -37,7 +37,7 @@ func arbeitnow(ctx context.Context, c *http.Client, termos []string, aceitaRemot
 		}
 		for _, v := range pagina.Data {
 			titulo, empresa := texto(v.Title, 300), texto(v.CompanyName, 180)
-			descricao := texto(v.Description, 6000)
+			descricao := textoDaDescricao(v.Description)
 			if v.Slug == "" || titulo == "" || empresa == "" || !linkDaFonte(v.URL, "arbeitnow.com") || v.Remote && !aceitaRemoto || !cargoNasAtribuicoes(termos, titulo, descricao) {
 				continue
 			}

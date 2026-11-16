@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -186,7 +187,7 @@ func registrarSemVaga(e Estado, email, cls Objeto, ctx Ctx) (Estado, Objeto, err
 		if v := TextoDeSugestao(cls["empresa"]); v != "" {
 			sug["empresa"] = v
 		}
-		if v := TextoDeSugestao(cls["cargo"]); v != "" {
+		if v := CargoSemLocal(TextoDeSugestao(cls["cargo"])); v != "" {
 			sug["cargo"] = v
 		}
 		if len(sug) > 0 {
@@ -205,6 +206,21 @@ func TextoDeSugestao(x any) string {
 		return ""
 	}
 	return cortarJS(s, 120)
+}
+
+var (
+	codigoDaVaga = regexp.MustCompile(`^\s*[\[(](job|vaga|req|ref)?[\s#:-]*[A-Za-z0-9-]*\d[A-Za-z0-9-]*[\])]\s*`)
+	localNoFim   = regexp.MustCompile(`(?i)\s*(,|-|–|\||/)\s*(brazil|brasil|remote|remoto|latam|worldwide|híbrido|hibrido)(\s*\(?(remote|remoto)\)?)?\s*$`)
+)
+
+// CargoSemLocal tira do título o código da vaga no começo ("[Job-123]") e o local no fim (", Brazil", "- Remote"):
+// o cargo da vaga criada de um e-mail fica só o título.
+func CargoSemLocal(s string) string {
+	s = codigoDaVaga.ReplaceAllString(s, "")
+	for localNoFim.MatchString(s) {
+		s = localNoFim.ReplaceAllString(s, "")
+	}
+	return strings.TrimSpace(s)
 }
 
 // CriarVagaDoEmail: a pessoa cria a vaga de um e-mail "sem vaga" (candidatura feita fora do app) e liga o e-mail a

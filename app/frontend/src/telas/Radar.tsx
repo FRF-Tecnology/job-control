@@ -47,6 +47,17 @@ export function explicarDescricao(e: unknown) {
 }
 const podeLerDescricao = (v: Vaga) => v.etapa === 'descoberta' && !v.descricao && v.plataforma === 'linkedin';
 
+// Rótulos que a fonte manda sem dizer nada ("Any" é o nível de experiência "qualquer um" do Jobicy).
+const rotuloVazio = /^(any|n\/?a|none|not specified|other|-)$/i;
+// Descrições guardadas antes do corte no fim da palavra (o teto é 6000) paravam no meio de uma palavra: termina na
+// última palavra inteira e avisa que há mais ("Ler anúncio" abre o texto todo).
+export function descricaoParaLer(d: string) {
+  const r = [...d];
+  if (r.length < 6000 || d.endsWith('…')) return d;
+  const corte = d.lastIndexOf(' ');
+  return (corte > d.length / 2 ? d.slice(0, corte) : d).replace(/[\s.,;:]+$/, '') + '…';
+}
+
 const pequena = () => window.matchMedia?.('(max-width: 760px)').matches ?? false;
 
 function dataDoAnuncio(data: string | undefined, fimDoDia = false) {
@@ -201,7 +212,7 @@ function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfaz
 }) {
   const [rotuloSalario, valorSalario] = salario(vaga, pretensao);
   const grupo = temNota(vaga.aderencia) ? vaga.aderencia : null;
-  const tags = [...new Set([...(vaga.categorias ?? []), ...(vaga.stack ?? []), vaga.nivel, vaga.contrato].filter(Boolean))];
+  const tags = [...new Set([...(vaga.categorias ?? []), ...(vaga.stack ?? []), vaga.nivel, vaga.contrato].filter(t => t && !rotuloVazio.test(t.trim())))];
   return <article className="rd-detail" id="rd-detail" aria-labelledby="rd-job-heading" onKeyDown={e => {
     if (e.key === 'Escape' && pequena()) { e.preventDefault(); voltar(); }
   }}>
@@ -233,7 +244,7 @@ function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfaz
           <IconeUI nome="search" tamanho={15} />{lendo ? 'Lendo a vaga…' : 'Ler a descrição da vaga'}</button>
       </div>}
     </div>
-    {vaga.descricao && <div className="rd-description"><h4>Sobre a vaga</h4><p>{vaga.descricao}</p></div>}
+    {vaga.descricao && <div className="rd-description"><h4>Sobre a vaga</h4><p>{descricaoParaLer(vaga.descricao)}</p></div>}
     {!!tags.length && <ul className="rd-tags" aria-label="Competências e requisitos">{tags.map(tag => <li key={tag}>{tag}</li>)}</ul>}
     <div className="rd-externa">
       {vaga.fonteBusca && <LinkExterno url={vaga.fonteURL} semLink={<span>Fonte: {vaga.fonteBusca}</span>}>Fonte: {vaga.fonteBusca}</LinkExterno>}

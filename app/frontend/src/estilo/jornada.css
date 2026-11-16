@@ -216,3 +216,7 @@ textarea.j-input { resize: vertical; min-height: 76px; }
 .j-email-criar label { font-size: 13px; color: var(--muted); }
 .j-email-criar input { min-height: 36px; width: 100%; }
 .j-email-criar button { grid-column: 2; justify-self: start; }
+/* O quadro vem primeiro; as respostas por e-mail, logo abaixo. */
+.j-board-grid + .j-email { margin: 18px 0 0; }
+.j-email-criar .j-email-acoes { grid-column: 1 / -1; margin-top: 4px; }
+.j-email-iguais { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }

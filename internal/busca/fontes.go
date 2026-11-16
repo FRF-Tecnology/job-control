@@ -42,6 +42,29 @@ func texto(s string, limite int) string {
 	return s
 }
 
+// tetoDescricao: o tamanho máximo da descrição guardada de uma vaga.
+const tetoDescricao = 6000
+
+var (
+	fimDeBloco   = regexp.MustCompile(`(?i)<br\s*/?>|</(p|div|h[1-6]|ul|ol|li|tr|section)\s*>`)
+	itemLista    = regexp.MustCompile(`(?i)<li[^>]*>`)
+	linhasVazias = regexp.MustCompile(`\n\s*\n`)
+)
+
+// textoDaDescricao limpa a descrição de uma vaga (HTML da fonte) mantendo os parágrafos e os itens de lista, para a tela
+// mostrar o texto como a fonte o escreveu, e corta no teto no fim de uma palavra.
+func textoDaDescricao(s string) string {
+	s = itemLista.ReplaceAllString(s, "\n• ")
+	s = fimDeBloco.ReplaceAllString(s, "\n")
+	s = html.UnescapeString(tag.ReplaceAllString(s, " "))
+	s = tag.ReplaceAllString(s, " ") // fontes que mandam o HTML escapado duas vezes
+	// No HTML, quem separa os parágrafos são as tags: uma quebra basta (a fonte não manda linhas em branco).
+	for linhasVazias.MatchString(s) {
+		s = linhasVazias.ReplaceAllString(s, "\n")
+	}
+	return dominio.TextoLongo(s, tetoDescricao)
+}
+
 func receber(ctx context.Context, c *http.Client, endpoint string, parametros url.Values, resultado any) error {
 	if len(parametros) > 0 {
 		endpoint += "?" + parametros.Encode()
@@ -114,7 +137,7 @@ func gupy(ctx context.Context, c *http.Client, termo string) ([]dominio.Objeto, 
 			if modelo != "Remoto" {
 				local = strings.Join(slices.DeleteFunc([]string{v.City, v.State, v.Country}, func(s string) bool { return s == "" }), ", ")
 			}
-			vaga := dominio.Objeto{"id": "gupy-" + v.ID.String(), "titulo": titulo, "empresa": empresa, "link": v.JobURL, "plataforma": "gupy", "fonteBusca": "Gupy", "fonteURL": v.JobURL, "mercado": "nacional", "modelo": modelo, "local": local, "descricao": texto(v.Description, 6000)}
+			vaga := dominio.Objeto{"id": "gupy-" + v.ID.String(), "titulo": titulo, "empresa": empresa, "link": v.JobURL, "plataforma": "gupy", "fonteBusca": "Gupy", "fonteURL": v.JobURL, "mercado": "nacional", "modelo": modelo, "local": local, "descricao": textoDaDescricao(v.Description)}
 			if modelo != "Remoto" && v.Country != "" {
 				vaga["paisesElegiveis"] = []string{v.Country}
 			}
@@ -164,7 +187,7 @@ func himalayas(ctx context.Context, c *http.Client, termo, pais string) ([]domin
 				continue
 			}
 			id := sha256.Sum256([]byte(v.GUID))
-			vaga := dominio.Objeto{"id": fmt.Sprintf("himalayas-%x", id[:12]), "titulo": titulo, "empresa": empresa, "link": v.ApplicationLink, "plataforma": "externo", "fonteBusca": "Himalayas", "fonteURL": "https://himalayas.app", "mercado": "internacional", "modelo": "Remoto", "local": strings.Join(v.LocationRestrictions, ", "), "contrato": v.EmploymentType, "descricao": texto(v.Description, 6000)}
+			vaga := dominio.Objeto{"id": fmt.Sprintf("himalayas-%x", id[:12]), "titulo": titulo, "empresa": empresa, "link": v.ApplicationLink, "plataforma": "externo", "fonteBusca": "Himalayas", "fonteURL": "https://himalayas.app", "mercado": "internacional", "modelo": "Remoto", "local": strings.Join(v.LocationRestrictions, ", "), "contrato": v.EmploymentType, "descricao": textoDaDescricao(v.Description)}
 			if linkDaFonte(v.GUID, "himalayas.app") {
 				vaga["fonteURL"] = v.GUID
 			}
