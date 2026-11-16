@@ -163,3 +163,23 @@ func TestSoEndereco(t *testing.T) {
 		t.Fatal("SoEndereco")
 	}
 }
+
+func TestBuscarPorAssuntoECorpo(t *testing.T) {
+	l, _, _ := servidorDeTeste(t,
+		emailDeTeste("Acme <rh@acme.example>", "Sua candidatura", "obrigado"),
+		emailDeTeste("Beta <rh@beta.example>", "Atualizacao", "infelizmente nao seguiremos"),
+		emailDeTeste("Amiga <amiga@example.com>", "Almoco", "pessoal"),
+	)
+	desde := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	msgs, err := l.Buscar(context.Background(), contaDeTeste, desde, Busca{Assuntos: []string{"candidatura"}, Corpo: []string{"infelizmente"}}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var assuntos []string
+	for _, m := range msgs {
+		assuntos = append(assuntos, m.Assunto)
+	}
+	if strings.Join(assuntos, "|") != "Atualizacao|Sua candidatura" {
+		t.Fatalf("esperava o do assunto e o do corpo, sem o pessoal: %v", assuntos)
+	}
+}

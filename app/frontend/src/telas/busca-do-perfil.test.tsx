@@ -11,10 +11,13 @@ afterEach(() => {
 });
 
 const balanco = { encontradas: 3, novas: 3, grupos: { A: 1, B: 1, C: 1 }, puladas: 0, pendentes: 0, avisos: [] as string[] };
+// A data de hoje no fuso da pessoa (o Radar compara com a hora local). toISOString daria a data em UTC, que depois
+// das 21h no Brasil já é amanhã: a vaga ficaria "publicada no futuro" e sairia das Recomendadas.
+const hojeLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 const json = (dados: unknown) => new Response(JSON.stringify(dados), { headers: { 'content-type': 'application/json' } });
 const vaga = (grupo: string, empresa: string) => ({
   id: `busca-teste-${grupo}`, etapa: 'descoberta', titulo: 'Analista', empresa, aderencia: grupo, mercado: 'nacional',
-  plataforma: 'externo', descobertaEm: '2026-11-10', publicadaEm: new Date().toISOString().slice(0,10),
+  plataforma: 'externo', descobertaEm: '2026-11-10', publicadaEm: hojeLocal(),
   radarVersao: 1, radarClasse: grupo === 'A' ? 'forte' : grupo === 'B' ? 'conferir' : 'excluir',
   radarMotivo: `Evidência para ${empresa}.`, motivoClaude: `Parecer para ${empresa}.`, triagemConferir: ['Confirmar local da entrevista.'],
   ...(grupo === 'C' ? { triagemDecisao: 'pular', triagemMotivoPulo: 'Tecnologias fora da stack escolhida.' } : {}),
