@@ -31,6 +31,13 @@ Muitas vagas brasileiras pedem CPF no site da empresa. Hoje o app deixa o campo 
 3. Só o clique em "Preencher CPF" manda `cpf: true`. O servidor lê o cofre e o navegador preenche **só** os campos de
    CPF, no domínio conferido, de novo conferido na hora.
 
+**Sem perguntar (opcional, também decisão da PO)**
+- Com o CPF salvo, a caixa "Preencher o CPF sem perguntar" (PATCH `/perfil/cpf {automatico}`, preferência no banco)
+  faz o CPF ir já no primeiro "Preencher", junto com o resto, no domínio que a pessoa acabou de conferir. A pergunta à
+  parte some; a conferência do domínio, não.
+- A resposta traz `comCPF`, e a tela diz "Preenchi N campos, incluindo o CPF".
+- Apagar o CPF desliga a caixa.
+
 **O que continua proibido**
 - Fora de site brasileiro, o CPF é descartado mesmo se pedido.
 - Campo que pode ser de empresa ou outro documento ("CPF/CNPJ", CNPJ, SSN, NIF, Tax ID): nunca.

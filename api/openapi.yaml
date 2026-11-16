@@ -271,7 +271,7 @@ paths:
   /vagas/{id}/preencher:
     post:
       x-so-tela: true
-      summary: 'Preencher no site da empresa, passo 2. Sem dominio: devolve {dominio}, o domínio da aba do site da empresa, para a pessoa conferir (nada é preenchido). Com dominio: confere de novo que a aba está nesse domínio e preenche o que reconhece com o contato do perfil, as respostas padrão de mesmo texto e o currículo da reserva (conferido pelo sha256; a cópia é apagada quando a janela fecha). Nunca sobrescreve campo já preenchido, nunca preenche campo sensível (senha, documento, dado bancário; CPF só no passo 3), nunca marca caixa nem aceita termos, nunca avança nem envia. Responde {preenchidos, anexou, faltando} (faltando: obrigatórios em branco); num site brasileiro (.br, Gupy) com campo de CPF em branco, também {pedeCPF: quantos, cpfSalvo}. Passo 3, com cpf: true (docs/propostas/cpf-no-preencher.md): preenche SÓ os campos de CPF com o CPF do cofre, só em site brasileiro; 409 sem-cpf sem CPF salvo. 409 {erro, motivo}: sem-reserva, sem-janela, sem-site, site-mudou, curriculo-mudou, sem-cpf, falhou. 404 sem o envio neste build.'
+      summary: 'Preencher no site da empresa, passo 2. Sem dominio: devolve {dominio}, o domínio da aba do site da empresa, para a pessoa conferir (nada é preenchido). Com dominio: confere de novo que a aba está nesse domínio e preenche o que reconhece com o contato do perfil, as respostas padrão de mesmo texto e o currículo da reserva (conferido pelo sha256; a cópia é apagada quando a janela fecha). Nunca sobrescreve campo já preenchido, nunca preenche campo sensível (senha, documento, dado bancário; CPF só no passo 3), nunca marca caixa nem aceita termos, nunca avança nem envia. Responde {preenchidos, anexou, faltando} (faltando: obrigatórios em branco); num site brasileiro (.br, Gupy) com campo de CPF em branco, também {pedeCPF: quantos, cpfSalvo}; com o CPF automático ligado, o CPF vai já neste passo e a resposta traz comCPF. Passo 3, com cpf: true (docs/propostas/cpf-no-preencher.md): preenche SÓ os campos de CPF com o CPF do cofre, só em site brasileiro; 409 sem-cpf sem CPF salvo. 409 {erro, motivo}: sem-reserva, sem-janela, sem-site, site-mudou, curriculo-mudou, sem-cpf, falhou. 404 sem o envio neste build.'
       requestBody:
         required: true
         content:
@@ -855,9 +855,27 @@ paths:
         '200': { description: CPF gravado, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
+    patch:
+      x-so-tela: true
+      summary: 'Liga ou desliga "Preencher o CPF sem perguntar": com true, o CPF salvo vai junto no Preencher de site brasileiro (só nos campos de CPF), sem o passo 3. Preferência no banco; o CPF continua só no cofre. 409 sem-cpf para ligar sem CPF salvo'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [automatico]
+              properties:
+                automatico: { type: boolean }
+      responses:
+        '200': { description: Preferência gravada, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
+        '400': { $ref: '#/components/responses/Validacao' }
+        '403': { $ref: '#/components/responses/SoTela' }
+        '409': { $ref: '#/components/responses/Erro' }
     delete:
       x-so-tela: true
-      summary: 'Apaga o CPF do cofre'
+      summary: 'Apaga o CPF do cofre e desliga o automático'
       responses:
         '200': { description: CPF apagado, content: { application/json: { schema: { $ref: '#/components/schemas/EstadoCPF' } } } }
         '403': { $ref: '#/components/responses/SoTela' }
@@ -1480,6 +1498,7 @@ components:
       properties:
         salvo: { type: boolean }
         mascarado: { type: string, description: 'Só o miolo: ***.456.789-**' }
+        automatico: { type: boolean, description: 'Preencher o CPF sem perguntar (só em site brasileiro)' }
     ContaEmail:
       type: object
       additionalProperties: false

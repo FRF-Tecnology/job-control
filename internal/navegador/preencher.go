@@ -251,6 +251,7 @@ func (n *Navegador) PreencherSite(ctx context.Context, dominioConferido string, 
 			r.Anexou = true
 		case err == nil:
 			r.Preenchidos++
+			r.ComCPF = r.ComCPF || dominio.RotuloDeCPF(a.Campo.Rotulo)
 		case ctx.Err() != nil:
 			return r, ctx.Err()
 		default:

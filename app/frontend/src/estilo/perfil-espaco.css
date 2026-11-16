@@ -135,3 +135,5 @@
 .pr-cpf-novo input[aria-invalid=true] { border-color: var(--pr-alert); }
 .pr-cpf .pr-nota { margin: 2px 0 0; }
 .pr-cpf .pr-erro { margin: 0; color: var(--pr-alert, #ff8a8a); font-size: .82rem; }
+.pr-cpf-auto { display: inline-flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--text); cursor: pointer; margin-top: 2px; }
+.pr-cpf-auto input { width: 16px; height: 16px; accent-color: var(--lilac); }

@@ -182,6 +182,13 @@ func TestPlanejarAssistidoCPF(t *testing.T) {
 	if faltando != 1 {
 		t.Errorf("faltando: %d", faltando)
 	}
+	// Automático: o CPF vai junto com o resto, no mesmo passo (ainda só no campo de CPF).
+	auto := dominio.ConteudoAssistido(perfil, nil)
+	auto["cpf"] = "529.982.247-25"
+	plano, faltando = PlanejarAssistido(auto, perfil, campos, false)
+	if len(plano) != 2 || plano[0].Campo.ID != "n" || plano[1].Campo.ID != "c" || faltando != 0 {
+		t.Errorf("automático: %+v faltando %d", plano, faltando)
+	}
 	// Com o CPF confirmado (segundo passo): só o campo de CPF.
 	conteudo := dominio.ConteudoAssistido(perfil, nil)
 	conteudo["cpf"], conteudo["soCPF"] = "529.982.247-25", true

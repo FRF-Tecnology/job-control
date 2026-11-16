@@ -63,23 +63,29 @@ export function cpfValido(v:string){
   if(d.length!==11||/^(\d)\1{10}$/.test(d)) return false;
   return [9,10].every(n=>{let s=0;for(let i=0;i<n;i++)s+=Number(d[i])*(n+1-i);return s*10%11%10===Number(d[n]);});
 }
+const lerCPF=(r:any)=>({salvo:r?.salvo===true,mascarado:texto(r?.mascarado),automatico:r?.automatico===true});
 // O CPF não vai com o perfil: tem rota e botão próprios e fica no cofre do sistema (Chaves do Mac). A tela só vê a
 // máscara; o número digitado sai da tela assim que é salvo.
 function CampoCPF(){
   const app=useApp();
-  const [estado,setEstado]=useState<{salvo:boolean;mascarado:string}|null>(null);
+  const [estado,setEstado]=useState<{salvo:boolean;mascarado:string;automatico:boolean}|null>(null);
   const [editando,editar]=useState(false), [valor,setValor]=useState(''), [erro,setErro]=useState(''), [ocupado,ocupar]=useState(false);
-  useEffect(()=>{let vivo=true;app.api('/api/v1/perfil/cpf').then(r=>{if(vivo)setEstado({salvo:r?.salvo===true,mascarado:texto(r?.mascarado)})}).catch(()=>{});return()=>{vivo=false}},[]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{let vivo=true;app.api('/api/v1/perfil/cpf').then(r=>{if(vivo)setEstado(lerCPF(r))}).catch(()=>{});return()=>{vivo=false}},[]); // eslint-disable-line react-hooks/exhaustive-deps
   if(!estado) return null;
   const salvar=async()=>{
     if(!cpfValido(valor)){setErro('Confira os 11 números do CPF.');return;}
     ocupar(true);setErro('');
-    try{const r=await app.api('/api/v1/perfil/cpf','PUT',{cpf:valor});setEstado({salvo:true,mascarado:texto(r?.mascarado)});setValor('');editar(false);app.aviso('CPF salvo.');}
+    try{const r=await app.api('/api/v1/perfil/cpf','PUT',{cpf:valor});setEstado(lerCPF(r));setValor('');editar(false);app.aviso('CPF salvo.');}
     catch{setErro('Não deu para salvar o CPF. Tente de novo.')}finally{ocupar(false)}
+  };
+  const automatico=async(ligar:boolean)=>{
+    ocupar(true);setErro('');
+    try{const r=await app.api('/api/v1/perfil/cpf','PATCH',{automatico:ligar});setEstado(lerCPF(r));}
+    catch{setErro('Não deu para mudar a opção. Tente de novo.')}finally{ocupar(false)}
   };
   const apagar=async()=>{
     ocupar(true);setErro('');
-    try{await app.api('/api/v1/perfil/cpf','DELETE');setEstado({salvo:false,mascarado:''});app.aviso('CPF apagado.');}
+    try{await app.api('/api/v1/perfil/cpf','DELETE');setEstado({salvo:false,mascarado:'',automatico:false});app.aviso('CPF apagado.');}
     catch{setErro('Não deu para apagar o CPF. Tente de novo.')}finally{ocupar(false)}
   };
   return <div className="pr-field pr-wide pr-cpf">
@@ -93,8 +99,10 @@ function CampoCPF(){
           <button type="button" className="btn secondary" disabled={ocupado||!valor.trim()} onClick={salvar}>Salvar CPF</button>
           {estado.salvo&&<button type="button" className="btn quiet" disabled={ocupado} onClick={()=>{editar(false);setValor('');setErro('')}}>Cancelar</button>}
         </div>}
+    {estado.salvo&&!editando&&<label className="pr-cpf-auto"><input type="checkbox" checked={estado.automatico} disabled={ocupado} onChange={e=>void automatico(e.target.checked)}/>
+      <span>Preencher o CPF sem perguntar</span></label>}
     {erro&&<p className="pr-erro" role="alert">{erro}</p>}
-    <p className="pr-nota">Fica nas Chaves do Mac, fora do banco do app, e aqui aparece só em parte. O app só preenche o CPF em site brasileiro e quando você confirma, na hora. Nunca vai para a IA nem para o envio automático.</p>
+    <p className="pr-nota">Fica nas Chaves do Mac, fora do banco do app, e aqui aparece só em parte. O app só preenche o CPF em site brasileiro, no campo de CPF, {estado.automatico?'junto com o resto, depois que você confere o site':'e pergunta antes, a cada site'}. Nunca vai para a IA nem para o envio automático.</p>
   </div>;
 }
 function Cartao({titulo,icone,children}:{titulo:string;icone:string;children:ReactNode}){

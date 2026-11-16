@@ -172,3 +172,20 @@ it('CPF: rota e botão próprios, confere os dígitos, mostra só a máscara e n
   expect(api).toHaveBeenLastCalledWith('/api/v1/perfil/cpf', 'DELETE');
   expect(screen.getByLabelText('CPF')).toBeTruthy();
 });
+it('CPF salvo: a caixinha liga o preenchimento sem perguntar', async () => {
+  const api = vi.fn(async (path: string, metodo?: string, corpo?: any) => {
+    if (path === '/api/v1/ia') return { provedor: 'claude-cli', configurada: true, chaves: {}, clis: [] };
+    if (path === '/api/v1/perfil/cpf') return { salvo: true, mascarado: '***.982.247-**', automatico: metodo === 'PATCH' ? corpo.automatico : false };
+    return {};
+  });
+  const app = { estado: { perfilBuscaAtivo: 'original', perfisBusca: [], perfil: { cargo: 'Java Engineer' } }, api,
+    limpar: vi.fn(), recarregar: vi.fn(), aviso: vi.fn(), conexaoIA: { nome: 'Claude', verificada: true } } as unknown as App;
+  render(<Contexto.Provider value={app}><PerfilDoEspaco /></Contexto.Provider>);
+  const caixa = await screen.findByRole('checkbox', { name: 'Preencher o CPF sem perguntar' }) as HTMLInputElement;
+  expect(caixa.checked).toBe(false);
+  expect(screen.getByText(/pergunta antes, a cada site/)).toBeTruthy();
+  await act(async () => { fireEvent.click(caixa); });
+  expect(api).toHaveBeenLastCalledWith('/api/v1/perfil/cpf', 'PATCH', { automatico: true });
+  expect((screen.getByRole('checkbox', { name: 'Preencher o CPF sem perguntar' }) as HTMLInputElement).checked).toBe(true);
+  expect(screen.getByText(/junto com o resto, depois que você confere o site/)).toBeTruthy();
+});

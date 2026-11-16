@@ -135,6 +135,20 @@ describe('Radar de vagas', () => {
       cleanup();
     }
   });
+  it('preencher com o CPF automático: o resumo diz que o CPF foi e nada é perguntado', async () => {
+    const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true, plataforma: 'linkedin', link: 'https://www.linkedin.com/jobs/view/1/' };
+    const api = vi.fn(async (rota: string, _m?: string, corpo?: any) => {
+      if (rota.endsWith('/abrir-para-preencher')) return { aberta: true };
+      if (rota.endsWith('/preencher') && !corpo?.dominio) return { dominio: 'carreiras.acme.com.br' };
+      return { preenchidos: 5, anexou: true, faltando: 0, comCPF: true };
+    });
+    montar([reservada], api);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Abrir e preencher no app' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Preencher esta página' })); });
+    await act(async () => { fireEvent.click(within(screen.getByRole('group', { name: 'Conferir o site' })).getByRole('button', { name: 'Preencher' })); });
+    expect(screen.getByRole('status').textContent).toMatch(/^Preenchi 5 campos, incluindo o CPF, e anexei o currículo\./);
+    expect(screen.queryByRole('group', { name: 'Preencher o CPF' })).toBeNull();
+  });
   it('preencher: ainda no LinkedIn, frase fixa sem o texto do servidor', async () => {
     const { ErroApi } = await import('../app/contexto');
     const reservada = { ...vaga('ext', 'A'), etapa: 'aplicar', aplicacaoManual: true };

@@ -134,10 +134,10 @@ export function explicarPreencher(e: unknown) {
   const motivo = e instanceof ErroApi ? e.dados?.motivo : undefined;
   return motivosPreencher[motivo] ?? 'Não deu para usar a janela agora. Tente de novo.';
 }
-const resumoPreencher = (r: { preenchidos?: number; anexou?: boolean; faltando?: number }) => {
-  const partes = [`Preenchi ${plural(r.preenchidos ?? 0, 'campo', 'campos')}`];
-  if (r.anexou) partes.push('anexei o currículo');
-  let t = partes.join(' e ') + '.';
+const resumoPreencher = (r: { preenchidos?: number; anexou?: boolean; faltando?: number; comCPF?: boolean }) => {
+  let t = `Preenchi ${plural(r.preenchidos ?? 0, 'campo', 'campos')}`;
+  if (r.comCPF) t += r.anexou ? ', incluindo o CPF, e anexei o currículo.' : ', incluindo o CPF.';
+  else t += r.anexou ? ' e anexei o currículo.' : '.';
   if (r.faltando) t += ` ${plural(r.faltando, 'campo obrigatório ficou', 'campos obrigatórios ficaram')} para você.`;
   return t + ' Confira tudo, avance e envie no site. Depois, clique em Já enviei.';
 };

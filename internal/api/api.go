@@ -577,8 +577,8 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		}
 	}
 
-	if p == "/perfil/cpf" && (m == "GET" || m == "PUT" || m == "DELETE") {
-		r, err := a.rotaCPF(m, c, autor)
+	if p == "/perfil/cpf" && (m == "GET" || m == "PUT" || m == "PATCH" || m == "DELETE") {
+		r, err := a.rotaCPF(ctx, m, c, autor)
 		return r, err
 	}
 

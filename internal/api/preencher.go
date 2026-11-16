@@ -128,11 +128,22 @@ func (a *API) preencherSiteDaVaga(ctx context.Context, id string, c Objeto, auto
 		return Resposta{}, err
 	}
 	temCPF = cpf != ""
-	if querCPF == true {
+	switch {
+	case querCPF == true:
 		if !temCPF {
 			return Resposta{}, &dominio.ErroConflito{Msg: "salve seu CPF em Perfil e IA antes", Motivo: "sem-cpf"}
 		}
 		conteudo["cpf"], conteudo["soCPF"] = dominio.FormatarCPF(cpf), true
+	case temCPF:
+		// "Preencher o CPF sem perguntar": vai junto com o resto, no domínio que a pessoa acabou de conferir. O
+		// navegador ainda descarta fora de site brasileiro.
+		auto, err := a.cpfAutomatico(ctx)
+		if err != nil {
+			return Resposta{}, err
+		}
+		if auto {
+			conteudo["cpf"] = dominio.FormatarCPF(cpf)
+		}
 	}
 	r, err := a.preencherSite(ctx, dom, conteudo, e.Perfil, nome, bytes)
 	if err != nil {
@@ -140,6 +151,9 @@ func (a *API) preencherSiteDaVaga(ctx context.Context, id string, c Objeto, auto
 	}
 	log.Printf("preencher: %d campo(s), currículo %t, %d obrigatório(s) em branco, cpf %t", r.Preenchidos, r.Anexou, r.Faltando, querCPF == true) // só números
 	res := Objeto{"preenchidos": r.Preenchidos, "anexou": r.Anexou, "faltando": r.Faltando}
+	if r.ComCPF {
+		res["comCPF"] = true
+	}
 	if r.PedeCPF > 0 {
 		res["pedeCPF"], res["cpfSalvo"] = r.PedeCPF, temCPF
 	}

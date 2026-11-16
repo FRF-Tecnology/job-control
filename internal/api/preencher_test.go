@@ -43,6 +43,9 @@ func (j *janelaDePreencher) preencher(_ context.Context, dom string, conteudo, p
 	if conteudo["soCPF"] == true {
 		return dominio.ResultadoPreenchimento{Preenchidos: 1}, nil
 	}
+	if conteudo["cpf"] != nil {
+		return dominio.ResultadoPreenchimento{Preenchidos: 5, Anexou: true, Faltando: 1, ComCPF: true}, nil
+	}
 	return dominio.ResultadoPreenchimento{Preenchidos: 4, Anexou: true, Faltando: 2, PedeCPF: j.pedeCPF}, nil
 }
 
