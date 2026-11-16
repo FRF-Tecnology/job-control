@@ -168,6 +168,11 @@ func ValidarPerfil(x any) []string {
 			erros = append(erros, k+" deve ser texto")
 		}
 	}
+	for _, l := range [][3]string{{"linkedin", "linkedin.com", "LinkedIn"}, {"github", "github.com", "GitHub"}} {
+		if v, ok := p[l[0]].(string); ok && strings.TrimSpace(v) != "" && LinkDePerfil(v, l[1]) == "" {
+			erros = append(erros, "informe o endereço do seu perfil no "+l[2]+", como https://"+l[1]+"/…")
+		}
+	}
 	if v := p["paisTrabalho"]; v != nil && v != "" {
 		s, ok := v.(string)
 		if !ok || len(s) != 2 || s[0] < 'A' || s[0] > 'Z' || s[1] < 'A' || s[1] > 'Z' {

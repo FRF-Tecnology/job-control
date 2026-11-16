@@ -65,11 +65,12 @@ func TestPlanejarAssistidoSemCurriculoENomeCompleto(t *testing.T) {
 
 func TestLinkPublico(t *testing.T) {
 	for v, quer := range map[string]string{
-		"linkedin.com/in/x":                 "https://linkedin.com/in/x",
-		"https://www.linkedin.com/in/x":     "https://www.linkedin.com/in/x",
-		"http://linkedin.com/in/x":          "",
-		"javascript:alert(1)//linkedin.com": "",
-		"":                                  "",
+		"linkedin.com/in/x":                  "https://linkedin.com/in/x",
+		"https://www.linkedin.com/in/x":      "https://www.linkedin.com/in/x",
+		"http://linkedin.com/in/x":           "https://linkedin.com/in/x", // o LinkedIn só responde em https
+		"https://golpe.example/linkedin.com": "",
+		"javascript:alert(1)//linkedin.com":  "",
+		"":                                   "",
 	} {
 		if got := linkPublico(v, "linkedin.com"); got != quer {
 			t.Errorf("linkPublico(%q) = %q, quer %q", v, got, quer)

@@ -113,15 +113,5 @@ func PlanejarAssistido(conteudo, perfil dominio.Objeto, campos []Campo, temCurri
 
 // linkPublico: o endereço do perfil da pessoa, só se for https no site esperado (nunca outro texto).
 func linkPublico(v any, host string) string {
-	s := strings.TrimSpace(dominio.Texto(v))
-	if s == "" {
-		return ""
-	}
-	if !strings.HasPrefix(s, "http") {
-		s = "https://" + strings.TrimPrefix(s, "www.")
-	}
-	if !dominio.URLDaPlataforma("outra", s) || !strings.Contains(strings.ToLower(s), host) {
-		return ""
-	}
-	return s
+	return dominio.LinkDePerfil(dominio.Texto(v), host)
 }

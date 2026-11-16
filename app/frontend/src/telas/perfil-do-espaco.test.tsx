@@ -79,3 +79,21 @@ it('com faixa salva, trocar o mercado não mexe na moeda', () => {
   fireEvent.change(screen.getByLabelText('Mercado'), { target: { value: 'nacional' } });
   expect((screen.getByLabelText('Moeda') as HTMLSelectElement).value).toBe('USD');
 });
+it('dados de contato: grava cidade, LinkedIn e GitHub e recusa link de outro site', async () => {
+  const api = montarCom({ nome: 'Fulana Exemplo' });
+  expect(screen.getByRole('heading', { name: 'Dados de contato' })).toBeTruthy();
+  expect(screen.getByLabelText('Nome completo')).toHaveProperty('value', 'Fulana Exemplo');
+  fireEvent.change(screen.getByLabelText('Cidade onde você mora'), { target: { value: 'Recife, PE' } });
+  fireEvent.change(screen.getByLabelText('LinkedIn'), { target: { value: 'https://golpe.example/linkedin.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
+  expect((await screen.findByRole('alert')).textContent).toMatch(/perfil no LinkedIn/);
+  expect(api.mock.calls.some(([, m]) => m === 'PATCH')).toBe(false);
+  fireEvent.change(screen.getByLabelText('LinkedIn'), { target: { value: ' linkedin.com/in/fulana ' } });
+  fireEvent.change(screen.getByLabelText('GitHub'), { target: { value: 'github.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
+  expect((await screen.findByRole('alert')).textContent).toMatch(/perfil no GitHub/);
+  fireEvent.change(screen.getByLabelText('GitHub'), { target: { value: 'https://github.com/fulana' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/perfil?perfilBuscaId=original', 'PATCH',
+    expect.objectContaining({ nome: 'Fulana Exemplo', cidade: 'Recife, PE', linkedin: 'linkedin.com/in/fulana', github: 'https://github.com/fulana' })));
+});

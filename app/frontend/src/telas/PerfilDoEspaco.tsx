@@ -16,9 +16,12 @@ const marcaIA:Record<string,string>={Claude:'anthropic',OpenAI:'openai',Gemini:'
 // Sem faixa salva, a moeda segue o mercado (como no primeiro acesso); a pretensão antiga é sempre em USD.
 const moedaDoMercado=(foco:string,moedaAtual:string)=>foco==='nacional'?'BRL':foco==='internacional'?'USD':moedaAtual;
 const emailValido=(v:string)=>!v.trim()||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+// O endereço do perfil no site (com ou sem https://), no próprio site ou num subdomínio dele, com o caminho do perfil.
+// A mesma regra do servidor (dominio.LinkDePerfil).
+export const linkDoSite=(v:string,site:string)=>!v.trim()||new RegExp(`^(https?://)?([a-z0-9-]+\\.)*${site.replace('.','\\.')}/[^\\s<>"']+$`,'i').test(v.trim());
 function leitura(p:any){
   const f=p.filtros||{}, faixa=p.faixaSalarial ?? {min:p.pretensaoUSD, moeda:p.pretensaoUSD?'USD':moedaDoMercado(p.foco,'USD')};
-  return {nome:texto(p.nome), email:texto(p.email), telefone:texto(p.telefone), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
+  return {nome:texto(p.nome), email:texto(p.email), telefone:texto(p.telefone), cidade:texto(p.cidade), linkedin:texto(p.linkedin), github:texto(p.github), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
     paisTrabalho:texto(p.paisTrabalho), cidadeTrabalho:texto(p.cidadeTrabalho),
     titulos:lista(p.titulosEquivalentes).join(', '),
     principal:lista(p.stackPrincipal).join(', '), secundaria:lista(p.stackSecundaria).join(', '),
@@ -59,9 +62,11 @@ export function PerfilDoEspaco(){
     if(!dados.cargo.trim()){falhar('Informe o cargo que deseja buscar.');document.getElementById('f-cargo')?.focus();return;}
     if(dados.min && dados.max && Number(dados.max)<Number(dados.min)){falhar('O máximo não pode ser menor que o mínimo.');return;}
     if(!emailValido(dados.email)){falhar('Informe um e-mail válido, como nome@exemplo.com.');document.getElementById('f-email')?.focus();return;}
+    if(!linkDoSite(dados.linkedin,'linkedin.com')){falhar('Informe o endereço do seu perfil no LinkedIn, como linkedin.com/in/seu-nome.');document.getElementById('f-linkedin')?.focus();return;}
+    if(!linkDoSite(dados.github,'github.com')){falhar('Informe o endereço do seu perfil no GitHub, como github.com/seu-usuario.');document.getElementById('f-github')?.focus();return;}
     salvarEstado(true);falhar('');
     try {
-      await app.api(url,'PATCH',{nome:dados.nome.trim(),email:dados.email.trim(),telefone:dados.telefone.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
+      await app.api(url,'PATCH',{nome:dados.nome.trim(),email:dados.email.trim(),telefone:dados.telefone.trim(),cidade:dados.cidade.trim(),linkedin:dados.linkedin.trim(),github:dados.github.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
         paisTrabalho:dados.paisTrabalho, cidadeTrabalho:dados.cidadeTrabalho.trim(),
         titulosEquivalentes:separar(dados.titulos),
         stackPrincipal:separar(dados.principal),stackSecundaria:separar(dados.secundaria),
@@ -83,7 +88,7 @@ export function PerfilDoEspaco(){
     }catch(e){if(ativa.current)cvFalha((e as Error).message||'Não foi possível salvar o PDF.')}
     finally{if(ativa.current)cvOcupar(false)}
   }
-  type Campo='nome'|'email'|'telefone'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
+  type Campo='nome'|'email'|'telefone'|'cidade'|'linkedin'|'github'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
   function campo(k:Campo,label:string,op?:{lista?:[string,string][];wide?:boolean;tipo?:'number';dica?:string}){
     return <div className={'pr-field'+(op?.wide?' pr-wide':'')}><label htmlFor={'f-'+k}>{label}</label>{op?.lista?
       <select form="form-perfil-ativo" id={'f-'+k} value={dados[k]} onChange={e=>set(k,e.target.value)}>{op.lista.map(([v,r])=><option key={v} value={v}>{r}</option>)}</select>:
@@ -96,10 +101,14 @@ export function PerfilDoEspaco(){
     <header className="pr-heading"><div><h1>Perfil de busca</h1><p>Ajuste seu perfil profissional, as condições de trabalho e os dados usados na triagem.</p></div></header>
     <SeletorPerfil/>
     <div className="pr-edit-grid"><div className="pr-stack">
+      <Cartao titulo="Dados de contato" icone="profile"><div className="pr-fields">
+        <p className="pr-wide pr-nota">Vão no pacote de cada candidatura e no "Preencher no site da empresa". Valem para todos os perfis de busca. Deixe em branco o que não quer mandar.</p>
+        {campo('nome','Nome completo',{dica:'Como deve aparecer na candidatura'})}{campo('email','E-mail',{dica:'nome@exemplo.com'})}
+        {campo('telefone','Telefone',{dica:'Com DDD, ex.: (11) 91234-5678'})}{campo('cidade','Cidade onde você mora',{dica:'Ex.: Recife, PE'})}
+        {campo('linkedin','LinkedIn',{dica:'linkedin.com/in/seu-nome'})}{campo('github','GitHub',{dica:'github.com/seu-usuario'})}
+      </div></Cartao>
       <Cartao titulo="Perfil profissional" icone="user"><div className="pr-fields">
-        {campo('nome','Nome')}{campo('cargo','Cargo de interesse')}
-        {campo('email','E-mail',{dica:'nome@exemplo.com'})}{campo('telefone','Telefone',{dica:'Com DDD, ex.: (11) 91234-5678'})}
-        <p className="pr-wide pr-nota">O e-mail e o telefone vão no pacote de cada candidatura e valem para todos os perfis de busca.</p>
+        {campo('cargo','Cargo de interesse',{wide:true})}
         {cargoIgualAoNome(dados.cargo,dados.nome) && <p className="pr-wide">O cargo coincide com seu nome. Informe a função que deseja buscar.</p>}
         <Opcoes titulo="Níveis de experiência aceitos" base={['Estágio','Júnior','Pleno','Sênior','Liderança']} valor={dados.niveis} mudar={v=>set('niveis',v)}/>
         {campo('titulos','Títulos equivalentes',{wide:true,dica:'Separe os títulos por vírgulas (opcional)'})}
