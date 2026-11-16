@@ -190,7 +190,7 @@ export function PerfilDoEspaco(){
         <p className="pr-wide pr-nota">Vão no pacote de cada candidatura e no "Preencher no site da empresa". Valem para todos os perfis de busca. Deixe em branco o que não quer mandar.</p>
         {campo('primeiroNome','Nome',{dica:'Ex.: Maria Clara'})}{campo('sobrenome','Sobrenome',{dica:'Ex.: Souza Lima'})}
         {campo('email','E-mail',{dica:'nome@exemplo.com'})}
-        <div className="pr-field"><label htmlFor="f-telefone">Telefone</label><div className="pr-telefone">
+        <div className="pr-field pr-campo-telefone"><label htmlFor="f-telefone">Telefone</label><div className="pr-telefone">
           <select form="form-perfil-ativo" id="f-paisTelefone" aria-label="Código do país do telefone" value={dados.paisTelefone} onChange={e=>set('paisTelefone',e.target.value)}>
             {opcoesDDI.map(([s,r])=><option key={s} value={s}>{r}</option>)}</select>
           <input id="f-telefone" form="form-perfil-ativo" type="tel" maxLength={40} autoComplete="tel-national" placeholder={dados.paisTelefone==='BR'?'DDD e número, ex.: 11 91234-5678':'Número, sem o código do país'} value={dados.telefone} onChange={e=>set('telefone',e.target.value)}/>
