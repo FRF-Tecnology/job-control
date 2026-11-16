@@ -197,3 +197,22 @@ textarea.j-input { resize: vertical; min-height: 76px; }
   .j-column-body { min-height: 0; }
   .j-stage-empty { min-height: 42px; }
 }
+
+/* Respostas por e-mail, no Quadro de candidaturas */
+.j-email { margin: 0 0 18px; }
+.j-email .j-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.j-email-estado { padding: 14px var(--j-space) 16px; }
+.j-email-estado p, .j-email-linha { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.j-email-estado p + p { margin-top: 8px; }
+.j-email .j-email-estado a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.j-email-feito { color: var(--text) !important; }
+.j-email-erro { color: var(--pr-alert, #ff8a8a) !important; }
+.j-email-grupo { margin: 0; padding: 12px var(--j-space) 0; font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.j-email-ajuda { margin: 4px 0 0; padding: 0 var(--j-space); color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 72ch; }
+.j-email-titulo { margin: 3px 0 4px; font-size: 15px; line-height: 1.35; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.j-email-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.j-email-acoes select { min-height: 36px; width: min(100%, 420px); }
+.j-email-criar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: center; margin-top: 12px; max-width: 520px; }
+.j-email-criar label { font-size: 13px; color: var(--muted); }
+.j-email-criar input { min-height: 36px; width: 100%; }
+.j-email-criar button { grid-column: 2; justify-self: start; }

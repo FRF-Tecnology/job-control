@@ -110,7 +110,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Thank you for applying to Oscilar\",\n \"de\": \"no-reply@greenhouse.io\",\n \"texto\": \"Hi, thanks for your interest in the Senior Software Engineer role at Oscilar. We have received your application and our team will review it.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -136,6 +136,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -182,7 +188,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Your application to Sezzle\",\n \"de\": \"talent@sezzle.com\",\n \"texto\": \"Thank you for your time. After careful consideration, we have decided to move forward with other candidates for the Backend Engineer position.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -208,6 +214,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -254,7 +266,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Atualização do seu processo\",\n \"de\": \"recrutamento@zup.com.br\",\n \"texto\": \"Olá! Agradecemos seu interesse na vaga de Pessoa Desenvolvedora Backend Java na Zup. Neste momento seguiremos com outros perfis.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -280,6 +292,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -326,7 +344,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Interview invitation – Java Developer\",\n \"de\": \"maria@nortal.com\",\n \"texto\": \"Hi! I'd like to schedule a 30-minute call to talk about the Java Developer role at Nortal. Could you pick a slot in my Calendly this week?\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -352,6 +370,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -398,7 +422,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Oscilar has invited you to a coding assessment\",\n \"de\": \"no-reply@hackerrank.com\",\n \"texto\": \"You have been invited to take the Oscilar Backend assessment. The test takes 90 minutes and expires in 7 days.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -424,6 +448,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -470,7 +500,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Offer letter\",\n \"de\": \"people@nortal.com\",\n \"texto\": \"We are happy to extend you an offer for the Java Developer position. Please find the offer letter attached and let us know by Friday.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -496,6 +526,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -542,7 +578,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Application received\",\n \"de\": \"jobs@acme.io\",\n \"texto\": \"Thanks for applying to ACME. We received your application for Platform Engineer.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -568,6 +604,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },
@@ -614,7 +656,7 @@
     ]
    },
    "prompt": {
-    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
+    "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email. Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa.\n\nRegras que não mudam:\nNunca escreva, peça ou repita CPF, RG, senhas ou dados bancários.\nNunca invente experiência: só vale o que está no currículo, em respostasPadrao ou no perfil.\nNa dúvida, seja conservador.\n\nResponda apenas com um objeto JSON válido neste esquema:\n{\"type\":\"object\",\"properties\":{\"tipo\":{\"type\":\"string\",\"enum\":[\"confirmacao\",\"rejeicao\",\"entrevista\",\"teste\",\"oferta\",\"outro\"]},\"vagaId\":{\"type\":[\"string\",\"null\"]},\"resumo\":{\"type\":\"string\"},\"proximoPasso\":{\"type\":\"string\"},\"empresa\":{\"type\":\"string\"},\"cargo\":{\"type\":\"string\"}},\"required\":[\"tipo\",\"vagaId\",\"resumo\"],\"additionalProperties\":false}",
     "mensagem": "Email:\n{\n \"assunto\": \"Top jobs for you this week\",\n \"de\": \"news@linkedin.com\",\n \"texto\": \"Based on your profile, here are 10 new jobs you might like.\"\n}\n\nVagas em andamento:\n[\n {\n  \"id\": \"li-1\",\n  \"empresa\": \"Oscilar\",\n  \"titulo\": \"Senior Software Engineer\"\n },\n {\n  \"id\": \"li-2\",\n  \"empresa\": \"Sezzle\",\n  \"titulo\": \"Backend Engineer\"\n },\n {\n  \"id\": \"li-3\",\n  \"empresa\": \"Zup Innovation\",\n  \"titulo\": \"Pessoa Desenvolvedora Backend Java Sênior\"\n },\n {\n  \"id\": \"li-4\",\n  \"empresa\": \"Nortal\",\n  \"titulo\": \"Java Developer\"\n }\n]",
     "esquema": {
      "type": "object",
@@ -640,6 +682,12 @@
        "type": "string"
       },
       "proximoPasso": {
+       "type": "string"
+      },
+      "empresa": {
+       "type": "string"
+      },
+      "cargo": {
        "type": "string"
       }
      },

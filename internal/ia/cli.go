@@ -106,7 +106,8 @@ func localizarCLI(comando string) (string, error) {
 
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
-func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
+// ambienteExtra entra por último no ambiente do processo (a última ocorrência de uma chave é a que vale).
+func rodar(ctx context.Context, comando string, args []string, entrada string, ambienteExtra ...string) ([]byte, string, error) {
 	// O arquivo conferido é o mesmo que roda: o caminho resolvido pelo LookPath vai para o CommandContext.
 	alvo, err := localizarCLI(comando)
 	if err != nil {
@@ -128,7 +129,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 	var saida, erro limitado
 	saida.max, erro.max = limiteSaida, 64<<10
 	cmd.Stdout, cmd.Stderr = &saida, &erro
-	cmd.Env = semChaves(cmd.Env)
+	cmd.Env = append(semChaves(cmd.Env), ambienteExtra...)
 	err = cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
 		return nil, "", &ErroIA{Tipo: "provedor", Mensagem: comando + ": passou do tempo limite", Provedor: comando + "-cli", Reintentavel: true}
@@ -270,6 +271,11 @@ func (c cli) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, er
 	return RespostaProvedor{}, erroCLI(nome, "CLI desconhecida")
 }
 
+// semRaciocinio: funções que só copiam do documento. Nelas o raciocínio estendido do Claude Code não melhora a
+// resposta e deixava a chamada de 5 a 10 vezes mais lenta (ler um currículo levava 50 a 100 s; sem ele, 7 a 9 s, com
+// as mesmas sugestões). A triagem fica de fora: sem raciocínio a nota mudou em 2 de 4 vagas medidas.
+var semRaciocinio = map[string]bool{"sugerirPerfilDoCV": true}
+
 // Claude Code: -p sem interação, saída JSON com structured_output no esquema pedido, sem ferramentas nem MCP.
 func chamarClaude(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
 	args := []string{"-p", "--output-format", "json", "--json-schema", string(p.Prompt.Esquema), "--system-prompt", p.Prompt.Sistema,
@@ -280,7 +286,11 @@ func chamarClaude(ctx context.Context, p PedidoProvedor) (RespostaProvedor, erro
 	if p.Modelo != "" {
 		args = append(args, "--model", p.Modelo)
 	}
-	out, stderr, err := rodar(ctx, "claude", args, p.Prompt.Mensagem)
+	var ambiente []string
+	if semRaciocinio[p.Prompt.NomeEsquema] {
+		ambiente = append(ambiente, "MAX_THINKING_TOKENS=0")
+	}
+	out, stderr, err := rodar(ctx, "claude", args, p.Prompt.Mensagem, ambiente...)
 	var r map[string]any
 	if jerr := json.Unmarshal(out, &r); jerr != nil {
 		if err != nil {

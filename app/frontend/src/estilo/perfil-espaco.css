@@ -24,6 +24,7 @@
 .pr-card-title h2, .pr-suggestion h2 { margin: 0; font-size: 1.07rem; letter-spacing: -.03em; line-height: 1.25; color: var(--text); font-weight: 650; }
 .pr-tile, .pr-file-icon { display: inline-grid; flex: none; place-items: center; width: 34px; height: 34px; color: var(--lilac); border: 1px solid color-mix(in srgb, var(--lilac) 19%,var(--line)); background: var(--pr-soft); border-radius: 10px; }
 .pr-note, .pr-local, .pr-connected { font-size: .84rem; color: var(--muted); line-height: 1.5; }
+.pr-page .pr-note a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 .pr-note { margin: -7px 0 14px; }
 .pr-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 17px 15px; }
 .pr-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -118,3 +119,5 @@
   .pr-progress { gap: 6px; font-size: .74rem; }
   .pr-progress b { width: 12px; }
 }
+/* Aviso curto abaixo do e-mail e do telefone. */
+.pr-nota { margin: -4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }

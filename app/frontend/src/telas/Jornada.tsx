@@ -3,6 +3,7 @@ import { useApp } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { dataCurta, encode, nomeEtapa, NOMES_SUB } from '../util';
 import { TelaFila } from './Fila';
+import { RespostasEmail } from './RespostasEmail';
 import { BotaoRadar, CabecalhoJornada, DialogoJornada, MarcaEmpresa, TituloVaga, VazioJornada, type VagaJornada } from './JornadaUI';
 
 export function TelaListaDoDia() { return <TelaFila jornada />; }
@@ -58,6 +59,7 @@ export function TelaQuadroCandidaturas() {
     .sort((a,b) => (b.atualizadoEm ?? '').localeCompare(a.atualizadoEm ?? ''));
   return <section className="j-page">
     <CabecalhoJornada titulo="Quadro de candidaturas" descricao="Acompanhe as conversas, registre atualizações e mova cada vaga de etapa." acao={<BotaoRadar />} />
+    <RespostasEmail />
     {!vagas.length && <div className="j-board-empty"><VazioJornada icone="board" titulo="Comece pela lista do dia" texto="Depois que um envio é confirmado, a candidatura aparece na primeira coluna."
       acao={<a className="btn secondary" href="#/lista"><IconeUI nome="list" tamanho={16} />Abrir lista do dia</a>} /></div>}
     <div className="j-board-grid">{colunas.map(c => {

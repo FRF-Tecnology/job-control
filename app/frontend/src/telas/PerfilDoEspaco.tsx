@@ -4,6 +4,7 @@ import { useApp } from '../app/contexto';
 import { SeletorPerfil } from './SeletorPerfil';
 import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
+import { ContaEmail } from './ContaEmail';
 import { lerArquivo } from './PrimeiroAcesso';
 import arteCV from '../../../../site/artes/curriculo-verificado.svg';
 import '../estilo/perfil-espaco.css';
@@ -12,9 +13,12 @@ const texto=(v:unknown)=> typeof v==='string'?v:'';
 const lista=(v:unknown):string[]=>Array.isArray(v)?v.filter(x=>typeof x==='string'): [];
 const separar=(s:string)=>[...new Set(s.split(/[,;\n]/).map(x=>x.trim()).filter(Boolean))];
 const marcaIA:Record<string,string>={Claude:'anthropic',OpenAI:'openai',Gemini:'google',Grok:'xai'};
+// Sem faixa salva, a moeda segue o mercado (como no primeiro acesso); a pretensão antiga é sempre em USD.
+const moedaDoMercado=(foco:string,moedaAtual:string)=>foco==='nacional'?'BRL':foco==='internacional'?'USD':moedaAtual;
+const emailValido=(v:string)=>!v.trim()||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 function leitura(p:any){
-  const f=p.filtros||{}, faixa=p.faixaSalarial ?? {min:p.pretensaoUSD};
-  return {nome:texto(p.nome), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
+  const f=p.filtros||{}, faixa=p.faixaSalarial ?? {min:p.pretensaoUSD, moeda:p.pretensaoUSD?'USD':moedaDoMercado(p.foco,'USD')};
+  return {nome:texto(p.nome), email:texto(p.email), telefone:texto(p.telefone), cargo:texto(p.cargo), ingles:texto(p.ingles), foco:p.foco||'ambos',
     paisTrabalho:texto(p.paisTrabalho), cidadeTrabalho:texto(p.cidadeTrabalho),
     titulos:lista(p.titulosEquivalentes).join(', '),
     principal:lista(p.stackPrincipal).join(', '), secundaria:lista(p.stackSecundaria).join(', '),
@@ -39,15 +43,25 @@ export function PerfilDoEspaco(){
     const foco=()=>{if(location.hash.endsWith('?aba=conexao')){ia.current?.scrollIntoView?.({block:'center'});ia.current?.focus({preventScroll:true})}};
     foco();window.addEventListener('hashchange',foco);return()=>window.removeEventListener('hashchange',foco);
   },[]);
-  const set=<K extends keyof typeof dados>(k:K,v:typeof dados[K])=>{setDados(antes=>({...antes,[k]:v}));alterado(true);falhar('')};
+  const moedaEditada=useRef(false);
+  const set=<K extends keyof typeof dados>(k:K,v:typeof dados[K])=>{
+    if(k==='moeda') moedaEditada.current=true;
+    setDados(antes=>{
+      const novo={...antes,[k]:v};
+      // Trocar o mercado ajusta a moeda enquanto a pessoa não escolheu uma nem digitou a faixa.
+      if(k==='foco' && !moedaEditada.current && !antes.min && !antes.max) novo.moeda=moedaDoMercado(String(v),antes.moeda);
+      return novo;
+    });
+    alterado(true);falhar('')};
   const url='/api/v1/perfil?perfilBuscaId='+encodeURIComponent(id);
   async function salvar(){
     if(salvando) return;
     if(!dados.cargo.trim()){falhar('Informe o cargo que deseja buscar.');document.getElementById('f-cargo')?.focus();return;}
     if(dados.min && dados.max && Number(dados.max)<Number(dados.min)){falhar('O máximo não pode ser menor que o mínimo.');return;}
+    if(!emailValido(dados.email)){falhar('Informe um e-mail válido, como nome@exemplo.com.');document.getElementById('f-email')?.focus();return;}
     salvarEstado(true);falhar('');
     try {
-      await app.api(url,'PATCH',{nome:dados.nome.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
+      await app.api(url,'PATCH',{nome:dados.nome.trim(),email:dados.email.trim(),telefone:dados.telefone.trim(),cargo:dados.cargo.trim(),ingles:dados.ingles,foco:dados.foco,
         paisTrabalho:dados.paisTrabalho, cidadeTrabalho:dados.cidadeTrabalho.trim(),
         titulosEquivalentes:separar(dados.titulos),
         stackPrincipal:separar(dados.principal),stackSecundaria:separar(dados.secundaria),
@@ -69,7 +83,7 @@ export function PerfilDoEspaco(){
     }catch(e){if(ativa.current)cvFalha((e as Error).message||'Não foi possível salvar o PDF.')}
     finally{if(ativa.current)cvOcupar(false)}
   }
-  type Campo='nome'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
+  type Campo='nome'|'email'|'telefone'|'cargo'|'principal'|'secundaria'|'ingles'|'foco'|'pular'|'moeda'|'min'|'max'|'paisTrabalho'|'cidadeTrabalho'|'titulos';
   function campo(k:Campo,label:string,op?:{lista?:[string,string][];wide?:boolean;tipo?:'number';dica?:string}){
     return <div className={'pr-field'+(op?.wide?' pr-wide':'')}><label htmlFor={'f-'+k}>{label}</label>{op?.lista?
       <select form="form-perfil-ativo" id={'f-'+k} value={dados[k]} onChange={e=>set(k,e.target.value)}>{op.lista.map(([v,r])=><option key={v} value={v}>{r}</option>)}</select>:
@@ -84,6 +98,8 @@ export function PerfilDoEspaco(){
     <div className="pr-edit-grid"><div className="pr-stack">
       <Cartao titulo="Perfil profissional" icone="user"><div className="pr-fields">
         {campo('nome','Nome')}{campo('cargo','Cargo de interesse')}
+        {campo('email','E-mail',{dica:'nome@exemplo.com'})}{campo('telefone','Telefone',{dica:'Com DDD, ex.: (11) 91234-5678'})}
+        <p className="pr-wide pr-nota">O e-mail e o telefone vão no pacote de cada candidatura e valem para todos os perfis de busca.</p>
         {cargoIgualAoNome(dados.cargo,dados.nome) && <p className="pr-wide">O cargo coincide com seu nome. Informe a função que deseja buscar.</p>}
         <Opcoes titulo="Níveis de experiência aceitos" base={['Estágio','Júnior','Pleno','Sênior','Liderança']} valor={dados.niveis} mudar={v=>set('niveis',v)}/>
         {campo('titulos','Títulos equivalentes',{wide:true,dica:'Separe os títulos por vírgulas (opcional)'})}
@@ -104,6 +120,7 @@ export function PerfilDoEspaco(){
     </div><div className="pr-stack"><section ref={ia} tabIndex={-1} aria-label="Configuração de IA">
       <Cartao titulo="Conexão de IA" icone="sparkles">{conectado?<><p className={'pr-connected pr-marca-ia '+(marcaIA[conectado]||'')}>{marcaIA[conectado]&&<span aria-hidden="true" className="pa-logotipo"/>}{conectado} conectado</p><button type="button" className="btn secondary" onClick={()=>alterarIA(true)}>Alterar conexão</button></>:
         <ConexaoOnboarding aoConectar={()=>alterarIA(false)}/>}</Cartao></section>
+      <ContaEmail/>
       <Cartao titulo="Currículo" icone="file">
         <div className="pr-drop" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();void selecionar(e.dataTransfer.files[0]);}}>
           <img src={arteCV} alt="" width="42" height="42"/><div className="pr-file-meta"><strong>{cv?(/^curriculo-[A-Z2-7]{26,}\.pdf$/.test(cv)?'Currículo do perfil':cv):'Arraste seu currículo para cá'}</strong><small>{cv?'PDF salvo neste computador':'PDF de até 20 MB'}</small></div>

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp, type App } from '../app/contexto';
 import { pendentesFollowUp, sugerirMensagem } from '../dominio/followup';
 import { foiEnviada, normalizar, noFoco } from '../dominio/modelo';
-import { NOMES_EMAIL } from '../dominio/emails';
+import { NOMES_EMAIL, pedeVaga } from '../dominio/emails';
 import { Icone, LinkExterno, Robo } from '../componentes';
 import { SeusPedidos, type Pedido } from './Pedidos';
 import { AvisoPasta } from './AvisoPasta';
@@ -190,7 +190,7 @@ export function TelaHoje() {
   // Ficam à vista os que pedem algo (aberto, proposta, recusado de hoje) e os feitos hoje.
   const pedidos: Pedido[] = (app.estado.pedidos ?? []).filter((p: any) => p.status === 'aberto' || p.status === 'proposta'
     || String(p.concluidoEm ?? p.proposta?.criadaEm ?? '').startsWith(hoje)).reverse();
-  const semVaga = (app.estado.emails ?? []).filter((e: any) => e.status === 'sem-vaga');
+  const semVaga = (app.estado.emails ?? []).filter(pedeVaga);
   const opcoesEmail = vagas.filter((v: any) => foiEnviada(v) || ['aplicar', 'bloqueada', 'em-processo', 'oferta'].includes(v.etapa)).sort((a: any, b: any) => a.empresa.localeCompare(b.empresa));
   const nome = String(perfil?.nome ?? '').trim().split(/\s+/)[0];
   const maiorFunil = Math.max(1, ...FUNIL.map(([e]) => conta(e)));

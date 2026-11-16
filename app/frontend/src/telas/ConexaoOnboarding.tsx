@@ -3,6 +3,10 @@ import { useApp } from '../app/contexto';
 import { HOST_PADRAO, iaProntaParaBusca, type EstadoIA } from './ConectarIA';
 import { LinkExterno } from '../componentes';
 import type { TentativaExterna } from '../app/rascunhoOnboarding';
+
+/** Depois de quanto tempo verificando a conexão a tela avisa que pode demorar. */
+export const avisoDeDemora = 8000;
+export const msgDemora = 'A IA está respondendo a um teste. Costuma levar alguns segundos, mas pode passar de um minuto na primeira vez. Não feche o app.';
 import '../estilo/conexao-onboarding.css';
 
 const MARCAS = [
@@ -33,6 +37,14 @@ export function ConexaoOnboarding({ aoConectar, tentativaExterna = '', registrar
   const [modelo, setModelo] = useState('');
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  // A verificação é uma triagem de verdade: costuma levar uns 10 s, mas já levou mais de 80 s na primeira vez.
+  // Depois de alguns segundos, a tela explica a espera em vez de ficar só no "Verificando conexão…".
+  const [demorando, setDemorando] = useState(false);
+  useEffect(() => {
+    if (!ocupado) { setDemorando(false); return; }
+    const aviso = setTimeout(() => setDemorando(true), avisoDeDemora);
+    return () => clearTimeout(aviso);
+  }, [ocupado]);
   const trava = useRef(false);
   const [tentativa, setTentativa] = useState(0);
   const [copia, setCopia] = useState('');
@@ -150,6 +162,7 @@ export function ConexaoOnboarding({ aoConectar, tentativaExterna = '', registrar
         'O Applyer vai usar a chave salva para ' + destino + '.'}</p>}
     </div>
     {erro && <p className="pa-erro" role="alert">{erro}</p>}
+    {ocupado && demorando && <p className="pa-nota" role="status">{msgDemora}</p>}
     <footer className="pa-acoes"><button type="submit" className="pa-primario" disabled={ocupado}>
       {ocupado ? 'Verificando conexão…' : modo === 'atual' ? 'Usar conexão atual' : 'Conectar e continuar'} <span aria-hidden="true">→</span>
     </button></footer>
