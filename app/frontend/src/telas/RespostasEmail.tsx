@@ -1,4 +1,4 @@
-// "Respostas por e-mail", no Quadro de candidaturas (api/openapi.yaml 0.18.0, rotas /email/conta, /email/ler e
+// "Respostas por e-mail", no Quadro de candidaturas (api/openapi.yaml 0.19.0, rotas /email/conta, /email/ler e
 // /emails/{idMensagem}/confirmar|ligar|descartar|criar-vaga). A pessoa pede a leitura; o app lê a caixa conectada, registra as
 // respostas e mostra:
 // - "Para confirmar": recusa, oferta, ou convite de remetente fora do domínio da vaga. A vaga só muda quando a pessoa
@@ -6,7 +6,8 @@
 // - "Sem vaga" (só convite, teste e oferta): a pessoa cria a vaga com a empresa e o cargo sugeridos (rota criar-vaga),
 //   diz de qual vaga é (a etapa muda) ou ignora (descartar).
 // Cada grupo traz uma frase que explica o que os botões fazem. Descartado conta como lido: não volta na próxima leitura.
-// Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
+// Alertas de vaga do LinkedIn e do Indeed viram vagas no Radar (com avaliação pendente); o resumo conta quantas e
+// leva ao Radar. Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
 // o resumo da IA aparece como texto, nunca como link.
 import { useEffect, useState } from 'react';
 import { ErroApi, useApp } from '../app/contexto';
@@ -18,7 +19,7 @@ import { dataCurta, encode, nomeEtapa, plural } from '../util';
 const ROTA_CONTA = '/api/v1/email/conta';
 const ROTA_LER = '/api/v1/email/ler';
 
-type Resultado = { registrados: number; mudaram: number; aConfirmar: number; semVaga: number; pendentes: number; falhas: number; sensiveis: number };
+type Resultado = { registrados: number; mudaram: number; aConfirmar: number; semVaga: number; pendentes: number; falhas: number; sensiveis: number; vagasNoRadar?: number };
 
 // O que a leitura fez, em frases curtas.
 export function resumoDaLeitura(r: Resultado): string {
@@ -29,6 +30,7 @@ export function resumoDaLeitura(r: Resultado): string {
   const outras = r.registrados - r.mudaram - r.aConfirmar - r.semVaga;
   if (outras > 0) partes.push(`${plural(outras, 'resposta registrada', 'respostas registradas')} sem mudança`);
   let texto = partes.length ? `Pronto: ${partes.join(', ')}.` : 'Pronto. Nenhuma resposta nova.';
+  if (r.vagasNoRadar) texto += ` ${plural(r.vagasNoRadar, 'vaga nova dos alertas do LinkedIn e do Indeed entrou', 'vagas novas dos alertas do LinkedIn e do Indeed entraram')} no Radar.`;
   if (r.sensiveis) texto += ` ${plural(r.sensiveis, 'e-mail de segurança ou de banco ficou', 'e-mails de segurança ou de banco ficaram')} de fora, sem ir para a IA.`;
   if (r.pendentes) texto += ' Ainda há e-mails para ler: clique de novo.';
   if (r.falhas) texto += ` A IA não conseguiu ler ${plural(r.falhas, 'e-mail', 'e-mails')}; a próxima leitura tenta de novo.`;
@@ -112,6 +114,7 @@ export function RespostasEmail() {
   const [conta, setConta] = useState<{ conectada: boolean; ultimaLeitura: string } | null>(null);
   const [lendo, setLendo] = useState(false);
   const [feito, setFeito] = useState('');
+  const [noRadar, setNoRadar] = useState(0);
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -130,10 +133,11 @@ export function RespostasEmail() {
 
   async function ler() {
     if (lendo) return;
-    setLendo(true); setErro(''); setFeito('');
+    setLendo(true); setErro(''); setFeito(''); setNoRadar(0);
     try {
       const r = await app.api(ROTA_LER, 'POST', {});
       setFeito(resumoDaLeitura(r));
+      setNoRadar(Number(r?.vagasNoRadar) || 0);
       if (r?.ultimaLeitura) setConta(c => c ? { ...c, ultimaLeitura: r.ultimaLeitura } : c);
       await app.recarregar();
     } catch (e) { setErro(explicar(e)); }
@@ -153,6 +157,7 @@ export function RespostasEmail() {
           : conta && <p>Conecte seu e-mail em <a href="#/perfil">Perfil e IA</a> para o Applyer ler as respostas das empresas e atualizar as vagas.</p>}
         {conta?.conectada && !lendo && <p>Cada e-mail é lido uma vez só: os que já passaram por aqui, até os ignorados, não voltam nas próximas leituras.</p>}
         {feito && <p className="j-email-feito" role="status">{feito}</p>}
+        {feito && noRadar > 0 && <p><a href="#/radar">Ver as vagas no Radar</a> (em "A conferir"; a próxima busca avalia cada uma).</p>}
         {erro && <p className="j-email-erro" role="alert">{erro}</p>}
       </div>
       {aConfirmar.length > 0 && <>

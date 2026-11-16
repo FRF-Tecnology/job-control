@@ -358,3 +358,111 @@ func TestMascararESensivel(t *testing.T) {
 		}
 	}
 }
+
+func mensagemHTMLDeTeste(id, de, assunto, data, corpo string) string {
+	return strings.Replace(mensagemDeTeste(id, de, assunto, data, corpo), "text/plain", "text/html", 1)
+}
+
+// Alertas do LinkedIn e do Indeed viram vagas no Radar, sem IA, sem repetir o que já está no app.
+func TestLerAlertasDeVaga(t *testing.T) {
+	leitor := leitorComEmails(t,
+		mensagemHTMLDeTeste("alerta-li", "LinkedIn <jobalerts-noreply@linkedin.com>", "Desenvolvedora iOS: 2 vagas novas",
+			"Mon, 09 Nov 2026 07:00:00 +0000", `<p>Fulana, vagas para você</p>
+<a href="https://www.linkedin.com/comm/jobs/view/4012345678/?trackingId=abc"><img alt="Acme"></a>
+<a href="https://www.linkedin.com/comm/jobs/view/4012345678/?trackingId=abc">Desenvolvedora iOS Sênior</a><p>Acme Ltda · São Paulo (Remoto)</p>
+<a href="https://www.linkedin.com/comm/jobs/view/4098765432/?trackingId=def">Engenheira Mobile</a><p>Beta S.A.</p><p>Recife, PE</p>`),
+		mensagemDeTeste("alerta-in", "Indeed <alert@indeed.com>", "Novas vagas de Analista de QA",
+			"Mon, 09 Nov 2026 07:30:00 +0000", "Analista de QA\r\nGama Tecnologia\r\nCuritiba, PR\r\nhttps://br.indeed.com/viewjob?jk=1a2b3c4d5e6f7a8b&from=ja\r\n\r\n"+
+				"Pessoa Desenvolvedora Go\r\nDelta\r\nhttps://br.indeed.com/viewjob?jk=9f8e7d6c5b4a3f2e\r\n"),
+		// "Banco" no corpo de um alerta é empresa, não e-mail de banco.
+		mensagemHTMLDeTeste("alerta-banco", "LinkedIn <jobalerts-noreply@linkedin.com>", "Analista de dados: 1 vaga nova",
+			"Mon, 09 Nov 2026 08:00:00 +0000", `<a href="https://www.linkedin.com/jobs/view/4055555555/">Analista de Dados</a><p>Banco Ômega</p>`),
+		// Alerta de mais de uma semana: só o id.
+		mensagemHTMLDeTeste("alerta-velho", "LinkedIn <jobalerts-noreply@linkedin.com>", "Vagas antigas",
+			"Mon, 19 Oct 2026 08:00:00 +0000", `<a href="https://www.linkedin.com/jobs/view/4066666666/">Vaga Velha</a><p>Zeta</p>`),
+		// Confirmação de candidatura do LinkedIn: é resposta (vai para a IA), não alerta.
+		mensagemDeTeste("confirmacao-li", "LinkedIn <jobs-noreply@linkedin.com>", "Sua candidatura foi enviada para Épsilon",
+			"Mon, 09 Nov 2026 09:00:00 +0000", "Você se candidatou à vaga https://www.linkedin.com/jobs/view/4077777777/"),
+	)
+	a, prov := apiDeLeitura(t, leitor, true, true)
+	ctx := context.Background()
+	// A vaga 4098765432 já está no Radar (veio de outra fonte com o mesmo endereço).
+	if err := a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
+		e, _, err := dominio.AdicionarVaga(e, Objeto{"id": "busca-1", "empresa": "Beta S.A.", "titulo": "Engenheira Mobile",
+			"link": "https://www.linkedin.com/jobs/view/4098765432/", "plataforma": "linkedin"}, a.ctx(e, "claude"), true)
+		return e, err
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	res := chamar(t, a, "POST", "/email/ler", Objeto{}, "eu").Corpo.(ResultadoLeitura)
+	if res.Alertas != 4 || res.VagasNoRadar != 4 || res.Lidos != 5 || res.Ignorados != 1 || res.Sensiveis != 0 || res.Falhas != 0 {
+		t.Fatalf("resultado: %+v", res)
+	}
+	recebido := prov.chamadas()
+	if len(recebido) != 1 || !strings.Contains(recebido[0], "candidatura foi enviada") {
+		t.Fatalf("só a confirmação vai para a IA; veio %d chamadas", len(recebido))
+	}
+	for _, proibido := range []string{"Desenvolvedora iOS", "Gama", "Banco Ômega", "Vaga Velha"} {
+		if strings.Contains(recebido[0], proibido) {
+			t.Errorf("texto de alerta chegou à IA: %q", proibido)
+		}
+	}
+
+	e, _ := a.arm.Carregar(ctx)
+	vagas := map[string]Objeto{}
+	for _, v := range e.Vagas {
+		vagas[dominio.Texto(v["id"])] = v
+	}
+	if len(e.Vagas) != 6 { // gp-1, busca-1 e as 4 dos alertas
+		t.Fatalf("vagas: %d", len(e.Vagas))
+	}
+	v := vagas["linkedin-4012345678"]
+	if v == nil || v["etapa"] != "descoberta" || v["triagemBusca"] != "pendente" || v["titulo"] != "Desenvolvedora iOS Sênior" || v["empresa"] != "Acme Ltda" ||
+		v["local"] != "São Paulo (Remoto)" || v["link"] != "https://www.linkedin.com/jobs/view/4012345678/" || v["publicadaEm"] != "2026-11-09" ||
+		v["fonteBusca"] != "Alerta do LinkedIn (e-mail)" || v["anuncioId"] != "linkedin-4012345678" || v["perfilBuscaId"] != dominio.PerfilOriginal {
+		t.Errorf("vaga do LinkedIn: %v", v)
+	}
+	if v := vagas["indeed-1a2b3c4d5e6f7a8b"]; v == nil || v["empresa"] != "Gama Tecnologia" || v["link"] != "https://br.indeed.com/viewjob?jk=1a2b3c4d5e6f7a8b" {
+		t.Errorf("vaga do Indeed: %v", v)
+	}
+	for _, id := range []string{"indeed-9f8e7d6c5b4a3f2e", "linkedin-4055555555"} {
+		if vagas[id] == nil {
+			t.Errorf("faltou %s", id)
+		}
+	}
+	for _, id := range []string{"linkedin-4098765432", "linkedin-4066666666", "linkedin-4077777777"} {
+		if vagas[id] != nil {
+			t.Errorf("não devia entrar: %s", id)
+		}
+	}
+	// Do alerta fica só o id (sem remetente, assunto nem texto).
+	for _, x := range e.Emails {
+		if strings.HasPrefix(dominio.Texto(x["idMensagem"]), "alerta-") && (x["de"] != nil || x["assunto"] != nil || x["status"] != "ignorado") {
+			t.Errorf("alerta guardou demais: %v", x)
+		}
+	}
+
+	// Ler de novo: nada repete.
+	res = chamar(t, a, "POST", "/email/ler", Objeto{}, "eu").Corpo.(ResultadoLeitura)
+	if res.JaLidos != 5 || res.VagasNoRadar != 0 || len(prov.chamadas()) != 1 {
+		t.Fatalf("segunda leitura: %+v, IA %d", res, len(prov.chamadas()))
+	}
+
+	// A próxima busca avalia as vagas dos alertas junto com as dos sites.
+	e, _ = a.arm.Carregar(ctx)
+	balanco := balancoBusca{perfilBuscaID: e.PerfilBuscaAtivo()}
+	lote, err := a.prepararBusca(ctx, nil, assinaturaDeBusca(e.Perfil), &balanco)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nolote := map[string]bool{}
+	for _, v := range lote {
+		nolote[dominio.Texto(v["id"])] = true
+	}
+	for _, id := range []string{"linkedin-4012345678", "indeed-1a2b3c4d5e6f7a8b", "indeed-9f8e7d6c5b4a3f2e", "linkedin-4055555555"} {
+		if !nolote[id] {
+			t.Errorf("a busca não pegou %s para avaliar (lote %v)", id, nolote)
+		}
+	}
+}
