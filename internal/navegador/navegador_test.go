@@ -528,6 +528,11 @@ func TestEnvioComNavegadorDeVerdade(t *testing.T) {
 		}
 		linha := " " + strings.Join(res.Arguments, " ") + " "
 		for _, quer := range []string{"--remote-debugging-pipe", "--disable-extensions", "--disable-sync", "--no-first-run", "--user-data-dir="} {
+			// O Brave tira o --disable-sync da linha que informa. O perfil é o do app, novo, e o Brave Sync só liga
+			// com um código de pareamento que a pessoa digita: nada sincroniza.
+			if quer == "--disable-sync" && strings.Contains(nav.exec, "Brave") {
+				continue
+			}
 			if !strings.Contains(linha, quer) {
 				t.Errorf("falta %s na linha de comando", quer)
 			}

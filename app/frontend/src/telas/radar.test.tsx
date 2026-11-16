@@ -25,7 +25,7 @@ function montar(vagas: any[], api = vi.fn(), estadoExtra = {}) {
         Object.assign(vagas.find(v => v.id === id), extras, { etapa });
         atualizar(n => n + 1);
         return true;
-      }, recarregar: async () => atualizar(n => n + 1) } as unknown as App;
+      }, recarregar: async () => atualizar(n => n + 1), aviso: vi.fn() } as unknown as App;
     return <Contexto.Provider value={app}><TelaRadar /></Contexto.Provider>;
   }
   return render(<Banco />);
@@ -61,6 +61,31 @@ describe('Radar de vagas', () => {
     expect(within(linhaHF).getByText('HF')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name:'A conferir' }));
     expect(screen.getByRole('button', { name: /Oficina Engenharia outra/ }).querySelector('img')).toBeNull();
+  });
+  it('vaga de alerta sem descrição: lê a vaga com um clique e recarrega', async () => {
+    const alerta = { id: 'linkedin-4012345678', empresa: 'Acme', titulo: 'Engenheira Java', etapa: 'descoberta', plataforma: 'linkedin',
+      triagemBusca: 'pendente', publicadaEm: '2026-11-11', fonteBusca: 'Alerta do LinkedIn (e-mail)', link: 'https://www.linkedin.com/jobs/view/4012345678/' };
+    const api = vi.fn(async () => { Object.assign(alerta, { descricao: 'Java e Spring.', triagemBusca: 'classificada', aderencia: 'B', radarVersao: 1, radarClasse: 'conferir' }); return { avaliada: true }; });
+    montar([alerta, { ...vaga('gp', 'B'), plataforma: 'gupy' }], api);
+    fireEvent.click(screen.getByRole('button', { name: 'A conferir' }));
+    fireEvent.click(screen.getByRole('button', { name: /Acme Engenheira Java/ }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ler a descrição da vaga' })); });
+    expect(api).toHaveBeenCalledWith('/api/v1/vagas/linkedin-4012345678/ler-descricao', 'POST', {});
+    expect(screen.getByText('Java e Spring.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ler a descrição da vaga' })).toBeNull();
+    // Vaga que não é do LinkedIn não oferece o botão.
+    fireEvent.click(screen.getByRole('button', { name: /Empresa gp/ }));
+    expect(screen.queryByRole('button', { name: 'Ler a descrição da vaga' })).toBeNull();
+  });
+  it('ler a descrição: recusa com frase fixa, sem o texto do servidor', async () => {
+    const { ErroApi } = await import('../app/contexto');
+    const alerta = { id: 'linkedin-1', empresa: 'Acme', titulo: 'Engenheira Java', etapa: 'descoberta', plataforma: 'linkedin', triagemBusca: 'pendente', publicadaEm: '2026-11-11' };
+    const api = vi.fn(async () => { throw new ErroApi('texto do servidor', 409, { erro: 'texto do servidor', motivo: 'login' }); });
+    montar([alerta], api);
+    fireEvent.click(screen.getByRole('button', { name: 'A conferir' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ler a descrição da vaga' })); });
+    expect(screen.getByRole('alert').textContent).toMatch(/O LinkedIn pediu login/);
+    expect(document.body.textContent).not.toContain('texto do servidor');
   });
   it('abre com os critérios salvos e pede a primeira busca só ao clicar', async () => {
     const api = vi.fn().mockResolvedValue({ encontradas: 0, novas: 0, grupos: { A: 0, B: 0, C: 0 }, avisos: [], pendentes: 0, puladas: 0 });

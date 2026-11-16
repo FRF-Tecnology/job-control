@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Central de Candidaturas — API local
-  version: 0.19.0
+  version: 0.20.0
   description: >
     API que a janela do app, a CLI, o MCP local e as automações usam. Roda dentro do app.
     As rotas e respostas são as mesmas de servidor/api.mjs (Node); a referência exata é a sessão
@@ -250,6 +250,15 @@ paths:
     post:
       x-so-tela: true
       summary: 'Registra o envio que a pessoa confirmou na plataforma externa. Atualiza a vaga, a candidatura e o histórico uma vez; exige a intenção pendente ou um recibo já concluído.'
+  /vagas/{id}/ler-descricao:
+    post:
+      x-so-tela: true
+      summary: 'Ler a descrição da vaga: abre a vaga do Radar (descoberta, LinkedIn) no navegador do envio, com a sessão da pessoa, sem interagir, e grava a descrição (uma linha, até 6000 caracteres, sem <>). A página tem de parar na mesma vaga. Depois, a IA avalia a vaga na hora com a triagem da busca; sem IA, com busca em andamento ou com falha da IA, a vaga fica pendente. Responde {vaga, avaliada}. 409 {erro, motivo}: login, sem-descricao, fora (a página não parou na vaga), fora-do-radar, plataforma (não é do LinkedIn), vaga-mudou, enviando, login-aberto, falhou. 404 sem o envio neste build.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, maxProperties: 0 }
   /ia/detectar:
     post:
       x-so-tela: true
