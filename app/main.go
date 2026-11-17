@@ -64,7 +64,7 @@ func main() {
 	if _, err := banco.PrepararPrimeiraVez(context.Background(), modelodados.Plataformas); err != nil {
 		falhar("primeira vez", err)
 	}
-	// Envio de candidaturas: desligado no build padrão (não faz nada); só o build -tags envio_dev liga o executor.
+	// Envio de candidaturas: o executor envia só o que a pessoa aprovou na tela.
 	controleEnvio := envio.Ligar(ctx, banco, pasta)
 	defer controleEnvio.Parar()
 
@@ -82,16 +82,16 @@ func main() {
 			controle.calar()
 			controle.sair()
 		},
-		EnvioLigado: envio.Ligado,
+		EnvioLigado: true,
 		// Envio sem janela; só a tela mostra o envio ou abre o login (jc-a2y.6.7).
 		MostrarEnvio: controleEnvio.MostrarEnvio,
 		Entrar:       controleEnvio.Entrar,
 		Janela:       controleEnvio.Janela,
-		// "Ao vivo" (jc-a2y.6.9): nil no build padrão (a rota dá 404).
+		// "Ao vivo" (jc-a2y.6.9): nil sem navegador (a rota dá 404).
 		AoVivo: controleEnvio.AoVivo,
 		// Aviso da pasta de dados nesta abertura, para a tela (GET /dados/pasta, jc-etv.14), sem caminho.
 		AvisoPasta: abertura.Aviso,
-		// Leitura de formulários (jc-a2y.7.2): nil no build padrão (a rota dá 404).
+		// Leitura de formulários (jc-a2y.7.2): nil sem navegador (a rota dá 404).
 		LerFormulario: controleEnvio.LerFormulario,
 		// Janela do app (Perfil): segundo plano e voltar ao tamanho padrão.
 		JanelaApp: controle.ganchos(),

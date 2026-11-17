@@ -11,7 +11,7 @@ import (
 
 // Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). POST /candidaturas/{id}/ler-formulario: o leitor
 // do executor (Opcoes.LerFormulario) abre a URL canônica no navegador do envio, sem janela, e lê a estrutura sem
-// interagir. Sem leitor (build padrão e central-dev): 404. O texto das perguntas é dado não confiável: não vai para
+// interagir. Sem leitor (central-dev ou sem navegador): 404. O texto das perguntas é dado não confiável: não vai para
 // a IA nem para o log; o log leva só números e códigos.
 
 var reLerFormulario = regexp.MustCompile(`^/candidaturas/([^/]+)/ler-formulario$`)

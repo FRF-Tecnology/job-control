@@ -64,10 +64,10 @@ func TestJanelaDoEnvio(t *testing.T) {
 	// Build padrão: sempre oculta, e as duas rotas dão 404 (nem o gancho é chamado).
 	p, _, jp := apiComJanela(t, false)
 	if c := estadoDe(t, chamarEnvio(t, p, "GET", "/envio", nil, "eu")); c["janela"] != "oculta" || c["login"] != false {
-		t.Fatalf("build padrão = %v", c)
+		t.Fatalf("sem o envio = %v", c)
 	}
 	if r := chamarEnvio(t, p, "POST", "/envio/janela", Objeto{"visivel": true}, "eu"); r.Status != 404 || jp.visivel {
-		t.Fatalf("janela no build padrão = %d", r.Status)
+		t.Fatalf("janela sem o envio = %d", r.Status)
 	}
 
 	a, _, j := apiComJanela(t, true)
@@ -102,7 +102,7 @@ func TestEntrarNasPlataformas(t *testing.T) {
 
 	p, _, jp := apiComJanela(t, false)
 	if r := chamarEnvio(t, p, "POST", "/navegador/entrar", Objeto{"plataforma": "linkedin"}, "eu"); r.Status != 404 || len(jp.enderecos) != 0 {
-		t.Fatalf("entrar no build padrão = %d", r.Status)
+		t.Fatalf("entrar sem o envio = %d", r.Status)
 	}
 
 	a, arm, j := apiComJanela(t, true)

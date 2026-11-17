@@ -7,7 +7,7 @@ Bead `jc-a2y.6.9` (P1). Status: **no código** (contrato 0.8.0, aprovado pelo Cy
 - `internal/api/aovivo.go`: as rotas. Ler e ligar exigem autor `eu` **e** o pedido marcado pelo Handler como da janela (`Sec-Fetch-Site: same-origin` e Host `wails.localhost` ou `localhost`, sem porta). Desligar: qualquer autor. Pausar, abrir o login, sair das plataformas e apagar os dados apagam o quadro.
 - `internal/navegador/aovivo.go`: o screencast, só nas abas do `NovaPagina` (a janela de login não passa por ali).
 - `internal/executor`: `Opcoes.Etapa` com os passos (abrindo, preenchendo, revisando, enviando e o desfecho).
-- `internal/envio/envio_dev.go` e `app/main.go`: ligam tudo só no build `envio_dev`. No padrão e no `central-dev`, a rota dá 404.
+- `internal/envio/envio.go` e `app/main.go`: ligam tudo no app. No `central-dev`, a rota dá 404.
 
 O pedido do Vini: deixar evidente, dentro do app, que a candidatura está sendo aplicada. Em vez de uma janela separada, a Fila mostra um painel "Ao vivo" com a imagem do navegador do envio e a etapa. O painel é só para ver: não clica, não digita e não controla nada.
 

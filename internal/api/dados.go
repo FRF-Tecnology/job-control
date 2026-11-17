@@ -204,7 +204,7 @@ func (a *API) apagarDados(ctx context.Context) (Resposta, error) {
 	if pasta == "" {
 		return Resposta{}, erroCampo("banco em memória: não há pasta de dados para apagar")
 	}
-	// 1) Para o executor: espera o ciclo acabar e o Chrome sair (no build padrão, não faz nada). Só depois confere
+	// 1) Para o executor: espera o ciclo acabar e o Chrome sair (sem o envio, não faz nada). Só depois confere
 	// enviando, para não haver corrida com um envio que começasse no meio. Com 409, o executor fica parado.
 	a.pararEnvio()
 	if a.aoVivo != nil { // apagar os dados desliga o ao vivo e apaga o quadro (jc-a2y.6.9)

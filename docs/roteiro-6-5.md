@@ -3,8 +3,7 @@
 Bead `jc-a2y.6.5`. Segue os pré-requisitos e o roteiro do relatório do CyberSec (`Shared/seguranca/p5-revisao-integrada/RELATORIO.md`). É **uma** candidatura, numa vaga escolhida pelo Vinicius, com o Vinicius e o CyberSec acompanhando.
 
 > **Regras do dia**
-> - Só o **app compilado** com a tag `envio_dev`. Ele não abre porta TCP: a API só fala com a janela do Wails. O `central-dev` nunca envia: ele não tem o executor, e um teste trava isso.
-> - O binário `envio_dev` fica **só na máquina do teste**: nunca é distribuído nem vai para o git, e é apagado no fim (passo 8).
+> - Só o **app compilado** (`wails3 build`). Ele não abre porta TCP: a API só fala com a janela do Wails. O `central-dev` nunca envia: ele não tem o executor, e um teste trava isso.
 > - O fluxo antigo (Claude in Chrome, `/aplicar` do Node) fica **parado** nessa vaga, para não candidatar duas vezes.
 > - O login no LinkedIn é feito pela **própria pessoa**, no perfil do app. Nenhum agente digita senha.
 > - **Só o Vinicius** aprova a candidatura e aperta Retomar. Nenhum agente controla a janela do app nem a do navegador, e nenhum agente roda a CLI (`central-cli`, `cli.mjs`) na pasta do teste durante o dia.
@@ -21,19 +20,19 @@ Bead `jc-a2y.6.5`. Segue os pré-requisitos e o roteiro do relatório do CyberSe
 - [ ] `jc-a2y.52` (QA): conferir a ACL da pasta do perfil na máquina do teste (passo 3).
 - [ ] Se a vaga for da InHire, rever a regra do `form-app` com o formulário real (id curto, nota do #49). LinkedIn é o caso esperado.
 - [ ] Chrome ou Edge instalado num local padrão: `C:\Program Files\Google\Chrome\Application\chrome.exe` (ou `Program Files (x86)`, ou a instalação só do usuário em `%LOCALAPPDATA%`), ou o Edge em `Program Files (x86)\Microsoft\Edge\Application\msedge.exe`. O app **não** usa o PATH.
-- [ ] **Ensaiar o log antes do dia.** O app é compilado como janela (`-H windowsgui`), então não tem console. O log vai para a saída de erro do processo. Ensaiar a captura do passo 5 com o build `envio_dev` e uma pasta de ensaio, e confirmar que o arquivo recebe a linha `envio: executor LIGADO`. Se o `Start-Process` não servir, a alternativa vai no passo 5.
+- [ ] **Ensaiar o log antes do dia.** O app é compilado como janela (`-H windowsgui`), então não tem console. O log vai para a saída de erro do processo. Ensaiar a captura do passo 5 com uma pasta de ensaio e confirmar que o arquivo recebe a linha `envio: executor ligado`. Se o `Start-Process` não servir, a alternativa vai no passo 5.
 
 ## 1. Compilar o app com o envio (Windows, PowerShell, na raiz do repositório)
 
 ```powershell
 git fetch origin; git checkout reescrita-go; git pull
 cd app
-wails3 build EXTRA_TAGS=envio_dev      # gera app\bin\central.exe com -tags production,envio_dev
+wails3 build                           # gera app\bin\central.exe
 cd ..
-go version -m app\bin\central.exe | Select-String -Pattern "-tags|chromedp"
+go version -m app\bin\central.exe | Select-String -Pattern "chromedp"
 ```
 
-Tem de aparecer `build -tags=production,envio_dev` e `dep github.com/chromedp/chromedp v0.21.1`. Sem isso, o binário não é o do teste e não envia. Conferido em 2026-11-09: o build padrão (`wails3 build`) mostra só `-tags=production`, sem chromedp.
+Tem de aparecer `dep github.com/chromedp/chromedp`: é o navegador que o envio usa.
 
 ## 2. Pasta de dados nova, só para o teste
 
@@ -135,6 +134,5 @@ O desfecho também aparece no painel do envio ("Últimos envios").
 
 1. No app, **Pausar** e depois "Sair das plataformas", que apaga a sessão do LinkedIn do perfil do app.
 2. Decidir com o Vinicius se a pasta de teste fica, para rever, ou sai com **"Apagar meus dados"**. Apagar também testa o `jc-a2y.49` de verdade: o app fecha e a pasta fica sem os arquivos dele.
-3. Recompilar o padrão, que apaga o binário de envio: `cd app; wails3 build`. Depois, `go version -m app\bin\central.exe` não pode mostrar `envio_dev` nem chromedp.
-4. Na Central Node, se a vaga não foi enviada, voltar com ela para onde estava (`mover <id> aplicar` só pela pessoa, na Triagem).
-5. O CyberSec registra o resultado no bead `jc-a2y.6.5`, a partir do log em `%LOCALAPPDATA%\central-teste-6.5-log.txt`, sem conteúdo. **Depois do registro, apague o log** (`Remove-Item $log`).
+3. Na Central Node, se a vaga não foi enviada, voltar com ela para onde estava (`mover <id> aplicar` só pela pessoa, na Triagem).
+4. O CyberSec registra o resultado no bead `jc-a2y.6.5`, a partir do log em `%LOCALAPPDATA%\central-teste-6.5-log.txt`, sem conteúdo. **Depois do registro, apague o log** (`Remove-Item $log`).
