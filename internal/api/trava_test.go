@@ -81,6 +81,7 @@ func TestTravaPorRota(t *testing.T) {
 		{"POST", "/app/janela"},
 		{"POST", "/app/janela/padrao"},
 		{"DELETE", "/email/conta"},
+		{"DELETE", "/perfil/cpf"}, // apagar um dado sensível nunca trava
 		// Ruling A9: escritas de proteção ou de levar os dados embora.
 		{"POST", "/envio/pausar"},
 		{"POST", "/envio/plataformas/linkedin/pausar"},

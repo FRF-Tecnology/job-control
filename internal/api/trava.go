@@ -45,6 +45,8 @@ func liberadoSemLicenca(metodo, caminho string) bool {
 		return true
 	case "DELETE /email/conta": // desconectar o e-mail apaga a senha de app do cofre, como as chaves de IA
 		return true
+	case "DELETE /perfil/cpf": // apagar um dado sensível nunca trava
+		return true
 	}
 	if reEnvioPausarPlataforma.MatchString(p) && strings.ToUpper(metodo) == "POST" {
 		return true
