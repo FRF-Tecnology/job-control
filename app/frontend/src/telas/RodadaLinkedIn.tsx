@@ -9,7 +9,7 @@
 // O envio é o de sempre (uma por vez, no limite do dia; sem Candidatura simplificada, para antes de enviar com
 // "site externo"). Nada aqui clica no LinkedIn: o executor envia.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { plural } from '../util';
 import type { Candidatura } from './Fila';
@@ -53,6 +53,7 @@ export function RodadaLinkedIn({ candidaturas, calculadas, limites, nome, atuali
   nome: (c: Candidatura) => string; atualizar: () => Promise<void>;
 }) {
   const app = useApp();
+  const trava = useTrava();
   const [envio, setEnvio] = useState<EstadoEnvio | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const plano = planoDaRodada(candidaturas, calculadas, limites.linkedin, app.hoje);
@@ -148,10 +149,10 @@ export function RodadaLinkedIn({ candidaturas, calculadas, limites, nome, atuali
           {rodando
             ? <button type="button" className="btn secondary" disabled={ocupado} onClick={() => void pausar()}><IconeUI nome="close" tamanho={15} />Pausar</button>
             : sessaoCaiu
-              ? <button type="button" className="btn primary" disabled={ocupado || !!envio?.login} onClick={() => void entrar()}><IconeUI nome="login" tamanho={16} />Entrar no LinkedIn</button>
-              : <button type="button" className="btn primary" disabled={ocupado || !envio?.ligado || !!envio?.login || paradaHoje || !aComecar} onClick={() => void comecar()}>
+              ? <button type="button" className="btn primary" {...trava(ocupado || !!envio?.login)} onClick={() => void entrar()}><IconeUI nome="login" tamanho={16} />Entrar no LinkedIn</button>
+              : <button type="button" className="btn primary" {...trava(ocupado || !envio?.ligado || !!envio?.login || paradaHoje || !aComecar)} onClick={() => void comecar()}>
                 <IconeUI nome="send" tamanho={16} />{plano.prontas.length ? `Começar rodada (${plano.prontas.length})` : plano.naFila.length ? 'Retomar rodada' : 'Começar rodada'}</button>}
-          {!sessaoCaiu && envio?.ligado && <button type="button" className="btn quiet" disabled={ocupado || !!envio.login} onClick={() => void entrar()}>Entrar no LinkedIn</button>}
+          {!sessaoCaiu && envio?.ligado && <button type="button" className="btn quiet" {...trava(ocupado || !!envio.login)} onClick={() => void entrar()}>Entrar no LinkedIn</button>}
         </div>
       </div>
       <ul className="j-rodada-numeros" aria-label="Situação da rodada">

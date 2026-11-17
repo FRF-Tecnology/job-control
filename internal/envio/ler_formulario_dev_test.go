@@ -22,7 +22,7 @@ func TestLerFormularioComCicloOcupadoRecusa(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { arm.Fechar() })
-	c := Ligar(context.Background(), arm, dados)
+	c := Ligar(context.Background(), arm, dados, nil)
 	t.Cleanup(c.Parar)
 	if c.LerFormulario == nil {
 		if os.Getenv("CI") == "true" {

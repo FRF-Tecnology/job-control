@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useApp, type App } from '../app/contexto';
+import { useApp, useTrava, type App } from '../app/contexto';
 import { plural } from '../util';
 
 type Balanco = { novas: number; encontradas: number; grupos: Record<string, number>; puladas: number; pendentes: number; avisos: string[] };
@@ -82,10 +82,11 @@ export function BalancoDaBusca({ balanco }: { balanco: Balanco }) {
 
 export function BuscaDoPerfil() {
   const { buscar, ocupado, balanco, erro, pendentes } = useBuscaDoPerfil(false);
+  const trava = useTrava();
   const acao = erro ? 'Tentar buscar novamente' : pendentes ? 'Retomar avaliação das vagas' : 'Buscar vagas com meu perfil';
   return <section aria-label="Busca pelo perfil" className="busca-perfil">
     <div className="acoes">
-      <button type="button" className="botao" disabled={ocupado} aria-busy={ocupado} onClick={buscar}>
+      <button type="button" className="botao" {...trava(ocupado)} aria-busy={ocupado} onClick={buscar}>
         {ocupado ? 'Buscando e avaliando…' : acao}
       </button>
       <a className="botao-fantasma" href="#/perfil">Editar perfil</a>

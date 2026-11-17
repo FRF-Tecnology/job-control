@@ -3,7 +3,7 @@
 // A senha sai do estado assim que o pedido termina e nunca volta do servidor. Frases fixas: nenhum texto do servidor
 // vai para a tela.
 import { useEffect, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { LinkExterno } from '../componentes';
 
@@ -18,6 +18,7 @@ type Estado = { conectada: boolean; usuario: string };
 
 export function ContaEmail() {
   const app = useApp();
+  const trava = useTrava();
   const [estado, setEstado] = useState<Estado | null>(null);
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
@@ -87,7 +88,7 @@ export function ContaEmail() {
         {pedeServidor && <div className="pr-field pr-wide"><label htmlFor="email-servidor">Servidor IMAP</label>
           <input id="email-servidor" type="text" autoComplete="off" maxLength={253} placeholder="imap.exemplo.com" value={servidor} onChange={e => setServidor(e.target.value)} /></div>}
         <p className="pr-wide pr-note" id="email-senha-dica">Use uma senha de app, não a senha da conta. No Gmail, crie uma em <LinkExterno url={SENHAS_GOOGLE}>Senhas de app do Google</LinkExterno> (precisa da verificação em duas etapas ligada). Ela fica no cofre deste computador, e você pode revogá-la quando quiser.</p>
-        <div className="pr-wide"><button type="submit" className="btn primary" disabled={ocupado}>{ocupado ? 'Conferindo…' : 'Conectar e-mail'}</button></div>
+        <div className="pr-wide"><button type="submit" className="btn primary" {...trava(ocupado)}>{ocupado ? 'Conferindo…' : 'Conectar e-mail'}</button></div>
       </form>}
       {erro && <p role="alert">{erro}</p>}
     </section>

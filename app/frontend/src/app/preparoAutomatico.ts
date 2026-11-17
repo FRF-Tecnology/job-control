@@ -25,10 +25,12 @@ export function vagasProntas(vagas: Vaga[], candidaturas: Cand[], perfil: any): 
     && (v.etapa === 'aplicar' || (perfil?.modo === 'direto' && grupoADireto(v))));
 }
 
-export type ResultadoPreparo = { preparadas: number; semPdf: number };
+// travado: a trava das ações respondeu 402 (o teste acabou, sem assinatura, sem internet ou sem conta).
+export type ResultadoPreparo = { preparadas: number; semPdf: number; travado?: true };
 
 // Prepara as prontas ainda não tentadas nesta abertura do app. "tentadas" evita repetir uma vaga que deu erro a cada
-// leitura; vaga sem PDF não conta como tentada, para ser preparada quando o PDF aparecer.
+// leitura; vaga sem PDF não conta como tentada, para ser preparada quando o PDF aparecer. 402 (trava das ações): para
+// na hora, sem marcar a vaga, e tenta de novo só na próxima mudança do estado (com a licença de volta, ela é preparada).
 export async function prepararProntas(
   api: (caminho: string, metodo?: string, corpo?: unknown) => Promise<any>,
   dados: DadosDosPerfis & { vagas: Vaga[]; curriculos: { nome: string }[] },
@@ -52,9 +54,24 @@ export async function prepararProntas(
       await api('/api/v1/candidaturas', 'POST', { vagaId: v.id, conteudo: conteudoParaEnviar(pacote) });
       r.preparadas++;
     } catch (e) {
+      if (e instanceof ErroApi && e.status === 402) { tentadas.delete(v.id); r.travado = true; break; }
       // 409 com "existente": outra aba ou a própria pessoa preparou antes. Outros erros: a vaga fica para o botão.
       if (!(e instanceof ErroApi && e.status === 409)) continue;
     }
   }
   return r;
+}
+
+// Depois de um 402 (travadoNaVersao: a versão do estado em que travou), só volta a preparar quando a conta deixa agir
+// (GET /conta sem motivo). Sem a rota da conta (503 no central-dev sem conta, ou erro), espera a versão mudar.
+export async function liberouDepoisDaTrava(
+  api: (caminho: string) => Promise<any>, travadoNaVersao: string | null, versaoAtual: string | null,
+): Promise<boolean> {
+  if (travadoNaVersao === null) return true;
+  try {
+    const c = await api('/api/v1/conta');
+    return !c?.motivo;
+  } catch {
+    return versaoAtual !== travadoNaVersao;
+  }
 }

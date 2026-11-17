@@ -1,5 +1,5 @@
 // Plataformas: onde procurar vagas e como cada uma funciona (porte de web/telas/plataformas.mjs).
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { porPlataforma } from '../dominio/funil';
 import { Convite, LinkExterno } from '../componentes';
 import { dataCurta, encode } from '../util';
@@ -8,17 +8,18 @@ const STATUS: Record<string, string> = { automatizada: 'Automatizada', manual: '
 
 export function TelaPlataformas() {
   const app = useApp();
+  const trava = useTrava();
   const { plataformas, vagas } = app.estado;
   const nums = new Map(porPlataforma(vagas).map((p: any) => [p.plataforma, p]));
   const ordem = Object.keys(STATUS);
   const lista = [...plataformas].sort((a: any, b: any) => ordem.indexOf(a.status) - ordem.indexOf(b.status) || String(a.nome ?? a.id).localeCompare(String(b.nome ?? b.id)));
-  const salvar = (p: any, patch: object, msg: string) => app.agir(() => app.api(`/api/v1/plataformas/${encode(p.id)}`, 'PUT', patch), msg);
+  const salvar = (p: any, patch: object, msg: string) => trava.travado ? (app.aviso(trava.frase, true), Promise.resolve(false)) : app.agir(() => app.api(`/api/v1/plataformas/${encode(p.id)}`, 'PUT', patch), msg);
 
   return (
     <div>
       <header className="cabecalho">
         <div><h1>Plataformas</h1><p>Onde procurar vagas e como cada uma funciona. Teste uma fonte nova por rodada e anote aqui o que descobrir.</p></div>
-        <button className="botao-fantasma" type="button" onClick={async () => {
+        <button className="botao-fantasma" type="button" {...trava()} onClick={async () => {
           const nome = await app.perguntar({ titulo: 'Nova plataforma', campo: 'Nome (ex.: Remotar)' });
           if (!nome) return;
           const url = await app.perguntar({ titulo: `Endereço de ${nome}`, campo: 'https://…' });
@@ -34,7 +35,7 @@ export function TelaPlataformas() {
               <article key={p.id} className={`plataforma s-${p.status}`}>
                 <div className="acoes" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <h2><LinkExterno url={p.url} semLink={p.nome ?? p.id}>{p.nome ?? p.id}</LinkExterno></h2>
-                  <select className="situacao" aria-label={`Situação de ${p.nome}`} value={p.status ?? ''}
+                  <select className="situacao" aria-label={`Situação de ${p.nome}`} {...trava()} value={p.status ?? ''}
                     onChange={ev => salvar(p, { status: ev.target.value }, `${p.nome}: ${STATUS[ev.target.value]}`)}>
                     {!STATUS[p.status] && <option value={p.status ?? ''} />}
                     {Object.entries(STATUS).map(([k, t]) => <option key={k} value={k}>{t}</option>)}

@@ -1,7 +1,7 @@
 // Triagem: uma vaga por vez. Arraste o cartão (direita aplica, esquerda pula) ou use os botões / teclas A, P, →.
 // Porte de web/telas/triagem.mjs.
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { useApp, type App } from '../app/contexto';
+import { useApp, useTrava, type App } from '../app/contexto';
 import { MOTIVOS_PULO, mercadoDe, noFoco } from '../dominio/modelo';
 import { Icone, LinkExterno } from '../componentes';
 import { BuscaDoPerfil } from './BuscaDoPerfil';
@@ -28,7 +28,9 @@ export function TelaTriagem() {
   const v = fila[0];
   const grupoA = fila.filter((x: any) => x.aderencia === 'A');
 
-  const umaVez = (fn: () => Promise<unknown>) => async () => { if (ocupado) return; ocupado = true; try { await fn(); } finally { ocupado = false; } };
+  const trava = useTrava();
+  // Com a trava ligada (ruling A13), decidir não faz nada além de avisar (teclas, gesto e botões).
+  const umaVez = (fn: () => Promise<unknown>) => async () => { if (trava.travado) { app.aviso(trava.frase, true); return; } if (ocupado) return; ocupado = true; try { await fn(); } finally { ocupado = false; } };
   const aplicar = v && umaVez(() => app.mover(v.id, 'aplicar', {}, `${v.empresa}: vai para a Fila`));
   const pular = v && umaVez(async () => {
     const motivo = await app.perguntar({ titulo: 'Por que pular?', texto: `${v.empresa} — ${v.titulo}`, opcoes: MOTIVOS_PULO });
@@ -82,7 +84,7 @@ export function TelaTriagem() {
           : 'Nenhuma vaga esperando decisão.'}</p>
       </div>
       {grupoA.length > 1 && (
-        <button className="botao-fantasma" type="button" onClick={aprovarGrupoA}>{`Aprovar todas do grupo A (${grupoA.length})`}</button>
+        <button className="botao-fantasma" type="button" {...trava()} onClick={aprovarGrupoA}>{`Aprovar todas do grupo A (${grupoA.length})`}</button>
       )}
     </header><BuscaDoPerfil /></>
   );
@@ -117,9 +119,9 @@ export function TelaTriagem() {
         <Ficha key={v.id} v={v} mercado={mercado} chips={chips} aoAplicar={aplicar!} aoPular={pular!} depois={depois} />
       </div>
       <div className="decisao">
-        <button className="redondo" type="button" aria-label="Pular vaga (tecla P)" onClick={pular!}><Icone d="M7 7l10 10M17 7L7 17" /></button>
+        <button className="redondo" type="button" aria-label="Pular vaga (tecla P)" {...trava()} onClick={pular!}><Icone d="M7 7l10 10M17 7L7 17" /></button>
         <button className="redondo menor" type="button" aria-label="Ver detalhes da vaga" onClick={() => app.abrirVaga(v.id)}><Icone><circle cx="12" cy="12" r="8" /><path d="M12 11v5M12 8v.01" /></Icone></button>
-        <button className="redondo sim" type="button" aria-label="Aplicar na vaga (tecla A)" onClick={aplicar!}><Icone d="M6 12.5l4 4L18 8" /></button>
+        <button className="redondo sim" type="button" aria-label="Aplicar na vaga (tecla A)" {...trava()} onClick={aplicar!}><Icone d="M6 12.5l4 4L18 8" /></button>
       </div>
       <div className="legenda-decisao" aria-hidden="true"><span>Pular · P</span><span>Detalhes</span><span>Aplicar · A</span></div>
       <p className="pequeno mudo" style={{ textAlign: 'center', marginTop: '18px' }}>{`${fila.length - 1 > 0 ? `Depois desta, mais ${fila.length - 1}.` : 'É a última.'} Aprovadas vão para a Fila; o envio acontece pelo app quando você retomar.`}</p>
@@ -150,6 +152,7 @@ async function aprovarLista(app: App, lista: any[]) {
 
 // O cartão da vaga. Arrastar com dedo ou mouse: a decisão vem do lado em que ele é solto.
 function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; mercado: string; chips: string[]; aoAplicar: () => void; aoPular: () => void; depois: () => void }) {
+  const trava = useTrava();
   const app = useApp();
   const ficha = useRef<HTMLElement>(null);
   const sim = useRef<HTMLSpanElement>(null);
@@ -176,6 +179,7 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
     if (a.inicio == null) return;
     a.inicio = null;
     ficha.current?.classList.remove('arrastando');
+    if (trava.travado && Math.abs(a.dx) > LIMIAR) { voltar(); aoAplicar(); return; } // travado: o cartão volta e aoAplicar só avisa
     if (a.dx > LIMIAR && ficha.current) { ficha.current.style.transform = 'translateX(120vw) rotate(24deg)'; ficha.current.style.opacity = '0'; aoAplicar(); }
     else if (a.dx < -LIMIAR) { voltar(); aoPular(); }
     else voltar();
@@ -221,7 +225,7 @@ function Ficha({ v, mercado, chips, aoAplicar, aoPular, depois }: { v: any; merc
       <div className="acoes">
         <LinkExterno url={v.link} className="botao-fantasma p">Ler a vaga completa</LinkExterno>
         <button className="botao-fantasma p" type="button" onClick={depois}>Decidir depois</button>
-        {!opiniao && <button className="botao-fantasma p" type="button" disabled={pensando} onClick={pedirOpiniao}>{pensando ? 'A IA está lendo…' : 'Opinião da IA'}</button>}
+        {!opiniao && <button className="botao-fantasma p" type="button" {...trava(pensando)} onClick={pedirOpiniao}>{pensando ? 'A IA está lendo…' : 'Opinião da IA'}</button>}
       </div>
       <p className="dica-gesto" aria-hidden="true"><Icone d="M5 12h14M15 8l4 4-4 4" />Arraste para a direita para aplicar, para a esquerda para pular</p>
     </article>

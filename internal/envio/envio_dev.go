@@ -26,11 +26,11 @@ const intervaloDaFila = 2 * time.Minute
 // Ligar (só no build envio_dev) roda o executor em segundo plano: ao abrir, Iniciar (enviando vira incerta e
 // aprovação vencida volta a preparada), e depois EnviarAprovadas de tempos em tempos. O navegador abre SEM JANELA
 // (jc-a2y.6.7): só a pessoa, pela tela, mostra o envio (MostrarEnvio) ou abre o login (Entrar).
-func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
-	return ligarExecutorDeDesenvolvimento(ctx, arm, pastaDados)
+func Ligar(ctx context.Context, arm *armazem.Armazem, pastaDados string, podeAgir func() (bool, string)) Controle {
+	return ligarExecutorDeDesenvolvimento(ctx, arm, pastaDados, podeAgir)
 }
 
-func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, pastaDados string) Controle {
+func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, pastaDados string, podeAgir func() (bool, string)) Controle {
 	log.Printf("envio: executor LIGADO (build de desenvolvimento envio_dev)")
 	av := aovivo.Novo(time.Now) // "Ao vivo" (jc-a2y.6.9): começa desligado a cada abertura do app
 	nav, err := navegador.Novo(navegador.Opcoes{PastaDados: pastaDados, AoVivo: av})
@@ -38,7 +38,7 @@ func ligarExecutorDeDesenvolvimento(ctx context.Context, arm *armazem.Armazem, p
 		log.Printf("envio: navegador indisponível (%T); executor desligado", err)
 		return desligado()
 	}
-	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos"), Etapa: av.Etapa})
+	x := executor.Novo(arm, executor.Opcoes{Navegador: nav, PastaCurriculos: filepath.Join(pastaDados, "curriculos"), Etapa: av.Etapa, PodeAgir: liberado(podeAgir)})
 	ctx, cancelar := context.WithCancel(ctx)
 	// A pessoa fechou a janela de login: plataformas em precisa-entrar voltam, se o envio geral estiver liberado
 	// (jc-a2y.6.11).

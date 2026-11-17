@@ -10,7 +10,7 @@
 // leva ao Radar. Sem e-mail conectado, só um convite para conectar em Perfil e IA. Frases fixas: nenhum texto do servidor na tela;
 // o resumo da IA aparece como texto, nunca como link.
 import { useEffect, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { foiEnviada } from '../dominio/modelo';
 import { NOMES_EMAIL, pedeVaga } from '../dominio/emails';
@@ -55,6 +55,7 @@ const linha = (e: any) => [e.de, e.assunto, e.resumo].filter(Boolean).join(' · 
 
 function EmailAConfirmar({ e, vaga }: { e: any; vaga: any }) {
   const app = useApp();
+  const trava = useTrava();
   const ir = (acao: string, msg: string) => app.agir(() => app.api(`/api/v1/emails/${encode(e.idMensagem)}/${acao}`, 'POST', {}), msg);
   return (
     <li className="j-row">
@@ -62,8 +63,8 @@ function EmailAConfirmar({ e, vaga }: { e: any; vaga: any }) {
       <h3 className="j-email-titulo">{vaga ? `${vaga.empresa} — ${vaga.titulo}` : 'Vaga'}</h3>
       <p className="j-email-linha">{linha(e)}</p>
       <div className="j-email-acoes">
-        <button className="btn primary" type="button" onClick={() => ir('confirmar', 'Vaga atualizada')}>{rotuloConfirmar(String(e.proposta?.etapa ?? ''))}</button>
-        <button className="btn secondary" type="button" onClick={() => ir('descartar', 'E-mail tirado da lista')}>Não mudar a vaga</button>
+        <button className="btn primary" type="button" {...trava()} onClick={() => ir('confirmar', 'Vaga atualizada')}>{rotuloConfirmar(String(e.proposta?.etapa ?? ''))}</button>
+        <button className="btn secondary" type="button" {...trava()} onClick={() => ir('descartar', 'E-mail tirado da lista')}>Não mudar a vaga</button>
       </div>
     </li>
   );
@@ -94,6 +95,7 @@ export function agruparIguais(emails: any[]): any[][] {
 
 function EmailSemVaga({ grupo, opcoes }: { grupo: any[]; opcoes: any[] }) {
   const app = useApp();
+  const trava = useTrava();
   const e = grupo[0], outros = grupo.slice(1);
   const [escolha, setEscolha] = useState('');
   const [criando, setCriando] = useState(false);
@@ -122,20 +124,20 @@ function EmailSemVaga({ grupo, opcoes }: { grupo: any[]; opcoes: any[] }) {
           <label htmlFor={`cargo-${id}`}>Cargo</label>
           <input id={`cargo-${id}`} type="text" maxLength={120} autoComplete="off" value={cargo} placeholder="Título da vaga" onChange={ev => setCargo(ev.target.value)} />
           <div className="j-email-acoes">
-            <button className="btn primary" type="submit" disabled={!podeCriar}>Criar vaga</button>
+            <button className="btn primary" type="submit" {...trava(!podeCriar)}>Criar vaga</button>
             <button className="btn quiet" type="button" onClick={() => setCriando(false)}>Cancelar</button>
           </div>
         </form>
         : <div className="j-email-acoes">
-          <button className="btn primary" type="button" aria-expanded={false} onClick={() => setCriando(true)}>{sugerida ? `Criar vaga: ${sugerida}…` : 'Criar vaga…'}</button>
+          <button className="btn primary" type="button" aria-expanded={false} {...trava()} onClick={() => setCriando(true)}>{sugerida ? `Criar vaga: ${sugerida}…` : 'Criar vaga…'}</button>
           {opcoes.length > 0 && <>
             <select aria-label={`Vaga do e-mail "${e.assunto}"`} value={escolha} onChange={ev => setEscolha(ev.target.value)}>
               <option value="">Ou é de uma vaga que já está no app?</option>
               {opcoes.map(v => <option key={v.id} value={v.id}>{`${v.empresa} — ${v.titulo}`}</option>)}
             </select>
-            <button className="btn secondary" type="button" disabled={!escolha} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga', 'ligar')}>Ligar à vaga</button>
+            <button className="btn secondary" type="button" {...trava(!escolha)} onClick={() => ir('ligar', { vagaId: escolha }, 'E-mail ligado à vaga', 'ligar')}>Ligar à vaga</button>
           </>}
-          <button className="btn secondary" type="button" onClick={() => ir('descartar', {}, outros.length ? 'E-mails tirados da lista' : 'E-mail tirado da lista', 'descartar')}>{outros.length ? 'Ignorar e-mails' : 'Ignorar e-mail'}</button>
+          <button className="btn secondary" type="button" {...trava()} onClick={() => ir('descartar', {}, outros.length ? 'E-mails tirados da lista' : 'E-mail tirado da lista', 'descartar')}>{outros.length ? 'Ignorar e-mails' : 'Ignorar e-mail'}</button>
         </div>}
     </li>
   );
@@ -143,6 +145,7 @@ function EmailSemVaga({ grupo, opcoes }: { grupo: any[]; opcoes: any[] }) {
 
 export function RespostasEmail() {
   const app = useApp();
+  const trava = useTrava();
   const [conta, setConta] = useState<{ conectada: boolean; ultimaLeitura: string } | null>(null);
   const [lendo, setLendo] = useState(false);
   const [feito, setFeito] = useState('');
@@ -181,7 +184,7 @@ export function RespostasEmail() {
     <section className="j-list-panel j-email" aria-labelledby="respostas-email-titulo">
       <div className="j-panel-heading">
         <h2 id="respostas-email-titulo"><IconeUI nome="send" tamanho={17} />Respostas por e-mail{pendentes > 0 && <span className="j-count">{pendentes}</span>}</h2>
-        {conta?.conectada && <button className="btn secondary" type="button" disabled={lendo} onClick={ler}>{lendo ? 'Lendo o e-mail…' : 'Ler respostas do e-mail'}</button>}
+        {conta?.conectada && <button className="btn secondary" type="button" {...trava(lendo)} onClick={ler}>{lendo ? 'Lendo o e-mail…' : 'Ler respostas do e-mail'}</button>}
       </div>
       <div className="j-email-estado">
         {conta?.conectada

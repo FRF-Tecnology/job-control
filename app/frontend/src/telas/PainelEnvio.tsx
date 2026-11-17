@@ -4,7 +4,7 @@
 // Começa pausado sempre que o app abre (decisão do PO), e a tela diz isso. Pausar e retomar não mudam a /versao: a
 // tela usa a resposta do POST. Os desfechos mudam a /versao, e a tela relê junto com a fila.
 import { useEffect, useRef, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { AoVivo } from './AoVivo';
 import { doAssistente, nomeAssistente, type Quem } from '../util';
 
@@ -89,6 +89,7 @@ const contar = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um :
 // onEstado: avisa a Fila do estado (ex.: se o envio existe neste app, para os botões de entrar nos cartões).
 export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: string) => string; motivo: (m: string) => string; onEstado?: (e: EstadoEnvio | null) => void; fila?: ResumoFila }) {
   const app = useApp();
+  const trava = useTrava();
   const [envio, setEnvio] = useState<EstadoEnvio | null>(null);
   useEffect(() => { onEstado?.(envio); }, [envio]); // eslint-disable-line react-hooks/exhaustive-deps
   // Estado vindo de fora do painel (ex.: "entrar" pelo cartão da candidatura): só atualiza, sem avisos.
@@ -220,7 +221,7 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
           {envio.pausado && doAssistente(envio.pausadoPor) && <p className="pequeno pausado-por">{`Pausado pelo ${nomeAssistente(envio.pausadoPor?.canal)}.`}</p>}
         </div>
         {envio.pausado
-          ? <button ref={acao} className="botao" type="button" disabled={ocupado} onClick={retomar}>Retomar envio</button>
+          ? <button ref={acao} className="botao" type="button" {...trava(ocupado)} onClick={retomar}>Retomar envio</button>
           : <button ref={acao} className="botao-fantasma" type="button" disabled={ocupado} onClick={pausar}>Pausar envio</button>}
       </div>
       {!agora && fila && (() => {
@@ -254,8 +255,8 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
                   {paginas && <p className="pequeno mudo">{paginas}</p>}
                   {podeRetomar && (
                     <div className="acoes">
-                      <button className="botao-fantasma p" type="button" disabled={ocupado} onClick={() => retomarPlataforma(p)}>{`Retomar ${nomeP}`}</button>
-                      {p.estado === 'precisa-entrar' && p.plataforma === 'linkedin' && <button className="botao-fantasma p" type="button" disabled={ocupado || !!envio.login} onClick={entrarLinkedin}>Entrar no LinkedIn</button>}
+                      <button className="botao-fantasma p" type="button" {...trava(ocupado)} onClick={() => retomarPlataforma(p)}>{`Retomar ${nomeP}`}</button>
+                      {p.estado === 'precisa-entrar' && p.plataforma === 'linkedin' && <button className="botao-fantasma p" type="button" {...trava(ocupado || !!envio.login)} onClick={entrarLinkedin}>Entrar no LinkedIn</button>}
                     </div>
                   )}
                 </li>
@@ -271,14 +272,14 @@ export function PainelEnvio({ nome, motivo, onEstado, fila }: { nome: (id: strin
           <p className="pequeno mudo">{envio.janela === 'visivel'
             ? 'O navegador do envio aparece numa janela a partir da próxima candidatura. A que está sendo enviada agora termina sem janela.'
             : 'O envio roda sem janela, para não atrapalhar o uso do PC. Sempre que o app abrir, ele volta sem janela.'}</p>
-          <button className="botao-fantasma p" type="button" disabled={ocupado} onClick={() => verEnvio(envio.janela !== 'visivel')}>
+          <button className="botao-fantasma p" type="button" {...trava(ocupado)} onClick={() => verEnvio(envio.janela !== 'visivel')}>
             {envio.janela === 'visivel' ? 'Esconder o envio' : 'Ver o envio'}
           </button>
         </div>
         <div>
           <h3>Entrar nas plataformas</h3>
           <p className="pequeno mudo">Abre uma janela no login para você entrar com a sua conta. Enquanto ela estiver aberta, o envio espera. Na Gupy e na InHire o login é por empresa: entre pelo cartão da candidatura.</p>
-          <button className="botao-fantasma p" type="button" disabled={ocupado || !!envio.login} onClick={entrarLinkedin}>Entrar no LinkedIn</button>
+          <button className="botao-fantasma p" type="button" {...trava(ocupado || !!envio.login)} onClick={entrarLinkedin}>Entrar no LinkedIn</button>
         </div>
       </div>
       <AoVivo nome={nome} />

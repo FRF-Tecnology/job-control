@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { IconeUI } from '../app/IconeUI';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { SeletorPerfil } from './SeletorPerfil';
 import { aceitaTrabalhoLocal, cargoIgualAoNome, paises } from '../dominio/localDeTrabalho';
 import { DDI } from '../dominio/ddi';
 import { ConexaoOnboarding } from './ConexaoOnboarding';
+import { SecaoConta } from './Conta';
 import { ContaEmail } from './ContaEmail';
 import { lerArquivo } from './PrimeiroAcesso';
 import arteCV from '../../../../site/artes/curriculo-verificado.svg';
@@ -70,7 +71,7 @@ const lerCPF=(r:any)=>({salvo:r?.salvo===true,mascarado:texto(r?.mascarado),auto
 // O CPF não vai com o perfil: tem rota e botão próprios e fica no cofre do sistema (nomeDoCofre). A tela só vê a
 // máscara; o número digitado sai da tela assim que é salvo.
 function CampoCPF(){
-  const app=useApp();
+  const app=useApp(), trava=useTrava();
   const [estado,setEstado]=useState<{salvo:boolean;mascarado:string;automatico:boolean}|null>(null);
   const [editando,editar]=useState(false), [valor,setValor]=useState(''), [erro,setErro]=useState(''), [ocupado,ocupar]=useState(false);
   useEffect(()=>{let vivo=true;app.api('/api/v1/perfil/cpf').then(r=>{if(vivo)setEstado(lerCPF(r))}).catch(()=>{});return()=>{vivo=false}},[]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -95,14 +96,14 @@ function CampoCPF(){
     <label htmlFor="f-cpf">CPF</label>
     {estado.salvo&&!editando
       ? <div className="pr-cpf-salvo"><span>Salvo: <strong>{estado.mascarado}</strong></span>
-          <button type="button" className="btn quiet" disabled={ocupado} onClick={()=>editar(true)}>Trocar</button>
-          <button type="button" className="btn quiet" disabled={ocupado} onClick={apagar}>Apagar</button></div>
+          <button type="button" className="btn quiet" {...trava(ocupado)} onClick={()=>editar(true)}>Trocar</button>
+          <button type="button" className="btn quiet" {...trava(ocupado)} onClick={apagar}>Apagar</button></div>
       : <div className="pr-cpf-novo">
           <input id="f-cpf" type="text" inputMode="numeric" autoComplete="off" maxLength={20} placeholder="000.000.000-00" value={valor} aria-invalid={!!erro||undefined} onChange={e=>{setValor(e.target.value);setErro('')}}/>
-          <button type="button" className="btn secondary" disabled={ocupado||!valor.trim()} onClick={salvar}>Salvar CPF</button>
+          <button type="button" className="btn secondary" {...trava(ocupado||!valor.trim())} onClick={salvar}>Salvar CPF</button>
           {estado.salvo&&<button type="button" className="btn quiet" disabled={ocupado} onClick={()=>{editar(false);setValor('');setErro('')}}>Cancelar</button>}
         </div>}
-    {estado.salvo&&!editando&&<label className="pr-cpf-auto"><input type="checkbox" checked={estado.automatico} disabled={ocupado} onChange={e=>void automatico(e.target.checked)}/>
+    {estado.salvo&&!editando&&<label className="pr-cpf-auto"><input type="checkbox" checked={estado.automatico} {...trava(ocupado)} onChange={e=>void automatico(e.target.checked)}/>
       <span>Preencher o CPF sem perguntar</span></label>}
     {erro&&<p className="pr-erro" role="alert">{erro}</p>}
     <p className="pr-nota">Fica {nomeDoCofre()}, fora do banco do app, e aqui aparece só em parte. O app só preenche o CPF em site brasileiro, no campo de CPF, {estado.automatico?'junto com o resto, depois que você confere o site':'e pergunta antes, a cada site'}. Nunca vai para a IA nem para o envio automático.</p>
@@ -115,7 +116,7 @@ function Opcoes({titulo,base,valor,mudar}:{titulo:string;base:string[];valor:str
   return <fieldset className="pr-levels pr-wide"><legend>{titulo}</legend><div>{[...new Set([...base,...valor])].map(v=><label key={v}><input type="checkbox" checked={valor.includes(v)} onChange={e=>mudar(e.target.checked?[...valor,v]:valor.filter(x=>x!==v))}/><span>{v}</span></label>)}</div></fieldset>;
 }
 export function PerfilDoEspaco(){
-  const app=useApp(), id=app.estado.perfilBuscaAtivo || 'original';
+  const app=useApp(), id=app.estado.perfilBuscaAtivo || 'original', trava=useTrava();
   const [dados,setDados]=useState(()=>leitura(app.estado.perfil||{})), [sujo,alterado]=useState(false);
   // Estados e cidades do IBGE: um módulo à parte, carregado só nesta tela.
   const [geo,setGeo]=useState<typeof import('../dominio/municipios')|null>(null);
@@ -142,7 +143,7 @@ export function PerfilDoEspaco(){
     alterado(true);falhar('')};
   const url='/api/v1/perfil?perfilBuscaId='+encodeURIComponent(id);
   async function salvar(){
-    if(salvando) return;
+    if(salvando||trava.travado) return;
     if(!dados.cargo.trim()){falhar('Informe o cargo que deseja buscar.');document.getElementById('f-cargo')?.focus();return;}
     if(dados.min && dados.max && Number(dados.max)<Number(dados.min)){falhar('O máximo não pode ser menor que o mínimo.');return;}
     if(!emailValido(dados.email)){falhar('Informe um e-mail válido, como nome@exemplo.com.');document.getElementById('f-email')?.focus();return;}
@@ -162,7 +163,7 @@ export function PerfilDoEspaco(){
     finally{if(ativa.current) salvarEstado(false)}
   }
   async function selecionar(f?:File){
-    if(!f||cvOcupado)return;
+    if(!f||cvOcupado||trava.travado)return;
     cvFalha('');cvMensagem('');
     if(!/\.pdf$/i.test(f.name)||!f.size||f.size>20*1024*1024){cvFalha('Escolha um PDF de até 20 MB.');return}
     cvOcupar(true);
@@ -231,13 +232,15 @@ export function PerfilDoEspaco(){
       <Cartao titulo="Currículo" icone="file">
         <div className="pr-drop" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();void selecionar(e.dataTransfer.files[0]);}}>
           <img src={arteCV} alt="" width="42" height="42"/><div className="pr-file-meta"><strong>{cv?(/^curriculo-[A-Z2-7]{26,}\.pdf$/.test(cv)?'Currículo do perfil':cv):'Arraste seu currículo para cá'}</strong><small>{cv?'PDF salvo neste computador':'PDF de até 20 MB'}</small></div>
-          <button type="button" className="btn secondary" disabled={cvOcupado} onClick={()=>pdf.current?.click()}>{cvOcupado?'Salvando…':cv?'Trocar PDF':'Escolher PDF'}</button>
+          <button type="button" className="btn secondary" {...trava(cvOcupado)} onClick={()=>pdf.current?.click()}>{cvOcupado?'Salvando…':cv?'Trocar PDF':'Escolher PDF'}</button>
           <input hidden type="file" aria-label="Currículo em PDF" ref={pdf} accept=".pdf,application/pdf" onChange={e=>{void selecionar(e.target.files?.[0]);e.target.value='';}}/>
         </div>{cvErro&&<p role="alert">{cvErro}</p>}{cvStatus&&<p className="pr-connected" role="status">{cvStatus}</p>}
       </Cartao>
     </div></div>
     <form id="form-perfil-ativo" className="pr-footer pr-end" onSubmit={e=>{e.preventDefault();void salvar();}}>
-      {erro&&<p role="alert">{erro}</p>}<button className="btn primary" type="submit" disabled={salvando}>{salvando?'Salvando…':'Salvar perfil'}</button>
+      {erro&&<p role="alert">{erro}</p>}<button className="btn primary" type="submit" {...trava(salvando)}>{salvando?'Salvando…':'Salvar perfil'}</button>
     </form>
+    {/* Conta (sair e excluir): só com a conta ligada neste build e com entrada. */}
+    <SecaoConta />
   </div>;
 }

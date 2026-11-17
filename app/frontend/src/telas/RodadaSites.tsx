@@ -7,7 +7,7 @@
 //   3. a pessoa revisa, completa e ENVIA no site (o app nunca envia em site de terceiro) e clica em "Já enviei", ou pula.
 // Nada é enviado pelo app aqui.
 import { useEffect, useRef, useState } from 'react';
-import { ErroApi, useApp } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { foiEnviada } from '../dominio/modelo';
 import { encode, plural } from '../util';
@@ -35,6 +35,7 @@ type Passo = 'abrindo' | 'esperando' | 'conferir' | 'preenchendo' | 'feito' | 'e
 
 export function RodadaSites({ candidaturas, atualizar }: { candidaturas: Candidatura[]; atualizar: () => Promise<void> }) {
   const app = useApp();
+  const trava = useTrava();
   const disponiveis = vagasDaRodadaSites(app.estado.vagas ?? [], candidaturas);
   const [fila, setFila] = useState<Vaga[] | null>(null); // a rodada em curso (fixa ao começar)
   const [i, setI] = useState(0);
@@ -112,7 +113,7 @@ export function RodadaSites({ candidaturas, atualizar }: { candidaturas: Candida
         </div>
         <div className="j-rodada-acoes">
           {!fila || fim
-            ? <button type="button" className="btn primary" disabled={!disponiveis.length} onClick={comecar}><IconeUI nome="send" tamanho={16} />{`Começar rodada (${disponiveis.length})`}</button>
+            ? <button type="button" className="btn primary" {...trava(!disponiveis.length)} onClick={comecar}><IconeUI nome="send" tamanho={16} />{`Começar rodada (${disponiveis.length})`}</button>
             : <button type="button" className="btn quiet" onClick={parar}>Parar rodada</button>}
         </div>
       </div>
@@ -125,18 +126,18 @@ export function RodadaSites({ candidaturas, atualizar }: { candidaturas: Candida
         {passo === 'conferir' && <>
           <p>Preencher em <strong>{dominio}</strong>? Confira se é mesmo o site da empresa.</p>
           <div className="j-rodada-acoes">
-            <button type="button" className="btn primary" onClick={() => void preencher()}>Preencher</button>
+            <button type="button" className="btn primary" {...trava()} onClick={() => void preencher()}>Preencher</button>
             <button type="button" className="btn quiet" onClick={() => void proxima(false)}>Não é este site: pular</button>
           </div>
         </>}
         {passo === 'preenchendo' && <p role="status">Preenchendo…</p>}
         {(passo === 'feito' || passo === 'erro') && <p role="status">{texto}</p>}
         {passo === 'feito' && cpf && (cpf.salvo
-          ? <div className="j-rodada-acoes"><span>Este formulário pede CPF.</span><button type="button" className="btn secondary" onClick={() => void preencher(true)}>Preencher CPF em {dominio}</button></div>
+          ? <div className="j-rodada-acoes"><span>Este formulário pede CPF.</span><button type="button" className="btn secondary" {...trava()} onClick={() => void preencher(true)}>Preencher CPF em {dominio}</button></div>
           : <p>Este formulário pede CPF: digite no site, ou salve o seu em <a href="#/perfil">Perfil e IA</a>.</p>)}
         {(passo === 'feito' || passo === 'erro') && <div className="j-rodada-acoes">
-          {passo === 'feito' && <button type="button" className="btn primary" onClick={() => void proxima(true)}><IconeUI nome="check" tamanho={16} />Já enviei: próxima</button>}
-          {passo === 'erro' && <button type="button" className="btn secondary" onClick={() => void abrir(atual)}>Tentar de novo</button>}
+          {passo === 'feito' && <button type="button" className="btn primary" {...trava()} onClick={() => void proxima(true)}><IconeUI nome="check" tamanho={16} />Já enviei: próxima</button>}
+          {passo === 'erro' && <button type="button" className="btn secondary" {...trava()} onClick={() => void abrir(atual)}>Tentar de novo</button>}
           <button type="button" className="btn quiet" onClick={() => void proxima(false)}>Pular esta vaga</button>
         </div>}
       </div>}

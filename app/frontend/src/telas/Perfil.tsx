@@ -1,9 +1,10 @@
 // Perfil e regras (porte de web/telas/perfil.mjs). O formulário guarda as edições localmente até salvar.
 import { useState } from 'react';
-import { useApp } from '../app/contexto';
+import { useApp, useTrava } from '../app/contexto';
 import { NOMES_FOCO } from '../dominio/modelo';
 import { JanelaApp } from './JanelaApp';
 import { SeusDados } from './SeusDados';
+import { SecaoConta } from './Conta';
 
 // Campos simples do perfil: [chave, rótulo, tipo, dica]
 const CAMPOS: [string, [string, string, string, string?][]][] = [
@@ -36,6 +37,7 @@ function perfilInicial(estado: any) {
 
 export function TelaPerfil() {
   const app = useApp();
+  const trava = useTrava();
   const [perfil, setPerfil] = useState<any>(() => perfilInicial(app.estado));
   const [origem] = useState<string>(() => app.estado.perfilBuscaAtivo ?? 'original');
   const pdfs: any[] = app.estado.curriculos ?? [];
@@ -81,12 +83,13 @@ export function TelaPerfil() {
   return (<>
     <form className="formulario" onSubmit={async ev => {
       ev.preventDefault();
+      if (trava.travado) return;
       const atualizado = { ...perfil };
       if (!faixa.min && !faixa.max) delete atualizado.faixaSalarial;
       if (await app.agir(() => app.api('/api/v1/perfil?perfilBuscaId=' + encodeURIComponent(origem), 'PUT', atualizado), 'Perfil salvo')) app.limpar();
     }}>
       <header className="cabecalho"><div><h1>Perfil e regras</h1><p>O Claude lê esta página antes de cada rodada. CPF, RG e senhas nunca ficam aqui.</p></div>
-        <button className="botao" type="submit">Salvar perfil</button></header>
+        <button className="botao" type="submit" {...trava()}>Salvar perfil</button></header>
       {CAMPOS.map(([grupo, campos]) => <fieldset key={grupo}><legend>{grupo}</legend>
         {grupo === 'Remuneração' && <>
           <label className="campo"><span>Faixa salarial mensal desejada</span>
@@ -140,8 +143,9 @@ export function TelaPerfil() {
         </div>
         <div><button className="botao-fantasma" type="button" onClick={() => mudar(p => { p.respostasPadrao.push({ pergunta: '', resposta: '' }); })}>Adicionar resposta</button></div>
       </fieldset>
-      <div><button className="botao" type="submit">Salvar perfil</button></div>
+      <div><button className="botao" type="submit" {...trava()}>Salvar perfil</button></div>
     </form>
+    <SecaoConta />
     <JanelaApp />
     <SeusDados />
   </>);

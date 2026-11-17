@@ -2,6 +2,7 @@
 // para a vaga. Resposta editada pela pessoa passa a ter origem "Você"; a da IA fica marcada até ser editada.
 import { useEffect, useRef, useState } from 'react';
 import { avisoCurriculo, conteudoParaEnviar, type Conteudo } from '../app/pacote';
+import { useTrava } from '../app/contexto';
 import { NOME_MOTIVO_SENSIVEL, perguntaSensivel } from '../app/sensivel';
 
 const ORIGENS: Record<string, string> = { respostasPadrao: 'Respostas padrão', pessoa: 'Você', ia: 'IA' };
@@ -12,6 +13,7 @@ export function PacoteForm({ inicial, pdfs, perfil, rotulo, ocupado, foraDoPacot
   onSalvar: (c: Conteudo) => void; onCancelar: () => void;
 }) {
   const [c, setC] = useState<Conteudo>(() => structuredClone(inicial));
+  const trava = useTrava();
   // Ao abrir, o foco vai para o primeiro campo, para quem usa teclado ou leitor de tela seguir dali (jc-a2y.59).
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => { formRef.current?.querySelector<HTMLElement>('select, input, textarea')?.focus(); }, []);
@@ -25,7 +27,7 @@ export function PacoteForm({ inicial, pdfs, perfil, rotulo, ocupado, foraDoPacot
   const temSensivel = sensiveis.some(Boolean);
 
   return (
-    <form ref={formRef} className="formulario pacote-form" aria-label="Pacote da candidatura" onSubmit={ev => { ev.preventDefault(); if (!temSensivel && !semPDF) onSalvar(conteudoParaEnviar(c)); }}>
+    <form ref={formRef} className="formulario pacote-form" aria-label="Pacote da candidatura" onSubmit={ev => { ev.preventDefault(); if (!temSensivel && !semPDF && !trava.travado) onSalvar(conteudoParaEnviar(c)); }}>
       <div className="duas">
         <label className="campo"><span>Currículo</span>
           <select value={c.curriculo.arquivo} disabled={semPDF} onChange={ev => { const v = ev.target.value; mudar(x => { x.curriculo = { arquivo: v }; }); }}>
@@ -97,7 +99,7 @@ export function PacoteForm({ inicial, pdfs, perfil, rotulo, ocupado, foraDoPacot
       </label>
 
       <div className="acoes">
-        <button className="botao" type="submit" disabled={!!ocupado || semPDF || temSensivel}>{ocupado ? 'Salvando…' : rotulo}</button>
+        <button className="botao" type="submit" {...trava(!!ocupado || semPDF || temSensivel)}>{ocupado ? 'Salvando…' : rotulo}</button>
         <button className="botao-fantasma" type="button" onClick={onCancelar}>Cancelar</button>
       </div>
     </form>
