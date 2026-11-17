@@ -17,7 +17,7 @@ export const ITENS: Record<string, string> = {
   curriculos: 'Os currículos copiados para a pasta do app',
   backups: 'As cópias diárias (backups)',
   navegador: 'O login nas plataformas (navegador do app)',
-  chaves: 'As chaves de IA guardadas no cofre do sistema',
+  chaves: 'As chaves de IA, a senha do e-mail e o CPF guardados no cofre do sistema',
 };
 // O que pode sobrar depois de apagar: os itens acima e a pasta antiga, que só existe se ficou ao lado da nova
 // (jc-etv.7, #113). Fica fora da lista de "o que apaga" porque nem sempre existe; aqui, para a pessoa saber que ficou.

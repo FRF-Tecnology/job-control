@@ -103,6 +103,12 @@ func abrirJanela(app *application.App, banco *armazem.Armazem, inicial janela.Ta
 	} {
 		c.w.OnWindowEvent(evento, func(*application.WindowEvent) { c.registrar() })
 	}
+	// O macOS pode encerrar o processo que desenha a página (pouca memória, horas parada, o Mac dormiu): a janela fica
+	// em branco até alguém recarregar. Recarrega sozinho; o estado está todo no banco, nada se perde.
+	c.w.OnWindowEvent(events.Mac.WebViewWebContentProcessDidTerminate, func(*application.WindowEvent) {
+		log.Printf("janela: a página parou; recarregando")
+		c.w.Reload()
+	})
 	// A tela pode ser menor que o tamanho guardado (outro monitor, notebook): encolhe uma vez, quando a janela existe.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) { c.caberNaTela() })
 	c.w.OnWindowEvent(events.Common.WindowShow, func(*application.WindowEvent) { c.caberNaTela() })

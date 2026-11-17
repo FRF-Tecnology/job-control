@@ -264,6 +264,12 @@
      },
      "proximoPasso": {
       "type": "string"
+     },
+     "empresa": {
+      "type": "string"
+     },
+     "cargo": {
+      "type": "string"
      }
     },
     "required": [
@@ -273,7 +279,7 @@
     ],
     "additionalProperties": false
    },
-   "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver."
+   "sistema": "Você classifica emails de processos seletivos.\ntipo: confirmacao (recebemos sua candidatura), rejeicao, entrevista (convite/agendamento), teste, oferta, outro.\nvagaId: o id de uma das vagas listadas, ou null se não der para saber. Nunca invente id.\nresumo: uma frase. proximoPasso: o que a pessoa precisa fazer, se houver.\nempresa e cargo: só quando vagaId for null, o nome da empresa que contrata e o título da vaga, como aparecem no email (no assunto ou no corpo). Um não depende do outro: com o cargo e sem a empresa, mande só o cargo. O cargo é o título, sem o local nem o código da vaga (\"[Job-123] Dev Go, Brazil\" é \"Dev Go\"). Se não aparecerem, deixe de fora; não use o nome da plataforma de recrutamento como empresa."
   },
   "avaliarEntrevista": {
    "entrada": {

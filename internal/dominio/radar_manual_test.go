@@ -70,3 +70,37 @@ func TestRadarManualExigePessoaEConfirmacao(t *testing.T) {
 		t.Fatalf("confirmação duplicada: %v", err)
 	}
 }
+
+// O envio parou porque a vaga do LinkedIn leva ao site da empresa (sem Candidatura simplificada): a pessoa segue à
+// mão pela mesma candidatura (Rodada dos sites das empresas). Outro bloqueio continua recusado.
+func TestRadarManualDepoisDeSiteExterno(t *testing.T) {
+	agora := time.Now()
+	bloqueada := func(motivo string) (Estado, Candidatura) {
+		e := comVaga(t, Estado{}, "ext", "linkedin", linkLI("7"), true)
+		e, c := aprovada(t, e, "ext", agora, nil)
+		e, _, err := IniciarEnvio(e, c.ID, c.Versao, agora, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e, _, err = BloquearCandidatura(e, c.ID, motivo, agora, eu)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e, c
+	}
+	e, c := bloqueada("site-externo")
+	reservado, v, err := IniciarManualRadar(e, "ext", nil, agora, eu)
+	if err != nil {
+		t.Fatalf("não reservou a bloqueada por site externo: %v", err)
+	}
+	if v["aplicacaoManual"] != true || v["etapa"] != "aplicar" || v["candidaturaManualId"] != c.ID || len(reservado.Candidaturas) != 1 {
+		t.Fatalf("vaga %v", v)
+	}
+	if _, _, err := ConfirmarManualRadar(reservado, "ext", agora, eu); err != nil {
+		t.Fatalf("confirmar: %v", err)
+	}
+	e, _ = bloqueada("captcha")
+	if _, _, err := IniciarManualRadar(e, "ext", nil, agora, eu); err == nil {
+		t.Fatal("reservou uma bloqueada por outro motivo")
+	}
+}

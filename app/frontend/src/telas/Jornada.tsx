@@ -3,6 +3,7 @@ import { useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { dataCurta, encode, nomeEtapa, NOMES_SUB } from '../util';
 import { TelaFila } from './Fila';
+import { RespostasEmail } from './RespostasEmail';
 import { BotaoRadar, CabecalhoJornada, DialogoJornada, MarcaEmpresa, TituloVaga, VazioJornada, type VagaJornada } from './JornadaUI';
 
 export function TelaListaDoDia() { return <TelaFila jornada />; }
@@ -72,6 +73,8 @@ export function TelaQuadroCandidaturas() {
             {detalhe && <span className="j-card-meta"><IconeUI nome={v.notas ? 'edit' : 'map-pin'} tamanho={13} /><span>{detalhe}</span></span>}</button>;
         }) : <div className="j-stage-empty">Nenhuma candidatura</div>}</div></section>;
     })}</div>
+    {/* As respostas por e-mail vêm depois das colunas: o quadro é o principal desta tela. */}
+    <RespostasEmail />
     {aberta && <EditarCartao vaga={aberta} fechar={() => {app.limpar(); setAberta(null);}} />}
   </section>;
 }

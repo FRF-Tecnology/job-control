@@ -197,3 +197,48 @@ textarea.j-input { resize: vertical; min-height: 76px; }
   .j-column-body { min-height: 0; }
   .j-stage-empty { min-height: 42px; }
 }
+
+/* Respostas por e-mail, no Quadro de candidaturas */
+.j-email { margin: 0 0 18px; }
+.j-email .j-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.j-email-estado { padding: 14px var(--j-space) 16px; }
+.j-email-estado p, .j-email-linha { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.j-email-estado p + p { margin-top: 8px; }
+.j-email .j-email-estado a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.j-email-feito { color: var(--text) !important; }
+.j-email-erro { color: var(--pr-alert, #ff8a8a) !important; }
+.j-email-grupo { margin: 0; padding: 12px var(--j-space) 0; font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.j-email-ajuda { margin: 4px 0 0; padding: 0 var(--j-space); color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 72ch; }
+.j-email-titulo { margin: 3px 0 4px; font-size: 15px; line-height: 1.35; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.j-email-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.j-email-acoes select { min-height: 36px; width: min(100%, 420px); }
+.j-email-criar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; align-items: center; margin-top: 12px; max-width: 520px; }
+.j-email-criar label { font-size: 13px; color: var(--muted); }
+.j-email-criar input { min-height: 36px; width: 100%; }
+.j-email-criar button { grid-column: 2; justify-self: start; }
+/* O quadro vem primeiro; as respostas por e-mail, logo abaixo. */
+.j-board-grid + .j-email { margin: 18px 0 0; }
+.j-email-criar .j-email-acoes { grid-column: 1 / -1; margin-top: 4px; }
+.j-email-iguais { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+/* Rodada do LinkedIn: o "play" da Lista do dia. */
+.j-rodada { margin: 0 0 18px; padding: 18px var(--j-space); border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(105deg, color-mix(in srgb, #0a66c2 14%, var(--surface)), var(--surface) 60%); }
+.j-rodada-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.j-rodada h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 17px; letter-spacing: -.02em; }
+.j-rodada-marca { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; background: #0a66c2; color: #fff; font: 700 13px/1 system-ui, sans-serif; }
+.j-rodada-topo p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 60ch; }
+.j-rodada-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.j-rodada-numeros { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.j-rodada-numeros li { border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--panel, transparent); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.j-rodada-numeros b { font-size: 20px; line-height: 1.1; }
+.j-rodada-numeros span { color: var(--muted); font-size: 12px; }
+.j-rodada-agora, .j-rodada-lista, .j-rodada-nota, .j-rodada-aviso { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.j-rodada-agora strong { color: var(--text); }
+.j-rodada-aviso { color: var(--text); }
+@media (max-width: 760px) { .j-rodada-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.j-rodada-sites { background: linear-gradient(105deg, color-mix(in srgb, var(--mint, #6fd3b0) 12%, var(--surface)), var(--surface) 60%); }
+.j-rodada-marca-site { background: color-mix(in srgb, var(--mint, #6fd3b0) 70%, #0e3b30); color: #0b1f1a; }
+.j-rodada-vaga { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 8px; }
+.j-rodada-vaga p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.j-rodada-vaga p strong, .j-rodada-vaga .j-rodada-agora strong { color: var(--text); }
+.j-rodada-vaga .j-rodada-acoes span { font-size: 13px; color: var(--muted); }

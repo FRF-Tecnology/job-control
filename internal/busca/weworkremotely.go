@@ -43,7 +43,7 @@ func weWorkRemotely(ctx context.Context, c *http.Client, termos []string) ([]dom
 	for _, item := range feed.Channel.Items {
 		empresa, titulo, ok := strings.Cut(item.Titulo, ": ")
 		empresa, titulo = texto(empresa, 180), texto(titulo, 300)
-		descricao := texto(item.Descricao, 6000)
+		descricao := textoDaDescricao(item.Descricao)
 		if !ok || empresa == "" || !cargoNasAtribuicoes(termos, titulo, descricao) || !linkDaFonte(item.Link, "weworkremotely.com") {
 			continue
 		}

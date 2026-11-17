@@ -72,31 +72,42 @@ type cli struct{ qual string }
 
 func (c cli) Nome() string { return c.qual + "-cli" }
 
+// pastasDoSistemaCLI são as pastas do Homebrew, onde `brew install` (e o npm do Node do Homebrew) põe o
+// Claude Code: /opt/homebrew/bin no Mac com Apple Silicon e /usr/local/bin no Mac com Intel. Um app aberto
+// pelo Finder recebe só /usr/bin:/bin:/usr/sbin:/sbin no PATH e não enxerga nenhuma das duas.
+// É variável só para o teste trocar por uma pasta temporária.
+var pastasDoSistemaCLI = []string{"/opt/homebrew/bin", "/usr/local/bin"}
+
 // Aplicativos abertos pelo Finder/Explorer nem sempre herdam o PATH do terminal.
-// Só consultamos a instalação nativa conhecida da pessoa, sem shell ou download.
+// Só consultamos as instalações conhecidas da pessoa (a nativa e, fora do Windows, a do Homebrew),
+// sem shell ou download.
 func localizarCLI(comando string) (string, error) {
 	p, err := exec.LookPath(comando)
 	if err == nil || comando != "claude" || !errors.Is(err, exec.ErrNotFound) {
 		return p, err
 	}
-	casa, e := os.UserHomeDir()
-	if e != nil || !filepath.IsAbs(casa) {
-		return "", err
-	}
 	nome := "claude"
+	var pastas []string
+	if casa, e := os.UserHomeDir(); e == nil && filepath.IsAbs(casa) {
+		pastas = append(pastas, filepath.Join(casa, ".local", "bin"))
+	}
 	if runtime.GOOS == "windows" {
 		nome += ".exe"
+	} else {
+		pastas = append(pastas, pastasDoSistemaCLI...)
 	}
-	p, e = exec.LookPath(filepath.Join(casa, ".local", "bin", nome))
-	if e != nil {
-		return "", err
+	for _, pasta := range pastas {
+		if p, e := exec.LookPath(filepath.Join(pasta, nome)); e == nil {
+			return p, nil
+		}
 	}
-	return p, nil
+	return "", err
 }
 
 // rodar executa a CLI com tempo limite numa pasta vazia. A chave de API do ambiente é removida:
 // no modo assinatura a CLI usa o login da pessoa, nunca uma chave de API cobrada à parte.
-func rodar(ctx context.Context, comando string, args []string, entrada string) ([]byte, string, error) {
+// ambienteExtra entra por último no ambiente do processo (a última ocorrência de uma chave é a que vale).
+func rodar(ctx context.Context, comando string, args []string, entrada string, ambienteExtra ...string) ([]byte, string, error) {
 	// O arquivo conferido é o mesmo que roda: o caminho resolvido pelo LookPath vai para o CommandContext.
 	alvo, err := localizarCLI(comando)
 	if err != nil {
@@ -118,7 +129,7 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 	var saida, erro limitado
 	saida.max, erro.max = limiteSaida, 64<<10
 	cmd.Stdout, cmd.Stderr = &saida, &erro
-	cmd.Env = semChaves(os.Environ())
+	cmd.Env = append(semChaves(cmd.Env), ambienteExtra...)
 	err = cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
 		return nil, "", &ErroIA{Tipo: "provedor", Mensagem: comando + ": passou do tempo limite", Provedor: comando + "-cli", Reintentavel: true}
@@ -129,8 +140,34 @@ func rodar(ctx context.Context, comando string, args []string, entrada string) (
 // comandoCLI cria o processo de uma CLI. É o único lugar que faz isso: no Windows, a CLI roda sem janela de console.
 func comandoCLI(ctx context.Context, comando string, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, comando, args...)
+	cmd.Env = ambienteDaCLI(comando)
 	semJanela(cmd)
 	return cmd
+}
+
+// ambienteDaCLI é o ambiente do app com a pasta da CLI no começo do PATH. O Claude instalado pelo npm do Homebrew
+// é um script "#!/usr/bin/env node", e o node mora na mesma pasta (/opt/homebrew/bin). Aberto pelo Finder, o app
+// não tem essa pasta no PATH, e o script sairia com código 127 (node não encontrado).
+func ambienteDaCLI(comando string) []string {
+	env := os.Environ()
+	if !filepath.IsAbs(comando) {
+		return env
+	}
+	pasta := filepath.Dir(comando)
+	for i, v := range env {
+		chave, valor, ok := strings.Cut(v, "=")
+		if !ok || !strings.EqualFold(chave, "PATH") { // no Windows a chave é "Path"
+			continue
+		}
+		for _, p := range filepath.SplitList(valor) {
+			if p == pasta {
+				return env
+			}
+		}
+		env[i] = chave + "=" + pasta + string(os.PathListSeparator) + valor
+		return env
+	}
+	return append(env, "PATH="+pasta)
 }
 
 const msgCmdInseguro = "esta CLI está instalada como .cmd, e o app não passa o pedido pelo cmd.exe; instale a versão nativa (.exe)"
@@ -234,6 +271,11 @@ func (c cli) Chamar(ctx context.Context, p PedidoProvedor) (RespostaProvedor, er
 	return RespostaProvedor{}, erroCLI(nome, "CLI desconhecida")
 }
 
+// semRaciocinio: funções que só copiam do documento. Nelas o raciocínio estendido do Claude Code não melhora a
+// resposta e deixava a chamada de 5 a 10 vezes mais lenta (ler um currículo levava 50 a 100 s; sem ele, 7 a 9 s, com
+// as mesmas sugestões). A triagem fica de fora: sem raciocínio a nota mudou em 2 de 4 vagas medidas.
+var semRaciocinio = map[string]bool{"sugerirPerfilDoCV": true}
+
 // Claude Code: -p sem interação, saída JSON com structured_output no esquema pedido, sem ferramentas nem MCP.
 func chamarClaude(ctx context.Context, p PedidoProvedor) (RespostaProvedor, error) {
 	args := []string{"-p", "--output-format", "json", "--json-schema", string(p.Prompt.Esquema), "--system-prompt", p.Prompt.Sistema,
@@ -244,7 +286,11 @@ func chamarClaude(ctx context.Context, p PedidoProvedor) (RespostaProvedor, erro
 	if p.Modelo != "" {
 		args = append(args, "--model", p.Modelo)
 	}
-	out, stderr, err := rodar(ctx, "claude", args, p.Prompt.Mensagem)
+	var ambiente []string
+	if semRaciocinio[p.Prompt.NomeEsquema] {
+		ambiente = append(ambiente, "MAX_THINKING_TOKENS=0")
+	}
+	out, stderr, err := rodar(ctx, "claude", args, p.Prompt.Mensagem, ambiente...)
 	var r map[string]any
 	if jerr := json.Unmarshal(out, &r); jerr != nil {
 		if err != nil {

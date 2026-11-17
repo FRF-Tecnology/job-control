@@ -10,7 +10,8 @@ const PerfilOriginal = "original"
 
 // O perfil profissional fica materializado em Estado.Perfil para os consumidores
 // existentes. Ao trocar, só os dados específicos da busca viajam com o perfil.
-var camposDaBusca = []string{"nome", "cargo", "titulosEquivalentes", "cidade", "paisTrabalho", "cidadeTrabalho", "experienciaAnos", "formacao", "ingles", "stackPrincipal", "stackSecundaria", "foco", "filtros", "contratos", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "faixaSalarial", "curriculos", "curriculoExibicao"}
+// Os dados de contato (CamposDeContato) ficam fora: são da pessoa, não da busca.
+var camposDaBusca = []string{"cargo", "titulosEquivalentes", "paisTrabalho", "cidadeTrabalho", "experienciaAnos", "formacao", "ingles", "stackPrincipal", "stackSecundaria", "foco", "filtros", "contratos", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "faixaSalarial", "curriculos", "curriculoExibicao"}
 
 func (e Estado) PerfilBuscaAtivo() string {
 	for _, perfil := range e.PerfisBusca {
@@ -76,6 +77,14 @@ func (e Estado) PerfilDeBusca(id string) Objeto {
 				delete(perfil, chave)
 			}
 			maps.Copy(perfil, obj(p["criterios"]))
+			// Perfis criados antes guardavam o nome e a cidade junto da busca: o contato vem sempre do atual.
+			for _, chave := range CamposDeContato {
+				if valor, ok := e.Perfil[chave]; ok {
+					perfil[chave] = valor
+				} else {
+					delete(perfil, chave)
+				}
+			}
 			return perfil
 		}
 	}
@@ -91,7 +100,7 @@ func nomeOriginal(perfil Objeto) string {
 
 func resumoBusca(id, nome string, dados Objeto) Objeto {
 	pacote := Objeto{}
-	for _, chave := range []string{"curriculos", "curriculoExibicao", "nome", "email", "telefone", "cidade", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "respostasPadrao"} {
+	for _, chave := range []string{"curriculos", "curriculoExibicao", "nome", "email", "telefone", "cidade", "linkedin", "github", "pretensaoUSD", "pretensaoCLT", "pretensaoPJ", "respostasPadrao"} {
 		if valor, ok := dados[chave]; ok {
 			pacote[chave] = valor
 		}

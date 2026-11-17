@@ -59,6 +59,9 @@ func TestTravaPorRota(t *testing.T) {
 		{"POST", "/pedidos/x/cancelar"},
 		{"PUT", "/backup"},
 		{"POST", "/dados/pasta"},
+		// E-mail: conectar e ler travam; só desconectar (apagar a senha do cofre) fica liberado.
+		{"PUT", "/email/conta"},
+		{"POST", "/email/ler"},
 	}
 	for _, b := range bloqueadas {
 		r := chamarTela(t, a, b.m, b.caminho, nil)
@@ -77,6 +80,7 @@ func TestTravaPorRota(t *testing.T) {
 		{"POST", "/assinatura/assinar"},
 		{"POST", "/app/janela"},
 		{"POST", "/app/janela/padrao"},
+		{"DELETE", "/email/conta"},
 		// Ruling A9: escritas de proteção ou de levar os dados embora.
 		{"POST", "/envio/pausar"},
 		{"POST", "/envio/plataformas/linkedin/pausar"},

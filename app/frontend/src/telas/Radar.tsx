@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { useApp, useTrava } from '../app/contexto';
+import { ErroApi, useApp, useTrava } from '../app/contexto';
 import { IconeUI } from '../app/IconeUI';
 import { LinkExterno } from '../componentes';
 import { foiEnviada } from '../dominio/modelo';
@@ -12,7 +12,7 @@ import { MarcaEmpresa } from '../app/MarcaEmpresa';
 import '../estilo/radar.css';
 
 type Vaga = {
-  id: string; anuncioId?: string; perfilBuscaId?: string; titulo: string; empresa: string; etapa: string; link?: string;
+  id: string; anuncioId?: string; perfilBuscaId?: string; titulo: string; empresa: string; etapa: string; link?: string; plataforma?: string;
   local?: string; modelo?: string; nivel?: string; contrato?: string; descricao?: string; categorias?: string[]; stack?: string[];
   periodoSalario?: string; moeda?: string; salarioMin?: number; salarioMax?: number; salario?: string;
   salarioUSDMensal?: number; salarioUSDMin?: number; salarioUSDMax?: number;
@@ -27,9 +27,37 @@ type Nota = typeof notas[number];
 const filtros = ['Recomendadas', 'A conferir', 'Histórico'] as const;
 type Filtro = typeof filtros[number];
 const afinidade: Record<Nota, string> = { A: 'Alta compatibilidade', B: 'Compatibilidade média', C: 'Baixa compatibilidade' };
-const mercados: Record<string, string> = { nacional: 'Brasil', internacional: 'Exterior', ambos: 'Brasil e exterior' };
+// No resumo do perfil, o mercado aparece como "vagas de…": sozinho, "Brasil" parecia o país de trabalho da pessoa,
+// logo acima do aviso pedindo esse país.
+const mercados: Record<string, string> = { nacional: 'Vagas do Brasil', internacional: 'Vagas do exterior', ambos: 'Vagas do Brasil e do exterior' };
 const temNota = (nota?: string): nota is Nota => notas.includes(nota as Nota);
 const ordem = (v: Vaga) => temNota(v.aderencia) ? notas.indexOf(v.aderencia) : notas.length;
+// "Ler a descrição da vaga" (contrato 0.20.0): frases fixas pelo motivo; nenhum texto do servidor na tela.
+const motivosDescricao: Record<string, string> = {
+  login: 'O LinkedIn pediu login. Entre nas plataformas pelo painel de Envio, na Lista do dia, e tente de novo.',
+  'sem-descricao': 'A página da vaga abriu, mas não achei a descrição. Abra a vaga no LinkedIn para ler.',
+  fora: 'A página não abriu nesta vaga. Ela pode ter saído do ar.',
+  enviando: 'Há uma candidatura sendo enviada agora. Espere terminar e tente de novo.',
+  'login-aberto': 'Feche a janela de login antes de ler a vaga.',
+};
+export function explicarDescricao(e: unknown) {
+  if (e instanceof ErroApi && e.status === 404) return 'Esta versão do app não abre vagas no navegador.';
+  const motivo = e instanceof ErroApi ? e.dados?.motivo : undefined;
+  return motivosDescricao[motivo] ?? 'Não deu para ler a vaga agora. Tente de novo.';
+}
+const podeLerDescricao = (v: Vaga) => v.etapa === 'descoberta' && !v.descricao && v.plataforma === 'linkedin';
+
+// Rótulos que a fonte manda sem dizer nada ("Any" é o nível de experiência "qualquer um" do Jobicy).
+const rotuloVazio = /^(any|n\/?a|none|not specified|other|-)$/i;
+// Descrições guardadas antes do corte no fim da palavra (o teto é 6000) paravam no meio de uma palavra: termina na
+// última palavra inteira e avisa que há mais ("Ler anúncio" abre o texto todo).
+export function descricaoParaLer(d: string) {
+  const r = [...d];
+  if (r.length < 6000 || d.endsWith('…')) return d;
+  const corte = d.lastIndexOf(' ');
+  return (corte > d.length / 2 ? d.slice(0, corte) : d).replace(/[\s.,;:]+$/, '') + '…';
+}
+
 const pequena = () => window.matchMedia?.('(max-width: 760px)').matches ?? false;
 
 function dataDoAnuncio(data: string | undefined, fimDoDia = false) {
@@ -89,6 +117,90 @@ function Fato({ icone, rotulo, valor }: { icone: string; rotulo: string; valor?:
   return <div className="rd-fact"><dt><IconeUI nome={icone} tamanho={15} />{rotulo}</dt><dd>{valor || 'Não informado'}</dd></div>;
 }
 
+// "Preencher no site da empresa" (contrato 0.22.0): frases fixas por motivo; o domínio vem da página e aparece
+// como texto, para a pessoa conferir antes de o app preencher.
+const motivosPreencher: Record<string, string> = {
+  'sem-site': 'A janela ainda está no LinkedIn. Clique em Candidatar-se lá e tente de novo.',
+  'sem-janela': 'A janela do app foi fechada. Abra a vaga de novo.',
+  'site-mudou': 'A página mudou de site depois que você conferiu. Confira de novo.',
+  'curriculo-mudou': 'O currículo mudou depois que você aplicou. Aplique de novo na vaga.',
+  'login-aberto': 'Já há uma janela do app aberta. Feche-a antes.',
+  enviando: 'Há uma candidatura sendo enviada agora. Espere terminar.',
+  'sem-navegador': 'Não achei Chrome, Edge nem Brave neste computador.',
+  'sem-cpf': 'Salve seu CPF em Perfil e IA antes.',
+};
+export function explicarPreencher(e: unknown) {
+  if (e instanceof ErroApi && e.status === 404) return 'Esta versão do app não abre o site da empresa.';
+  const motivo = e instanceof ErroApi ? e.dados?.motivo : undefined;
+  return motivosPreencher[motivo] ?? 'Não deu para usar a janela agora. Tente de novo.';
+}
+export const resumoPreencher = (r: { preenchidos?: number; anexou?: boolean; faltando?: number; comCPF?: boolean }) => {
+  let t = `Preenchi ${plural(r.preenchidos ?? 0, 'campo', 'campos')}`;
+  if (r.comCPF) t += r.anexou ? ', incluindo o CPF, e anexei o currículo.' : ', incluindo o CPF.';
+  else t += r.anexou ? ' e anexei o currículo.' : '.';
+  if (r.faltando) t += ` ${plural(r.faltando, 'campo obrigatório ficou', 'campos obrigatórios ficaram')} para você.`;
+  return t + ' Confira tudo, avance e envie no site. Depois, clique em Já enviei.';
+};
+
+function PreencherNoSite({ vaga }: { vaga: Vaga }) {
+  const app = useApp();
+  const trava = useTrava();
+  const [etapa, mudar] = useState<'inicio' | 'aberta' | 'conferir' | 'feito'>('inicio');
+  const [dominio, guardar] = useState('');
+  const [aviso, avisar] = useState('');
+  // O site pede CPF (só em site brasileiro): a tela pergunta antes; o CPF só vai com o clique da pessoa.
+  const [cpf, pedirCPF] = useState<{ campos: number; salvo: boolean } | null>(null);
+  const [ocupado, ocupar] = useState(false);
+  const rota = (acao: string) => `/api/v1/vagas/${encode(vaga.id)}/${acao}`;
+  const fazer = async (fn: () => Promise<void>) => {
+    if (ocupado) return;
+    ocupar(true); avisar('');
+    try { await fn(); } catch (e) { avisar(explicarPreencher(e)); } finally { ocupar(false); }
+  };
+  const abrir = () => fazer(async () => { await app.api(rota('abrir-para-preencher'), 'POST', {}); mudar('aberta'); });
+  const verSite = () => fazer(async () => {
+    pedirCPF(null);
+    const r = await app.api(rota('preencher'), 'POST', {});
+    guardar(typeof r?.dominio === 'string' ? r.dominio : ''); mudar('conferir');
+  });
+  const preencher = () => fazer(async () => {
+    const r = await app.api(rota('preencher'), 'POST', { dominio });
+    avisar(resumoPreencher(r ?? {})); mudar('feito');
+    pedirCPF(Number(r?.pedeCPF) > 0 ? { campos: Number(r.pedeCPF), salvo: r?.cpfSalvo === true } : null);
+  });
+  const preencherCPF = () => fazer(async () => {
+    await app.api(rota('preencher'), 'POST', { dominio, cpf: true });
+    pedirCPF(null); avisar('Preenchi o CPF. Confira tudo, avance e envie no site. Depois, clique em Já enviei.');
+  });
+  return <div className="rd-preencher">
+    {etapa === 'inicio' && <>
+      <p>Ou deixe o app abrir a vaga numa janela dele e preencher o que souber no site da empresa. Ele nunca envia: quem envia é você.</p>
+      <button className="btn secondary" type="button" {...trava(ocupado)} onClick={abrir}>Abrir e preencher no app</button>
+    </>}
+    {(etapa === 'aberta' || etapa === 'feito') && <>
+      <p>A vaga abriu numa janela do app. Se o site da empresa não abrir sozinho, clique em Candidatar-se lá. Quando o formulário aparecer, volte aqui.</p>
+      <button className="btn secondary" type="button" {...trava(ocupado)} onClick={verSite}>Preencher esta página</button>
+    </>}
+    {etapa === 'conferir' && <div role="group" aria-label="Conferir o site">
+      <p>Preencher em <strong>{dominio}</strong>? Confira se é mesmo o site da empresa antes de continuar.</p>
+      <div className="rd-links">
+        <button className="btn primary" type="button" {...trava(ocupado)} onClick={preencher}>Preencher</button>
+        <button className="btn quiet" type="button" disabled={ocupado} onClick={() => mudar('aberta')}>Não é este site</button>
+      </div>
+    </div>}
+    {aviso && <p role="status">{aviso}</p>}
+    {etapa === 'feito' && cpf && (cpf.salvo
+      ? <div role="group" aria-label="Preencher o CPF">
+        <p>Este formulário pede CPF. Preencher o seu CPF em <strong>{dominio}</strong>? Só confirme se tem certeza de que é o site da empresa: CPF é o dado que os golpes de vaga falsa mais procuram.</p>
+        <div className="rd-links">
+          <button className="btn secondary" type="button" {...trava(ocupado)} onClick={preencherCPF}>Preencher CPF</button>
+          <button className="btn quiet" type="button" disabled={ocupado} onClick={() => pedirCPF(null)}>Eu digito</button>
+        </div>
+      </div>
+      : <p>Este formulário pede CPF. Digite no site, ou salve seu CPF em <a href="#/perfil">Perfil e IA</a> para o app oferecer da próxima vez.</p>)}
+  </div>;
+}
+
 function CandidaturaExterna({ vaga, ocupada, gravar }: {
   vaga: Vaga; ocupada: boolean; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void;
 }) {
@@ -105,6 +217,7 @@ function CandidaturaExterna({ vaga, ocupada, gravar }: {
         <button className="btn secondary" type="button" {...trava(ocupada)} onClick={() => gravar('confirmar-envio-manual')}>Já enviei</button>
         <button className="btn quiet" type="button" disabled={ocupada} onClick={() => adiar(true)}>Continuar depois</button>
       </div>
+      <PreencherNoSite vaga={vaga} />
     </>}
   </div>;
   return <div className="rd-links">
@@ -113,14 +226,14 @@ function CandidaturaExterna({ vaga, ocupada, gravar }: {
   </div>;
 }
 
-function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfazer }: {
-  vaga: Vaga; voltar: () => void; revisar: (etapa: 'aplicar' | 'pulada') => void;
+function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfazer, lerDescricao, lendo }: {
+  vaga: Vaga; voltar: () => void; revisar: (etapa: 'aplicar' | 'pulada') => void; lerDescricao: () => void; lendo: boolean;
   ocupada: boolean; pretensao: Faixa; gravar: (acao: 'iniciar-manual' | 'confirmar-envio-manual') => void; desfazer: ReactNode;
 }) {
   const trava = useTrava();
   const [rotuloSalario, valorSalario] = salario(vaga, pretensao);
   const grupo = temNota(vaga.aderencia) ? vaga.aderencia : null;
-  const tags = [...new Set([...(vaga.categorias ?? []), ...(vaga.stack ?? []), vaga.nivel, vaga.contrato].filter(Boolean))];
+  const tags = [...new Set([...(vaga.categorias ?? []), ...(vaga.stack ?? []), vaga.nivel, vaga.contrato].filter(t => t && !rotuloVazio.test(t.trim())))];
   return <article className="rd-detail" id="rd-detail" aria-labelledby="rd-job-heading" onKeyDown={e => {
     if (e.key === 'Escape' && pequena()) { e.preventDefault(); voltar(); }
   }}>
@@ -146,8 +259,13 @@ function VagaDoRadar({ vaga, pretensao, voltar, revisar, ocupada, gravar, desfaz
       {vaga.radarMotivo && vaga.motivoClaude && vaga.motivoClaude !== vaga.radarMotivo && <p>{vaga.motivoClaude}</p>}
       {vaga.triagemDecisao === 'pular' && vaga.triagemMotivoPulo && <p><strong>A IA sugere pular</strong> · {vaga.triagemMotivoPulo}</p>}
       {!!vaga.triagemConferir?.length && <div className="rd-conferir"><strong>Pontos a conferir</strong><ul>{vaga.triagemConferir.map((p, i) => <li key={i}>{p}</li>)}</ul></div>}
+      {podeLerDescricao(vaga) && <div className="rd-ler-descricao">
+        <p>Esta vaga veio de um alerta, sem a descrição. O app abre a vaga no LinkedIn com a sua conta, só para ler, e a IA avalia de novo.</p>
+        <button className="btn secondary" type="button" {...trava(ocupada)} aria-busy={lendo} onClick={lerDescricao}>
+          <IconeUI nome="search" tamanho={15} />{lendo ? 'Lendo a vaga…' : 'Ler a descrição da vaga'}</button>
+      </div>}
     </div>
-    {vaga.descricao && <div className="rd-description"><h4>Sobre a vaga</h4><p>{vaga.descricao}</p></div>}
+    {vaga.descricao && <div className="rd-description"><h4>Sobre a vaga</h4><p>{descricaoParaLer(vaga.descricao)}</p></div>}
     {!!tags.length && <ul className="rd-tags" aria-label="Competências e requisitos">{tags.map(tag => <li key={tag}>{tag}</li>)}</ul>}
     <div className="rd-externa">
       {vaga.fonteBusca && <LinkExterno url={vaga.fonteURL} semLink={<span>Fonte: {vaga.fonteBusca}</span>}>Fonte: {vaga.fonteBusca}</LinkExterno>}
@@ -175,6 +293,7 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const [pulada, lembrarPulo] = useState<Vaga | null>(null);
   const [ocupada, ocupar] = useState(false);
   const [erroAcao, falhar] = useState('');
+  const [lendoDescricao, lerAgora] = useState(false);
   const emCurso = useRef(false);
   const regiao = useRef<HTMLElement>(null);
   const focoPendente = useRef<'detalhe' | 'linha' | null>(null);
@@ -193,6 +312,12 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
   const candidatas = disponiveis.filter(v => categoria(v, agora) === filtro);
   const visiveis = filtro === 'Recomendadas' ? candidatas.slice(0,10) : candidatas;
   const atual = visiveis.find(v => v.id === selecao) ?? visiveis[0];
+  // Recomendadas só mostra nota A. Numa rodada só com B (ou ainda avaliando), a aba parecia vazia e as vagas
+  // ficavam escondidas em "A conferir": a tela aponta para lá.
+  const aConferir = disponiveis.filter(v => categoria(v, agora) === 'A conferir').length;
+  const semNotaA = filtro === 'Recomendadas' && !atual && aConferir > 0;
+  const textoSemNotaA = `${plural(aConferir, 'vaga com nota B ou ainda sem avaliação espera', 'vagas com nota B ou ainda sem avaliação esperam')} sua conferência.`;
+  const verAConferir = <button type="button" className="btn secondary" onClick={() => mudarFiltro('A conferir')}>Ver vagas a conferir</button>;
   const recibo = todas.find(v => v.id === confirmada && (foiEnviada(v) || v.etapa === 'enviada'));
   const puladas = todas.filter(v => v.etapa === 'pulada' && v.triagemBusca !== 'expirada');
   const ultima = estado.rodadas?.filter(r => (r.perfilBuscaId ?? 'original') === idPerfil).slice(-1)[0];
@@ -258,6 +383,19 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
       await app.recarregar();
     });
   }
+  function lerDescricao() {
+    if (!atual || emCurso.current) return;
+    const id = atual.id;
+    emCurso.current = true; ocupar(true); lerAgora(true); falhar('');
+    void (async () => {
+      try {
+        const r = await app.api(`/api/v1/vagas/${encode(id)}/ler-descricao`, 'POST', {});
+        await app.recarregar();
+        app.aviso(r?.avaliada ? 'Descrição lida e vaga avaliada de novo.' : 'Descrição lida. A próxima busca avalia a vaga.');
+      } catch (e) { falhar(explicarDescricao(e)); }
+      finally { emCurso.current = false; ocupar(false); lerAgora(false); }
+    })();
+  }
   const desfazer = pulada && puladas.some(v => v.id === pulada.id) && <div className="rd-undo">
     <span>Vaga de {pulada.empresa} pulada.</span><button type="button" {...trava(ocupada)} onClick={() => recuperar([pulada])}>Desfazer</button>
   </div>;
@@ -280,14 +418,18 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
     </section>
     <section className="rd-results" aria-labelledby="rd-title" ref={regiao}>
       <div className="rd-toolbar"><div className="rd-heading"><h2 id="rd-title" tabIndex={-1}>Vagas encontradas</h2>
-        {!buscando && <span className="rd-count" aria-label={plural(visiveis.length, 'vaga disponível', 'vagas disponíveis')}>{visiveis.length}</span>}</div>
-        {!buscando && <div className="rd-filters" role="group" aria-label="Filtrar vagas por compatibilidade">
+        <span className="rd-count" aria-label={plural(visiveis.length, 'vaga disponível', 'vagas disponíveis')}>{visiveis.length}</span></div>
+        <div className="rd-filters" role="group" aria-label="Filtrar vagas por compatibilidade">
           {filtros.map(nome => <button key={nome} type="button" aria-pressed={filtro === nome} onClick={() => mudarFiltro(nome)}>{nome}</button>)}
-        </div>}
+        </div>
       </div>
-      {buscando ? <div className="rd-loading" aria-busy="true"><p role="status">Buscando vagas para o seu perfil…</p>
-        <div className="rd-skeletons" aria-hidden="true">{[0, 1, 2].map(n => <div key={n}><i /><span><b /><b /></span></div>)}</div>
-      </div> : <>
+      {/* A triagem leva de 20 a 80 s por vaga: durante a busca, as já avaliadas aparecem abaixo (a busca recarrega o estado). */}
+      {buscando && <div className="rd-loading" aria-busy="true"><p role="status">Buscando vagas para o seu perfil…</p>
+        {atual ? <p className="rd-loading-nota">As vagas já avaliadas aparecem abaixo enquanto a busca continua.</p>
+          : semNotaA ? <div className="rd-loading-nota"><p>Ainda nenhuma vaga com nota A. {textoSemNotaA}</p>{verAConferir}</div>
+          : <div className="rd-skeletons" aria-hidden="true">{[0, 1, 2].map(n => <div key={n}><i /><span><b /><b /></span></div>)}</div>}
+      </div>}
+      {(!buscando || atual) && <>
         {recibo && <article aria-label={recibo.titulo} className="rd-confirmacao">
           <p className="rd-enviada" role="status"><IconeUI nome="check" tamanho={16} />Candidatura enviada</p>
           <strong>{recibo.titulo}</strong><span>{recibo.empresa}</span><a className="btn secondary" href="#/quadro">Ver no quadro</a>
@@ -308,8 +450,12 @@ function RadarDoPerfil({ idPerfil }: { idPerfil: string }) {
               </span>
             </button></li>)}
           </ul>
-          <VagaDoRadar key={atual.id} vaga={atual} pretensao={pretensao} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer} />
-        </div> : disponiveis.length || filtro !== 'Recomendadas' ? <>
+          <VagaDoRadar key={atual.id} vaga={atual} pretensao={pretensao} voltar={voltar} revisar={revisar} ocupada={ocupada} gravar={candidatura} desfazer={desfazer}
+            lerDescricao={lerDescricao} lendo={lendoDescricao} />
+        </div> : semNotaA ? <>
+          <EstadoRadar titulo="Nenhuma vaga com nota A nesta busca" mensagem={textoSemNotaA}>{verAConferir}</EstadoRadar>
+          {desfazer}
+        </> : disponiveis.length || filtro !== 'Recomendadas' ? <>
           <EstadoRadar titulo={filtro === 'Recomendadas' ? 'Nenhuma recomendação confirmada' : filtro === 'A conferir' ? 'Nenhuma vaga a conferir' : 'Nenhuma vaga no histórico'}
             mensagem={filtro === 'Recomendadas' ? 'Veja se há vagas a conferir ou anúncios no histórico.' : 'As vagas desta categoria aparecerão aqui.'}/>
           {desfazer}

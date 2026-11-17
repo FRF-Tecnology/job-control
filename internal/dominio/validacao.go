@@ -150,7 +150,7 @@ func ValidarVaga(x any) []string {
 
 // Formato do perfil: a tela de Perfil e a IA dependem destes tipos.
 var (
-	camposTextoPerfil = []string{"nome", "email", "telefone", "cidade", "linkedin", "github", "cargo", "ingles", "formacao", "inicio", "salarioAtual", "modo"}
+	camposTextoPerfil = []string{"nome", "primeiroNome", "sobrenome", "email", "ddi", "telefone", "cidade", "estado", "paisResidencia", "linkedin", "github", "cargo", "ingles", "formacao", "inicio", "salarioAtual", "modo"}
 	listasPerfil      = []string{"stackPrincipal", "stackSecundaria"}
 	listasFiltro      = []string{"niveis", "modelo", "pularSe"}
 	numerosPerfil     = []string{"pretensaoCLT", "pretensaoPJ", "pretensaoUSD", "experienciaAnos", "diasFollowUp", "limiteLinkedinDia"}
@@ -166,6 +166,24 @@ func ValidarPerfil(x any) []string {
 	for _, k := range camposTextoPerfil {
 		if p[k] != nil && !ehTextoOuNumero(p[k]) {
 			erros = append(erros, k+" deve ser texto")
+		}
+	}
+	for _, l := range [][3]string{{"linkedin", "linkedin.com", "LinkedIn"}, {"github", "github.com", "GitHub"}} {
+		if v, ok := p[l[0]].(string); ok && strings.TrimSpace(v) != "" && LinkDePerfil(v, l[1]) == "" {
+			erros = append(erros, "informe o endereço do seu perfil no "+l[2]+", como https://"+l[1]+"/…")
+		}
+	}
+	if v, ok := p["ddi"].(string); ok && v != "" && !DDIValido(v) {
+		erros = append(erros, "escolha o código do país do telefone na lista")
+	}
+	if v, ok := p["paisResidencia"].(string); ok && v != "" && (len(v) != 2 || v[0] < 'A' || v[0] > 'Z' || v[1] < 'A' || v[1] > 'Z') {
+		erros = append(erros, "informe o país onde você mora com duas letras (ex.: BR)")
+	}
+	if v, ok := p["estado"].(string); ok && v != "" {
+		if p["paisResidencia"] == "BR" && EstadosDoBrasil[v] == "" {
+			erros = append(erros, "escolha o estado na lista")
+		} else if len([]rune(v)) > 60 {
+			erros = append(erros, "o estado é longo demais")
 		}
 	}
 	if v := p["paisTrabalho"]; v != nil && v != "" {

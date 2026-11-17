@@ -22,6 +22,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/aovivo"
 	"github.com/FRF-Tecnology/job-control/internal/armazem"
 	"github.com/FRF-Tecnology/job-control/internal/busca"
+	"github.com/FRF-Tecnology/job-control/internal/caixa"
 	"github.com/FRF-Tecnology/job-control/internal/conta"
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 	"github.com/FRF-Tecnology/job-control/internal/ia"
@@ -97,6 +98,12 @@ type API struct {
 	avisoPasta      string                       // aviso da pasta de dados nesta abertura (jc-etv.14)
 	// lerFormulario (jc-a2y.7.2): o leitor do executor; nil fora do app com envio (404).
 	lerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// lerDescricao: abre a vaga do Radar no navegador do envio e lê a descrição; nil fora do app com envio (404).
+	lerDescricao func(ctx context.Context, plataforma, endereco string) (texto, bloqueio string, err error)
+	// Preencher no site da empresa (preencher.go); nil fora do app com envio (404).
+	abrirParaPreencher func(endereco string) error
+	siteParaPreencher  func(ctx context.Context) (string, error)
+	preencherSite      func(ctx context.Context, dominioConferido string, conteudo, perfil dominio.Objeto, nomeCurriculo string, curriculo []byte) (dominio.ResultadoPreenchimento, error)
 	// canal (jc-a2y.7.4): mcp ou cli numa API do assistente; vazio na do app. Fixado na criação (Opcoes.Canal).
 	canal string
 	// janelaApp: os ganchos da janela do app de PC; nil fora dele (janela_app.go).
@@ -113,6 +120,10 @@ type API struct {
 	ultimaAtualizacao time.Time
 	// podeAgir: a trava das ações (trava.go). nil: tudo liberado.
 	podeAgir func() (bool, string)
+	// leitorEmail lê a caixa de e-mail por IMAP (email.go); só os testes trocam o Discar.
+	leitorEmail caixa.Leitor
+	// lendoEmail: uma leitura da caixa por vez (POST /email/ler); a segunda recebe 409.
+	lendoEmail sync.Mutex
 }
 
 // Opcoes configura a API.
@@ -142,6 +153,12 @@ type Opcoes struct {
 	// LerFormulario (jc-a2y.7.2): lê a estrutura do formulário no navegador do envio, sem interagir. Só o app com o
 	// envio passa; sem ele, POST /candidaturas/{id}/ler-formulario dá 404.
 	LerFormulario func(ctx context.Context, endereco string) (dominio.LeituraFormulario, error)
+	// LerDescricao: "Ler a descrição da vaga" no Radar, no navegador do envio, sem interagir.
+	LerDescricao func(ctx context.Context, plataforma, endereco string) (texto, bloqueio string, err error)
+	// Preencher no site da empresa: abrir a vaga numa janela visível, o domínio da aba do site e o preenchimento.
+	AbrirParaPreencher func(endereco string) error
+	SiteParaPreencher  func(ctx context.Context) (string, error)
+	PreencherSite      func(ctx context.Context, dominioConferido string, conteudo, perfil dominio.Objeto, nomeCurriculo string, curriculo []byte) (dominio.ResultadoPreenchimento, error)
 	// AvisoPasta: o aviso da pasta de dados nesta abertura (config.Abertura.Aviso, jc-etv.7): pasta-antiga-ficou,
 	// migracao-adiada ou vazio. GET /dados/pasta mostra à tela, sem caminho.
 	AvisoPasta string
@@ -213,7 +230,7 @@ func Nova(arm *armazem.Armazem, o Opcoes) *API {
 	}
 	return &API{arm: arm, hoje: o.Hoje, contaID: o.ContaID, aleatorio: o.Aleatorio, cofre: o.Cofre, provedoresExtras: o.ProvedoresIA, detectarCLIs: o.DetectarCLIs, relogio: time.Now,
 		pararEnvio: o.PararEnvio, suspenderEnvio: o.SuspenderEnvio, fecharNavegador: o.FecharNavegador, aoApagar: o.AoApagar, envioLigado: o.EnvioLigado,
-		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp,
+		mostrarEnvio: o.MostrarEnvio, entrar: o.Entrar, janela: o.Janela, aoVivo: o.AoVivo, lerFormulario: o.LerFormulario, lerDescricao: o.LerDescricao, abrirParaPreencher: o.AbrirParaPreencher, siteParaPreencher: o.SiteParaPreencher, preencherSite: o.PreencherSite, avisoPasta: o.AvisoPasta, canal: o.Canal, janelaApp: o.JanelaApp,
 		conta: o.Conta, abrirNavegador: o.AbrirNavegador, podeAgir: o.PodeAgir, consultarVagas: busca.Consultar}
 }
 
@@ -505,7 +522,7 @@ var (
 	reVagaID       = regexp.MustCompile(`^/vagas/([^/]+)$`)
 	reVagaAcao     = regexp.MustCompile(`^/vagas/([^/]+)(/[a-z-]+)?$`)
 	rePedido       = regexp.MustCompile(`^/pedidos/([^/]+)/concluir$`)
-	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar)$`)
+	reEmail        = regexp.MustCompile(`^/emails/([^/]+)/(ligar|descartar|confirmar|criar-vaga)$`)
 	rePlataforma   = regexp.MustCompile(`^/plataformas/([^/]+)$`)
 	reRodada       = regexp.MustCompile(`^/rodadas/([^/]+)$`)
 	camposPlatText = []string{"nome", "url", "status", "comoAplicar", "limitacoes", "ultimaVarredura"}
@@ -592,6 +609,17 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 
 	if strings.HasPrefix(p, "/conta") || strings.HasPrefix(p, "/assinatura") {
 		if r, feito, err := a.rotasConta(ctx, m, p, c, autor); feito {
+			return r, err
+		}
+	}
+
+	if p == "/perfil/cpf" && (m == "GET" || m == "PUT" || m == "PATCH" || m == "DELETE") {
+		r, err := a.rotaCPF(ctx, m, c, autor)
+		return r, err
+	}
+
+	if p == "/email/conta" || p == "/email/ler" {
+		if r, feito, err := a.rotasEmail(ctx, m, p, c, autor); feito {
 			return r, err
 		}
 	}
@@ -741,13 +769,22 @@ func (a *API) rotear(ctx context.Context, ped Pedido) (Resposta, error) {
 		if err != nil {
 			return Resposta{}, err
 		}
+		// Confirmar a mudança proposta por um e-mail lido pelo app, ou criar a vaga dele: só a pessoa, pela tela.
+		if (g[2] == "confirmar" || g[2] == "criar-vaga") && (autor != "eu" || a.canal != "") {
+			return Resposta{}, falha(403, msgForaDoAssistente)
+		}
 		var res Objeto
 		err = a.gravar(ctx, func(e dominio.Estado) (dominio.Estado, error) {
 			var novo dominio.Estado
 			var err error
-			if g[2] == "ligar" {
+			switch g[2] {
+			case "ligar":
 				novo, res, err = dominio.LigarEmail(e, id, c["vagaId"], a.ctx(e, autor))
-			} else {
+			case "confirmar":
+				novo, res, err = dominio.ConfirmarEmail(e, id, a.ctx(e, autor))
+			case "criar-vaga":
+				novo, res, err = dominio.CriarVagaDoEmail(e, id, c["empresa"], c["cargo"], a.ctx(e, autor))
+			default:
 				novo, res, err = dominio.DescartarEmail(e, id)
 			}
 			return novo, err
@@ -1063,6 +1100,12 @@ func (a *API) rotasDaVaga(ctx context.Context, m string, g []string, c Objeto, a
 		return vaga, err
 	}
 	switch {
+	case m == "POST" && acao == "/ler-descricao":
+		return a.lerDescricaoDaVaga(ctx, id, c, autor)
+	case m == "POST" && acao == "/abrir-para-preencher":
+		return a.abrirVagaParaPreencher(ctx, id, c, autor)
+	case m == "POST" && acao == "/preencher":
+		return a.preencherSiteDaVaga(ctx, id, c, autor)
 	case m == "POST" && acao == "/devolver-ao-radar":
 		if err := soCampos(c); err != nil {
 			return Resposta{}, err

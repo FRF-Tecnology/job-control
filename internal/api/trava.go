@@ -43,6 +43,8 @@ func liberadoSemLicenca(metodo, caminho string) bool {
 	switch strings.ToUpper(metodo) + " " + p {
 	case "POST /envio/pausar", "POST /navegador/sair", "POST /backup", "PUT /dados/pasta":
 		return true
+	case "DELETE /email/conta": // desconectar o e-mail apaga a senha de app do cofre, como as chaves de IA
+		return true
 	}
 	if reEnvioPausarPlataforma.MatchString(p) && strings.ToUpper(metodo) == "POST" {
 		return true

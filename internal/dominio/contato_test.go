@@ -1,0 +1,122 @@
+package dominio
+
+import (
+	"slices"
+	"testing"
+)
+
+func TestLinkDePerfil(t *testing.T) {
+	for _, c := range []struct{ entrada, site, quer string }{
+		{"https://www.linkedin.com/in/fulana/", "linkedin.com", "https://www.linkedin.com/in/fulana/"},
+		{"linkedin.com/in/fulana", "linkedin.com", "https://linkedin.com/in/fulana"},
+		{"http://br.linkedin.com/in/fulana", "linkedin.com", "https://br.linkedin.com/in/fulana"},
+		{"github.com/fulana", "github.com", "https://github.com/fulana"},
+		{"https://GitHub.com/fulana", "github.com", "https://github.com/fulana"},
+		{"https://golpe.example/linkedin.com", "linkedin.com", ""},
+		{"https://linkedin.com.golpe.example/in/x", "linkedin.com", ""},
+		{"https://user@linkedin.com/in/x", "linkedin.com", ""},
+		{"https://linkedin.com", "linkedin.com", ""}, // sem o perfil
+		{"https://github.com/fulana", "linkedin.com", ""},
+		{"javascript:alert(1)", "linkedin.com", ""},
+		{"fulana", "github.com", ""},
+		{"", "github.com", ""},
+	} {
+		if got := LinkDePerfil(c.entrada, c.site); got != c.quer {
+			t.Errorf("LinkDePerfil(%q, %q) = %q, quer %q", c.entrada, c.site, got, c.quer)
+		}
+	}
+}
+
+func TestValidarLinksDoPerfil(t *testing.T) {
+	if e := ValidarPerfil(map[string]any{"linkedin": "linkedin.com/in/fulana", "github": ""}); len(e) != 0 {
+		t.Errorf("links certos: %v", e)
+	}
+	e := ValidarPerfil(map[string]any{"linkedin": "https://golpe.example/in/x", "github": "fulana"})
+	if len(e) != 2 || !slices.Contains(e, "informe o endereço do seu perfil no LinkedIn, como https://linkedin.com/…") {
+		t.Errorf("links errados: %v", e)
+	}
+}
+
+func TestContatoIgualEmTodosOsPerfis(t *testing.T) {
+	e := Estado{Perfil: Objeto{"nome": "Fulana", "cargo": "Dev Go", "cidade": "Recife"}}
+	e, err := CriarPerfilBusca(e, "ia", "IA", "ai")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// O contato muda no perfil ativo (IA)...
+	e.Perfil["nome"], e.Perfil["cidade"], e.Perfil["linkedin"] = "Fulana de Tal", "Olinda", "https://linkedin.com/in/fulana"
+	// ...e um perfil guardado antes, com nome e cidade nos critérios, não traz o contato velho de volta.
+	for _, p := range e.PerfisBusca {
+		if p["id"] == PerfilOriginal {
+			p["criterios"] = Objeto{"cargo": "Dev Go", "nome": "Nome Velho", "cidade": "Cidade Velha"}
+		}
+	}
+	e, err = AtivarPerfilBusca(e, PerfilOriginal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Perfil["cargo"] != "Dev Go" || e.Perfil["nome"] != "Fulana de Tal" || e.Perfil["cidade"] != "Olinda" || e.Perfil["linkedin"] != "https://linkedin.com/in/fulana" {
+		t.Errorf("perfil original: %v", e.Perfil)
+	}
+	if ia := e.PerfilDeBusca("ia"); ia["cargo"] != "AI Engineer" || ia["nome"] != "Fulana de Tal" {
+		t.Errorf("perfil IA: %v", ia)
+	}
+}
+
+func TestLocalEValidacaoDoContato(t *testing.T) {
+	for _, c := range []struct {
+		perfil Objeto
+		quer   string
+	}{
+		{Objeto{"cidade": "Recife", "estado": "PE"}, "Recife, PE"},
+		{Objeto{"cidade": "Recife, PE", "estado": "PE"}, "Recife, PE"}, // perfil antigo já com o estado
+		{Objeto{"cidade": "Lisboa"}, "Lisboa"},
+		{Objeto{"estado": "PE"}, "PE"},
+		{Objeto{}, ""},
+	} {
+		if got := LocalDoPerfil(c.perfil); got != c.quer {
+			t.Errorf("LocalDoPerfil(%v) = %q, quer %q", c.perfil, got, c.quer)
+		}
+	}
+	if len(EstadosDoBrasil) != 27 || EstadosDoBrasil["PE"] != "Pernambuco" || EstadosDoBrasil["DF"] != "Distrito Federal" {
+		t.Errorf("estados: %d", len(EstadosDoBrasil))
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "BR", "estado": "PE", "primeiroNome": "Fulana", "sobrenome": "de Tal"}); len(e) != 0 {
+		t.Errorf("contato certo: %v", e)
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "BR", "estado": "Pernambuco"}); len(e) != 1 {
+		t.Errorf("no Brasil o estado vem da lista: %v", e)
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "PT", "estado": "Lisboa"}); len(e) != 0 {
+		t.Errorf("fora do Brasil o estado é livre: %v", e)
+	}
+	if e := ValidarPerfil(map[string]any{"paisResidencia": "Brasil"}); len(e) != 1 {
+		t.Errorf("país com duas letras: %v", e)
+	}
+}
+
+func TestTelefoneCompleto(t *testing.T) {
+	for _, c := range []struct {
+		perfil Objeto
+		quer   string
+	}{
+		{Objeto{"ddi": "+55", "telefone": "34 99999-0000"}, "+55 34 99999-0000"},
+		{Objeto{"ddi": "+351", "telefone": "912 345 678"}, "+351 912 345 678"},
+		{Objeto{"telefone": "34 99999-0000"}, "34 99999-0000"},                   // perfil antigo: o envio assume +55
+		{Objeto{"ddi": "+55", "telefone": "+1 415 555 0000"}, "+1 415 555 0000"}, // já veio com o código
+		{Objeto{"ddi": "55", "telefone": "34 99999-0000"}, "34 99999-0000"},      // código fora do formato: não inventa
+		{Objeto{"ddi": "+55"}, ""},
+	} {
+		if got := TelefoneCompleto(c.perfil); got != c.quer {
+			t.Errorf("TelefoneCompleto(%v) = %q, quer %q", c.perfil, got, c.quer)
+		}
+	}
+	if e := ValidarPerfil(map[string]any{"ddi": "+55"}); len(e) != 0 {
+		t.Errorf("ddi certo: %v", e)
+	}
+	for _, ruim := range []string{"55", "+0", "+12345", "+5a"} {
+		if e := ValidarPerfil(map[string]any{"ddi": ruim}); len(e) != 1 {
+			t.Errorf("ddi %q: %v", ruim, e)
+		}
+	}
+}
