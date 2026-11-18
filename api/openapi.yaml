@@ -680,8 +680,8 @@ paths:
         '403': { $ref: '#/components/responses/SoTela' }
         '404': { $ref: '#/components/responses/Erro' }
         '409': { $ref: '#/components/responses/ConflitoCandidatura' }
-  # Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). Só no app com o
-  # envio (build envio_dev); 404 no build padrão e no central-dev.
+  # Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). Só no app;
+  # 404 no central-dev e sem navegador.
   /candidaturas/{id}/ler-formulario:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -908,8 +908,8 @@ paths:
         '404': { description: 'Este build não traz o envio, ou a candidatura não existe: {erro}', content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
         '409': { description: 'Não abriu a janela: {erro, motivo}. motivo enviando (há candidatura em enviando; também estado: enviando), login-aberto (já há uma janela de login aberta) ou sem-navegador (não há Chrome nem Edge, ou este processo não abre navegador, como o central-dev)', content: { application/json: { schema: { $ref: '#/components/schemas/ErroLogin' } } } }
 
-  # Envio (jc-a2y.51; achado 2 da revisão integrada jc-a2y.6.4). O executor só existe no build envio_dev; no build
-  # padrão, ligado é false e nada é enviado. Começa PAUSADO (por padrão, depois de apagar os dados e quando o estado
+  # Envio (jc-a2y.51; achado 2 da revisão integrada jc-a2y.6.4). O executor só existe no app; no central-dev,
+  # ligado é false e nada é enviado. Começa PAUSADO (por padrão, depois de apagar os dados e quando o estado
   # gravado falta ou está corrompido). O executor confere pausado antes de cada entrada em enviando; pausar não corta
   # a candidatura que já está em enviando (ela termina no desfecho dela). Pausar e retomar ficam na meta e não mudam
   # a /versao; os desfechos gravam no banco e mudam.
@@ -946,8 +946,8 @@ paths:
         '400': { $ref: '#/components/responses/Validacao' }
         '403': { $ref: '#/components/responses/SoTela' }
   # "Ao vivo" (jc-a2y.6.9, docs/propostas/ao-vivo.md): a imagem do navegador do envio dentro do app, só para ver.
-  # Só no app com o envio (build envio_dev, pelo Handler da janela do Wails, sem porta
-  # de rede); 404 no build padrão e no central-dev.
+  # Só no app (pelo Handler da janela do Wails, sem porta de rede); 404 no central-dev
+  # e sem navegador.
   /envio/ao-vivo:
     get:
       x-so-tela: true
@@ -1253,7 +1253,7 @@ components:
       additionalProperties: false
       required: [ligado, pausado, janela, login, enviandoAgora, desfechos]
       properties:
-        ligado: { type: boolean, description: 'Este build traz o executor (só envio_dev); false no build padrão' }
+        ligado: { type: boolean, description: 'O app traz o executor; false no central-dev' }
         pausado: { type: boolean, description: 'Começa true; só a tela retoma' }
         pausadoPor: { type: [object, 'null'], additionalProperties: false, required: [autor, canal], properties: { autor: { type: string, enum: [eu, claude] }, canal: { type: string, enum: [tela, mcp, cli] } }, description: 'jc-a2y.7.4: quem pausou o envio geral (a tela mostra "pausado pelo assistente (mcp)"). null ao abrir o app (que sempre começa pausado) e depois de retomar' }
         plataformas:

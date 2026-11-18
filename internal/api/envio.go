@@ -10,7 +10,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// Estado do envio, pausar e retomar (jc-a2y.51; contrato 0.4.12). O executor só existe no build envio_dev
+// Estado do envio, pausar e retomar (jc-a2y.51; contrato 0.4.12). O executor só existe no app, não no central-dev
 // (Opcoes.EnvioLigado); "pausado" fica na meta do banco, com falha fechada (armazem.EnvioPausado). Os desfechos
 // saem da fila, sem conteúdo (M7): só id, estado, motivo e horário.
 

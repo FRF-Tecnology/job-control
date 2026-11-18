@@ -9,7 +9,7 @@ import (
 
 // Envio em segundo plano (jc-a2y.6.7; contrato 0.4.13). O navegador do envio abre sem janela: não pega o foco, o
 // mouse nem o teclado de quem usa o PC. Janela visível só por ação da pessoa na tela: "Ver o envio"
-// (POST /envio/janela) e "Entrar nas plataformas" (POST /navegador/entrar). Nada disso existe no build padrão (404).
+// (POST /envio/janela) e "Entrar nas plataformas" (POST /navegador/entrar). Nada disso existe sem o envio, como no central-dev (404).
 
 // enderecoDeLogin: lista fechada. Gupy e InHire têm login por empresa: a pessoa entra pela página da vaga.
 var enderecoDeLogin = map[string]string{"linkedin": "https://www.linkedin.com/login"}

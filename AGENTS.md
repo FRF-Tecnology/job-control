@@ -13,10 +13,8 @@ Meta da vez: veja o topo do docs/status.md. O que não serve à meta está conge
 - Regra nova nasce só no Go. O Node (nucleo/, servidor/) é só leitura. Os golden são do Go: mudou uma regra de propósito, `go test ./internal/<pacote> -atualizar` (dominio, ia ou api) e confira o diff.
 - Beads: `bd` em `~/gt/job_control`, com `--actor "<seu nome>"`, sem `--force`.
 
-## Revisão por risco
-- Nível 0 (documentação, testes, texto de tela, CSS): só o CI.
-- Nível 1 (código comum): CI e a lista de conferência do autor no PR.
-- Nível 2 (internal/segredos, navegador, executor, envio, guarda da IA, mcp, assistente, cmd/nuvem, .github/workflows): Fallen, no commit exato.
+## Revisão
+- O CI passa e uma pessoa do time faz o merge. Nenhum agente aprova PR.
 
 ## Pronto
 - O QA viu funcionar no app compilado, com captura ou vídeo curto no PR.

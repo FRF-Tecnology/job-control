@@ -94,6 +94,8 @@ Nos caminhos abaixo, `ui/` significa `app/frontend/src/`. Os endpoints são da A
 
 ### 6. Retirar o navegador gerenciado e migrar o que dependia dele
 
+> **Descartado em 17/11/2026 (decisão da PO):** o app continua enviando sozinho as candidaturas aprovadas, num app só (sem o build `envio_dev`). Não siga esta seção.
+
 Não confundir a janela que desenha o aplicativo com o Chrome/Edge que ele controla para candidaturas. **Manter a WebView do Wails para o Applyer; retirar o navegador de sites e de automação do aplicativo.** No build padrão o executor já está desligado; no build com `envio_dev`, simplesmente substituir a URL quebraria funções.
 
 | Uso atual / arquivos | Substituição e sinal de retorno |

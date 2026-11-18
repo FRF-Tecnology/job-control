@@ -1,5 +1,3 @@
-//go:build envio_dev
-
 package envio
 
 import (

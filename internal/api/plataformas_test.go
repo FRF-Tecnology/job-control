@@ -86,7 +86,7 @@ func TestPausarERetomarPlataforma(t *testing.T) {
 	// Build padrão: 404.
 	b, _ := apiDeEnvio(t, false)
 	if r := chamarEnvio(t, b, "POST", "/envio/plataformas/linkedin/pausar", Objeto{}, "eu"); r.Status != 404 {
-		t.Fatalf("build padrão = %d", r.Status)
+		t.Fatalf("sem o envio = %d", r.Status)
 	}
 	got := saida.String()
 	if !strings.Contains(got, "envio: plataforma linkedin pausada (claude)") || !strings.Contains(got, "envio: plataforma linkedin retomada (eu)") || strings.Count(got, "envio: plataforma") != 2 {
