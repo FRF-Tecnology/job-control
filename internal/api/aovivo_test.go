@@ -20,7 +20,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/segredos"
 )
 
-// "Ao vivo" (jc-a2y.6.9, docs/propostas/ao-vivo.md). Quadros fictícios, só em memória.
+// "Ao vivo" (jc-a2y.6.9). Quadros fictícios, só em memória.
 
 var quadroFicticio = base64.StdEncoding.EncodeToString([]byte("Quadro-Ficticio-Marcado-77ab"))
 

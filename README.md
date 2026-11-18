@@ -79,7 +79,7 @@ O `.mcp.json` também registra o servidor **"applyer"** (`go run ./cmd/central-m
 "applyer" só para o app novo. Ele só abre a pasta e o banco que o app já criou (abra o Applyer uma vez antes) e nunca usa o
 cofre nem uma IA. A regra 8 vale igual: ele lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma
 aprovação e pausa o envio. Aprovar, retomar e registrar envio são só da pessoa, pela tela. As ferramentas também saem
-na linha de comando: `go run ./cmd/central-cli ferramentas`. Detalhes em `docs/propostas/mcp-cli.md`.
+na linha de comando: `go run ./cmd/central-cli ferramentas`.
 
 ## Regras de segurança
 - CPF, RG, senhas e dados bancários nunca são preenchidos pelo Claude nem guardados na Central.

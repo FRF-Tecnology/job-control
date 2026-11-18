@@ -45,7 +45,7 @@ Onde fica hoje: `%APPDATA%\Central de Candidaturas` (Windows), `~/Library/Applic
 - `CENTRAL_PASTA` continua aceita por pelo menos duas versões. O log de partida diz `pasta: CENTRAL_PASTA (obsoleta)`, sem o caminho (`jc-a2y.57`).
 - **As duas definidas e diferentes:** o app não abre, com a mensagem "defina só APPLYER_PASTA". Falha fechada, porque abrir a pasta errada seria pior.
 - As duas iguais: usa e segue.
-- Documentos, roteiros e testes passam a usar `APPLYER_PASTA`. O `docs/roteiro-6-5.md` só muda depois da `.6.5`.
+- Documentos, roteiros e testes passam a usar `APPLYER_PASTA`.
 
 ## 3. Cofre das chaves de IA: serviço `Central de Candidaturas` → `Applyer`
 

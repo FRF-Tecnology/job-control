@@ -3,28 +3,13 @@
 Meta da vez: veja o topo do docs/status.md. O que não serve à meta está congelado.
 
 ## Como trabalhar
-- 1 bead = 1 PR = contrato + código + testes. Nada de PR só de contrato ou só de versão. O `info.version` sobe uma vez por fase (PO).
-- Branch a partir de reescrita-go, nunca empilhado.
-- Abriu o PR: ligue o auto-merge (`gh pr merge --auto --squash`) e encerre o turno. Não espere nem consulte o CI em laço.
-- Sessão nova por fatia. O estado mora no bead e no docs/status.md.
-- Mensagem com até 80 palavras: tarefa, pronto (link do PR e uma linha) ou bloqueio. A evidência vai no PR.
-- Sem confirmação de leitura e sem aviso de "estou parado".
-- Nunca leia o api/openapi.yaml inteiro: busque a rota com grep ou `graphify query`.
+- Branch a partir da main. Mudou uma rota da API, atualize o `api/openapi.yaml` no mesmo PR.
 - Regra nova nasce só no Go. O Node (nucleo/, servidor/) é só leitura. Os golden são do Go: mudou uma regra de propósito, `go test ./internal/<pacote> -atualizar` (dominio, ia ou api) e confira o diff.
-- Beads: `bd` em `~/gt/job_control`, com `--actor "<seu nome>"`, sem `--force`.
 
 ## Revisão por risco
 - Nível 0 (documentação, testes, texto de tela, CSS): só o CI.
 - Nível 1 (código comum): CI e a lista de conferência do autor no PR.
 - Nível 2 (internal/segredos, navegador, executor, envio, guarda da IA, mcp, assistente, cmd/nuvem, .github/workflows): Fallen, no commit exato.
-
-## Pronto
-- O QA viu funcionar no app compilado, com captura ou vídeo curto no PR.
-- Se a jornada real quebra, a linha para: nada novo entra até consertar.
-
-## PC do Vini
-- Nenhuma janela, navegador ou app visível no PC de uso dele. Teste com janela só na máquina de teste.
-- Teste de navegador sempre sem janela. Nenhum teste usa o cofre real.
 
 ## Regras do produto
 - Nunca CPF, RG, senha ou dado bancário. Chave de API só no cofre.

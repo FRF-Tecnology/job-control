@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// Pedidos atendidos pelo app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md): porte de nucleo/ia/funcoes.mjs
+// Pedidos atendidos pelo app (jc-a2y.7.1): porte de nucleo/ia/funcoes.mjs
 // (conferirParametros) e dos padrões da regra pedido-catalogo de nucleo/ia/guarda.mjs. A IA só PROPÕE uma ação do
 // catálogo fechado; o servidor monta o resumo e a chamada, e nada grava sem a pessoa confirmar na tela.
 

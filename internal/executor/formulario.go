@@ -8,7 +8,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// Envio de formulários externos (jc-a2y.7.2, parte 3b, docs/propostas/formularios.md), combinado com o Faker:
+// Envio de formulários externos (jc-a2y.7.2, parte 3b), combinado com o Faker:
 //   - só o despacho fica no Enviar (depois do IniciarEnvio); concluir e tentativa são os de sempre;
 //   - a página do formulário é uma interface pequena, separada da Pagina: sem ela, erro técnico, nunca envio;
 //   - o endereço é conferido contra o destino guardado na leitura (estrutura.urlFinal), em cada passo e logo antes

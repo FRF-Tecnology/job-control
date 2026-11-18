@@ -9,7 +9,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md). POST /candidaturas/{id}/ler-formulario: o leitor
+// Formulários externos (jc-a2y.7.2). POST /candidaturas/{id}/ler-formulario: o leitor
 // do executor (Opcoes.LerFormulario) abre a URL canônica no navegador do envio, sem janela, e lê a estrutura sem
 // interagir. Sem leitor (build padrão e central-dev): 404. O texto das perguntas é dado não confiável: não vai para
 // a IA nem para o log; o log leva só números e códigos.

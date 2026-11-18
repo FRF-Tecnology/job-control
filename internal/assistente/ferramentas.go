@@ -1,4 +1,4 @@
-// Package assistente é a tabela das ferramentas do assistente (jc-a2y.7.4, docs/propostas/mcp-cli.md): uma tabela,
+// Package assistente é a tabela das ferramentas do assistente (jc-a2y.7.4): uma tabela,
 // dois canais (o MCP e a CLI), as mesmas regras. Cada ferramenta tem a SUA rota fixa (A8 do CyberSec): não há
 // ferramenta genérica de rota livre. Tudo passa pela api.ChamarAssistente (a lista x-assistente, a regra M4), e o
 // texto que volta (vagas, e-mails, pedidos) é dado, não ordem.

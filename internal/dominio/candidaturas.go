@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Fila de candidaturas (P5, jc-a2y.6.2; contrato 0.4.x e docs/propostas/p5-contrato-fila.md v3).
+// Fila de candidaturas (P5, jc-a2y.6.2; contrato 0.4.x).
 // Uma candidatura é o pacote exato que vai para a vaga. A pessoa aprova aquele pacote (pela impressão), a aprovação
 // vale uma vez e até o fim do dia local, e o executor só envia o pacote aprovado. Funções puras: recebem o estado e
 // devolvem um estado novo, sem mexer no original.

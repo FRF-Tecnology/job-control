@@ -1,4 +1,4 @@
-// "Ao vivo" (jc-a2y.6.9.1; contrato 0.8.0, docs/propostas/ao-vivo.md): a imagem do navegador do envio dentro do app,
+// "Ao vivo" (jc-a2y.6.9.1; contrato 0.8.0): a imagem do navegador do envio dentro do app,
 // SÓ PARA VER. Abrir liga (POST {ligado:true}), aberto lê a cada segundo, fechar (ou sair da tela) desliga. O quadro só
 // entra num <img src> e só se for um data:image/jpeg em base64; a etapa vem de uma lista fechada e vira frase fixa.
 // Não há clique, tecla nem nada que controle o envio. Sem leitura por 10 s o app desliga sozinho; se a leitura voltar

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Estado do envio por plataforma (jc-a2y.6.11, docs/propostas/envio-resiliente.md). Puro: recebe o estado e devolve
+// Estado do envio por plataforma (jc-a2y.6.11). Puro: recebe o estado e devolve
 // um novo, sem mexer no original. Fica gravado no banco (armazem, meta "envio-plataformas"), na mesma transação do
 // desfecho da candidatura. O "pausar" geral continua acima de tudo.
 

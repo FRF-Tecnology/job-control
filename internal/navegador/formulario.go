@@ -14,7 +14,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// Leitura de formulários externos (jc-a2y.7.2, parte 3a, docs/propostas/formularios.md). Abre o formulário numa aba
+// Leitura de formulários externos (jc-a2y.7.2, parte 3a). Abre o formulário numa aba
 // do envio (sem janela, como o NovaPagina), confere o destino na lista exata e lê só o que a página já carregou, SEM
 // INTERAGIR: nada é clicado, digitado, marcado nem enviado. O que vem da página é dado não confiável: lido com
 // JSON.stringify, com teto de tamanho, e validado no domínio; nada é executado. Nada da página vai para o log.

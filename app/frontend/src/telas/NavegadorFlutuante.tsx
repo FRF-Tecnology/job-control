@@ -1,4 +1,4 @@
-// Navegador do envio, sempre à mão: o mesmo "ao vivo" da Fila (docs/propostas/ao-vivo.md) num widget que acompanha a
+// Navegador do envio, sempre à mão: o mesmo "ao vivo" da Fila num widget que acompanha a
 // pessoa em todas as telas. Fica encaixado na lateral direita; com o mouse por cima (ou o foco do teclado) ele abre, e
 // SÓ ENTÃO liga o ao vivo e lê a cada segundo. Ao sair, desliga e a imagem não fica guardada. Dá para soltar da
 // lateral e arrastar pela tela; perto da borda direita ele encaixa de novo. Como no painel da Fila, é só para ver:

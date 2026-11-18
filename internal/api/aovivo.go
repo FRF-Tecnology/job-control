@@ -10,7 +10,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// "Ao vivo" (jc-a2y.6.9, contrato 0.8.0, docs/propostas/ao-vivo.md): a etapa do envio e o último quadro do navegador
+// "Ao vivo" (jc-a2y.6.9, contrato 0.8.0): a etapa do envio e o último quadro do navegador
 // do envio, só para ver. O quadro fica só em memória (internal/aovivo): não passa pelo banco, pelo backup nem pelo
 // log. Ler e ligar: só a tela da janela do app (DaJanela, marcada pelo Handler). Desligar: qualquer autor.
 

@@ -1,6 +1,6 @@
 package dominio
 
-// O assistente pelo MCP e pela CLI (jc-a2y.7.4, docs/propostas/mcp-cli.md, regra M4). O canal é fixado pelo binário
+// O assistente pelo MCP e pela CLI (jc-a2y.7.4, regra M4). O canal é fixado pelo binário
 // (nunca pelo pedido), vai no Ctx e fica gravado no evento e em quem pausou ou revogou. O autor do assistente é sempre
 // "claude": com um canal de assistente, o Ctx nunca é da pessoa, qualquer que seja o Autor.
 
