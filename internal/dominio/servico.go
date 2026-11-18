@@ -550,6 +550,15 @@ func EhNaoEncontrado(err error) bool {
 	return errors.As(err, &n)
 }
 
+// ModoAutomatico: a pessoa ligou o modo automático na tela (perfil.modo "direto"; o assistente não liga).
+func ModoAutomatico(e Estado) bool { return igual(obj(e.Perfil)["modo"], "direto") }
+
+// notaADoRadar: vaga nota A ainda na Descoberta, que a pessoa não pulou nem devolveu ao Radar.
+func notaADoRadar(v Objeto) bool {
+	recomendada := v["triagemDecisao"] == nil || igual(v["triagemDecisao"], "aplicar")
+	return recomendada && v["devolvidaAoRadar"] != true && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")
+}
+
 // FilaAplicar é a fila do /aplicar (jc-a2y.28): vagas em aplicar cuja aprovação mais recente (evento "aplicar") é da
 // pessoa e, no modo direto, o grupo A em descoberta. Vaga posta em aplicar pelo assistente (dado antigo) nunca entra.
 func FilaAplicar(e Estado) []Objeto {
@@ -562,11 +571,10 @@ func FilaAplicar(e Estado) []Objeto {
 		}
 		return ultimo != nil && igual(ultimo["autor"], "eu")
 	}
-	direto := igual(obj(e.Perfil)["modo"], "direto")
+	direto := ModoAutomatico(e)
 	fila := []Objeto{}
 	for _, v := range e.Vagas {
-		recomendada := v["triagemDecisao"] == nil || igual(v["triagemDecisao"], "aplicar")
-		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && recomendada && v["devolvidaAoRadar"] != true && igual(v["etapa"], "descoberta") && igual(v["aderencia"], "A")) {
+		if (igual(v["etapa"], "aplicar") && aprovadaPelaPessoa(v["id"])) || (direto && notaADoRadar(v)) {
 			fila = append(fila, v)
 		}
 	}

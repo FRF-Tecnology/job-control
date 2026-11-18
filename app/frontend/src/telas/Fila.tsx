@@ -27,7 +27,7 @@ type Conteudo = {
 };
 export type Candidatura = {
   id: string; vagaId: string; plataforma: string; url: string; estado: EstadoCand; conteudo: Conteudo; impressao: string;
-  aprovacao: { em: string; impressao: string; validaAte: string; fuso: string } | null;
+  aprovacao: { em: string; impressao: string; validaAte: string; fuso: string; automatica?: boolean } | null;
   bloqueio: { motivo: string; pendencia: string; em: string } | null;
   resultado: { em: string; tipo: string; detalhe?: string } | null;
   versao: number; criadaEm: string; atualizadaEm: string;
@@ -93,7 +93,7 @@ function situacao(c: Candidatura) {
 function rotulo(c: Candidatura) {
   if (c.estado === 'bloqueada') return `Bloqueada · ${MOTIVOS[c.bloqueio?.motivo ?? 'outro'] ?? 'Outro'}`;
   if (c.estado === 'aprovada' && c.proximaTentativaEm && Date.parse(c.proximaTentativaEm) > Date.now()) return `Tenta de novo às ${hora(c.proximaTentativaEm)}`;
-  if (c.estado === 'aprovada' && c.aprovacao?.validaAte) return `Aprovada até ${hora(c.aprovacao.validaAte, c.aprovacao.fuso)}`;
+  if (c.estado === 'aprovada' && c.aprovacao?.validaAte) return `${c.aprovacao.automatica ? 'Aprovada pelo modo automático' : 'Aprovada'} até ${hora(c.aprovacao.validaAte, c.aprovacao.fuso)}`;
   return NOME_ESTADO[c.estado];
 }
 

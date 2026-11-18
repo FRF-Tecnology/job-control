@@ -188,6 +188,9 @@ func (x *Executor) Rodar(ctx context.Context, intervalo time.Duration, ciclo syn
 	for {
 		ciclo.Lock()
 		if ctx.Err() == nil {
+			if _, err := x.AprovarAutomaticas(ctx); err != nil && ctx.Err() == nil {
+				x.o.Log("executor: modo automático (%s)", tipoDoErro(err))
+			}
 			if _, err := x.EnviarAprovadas(ctx); err != nil && ctx.Err() == nil {
 				x.o.Log("executor: fila (%s)", tipoDoErro(err))
 			}
@@ -199,6 +202,34 @@ func (x *Executor) Rodar(ctx context.Context, intervalo time.Duration, ciclo syn
 		case <-t.C:
 		}
 	}
+}
+
+var errNadaMudou = errors.New("nada mudou")
+
+// AprovarAutomaticas: no modo automático, aprova os pacotes preparados das vagas nota A, dentro dos limites do dia
+// (dominio.AprovarAutomaticas). No modo Escolher, não faz nada. Devolve os ids aprovados.
+func (x *Executor) AprovarAutomaticas(ctx context.Context) ([]string, error) {
+	limites, err := x.arm.LimitesCandidatura(ctx)
+	if err != nil {
+		return nil, err
+	}
+	agora := x.o.Relogio()
+	var ids []string
+	err = x.arm.Gravar(context.WithoutCancel(ctx), func(e dominio.Estado) (dominio.Estado, error) {
+		var novo dominio.Estado
+		novo, ids = dominio.AprovarAutomaticas(e, agora, limites)
+		if len(ids) == 0 {
+			return e, errNadaMudou // não grava nem sobe a versão a cada ciclo
+		}
+		return novo, nil
+	})
+	if errors.Is(err, errNadaMudou) {
+		return nil, nil
+	}
+	if err == nil {
+		x.o.Log("executor: modo automático aprovou %d candidatura(s)", len(ids))
+	}
+	return ids, err
 }
 
 // EnviarAprovadas envia as aprovadas, da aprovação mais antiga para a mais nova, com intervalo entre uma e outra.

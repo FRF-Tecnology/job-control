@@ -11,7 +11,8 @@ Meta da vez: veja o topo do docs/status.md. O que não serve à meta está conge
 
 ## Regras do produto
 - Nunca CPF, RG, senha ou dado bancário. Chave de API só no cofre.
-- Nada enviado em nome da pessoa sem aprovação dela. A IA nunca aprova, envia, apaga, nem mexe em limites ou chaves.
+- Dois modos de envio, que a pessoa escolhe no Perfil. **Escolher:** nada é enviado sem ela aprovar o pacote. **Automático:** o app prepara, aprova e envia sozinho as vagas nota A, dentro do limite do dia; B e C esperam por ela.
+- Só a pessoa liga o modo automático e retoma o envio, pela tela. A IA e o assistente nunca ligam o automático, nem aprovam, apagam, ou mexem em limites e chaves; podem pausar.
 - Nunca inventar experiência. LinkedIn com limite diário e aprovação humana.
 - O repo é público: só dados fictícios.
 

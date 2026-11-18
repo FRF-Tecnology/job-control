@@ -1173,6 +1173,7 @@ components:
             impressao: { type: string }
             validaAte: { type: string, description: 'Fim do dia local, com offset (ex.: 2026-11-09T23:59:59-03:00)' }
             fuso: { type: string, description: 'Ex.: America/Sao_Paulo' }
+            automatica: { type: boolean, description: 'true quando o app aprovou sozinho no modo automático (perfil.modo direto, que só a pessoa liga): vagas nota A, dentro dos limites do dia. Ausente quando a pessoa aprovou' }
         bloqueio:
           type: [object, 'null']
           properties:

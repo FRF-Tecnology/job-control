@@ -73,8 +73,8 @@ export function TelaPerfil() {
     <label style={{ display: 'flex', gap: '8px', alignItems: 'start' }}>
       <input type="radio" name="modo" value={valor} checked={(perfil.modo ?? 'revisar') === valor} onChange={() => mudar(p => { p.modo = valor; })} />
       <span>{valor === 'revisar'
-        ? <span><b>Revisar antes</b> — só as vagas que você aprovou na Triagem vão para a Fila.</span>
-        : <span><b>Aplicar direto</b> — as vagas do grupo A também vão para a Fila sem passar pela Triagem; B e C esperam por ela. O pacote de cada uma ainda precisa da sua aprovação.</span>}</span>
+        ? <span><b>Escolher</b> — você escolhe as vagas e aprova cada pacote antes de o app enviar.</span>
+        : <span><b>Automático</b> — o app prepara, aprova e envia sozinho as vagas nota A, dentro do limite do dia. B e C esperam você escolher. Você pausa quando quiser.</span>}</span>
     </label>
   );
 
@@ -122,7 +122,7 @@ export function TelaPerfil() {
         </div>
         {lista('Pular quando', perfil.filtros.pularSe, (p, v) => { p.filtros.pularSe = v; }, 'Sênior\nGraduação concluída obrigatória')}
       </fieldset>
-      <fieldset><legend>Como o Claude trabalha</legend>{modo('revisar')}{modo('direto')}
+      <fieldset><legend>Como o app envia</legend>{modo('revisar')}{modo('direto')}
         <label className="campo" style={{ maxWidth: '260px' }}><span>Follow-up depois de quantos dias</span>
           <input id="perfil-dias" type="number" min={1} max={60} value={perfil.diasFollowUp ?? 7} onChange={ev => { const v = ev.target.value; mudar(p => { p.diasFollowUp = Number(v) || 7; }); }} />
         </label>
