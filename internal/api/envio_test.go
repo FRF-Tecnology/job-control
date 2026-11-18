@@ -56,10 +56,10 @@ func TestEnvioEstadoPausarRetomar(t *testing.T) {
 	r := chamarEnvio(t, a, "GET", "/envio", nil, "eu")
 	c := r.Corpo.(map[string]any)
 	if r.Status != 200 || c["ligado"] != false || c["pausado"] != true || c["enviandoAgora"] != nil || len(c["desfechos"].([]any)) != 0 {
-		t.Fatalf("build padrão, banco novo = %d %v", r.Status, c)
+		t.Fatalf("sem o envio, banco novo = %d %v", r.Status, c)
 	}
 	if b, _ := apiDeEnvio(t, true); chamarEnvio(t, b, "GET", "/envio", nil, "eu").Corpo.(map[string]any)["ligado"] != true {
-		t.Fatal("ligado no build envio_dev")
+		t.Fatal("com o envio, ligado")
 	}
 	// Retomar: só a pessoa; corpo estrito.
 	if r := chamarEnvio(t, a, "POST", "/envio/retomar", Objeto{}, "claude"); r.Status != 403 {

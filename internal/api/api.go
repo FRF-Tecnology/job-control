@@ -88,7 +88,7 @@ type API struct {
 	suspenderEnvio  func() func()                // sair das plataformas: nenhum ciclo novo até soltar
 	fecharNavegador func()                       // sair das plataformas: fecha o navegador (o perfil não pode estar em uso)
 	aoApagar        func()                       // depois de apagar os dados: fecha o app
-	envioLigado     bool                         // este build traz o executor (envio.Ligado)
+	envioLigado     bool                         // o app traz o executor (o central-dev não)
 	mostrarEnvio    func(visivel bool)           // "Ver o envio": janela a partir da próxima candidatura
 	entrar          func(endereco string) error  // "Entrar nas plataformas": janela de login até a pessoa fechar
 	janela          func() (visivel, login bool) // estado da janela do envio
@@ -121,14 +121,14 @@ type Opcoes struct {
 	SuspenderEnvio  func() (soltar func())
 	FecharNavegador func()
 	AoApagar        func()
-	// EnvioLigado: este build traz o executor (envio.Ligado, só o envio_dev). A API não importa o envio.
+	// EnvioLigado: o app traz o executor; o central-dev não. A API não importa o envio.
 	EnvioLigado bool
 	// Janela do navegador do envio (jc-a2y.6.7), de envio.Ligar: MostrarEnvio, Entrar e Janela.
 	MostrarEnvio func(visivel bool)
 	Entrar       func(endereco string) error
 	Janela       func() (visivel, login bool)
 	// AoVivo (jc-a2y.6.9): o último quadro do navegador do envio, em memória. Só o app com o envio passa; sem ele,
-	// /envio/ao-vivo dá 404 (build padrão e central-dev).
+	// /envio/ao-vivo dá 404 (central-dev ou sem navegador).
 	AoVivo *aovivo.AoVivo
 	// LerFormulario (jc-a2y.7.2): lê a estrutura do formulário no navegador do envio, sem interagir. Só o app com o
 	// envio passa; sem ele, POST /candidaturas/{id}/ler-formulario dá 404.

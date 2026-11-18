@@ -172,7 +172,7 @@ func (x *Executor) Iniciar(ctx context.Context) (incertas, vencidas int, err err
 	return incertas, vencidas, err
 }
 
-// Rodar é o laço do executor no app (build envio_dev): Iniciar ao abrir e, de intervalo em intervalo,
+// Rodar é o laço do executor no app: Iniciar ao abrir e, de intervalo em intervalo,
 // EnviarAprovadas. Cada ciclo segura o ciclo (sync.Locker), que "sair das plataformas" usa para suspender. Se o
 // Iniciar falhar, não entra no laço: devolve o erro e nada é enviado até o app abrir de novo.
 func (x *Executor) Rodar(ctx context.Context, intervalo time.Duration, ciclo sync.Locker) error {

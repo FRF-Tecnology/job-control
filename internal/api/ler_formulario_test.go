@@ -13,7 +13,7 @@ import (
 )
 
 // jc-a2y.7.2, parte 2: POST /candidaturas/{id}/ler-formulario. O leitor (Opcoes.LerFormulario) é do executor, na
-// parte 3; aqui, um leitor fictício. Sem leitor (build padrão, central-dev): 404. Dados fictícios.
+// parte 3; aqui, um leitor fictício. Sem leitor (central-dev): 404. Dados fictícios.
 
 const marcaPergunta = "Pergunta-Ficticia-Marcada-3f1a"
 

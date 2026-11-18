@@ -90,8 +90,7 @@ na linha de comando: `go run ./cmd/central-cli ferramentas`.
 ## Testar o app novo no Mac (versão de teste)
 O CI gera o Applyer para Mac com chip Apple (M1 ou mais novo) a cada commit no branch `reescrita-go`. É só para teste: **não tem assinatura da Apple** (isso fica para a P8).
 1. No GitHub, abra **Actions > CI**, filtre pelo branch **`reescrita-go`** e escolha uma execução verde do tipo **push**. Baixe um destes artefatos (é preciso estar logado; eles somem depois de 7 dias):
-   - **`Applyer-macos-arm64.zip`**: o app padrão, sem o envio de candidaturas (só para ver as telas);
-   - **`Applyer-macos-arm64-envio.zip`**: o mesmo app com o envio ligado (build `envio_dev`, com o navegador). Use só na máquina de teste.
+   - **`Applyer-macos-arm64.zip`**: o app, já com o envio das candidaturas que você aprovar.
    **Não use** um `.app` de execução de pull request nem de outro repositório: esses não têm artefato, e um `.app` de outra origem pode ter qualquer coisa dentro.
 2. Confira o arquivo antes de abrir. No Terminal, rode `shasum -a 256 ~/Downloads/<nome do zip que você baixou>`. O código precisa ser igual ao `sha256` do resumo da execução (e ao digest ao lado do artefato). Se for diferente, apague o arquivo e não abra.
 3. Abra o zip: sai o `Applyer.app`. Mova-o para **Aplicativos**, se quiser.
