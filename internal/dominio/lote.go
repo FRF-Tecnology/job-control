@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Aprovar a lista do dia em lote (jc-a2y.6.13, docs/propostas/aprovar-lote.md). Cada item traz a impressão que a
+// Aprovar a lista do dia em lote (jc-a2y.6.13). Cada item traz a impressão que a
 // tela mostrou e passa pela mesma conferência do aprovar de uma (M2). Item recusado não afeta os outros. Puro: recebe
 // o estado e devolve o novo; quem chama grava tudo numa transação só.
 

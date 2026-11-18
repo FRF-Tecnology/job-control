@@ -14,7 +14,7 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// "Ao vivo" (jc-a2y.6.9, docs/propostas/ao-vivo.md): a aba do envio manda quadros pelo DevTools (CDP
+// "Ao vivo" (jc-a2y.6.9): a aba do envio manda quadros pelo DevTools (CDP
 // Page.startScreencast, pelo mesmo pipe, sem porta) só enquanto o observador quer. Só a aba do envio: AbrirLogin não
 // passa por NovaPagina, então a janela de login nunca é observada. Só visualização: nada aqui clica nem digita.
 // Os quadros passam direto para o observador, em memória; nada vai para disco, temp ou log.

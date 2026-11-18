@@ -1,4 +1,4 @@
-// Formulário externo na Fila (jc-a2y.7.2.4; contrato 0.13.0, docs/propostas/formularios.md). Para candidatura de
+// Formulário externo na Fila (jc-a2y.7.2.4; contrato 0.13.0). Para candidatura de
 // plataforma "formulario": "Ler formulário" (o app abre a página sem janela e lê as perguntas, sem interagir), as
 // perguntas lidas (texto da página: dado não confiável, mostrado só como texto), o que veio das respostas padrão, um
 // campo para cada pendente e a frase do pré-preenchimento ignorado. Pergunta sensível nunca ganha campo. Typeform

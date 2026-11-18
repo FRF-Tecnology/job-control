@@ -14,7 +14,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// A entrada do assistente (jc-a2y.7.4, docs/propostas/mcp-cli.md, regra M4). O MCP e a CLI criam uma API com
+// A entrada do assistente (jc-a2y.7.4, regra M4). O MCP e a CLI criam uma API com
 // Opcoes.Canal (mcp ou cli) e chamam por aqui. Lista de permissão, negado por padrão: método e rota fora da lista dão
 // 403 antes de ler ou gravar qualquer coisa. O casamento é exato, por modelo de rota, sem prefixo. O pedido é
 // remontado com autor claude e sem os cabeçalhos da tela. As regras do domínio continuam valendo por cima.

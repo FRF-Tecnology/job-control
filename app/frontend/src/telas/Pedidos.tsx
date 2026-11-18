@@ -1,4 +1,4 @@
-// Seus pedidos atendidos pelo app (jc-a2y.7.1.1; contrato 0.9.0, docs/propostas/pedidos-no-app.md). A IA conectada só
+// Seus pedidos atendidos pelo app (jc-a2y.7.1.1; contrato 0.9.0). A IA conectada só
 // PROPÕE uma ação de um catálogo fechado; nada grava sem a pessoa apertar "Confirmar" aqui, que chama a rota de sempre
 // com o corpo EXATO da proposta e os cabeçalhos X-Pedido e X-Impressao. Tudo o que vem do pedido ou da IA aparece só
 // como texto (sem HTML e sem link automático), e os erros viram frases fixas.

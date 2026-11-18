@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// jc-a2y.7.2 (docs/propostas/formularios.md): Google Forms e Typeform pela lista exata de hosts e caminhos, nunca
+// jc-a2y.7.2: Google Forms e Typeform pela lista exata de hosts e caminhos, nunca
 // endsWith; a URL guardada é a canônica, sem query nem fragmento, e o pré-preenchimento (entry.*, campos ocultos) é
 // ignorado com aviso. Endereços fictícios.
 func TestFormularioDoEndereco(t *testing.T) {

@@ -70,7 +70,7 @@ Nunca clique em prompts de permissão do navegador por ela.
 `/skill-job` faz o ciclo inteiro (perfil com perguntas → busca → triagem → aplicação → fechamento) usando esses mesmos passos.
 O `.mcp.json` tem dois servidores MCP; prefira as ferramentas deles aos comandos da CLI (as mesmas regras, sem shell):
 - **"central"** (Node, `mcp/servidor.mjs`): os dados da Central em uso hoje (`dados/`). É o deste fluxo (`vagas_listar`, `vaga_mover`, `vaga_registrar_envio`, `resposta_padrao`...).
-- **"applyer"** (Go, `cmd/central-mcp`): os dados do app novo (a pasta Applyer). Use só quando o trabalho for no app novo. Ele só lê a pasta: nunca cria, migra nem renomeia, e o app tem de ter sido aberto uma vez. Lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma aprovação e pausa o envio. Não registra envio, porque quem envia é o app (docs/propostas/mcp-cli.md). Retomar e aprovar, só a pessoa, pela tela.
+- **"applyer"** (Go, `cmd/central-mcp`): os dados do app novo (a pasta Applyer). Use só quando o trabalho for no app novo. Ele só lê a pasta: nunca cria, migra nem renomeia, e o app tem de ter sido aberto uma vez. Lê e registra vagas, lê a fila de candidaturas e os limites, revoga uma aprovação e pausa o envio. Não registra envio, porque quem envia é o app. Retomar e aprovar, só a pessoa, pela tela.
 O perfil é lido com `cli.mjs perfil` e gravado com `cli.mjs perfil --json '{...}'`.
 
 <!-- rtk-instructions v2 -->
@@ -105,16 +105,13 @@ O app novo (Applyer, Wails v3) e as regras do time ficam no **`AGENTS.md`**: map
 
 ## Ferramentas de desenvolvimento
 
-O projeto sempre usa três ferramentas:
+O projeto usa duas ferramentas:
 - **[Graphify](https://github.com/Graphify-Labs/graphify):** é o mapa do código, descrito na seção acima.
 - **[RTK](https://github.com/rtk-ai/rtk):** encurta a saída dos comandos antes de o assistente ler.
-- **[Gas Town](https://github.com/gastownhall/gastown):** organiza as tarefas (beads, prefixo `jc`) e os agentes. O rig é `job_control`, numa sede do Gas Town (`gt install`).
 
 **Instalação no Windows:**
 - RTK: `winget install rtk-ai.rtk`.
 - Graphify: `uv tool install --python 3.12 graphifyy`.
-- Gas Town e Beads: os binários `gt` e `bd` dos releases no GitHub.
-- Dolt: `winget install DoltHub.Dolt`.
 
 **Ganchos do Claude Code:** ficam em `.claude/settings.local.json`, fora do git, porque levam caminhos da máquina de cada pessoa. São dois:
 - RTK no Bash: `rtk hook claude`.

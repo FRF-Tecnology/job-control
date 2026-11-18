@@ -1,4 +1,4 @@
-// Package aovivo guarda o estado do painel "Ao vivo" (jc-a2y.6.9, docs/propostas/ao-vivo.md): a etapa do envio e o
+// Package aovivo guarda o estado do painel "Ao vivo" (jc-a2y.6.9): a etapa do envio e o
 // último quadro do navegador do envio, só em memória. Nada daqui vai para disco, temp, log, banco ou backup.
 //
 // Só visualização: não há como clicar, digitar nem controlar o navegador por aqui.

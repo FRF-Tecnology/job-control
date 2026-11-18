@@ -25,7 +25,7 @@ export function resumoPerfil(perfil = {}) {
 
 const json = o => JSON.stringify(o, null, 1);
 
-// Pedidos atendidos pelo app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md): catálogo fechado. A IA só PROPÕE uma
+// Pedidos atendidos pelo app (jc-a2y.7.1): catálogo fechado. A IA só PROPÕE uma
 // ação; o servidor monta o resumo e a chamada, e nada grava sem a pessoa confirmar na tela.
 export const ACOES_PEDIDO = ['adicionar-vaga', 'registrar-etapa', 'preparar-pacote', 'responder', 'recusar'];
 export const ETAPAS_PEDIDO = ['enviada', 'em-processo', 'oferta', 'encerrada', 'pulada']; // nunca aplicar, descoberta nem bloqueada

@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 )
 
-// Pedidos atendidos pelo próprio app (jc-a2y.7.1, docs/propostas/pedidos-no-app.md). A IA só PROPÕE uma ação do
+// Pedidos atendidos pelo próprio app (jc-a2y.7.1). A IA só PROPÕE uma ação do
 // catálogo fechado (internal/ia, interpretarPedido, já passada pela guarda). Aqui o servidor:
 //   - monta a proposta com frases fixas (nunca com texto da IA no resumo), a chamada exata à rota que já existe e a
 //     impressão sha256:v1 de {pedidoId, acao, parametros};

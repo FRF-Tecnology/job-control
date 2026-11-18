@@ -1,4 +1,4 @@
-// central-mcp: o servidor MCP local do Applyer (jc-a2y.7.4, docs/propostas/mcp-cli.md). Um cliente MCP (Claude Code,
+// central-mcp: o servidor MCP local do Applyer (jc-a2y.7.4). Um cliente MCP (Claude Code,
 // Claude Desktop) o abre por stdio. Ele fala com o banco da pasta do app pela entrada do assistente (canal mcp, a
 // regra M4): só lê, triagem e registros, revogar e pausar. Nunca cria, migra nem renomeia a pasta, e nunca usa o
 // cofre nem uma IA. O stdout é só do protocolo; o log vai para o stderr.

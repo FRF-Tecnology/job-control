@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Envio de formulários externos (jc-a2y.7.2, parte 3b, docs/propostas/formularios.md). No envio, o executor relê a
+// Envio de formulários externos (jc-a2y.7.2, parte 3b). No envio, o executor relê a
 // estrutura sem interagir e só preenche o que este plano devolve: a estrutura relida tem de ter o mesmo hash da
 // aprovada (senão pergunta-nova), o destino tem de ser o guardado (senão site-externo), e cada valor sai só do pacote.
 

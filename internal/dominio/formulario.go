@@ -242,7 +242,7 @@ func faltamRespostas(c Candidatura) bool {
 	return c.Plataforma == PlataformaFormulario && (c.Estrutura == nil || len(c.Pendentes) > 0)
 }
 
-// Formulários externos (jc-a2y.7.2, docs/propostas/formularios.md): Google Forms e Typeform viram a plataforma
+// Formulários externos (jc-a2y.7.2): Google Forms e Typeform viram a plataforma
 // "formulario". Lista exata de hosts e caminhos, nunca endsWith; o servidor nunca busca a URL (o forms.gle é
 // resolvido só no navegador do envio). A URL guardada é a canônica, sem query nem fragmento: o pré-preenchimento
 // (entry.* do Google, campos ocultos do Typeform) iria junto no envio sem estar no pacote, então é tirado, e a

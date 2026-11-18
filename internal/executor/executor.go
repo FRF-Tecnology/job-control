@@ -1,5 +1,5 @@
 // Package executor envia as candidaturas aprovadas (P5, jc-a2y.6.2.3). É código interno, sem rota HTTP: só o app
-// chama. Regras da proposta docs/propostas/p5-contrato-fila.md:
+// chama. Regras:
 //   - M1: tudo o que vai para a página sai do pacote aprovado; campo obrigatório fora dele bloqueia (pergunta-nova);
 //   - M2: a entrada em enviando é a conferência atômica do domínio (IniciarEnvio, numa transação); antes de anexar,
 //     o currículo é lido de novo e o sha256 tem de bater, senão falhou/curriculo-mudou;

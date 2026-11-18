@@ -9,7 +9,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// Pedidos atendidos pelo próprio app (jc-a2y.7.1, contrato 0.5.0, docs/propostas/pedidos-no-app.md):
+// Pedidos atendidos pelo próprio app (jc-a2y.7.1, contrato 0.5.0):
 //   - POST /pedidos/{id}/interpretar (só a tela; uma por vez): a IA da pessoa propõe UMA ação do catálogo fechado; o
 //     servidor guarda a proposta (resumo com frases fixas, chamada exata e impressão). Nada grava no domínio;
 //   - POST /pedidos/{id}/descartar (qualquer autor): a proposta sai, o pedido volta a aberto;

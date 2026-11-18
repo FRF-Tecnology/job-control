@@ -14,7 +14,7 @@ import (
 	"github.com/FRF-Tecnology/job-control/internal/dominio"
 )
 
-// Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49; contrato 0.4.10 e docs/propostas/apagar-dados.md).
+// Apagar meus dados e sair das plataformas (LGPD, jc-a2y.49; contrato 0.4.10).
 // Só a tela; nada vai para a nuvem. O log leva só o resultado por item: nunca caminho (tem o nome do usuário),
 // conteúdo nem chave.
 
