@@ -240,6 +240,21 @@ func (s *cenario) gravar(f func(e dominio.Estado) (dominio.Estado, error)) {
 	}
 }
 
+func conteudoTeste() dominio.Objeto {
+	return dominio.Objeto{
+		"curriculo": dominio.Objeto{"arquivo": "cv-pt.pdf", "sha256": curriculos.SHA256(pdf)},
+		"idioma":    "pt",
+		"contato":   dominio.Objeto{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com", "telefone": "11900000000", "cidade": "Cidade Teste"},
+		"pretensao": dominio.Objeto{"valor": 8500.0, "moeda": "BRL", "tipo": "PJ"},
+		"respostas": []any{
+			dominio.Objeto{"pergunta": "Anos de Go?", "resposta": marca, "origem": "pessoa"},
+			dominio.Objeto{"pergunta": "Anos de experiência com Go", "resposta": "3", "origem": "respostasPadrao"},
+			dominio.Objeto{"pergunta": "Experiência com banco de dados?", "resposta": "Sim", "origem": "respostasPadrao"},
+		},
+		"mensagem": nil,
+	}
+}
+
 // aprovada cria uma vaga fictícia aprovada pela pessoa e uma candidatura aprovada para ela; devolve o id.
 func (s *cenario) aprovada(plataforma, link string) string {
 	s.t.Helper()
@@ -254,19 +269,7 @@ func (s *cenario) aprovada(plataforma, link string) string {
 		if e, _, err = dominio.MoverVaga(e, vaga, "aplicar", nil, eu(s.agora)); err != nil {
 			return e, err
 		}
-		conteudo := dominio.Objeto{
-			"curriculo": dominio.Objeto{"arquivo": "cv-pt.pdf", "sha256": curriculos.SHA256(pdf)},
-			"idioma":    "pt",
-			"contato":   dominio.Objeto{"nome": "Pessoa Teste", "email": "pessoa@exemplo.com", "telefone": "11900000000", "cidade": "Cidade Teste"},
-			"pretensao": dominio.Objeto{"valor": 8500.0, "moeda": "BRL", "tipo": "PJ"},
-			"respostas": []any{
-				dominio.Objeto{"pergunta": "Anos de Go?", "resposta": marca, "origem": "pessoa"},
-				dominio.Objeto{"pergunta": "Anos de experiência com Go", "resposta": "3", "origem": "respostasPadrao"},
-				dominio.Objeto{"pergunta": "Experiência com banco de dados?", "resposta": "Sim", "origem": "respostasPadrao"},
-			},
-			"mensagem": nil,
-		}
-		e, o, err := dominio.CriarCandidatura(e, vaga, conteudo, s.agora, eu(s.agora))
+		e, o, err := dominio.CriarCandidatura(e, vaga, conteudoTeste(), s.agora, eu(s.agora))
 		if err != nil {
 			return e, err
 		}
@@ -863,5 +866,47 @@ func TestEtapasDoAoVivo(t *testing.T) {
 	// Sem o gancho (padrão), nada quebra.
 	if Novo(s.arm, Opcoes{}).o.Etapa == nil {
 		t.Fatal("Etapa nil no padrão")
+	}
+}
+
+// Modo automático: a vaga nota A, com o pacote preparado, é aprovada pelo app e enviada no mesmo ciclo, sem clique.
+// No modo Escolher, o mesmo pacote fica esperando a pessoa. Dados fictícios.
+func TestModoAutomaticoAprovaEEnvia(t *testing.T) {
+	for _, modo := range []string{"revisar", "direto"} {
+		p := novaPagina()
+		p.final = linkLI + "/apply?origem=teste"
+		s := novoCenario(t, p)
+		var id string
+		s.gravar(func(e dominio.Estado) (dominio.Estado, error) {
+			e.Perfil = dominio.Objeto{"modo": "direto"}
+			e, _, err := dominio.AdicionarVaga(e, dominio.Objeto{"id": "v-a", "empresa": "Empresa A", "titulo": "Dev Go", "plataforma": "linkedin", "link": linkLI, "aderencia": "A"}, eu(s.agora), false)
+			if err != nil {
+				return e, err
+			}
+			e, o, err := dominio.CriarCandidatura(e, "v-a", conteudoTeste(), s.agora, eu(s.agora))
+			if err != nil {
+				return e, err
+			}
+			id = o["id"].(string)
+			e.Perfil["modo"] = modo
+			return e, nil
+		})
+		ids, err := s.x.AprovarAutomaticas(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if modo == "revisar" {
+			if len(ids) != 0 || s.cand(id)["estado"] != "preparada" {
+				t.Fatalf("modo Escolher: aprovadas %v, estado %v", ids, s.cand(id)["estado"])
+			}
+			continue
+		}
+		if len(ids) != 1 || s.cand(id)["estado"] != "aprovada" {
+			t.Fatalf("modo automático: aprovadas %v, estado %v", ids, s.cand(id)["estado"])
+		}
+		ds, err := s.x.EnviarAprovadas(context.Background())
+		if err != nil || len(ds) != 1 || ds[0].Estado != dominio.CandEnviada {
+			t.Fatalf("envio = %+v, %v", ds, err)
+		}
 	}
 }

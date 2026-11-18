@@ -118,7 +118,9 @@ type Aprovacao struct {
 	Impressao string `json:"impressao"`
 	ValidaAte string `json:"validaAte"`
 	Fuso      string `json:"fuso"`
-	UsadaEm   string `json:"usadaEm,omitempty"`
+	// Automatica: aprovada pelo app no modo automático (perfil.modo "direto"), que só a pessoa liga.
+	Automatica bool   `json:"automatica,omitempty"`
+	UsadaEm    string `json:"usadaEm,omitempty"`
 }
 
 // Bloqueio: motivo da lista fechada e a pendência fixa.
@@ -523,6 +525,10 @@ func AprovarCandidatura(e Estado, id, impressao string, agora time.Time, limites
 	if err := soPessoa(ctx, "aprovar"); err != nil {
 		return e, nil, err
 	}
+	return aprovar(e, id, impressao, agora, limites, false)
+}
+
+func aprovar(e Estado, id, impressao string, agora time.Time, limites map[string]int, automatica bool) (Estado, Objeto, error) {
 	i, c, err := acharCandidatura(e, id)
 	if err != nil {
 		return e, nil, err
@@ -544,10 +550,11 @@ func AprovarCandidatura(e Estado, id, impressao string, agora time.Time, limites
 	}
 	c.ProximaTentativaEm = "" // aprovação nova: as voltas recomeçam do zero (no máximo 3 por aprovação; o histórico fica)
 	c.Aprovacao = &Aprovacao{
-		Em:        agora.Format(time.RFC3339),
-		Impressao: c.Impressao,
-		ValidaAte: FimDoDia(agora).Format(time.RFC3339),
-		Fuso:      agora.Location().String(),
+		Em:         agora.Format(time.RFC3339),
+		Impressao:  c.Impressao,
+		ValidaAte:  FimDoDia(agora).Format(time.RFC3339),
+		Fuso:       agora.Location().String(),
+		Automatica: automatica,
 	}
 	c.Estado = CandAprovada
 	novo, o := salvarCandidatura(e, i, c, agora)
